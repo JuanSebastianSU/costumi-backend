@@ -1,0 +1,53 @@
+package com.costumi.backend.identidad.adaptadores.salida;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
+import java.util.UUID;
+
+/** Mapeo JPA de la Sucursal. Lleva {@code empresa_id} (tenant). */
+@Entity
+@Table(name = "sucursal")
+class SucursalJpaEntity {
+
+	@Id
+	private UUID id;
+
+	@Column(name = "empresa_id", nullable = false)
+	private UUID empresaId;
+
+	@Column(nullable = false, length = 200)
+	private String nombre;
+
+	@Column(length = 300)
+	private String direccion;
+
+	protected SucursalJpaEntity() {
+		// requerido por JPA
+	}
+
+	SucursalJpaEntity(UUID id, UUID empresaId, String nombre, String direccion) {
+		this.id = id;
+		this.empresaId = empresaId;
+		this.nombre = nombre;
+		this.direccion = direccion;
+	}
+
+	UUID getId() {
+		return id;
+	}
+
+	UUID getEmpresaId() {
+		return empresaId;
+	}
+
+	String getNombre() {
+		return nombre;
+	}
+
+	String getDireccion() {
+		return direccion;
+	}
+}

@@ -15,10 +15,12 @@ Empresa (RF-15.2)** end-to-end. Todo el trabajo vive en la rama `chore/scaffoldi
 2. ✅ Módulo Identidad — rebanada 1: **auto-registro de Empresa** (nace PENDIENTE), `POST /api/v1/empresas` (PR #2).
 3. ✅ Módulo Identidad — rebanada 2: **aprobar / rechazar / suspender / reactivar** Empresa (RF-15.3),
    endpoints `POST /{id}/{accion}`, errores en Problem Details (404/409) (PR #3).
-4. ⬜ **Aislamiento multi-tenant (§5.4, RF-15.1):** `empresa_id` en el contexto de request +
-   filtro forzado, para que sea imposible leer datos de otra empresa. Depende de auth (RF-17.4).
-5. ⬜ Auditoría de acciones del SuperAdmin (RF-15.5) y plazo de resolución de 2 días (RF-15.4).
-6. ⬜ **Sucursal** (1..N por Empresa, con `empresa_id`), luego Usuario/roles/permisos + auth (RF-1, RF-17.4).
+4. ✅ Módulo Identidad — rebanada 3: **Sucursal** (1..N por Empresa) con `empresa_id` (RF-15.1);
+   solo una empresa ACTIVA puede abrir sucursales (RF-15.4). `POST /api/v1/empresas/{id}/sucursales` (PR #4).
+5. ⬜ **Aislamiento multi-tenant real (§5.4):** `empresa_id` en el contexto de request + filtro
+   forzado, para que sea imposible leer datos de otra empresa. Depende de auth (RF-17.4).
+6. ⬜ Auditoría del SuperAdmin (RF-15.5) y plazo de resolución de 2 días (RF-15.4).
+7. ⬜ Usuario / roles / permisos + **auth por token** (RF-1, RF-17.4) → habilita el aislamiento del punto 5.
 
 ## Tablero de módulos
 Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
@@ -26,7 +28,7 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 | Módulo | Rigor | Estado | Ref |
 |---|---|---|---|
 | Andamiaje + control anti-erosión (ArchUnit/Modulith/CI) | — | ✅ | §5.3 — mergeado a `main` (PR #1) |
-| Identidad y tenant (Empresa/Sucursal/Usuario/permisos/auth) | Hexagonal | 🟨 | RF-1, RF-15, RF-17.4 — Empresa: registro (PR #2) + ciclo de vida (PR #3) |
+| Identidad y tenant (Empresa/Sucursal/Usuario/permisos/auth) | Hexagonal | 🟨 | RF-1, RF-15, RF-17.4 — Empresa: registro (PR #2), ciclo de vida (PR #3); Sucursal (PR #4) |
 | Catálogo y taxonomía (etiquetas, categorías) | Hexagonal | ⬜ | RF-2.7 — el más delicado |
 | Inventario y disponibilidad | Hexagonal | ⬜ | RF-2 |
 | Pedidos / carrito | Hexagonal | ⬜ | RF-16 |
@@ -65,6 +67,11 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-04 (d)** — Módulo **Identidad/tenant**, rebanada 3: **Sucursal (RF-15.1)**. Entidad
+  `Sucursal` anclada a Empresa con **`empresa_id`** (primera tabla hija de negocio, con FK a
+  `empresa` e índice por tenant), migración `V2__crear_sucursal.sql`. Regla RF-15.4 aplicada:
+  solo una empresa **ACTIVA** puede abrir sucursales (`EmpresaNoOperativa` → 409). Endpoint anidado
+  `POST /api/v1/empresas/{empresaId}/sucursales`. Build local **verde (22 tests)**. PR #4.
 - **2026-07-04 (c)** — Módulo **Identidad/tenant**, rebanada 2: **ciclo de vida de la Empresa
   por el SuperAdmin (RF-15.3)**. Casos de uso `aprobar/rechazar/suspender/reactivar`, endpoints
   `POST /api/v1/empresas/{id}/{accion}`, `ManejadorDeErrores` con Problem Details (404 no
