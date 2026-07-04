@@ -14,7 +14,7 @@ Empresa (RF-15.2)** end-to-end. Todo el trabajo vive en la rama `chore/scaffoldi
 1. ✅ Andamiaje (mergeado a `main`) + check `build` requerido enganchado por Juan.
 2. ✅ Módulo Identidad — rebanada 1: **auto-registro de Empresa** (nace PENDIENTE), `POST /api/v1/empresas` (PR #2).
 3. ✅ Módulo Identidad — rebanada 2: **aprobar / rechazar / suspender / reactivar** Empresa (RF-15.3),
-   endpoints `POST /{id}/{accion}`, errores en Problem Details (404/409) (PR #2).
+   endpoints `POST /{id}/{accion}`, errores en Problem Details (404/409) (PR #3).
 4. ⬜ **Aislamiento multi-tenant (§5.4, RF-15.1):** `empresa_id` en el contexto de request +
    filtro forzado, para que sea imposible leer datos de otra empresa. Depende de auth (RF-17.4).
 5. ⬜ Auditoría de acciones del SuperAdmin (RF-15.5) y plazo de resolución de 2 días (RF-15.4).
@@ -25,8 +25,8 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 
 | Módulo | Rigor | Estado | Ref |
 |---|---|---|---|
-| Andamiaje + control anti-erosión (ArchUnit/Modulith/CI) | — | ✅ | §5.3 — verde en CI (PR pendiente de merge) |
-| Identidad y tenant (Empresa/Sucursal/Usuario/permisos/auth) | Hexagonal | 🟨 | RF-1, RF-15, RF-17.4 — auto-registro de Empresa hecho |
+| Andamiaje + control anti-erosión (ArchUnit/Modulith/CI) | — | ✅ | §5.3 — mergeado a `main` (PR #1) |
+| Identidad y tenant (Empresa/Sucursal/Usuario/permisos/auth) | Hexagonal | 🟨 | RF-1, RF-15, RF-17.4 — Empresa: registro (PR #2) + ciclo de vida (PR #3) |
 | Catálogo y taxonomía (etiquetas, categorías) | Hexagonal | ⬜ | RF-2.7 — el más delicado |
 | Inventario y disponibilidad | Hexagonal | ⬜ | RF-2 |
 | Pedidos / carrito | Hexagonal | ⬜ | RF-16 |
@@ -40,6 +40,11 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 | Notificaciones (WhatsApp / FCM) | Simple | ⬜ | RF-11 |
 | Configuración de empresa | Simple | ⬜ | RF-12 |
 | App cliente (marketplace) | — | ⬜ | RF-18 |
+
+## Decisiones aceptadas
+- **Decisión (2026-07-04, aprobada por Juan):** se acepta `reactivar` (SUSPENDIDA → ACTIVA)
+  como acción del SuperAdmin aunque no figuraba en RF-15.3; se considera complemento natural
+  de `suspender`. Pendiente reflejarlo en `BACKEND_REQUIREMENTS.md` (RF-15.3).
 
 ## Decisiones pendientes (resolver antes de tocar su tema)
 - **Convención de nombres (a confirmar por Juan).** Se usó **lenguaje de dominio en español**
@@ -64,7 +69,7 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
   por el SuperAdmin (RF-15.3)**. Casos de uso `aprobar/rechazar/suspender/reactivar`, endpoints
   `POST /api/v1/empresas/{id}/{accion}`, `ManejadorDeErrores` con Problem Details (404 no
   encontrada, 409 transición inválida). Build local **verde (16 tests)**. Andamiaje mergeado a
-  `main` por Juan; módulo en el **PR #2**. Pendiente: aislamiento multi-tenant (§5.4) y auditoría
+  `main` por Juan; módulo en el **PR #3**. Pendiente: aislamiento multi-tenant (§5.4) y auditoría
   (RF-15.5). Juan pidió continuar por §7.
 - **2026-07-04 (b)** — Módulo **Identidad/tenant**, rebanada 1: **auto-registro de Empresa
   (RF-15.2)** end-to-end sobre `chore/scaffolding-modulith`. Dominio puro `Empresa` +
