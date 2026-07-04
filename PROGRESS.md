@@ -17,10 +17,13 @@ Empresa (RF-15.2)** end-to-end. Todo el trabajo vive en la rama `chore/scaffoldi
    endpoints `POST /{id}/{accion}`, errores en Problem Details (404/409) (PR #3).
 4. ✅ Módulo Identidad — rebanada 3: **Sucursal** (1..N por Empresa) con `empresa_id` (RF-15.1);
    solo una empresa ACTIVA puede abrir sucursales (RF-15.4). `POST /api/v1/empresas/{id}/sucursales` (PR #4).
-5. ⬜ **Aislamiento multi-tenant real (§5.4):** `empresa_id` en el contexto de request + filtro
+5. ✅ RF-15.4 (plazo de resolución): cola `GET /api/v1/empresas/pendientes` con marca de **vencida**
+   y plazo configurable (`costumi.empresa.plazo-resolucion-dias`, default 2) (PR #5). ⬜ Falta la
+   escalada/recordatorio automático (necesita notificaciones, RF-11) y restringir a rol SuperAdmin.
+6. ⬜ **Aislamiento multi-tenant real (§5.4):** `empresa_id` en el contexto de request + filtro
    forzado, para que sea imposible leer datos de otra empresa. Depende de auth (RF-17.4).
-6. ⬜ Auditoría del SuperAdmin (RF-15.5) y plazo de resolución de 2 días (RF-15.4).
-7. ⬜ Usuario / roles / permisos + **auth por token** (RF-1, RF-17.4) → habilita el aislamiento del punto 5.
+7. ⬜ Auditoría del SuperAdmin (RF-15.5) — necesita el actor (auth).
+8. ⬜ Usuario / roles / permisos + **auth por token** (RF-1, RF-17.4) → habilita los puntos 6 y 7.
 
 ## Tablero de módulos
 Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
@@ -67,6 +70,11 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-04 (e)** — Módulo **Identidad/tenant**, rebanada 4: **plazo de resolución (RF-15.4)**.
+  `Empresa.solicitudVencida(plazo, ahora)` en dominio; plazo configurable
+  `costumi.empresa.plazo-resolucion-dias` (default 2). Cola `GET /api/v1/empresas/pendientes` (para
+  el SuperAdmin) que marca las **vencidas**. Build local **verde (26 tests)**. PR #5. Pendiente:
+  escalada/recordatorio automático (RF-11) y restringir el endpoint a rol SuperAdmin cuando exista auth.
 - **2026-07-04 (d)** — Módulo **Identidad/tenant**, rebanada 3: **Sucursal (RF-15.1)**. Entidad
   `Sucursal` anclada a Empresa con **`empresa_id`** (primera tabla hija de negocio, con FK a
   `empresa` e índice por tenant), migración `V2__crear_sucursal.sql`. Regla RF-15.4 aplicada:
