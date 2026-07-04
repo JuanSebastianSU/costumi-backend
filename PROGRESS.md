@@ -5,15 +5,17 @@
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
 ## Fase actual
-**Fase 0 — Planeación.** Requerimientos y arquitectura definidos en
-`BACKEND_REQUIREMENTS.md`. Aún **no se ha escrito código de backend**.
+**Fase 1 — Andamiaje.** Montado el esqueleto del backend con el control anti-erosión
+(ArchUnit + Spring Modulith) y CI en GitHub Actions. En PR, pendiente de revisión/merge.
+Aún **sin módulos de negocio** (el primero va después de enganchar el CI en el ruleset).
 
 ## Próximo paso concreto
-Montar el **andamiaje del backend con el control anti-erosión ANTES de cualquier feature**:
-1. Proyecto Spring Boot + PostgreSQL + Flyway.
-2. Estructura de paquetes por módulo (§5.2 / §5.3 del spec).
-3. ArchUnit + Spring Modulith + CI que **fallen el build** ante violaciones.
-4. Primer módulo según §7: **base técnica / multi-tenant** (Empresa, estados, `empresa_id`).
+1. ✅ Proyecto Spring Boot + PostgreSQL + Flyway (Maven, Java 21).
+2. ✅ Convención de paquetes por módulo documentada (`docs/PLANTILLA_MODULO.md`, §5.2/§5.3).
+3. ✅ ArchUnit + Spring Modulith + CI (GitHub Actions) que **fallan el build** ante violaciones.
+4. ⏳ Cuando el CI corra **verde** una vez en el PR de andamiaje, el revisor engancha el
+   check **`build`** (workflow `CI`) como **requerido** en el ruleset de `main`.
+5. ⬜ Primer módulo según §7: **base técnica / multi-tenant** (Empresa, estados, `empresa_id`).
 
 ## Tablero de módulos
 Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
