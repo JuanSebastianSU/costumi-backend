@@ -61,7 +61,10 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - UX de descubrimiento del marketplace (búsqueda, cercanía, filtros, reseñas — RF-18).
 
 ## Deuda / a sanear
-- (vacío por ahora)
+- **Endpoints sin control de rol/tenant (blindar al implementar auth, RF-17.4):** acciones de
+  ciclo de vida de Empresa (PR #3), alta de Sucursal — validar dueño del tenant (PR #4), cola de
+  pendientes — restringir a SuperAdmin (PR #5). Al cerrar la rebanada de auth, revisar que los tres
+  queden protegidos.
 
 ## A re-verificar cada sesión (invariantes)
 - ¿ArchUnit y Modulith siguen en verde?
