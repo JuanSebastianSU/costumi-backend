@@ -2,6 +2,10 @@ package com.costumi.backend.identidad.dominio;
 
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -61,5 +65,28 @@ class EmpresaTest {
 	void el_nombre_es_obligatorio() {
 		assertThatThrownBy(() -> Empresa.registrar("   "))
 				.isInstanceOf(IllegalArgumentException.class);
+	}
+
+	@Test
+	void una_solicitud_reciente_no_esta_vencida() {
+		Empresa empresa = Empresa.registrar("X");
+
+		assertThat(empresa.solicitudVencida(Duration.ofDays(2), Instant.now())).isFalse();
+	}
+
+	@Test
+	void una_pendiente_pasado_el_plazo_esta_vencida() {
+		Instant hace3Dias = Instant.now().minus(Duration.ofDays(3));
+		Empresa empresa = Empresa.rehidratar(UUID.randomUUID(), "X", EstadoEmpresa.PENDIENTE, hace3Dias);
+
+		assertThat(empresa.solicitudVencida(Duration.ofDays(2), Instant.now())).isTrue();
+	}
+
+	@Test
+	void una_empresa_no_pendiente_nunca_esta_vencida() {
+		Instant hace3Dias = Instant.now().minus(Duration.ofDays(3));
+		Empresa empresa = Empresa.rehidratar(UUID.randomUUID(), "X", EstadoEmpresa.ACTIVA, hace3Dias);
+
+		assertThat(empresa.solicitudVencida(Duration.ofDays(2), Instant.now())).isFalse();
 	}
 }

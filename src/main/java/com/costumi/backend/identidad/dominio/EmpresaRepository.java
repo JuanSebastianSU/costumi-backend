@@ -1,5 +1,6 @@
 package com.costumi.backend.identidad.dominio;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -12,4 +13,6 @@ public interface EmpresaRepository {
 	Empresa guardar(Empresa empresa);
 
 	Optional<Empresa> buscarPorId(UUID id);
+
+	List<Empresa> listarPorEstado(EstadoEmpresa estado);
 }

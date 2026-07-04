@@ -1,5 +1,6 @@
 package com.costumi.backend.identidad.dominio;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
@@ -52,6 +53,14 @@ public class Empresa {
 	/** Reactiva una empresa SUSPENDIDA. */
 	public void reactivar() {
 		transicionarA(EstadoEmpresa.ACTIVA);
+	}
+
+	/**
+	 * ¿La solicitud de alta está vencida? (RF-15.4): sigue PENDIENTE y ya pasó el plazo
+	 * de resolución desde su registro. La plataforma debía responder dentro de ese plazo.
+	 */
+	public boolean solicitudVencida(Duration plazoResolucion, Instant ahora) {
+		return estado == EstadoEmpresa.PENDIENTE && ahora.isAfter(fechaRegistro.plus(plazoResolucion));
 	}
 
 	private void transicionarA(EstadoEmpresa destino) {
