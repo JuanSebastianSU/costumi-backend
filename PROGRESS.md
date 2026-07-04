@@ -5,25 +5,26 @@
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
 ## Fase actual
-**Fase 1 — Andamiaje.** Montado el esqueleto del backend con el control anti-erosión
-(ArchUnit + Spring Modulith) y CI en GitHub Actions. En PR, pendiente de revisión/merge.
-Aún **sin módulos de negocio** (el primero va después de enganchar el CI en el ruleset).
+**Fase 2 — Primer módulo (Identidad/tenant).** Andamiaje + CI listos y verdes. Arrancado
+el módulo **Identidad y tenant** con la primera rebanada vertical: **auto-registro de
+Empresa (RF-15.2)** end-to-end. Todo el trabajo vive en la rama `chore/scaffolding-modulith`
+(regla de Juan: nada va a `main` sin su aprobación por PR).
 
 ## Próximo paso concreto
-1. ✅ Proyecto Spring Boot + PostgreSQL + Flyway (Maven, Java 21).
-2. ✅ Convención de paquetes por módulo documentada (`docs/PLANTILLA_MODULO.md`, §5.2/§5.3).
-3. ✅ ArchUnit + Spring Modulith + CI (GitHub Actions) que **fallan el build** ante violaciones.
-4. ⏳ Cuando el CI corra **verde** una vez en el PR de andamiaje, el revisor engancha el
-   check **`build`** (workflow `CI`) como **requerido** en el ruleset de `main`.
-5. ⬜ Primer módulo según §7: **base técnica / multi-tenant** (Empresa, estados, `empresa_id`).
+1. ✅ Andamiaje: Spring Boot + PostgreSQL + Flyway (Maven, Java 21) + ArchUnit + Modulith + CI.
+2. ⏳ El revisor engancha el check **`build`** (workflow `CI`) como **requerido** en el ruleset de `main`.
+3. ✅ Módulo Identidad — rebanada 1: **auto-registro de Empresa** (nace PENDIENTE), `POST /api/v1/empresas`.
+4. ⬜ Módulo Identidad — rebanada 2: **aprobar / rechazar / suspender** Empresa por SuperAdmin (RF-15.3),
+   con auditoría (RF-15.5) y el plazo de resolución (RF-15.4).
+5. ⬜ Módulo Identidad — **Sucursal** (1..N por Empresa) y luego Usuario/roles/permisos + auth (RF-1, RF-17.4).
 
 ## Tablero de módulos
 Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 
 | Módulo | Rigor | Estado | Ref |
 |---|---|---|---|
-| Andamiaje + control anti-erosión (ArchUnit/Modulith/CI) | — | ⬜ | §5.3 — va primero |
-| Identidad y tenant (Empresa/Sucursal/Usuario/permisos/auth) | Hexagonal | ⬜ | RF-1, RF-15, RF-17.4 |
+| Andamiaje + control anti-erosión (ArchUnit/Modulith/CI) | — | ✅ | §5.3 — verde en CI (PR pendiente de merge) |
+| Identidad y tenant (Empresa/Sucursal/Usuario/permisos/auth) | Hexagonal | 🟨 | RF-1, RF-15, RF-17.4 — auto-registro de Empresa hecho |
 | Catálogo y taxonomía (etiquetas, categorías) | Hexagonal | ⬜ | RF-2.7 — el más delicado |
 | Inventario y disponibilidad | Hexagonal | ⬜ | RF-2 |
 | Pedidos / carrito | Hexagonal | ⬜ | RF-16 |
@@ -39,6 +40,11 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 | App cliente (marketplace) | — | ⬜ | RF-18 |
 
 ## Decisiones pendientes (resolver antes de tocar su tema)
+- **Convención de nombres (a confirmar por Juan).** Se usó **lenguaje de dominio en español**
+  también en métodos/puertos (`Empresa`, `EstadoEmpresa`, `registrar`, `aprobar`, `guardar`,
+  `ejecutar`), interpretando el glosario §0 + "lenguaje de dominio en español" de CLAUDE.md.
+  Si Juan prefiere inglés para lo no-dominio (`save`/`findById`/`execute`), se renombra
+  (es mecánico). Decidir antes de crecer el módulo.
 - Pasarela de pago concreta (cuando se active el pago en línea, RF-6.11).
 - UX de descubrimiento del marketplace (búsqueda, cercanía, filtros, reseñas — RF-18).
 
@@ -52,6 +58,18 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-04 (b)** — Módulo **Identidad/tenant**, rebanada 1: **auto-registro de Empresa
+  (RF-15.2)** end-to-end sobre `chore/scaffolding-modulith`. Dominio puro `Empresa` +
+  máquina de estados `EstadoEmpresa` (PENDIENTE→ACTIVA→SUSPENDIDA/RECHAZADA, RF-15.3);
+  puerto `EmpresaRepository`; caso de uso `RegistrarEmpresa`; adaptador JPA; `EmpresaController`
+  (`POST /api/v1/empresas`, 201, DTOs); migración `V1__crear_empresa.sql`. Tests: 6 de dominio
+  (sin BD) + 2 de integración (Testcontainers). Build local **verde** (12 tests), ArchUnit y
+  Modulith en verde con código real. Nota: la tabla `empresa` **es la raíz de tenant**, su `id`
+  es el `empresa_id`, por eso no lleva columna `empresa_id` (las tablas hijas sí la llevarán).
+- **2026-07-04 (a)** — Andamiaje del backend en PR #1: Spring Boot 3.5.16 + PostgreSQL + Flyway
+  (Maven, Java 21), control anti-erosión (ArchUnit + Spring Modulith), CI en GitHub Actions
+  (check `build`), plantilla de PR. CI verde. Elegido Maven. Regla de Juan: todo va a la rama,
+  nada a `main` sin su aprobación.
 - **2026-07-03** — Cerrada la fase de planeación. `BACKEND_REQUIREMENTS.md` completo
   (RF-0…18, arquitectura §5, comunicación §5.6, offline §5.7) y revisado (preámbulo,
   glosario §0, numeración de RF-2 normalizada, token/cabecera alineados). Creado el
