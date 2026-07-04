@@ -1,6 +1,7 @@
 package com.costumi.backend.identidad.adaptadores.entrada;
 
 import com.costumi.backend.identidad.aplicacion.EmpresaNoEncontrada;
+import com.costumi.backend.identidad.aplicacion.EmpresaNoOperativa;
 import com.costumi.backend.identidad.dominio.TransicionDeEstadoInvalida;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -22,6 +23,13 @@ class ManejadorDeErrores {
 	ProblemDetail transicionInvalida(TransicionDeEstadoInvalida ex) {
 		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
 		problema.setTitle("Transición de estado inválida");
+		return problema;
+	}
+
+	@ExceptionHandler(EmpresaNoOperativa.class)
+	ProblemDetail empresaNoOperativa(EmpresaNoOperativa ex) {
+		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+		problema.setTitle("Empresa no operativa");
 		return problema;
 	}
 }
