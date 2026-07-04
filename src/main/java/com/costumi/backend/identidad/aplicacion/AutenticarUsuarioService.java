@@ -1,0 +1,32 @@
+package com.costumi.backend.identidad.aplicacion;
+
+import com.costumi.backend.identidad.dominio.Usuario;
+import com.costumi.backend.identidad.dominio.UsuarioRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/** Verifica email + contraseña (BCrypt) y, si son válidas, emite un token de acceso. */
+@Service
+class AutenticarUsuarioService implements AutenticarUsuario {
+
+	private final UsuarioRepository usuarios;
+	private final PasswordEncoder passwordEncoder;
+	private final EmisorDeTokens emisor;
+
+	AutenticarUsuarioService(UsuarioRepository usuarios, PasswordEncoder passwordEncoder, EmisorDeTokens emisor) {
+		this.usuarios = usuarios;
+		this.passwordEncoder = passwordEncoder;
+		this.emisor = emisor;
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public Credenciales autenticar(String email, String password) {
+		Usuario usuario = usuarios.buscarPorEmail(email).orElseThrow(CredencialesInvalidas::new);
+		if (!passwordEncoder.matches(password, usuario.passwordHash())) {
+			throw new CredencialesInvalidas();
+		}
+		return new Credenciales(emisor.emitir(usuario));
+	}
+}
