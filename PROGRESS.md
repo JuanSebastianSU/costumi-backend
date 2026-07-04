@@ -20,10 +20,11 @@ Empresa (RF-15.2)** end-to-end. Todo el trabajo vive en la rama `chore/scaffoldi
 5. ✅ RF-15.4 (plazo de resolución): cola `GET /api/v1/empresas/pendientes` con marca de **vencida**
    y plazo configurable (`costumi.empresa.plazo-resolucion-dias`, default 2) (PR #5). ⬜ Falta la
    escalada/recordatorio automático (necesita notificaciones, RF-11) y restringir a rol SuperAdmin.
-6. ⬜ **Aislamiento multi-tenant real (§5.4):** `empresa_id` en el contexto de request + filtro
-   forzado, para que sea imposible leer datos de otra empresa. Depende de auth (RF-17.4).
-7. ⬜ Auditoría del SuperAdmin (RF-15.5) — necesita el actor (auth).
-8. ⬜ Usuario / roles / permisos + **auth por token** (RF-1, RF-17.4) → habilita los puntos 6 y 7.
+6. 🟨 **Auth por token (RF-17.4/§5.6):** ✅ circuito base (Usuario, login JWT HS256, `/me` protegido, PR #6).
+   ⬜ Falta: refresh token, editor de permisos granular (RF-1.5), bootstrap del SuperAdmin por seed.
+7. ⬜ **Aislamiento multi-tenant real (§5.4):** con el token ya lleva `empresa_id` → contexto de request +
+   filtro forzado; **blindar por rol/tenant los endpoints de la deuda** (cierra "Deuda / a sanear").
+8. ⬜ Auditoría del SuperAdmin (RF-15.5) — usando el actor del token.
 
 ## Tablero de módulos
 Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
@@ -73,6 +74,15 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-04 (f)** — Módulo **Identidad/tenant**, rebanada 5: **auth por token (RF-17.4/§5.6, base)**.
+  Spring Security + OAuth2 Resource Server; **JWT HS256** (secreto configurable, override por
+  `COSTUMI_JWT_SECRET`). Dominio `Usuario` + `Rol` (SUPERADMIN + plantillas RF-1.3) con invariante
+  "SuperAdmin sin empresa". Puertos `UsuarioRepository` + `EmisorDeTokens`; adaptador JWT (`JwtEncoder`).
+  `POST /api/v1/auth/login` emite token con `empresa+rol`; `GET /api/v1/auth/me` protegido. Migración
+  `V3__crear_usuario.sql` (`empresa_id` nulo para SuperAdmin). API **stateless**, CSRF off, resto
+  `permitAll` (la deuda de autorización sigue abierta a propósito). Build local **verde (34 tests)**. PR #6.
+  Pendiente: refresh token, permisos granulares (RF-1.5), bootstrap del SuperAdmin por seed, y blindar
+  los endpoints de la deuda.
 - **2026-07-04 (e)** — Módulo **Identidad/tenant**, rebanada 4: **plazo de resolución (RF-15.4)**.
   `Empresa.solicitudVencida(plazo, ahora)` en dominio; plazo configurable
   `costumi.empresa.plazo-resolucion-dias` (default 2). Cola `GET /api/v1/empresas/pendientes` (para
