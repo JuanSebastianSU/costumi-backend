@@ -1,11 +1,13 @@
 package com.costumi.backend.identidad.adaptadores.entrada;
 
+import com.costumi.backend.identidad.aplicacion.ConsultarEmpresasPendientes;
 import com.costumi.backend.identidad.aplicacion.GestionarEmpresa;
 import com.costumi.backend.identidad.aplicacion.RegistrarEmpresa;
 import com.costumi.backend.identidad.aplicacion.RegistrarEmpresaComando;
 import com.costumi.backend.identidad.dominio.Empresa;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -14,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
+import java.util.List;
 import java.util.UUID;
 
 /** Puerta de entrada REST del módulo de Identidad/tenant (API /api/v1). */
@@ -23,10 +26,22 @@ class EmpresaController {
 
 	private final RegistrarEmpresa registrarEmpresa;
 	private final GestionarEmpresa gestionarEmpresa;
+	private final ConsultarEmpresasPendientes consultarEmpresasPendientes;
 
-	EmpresaController(RegistrarEmpresa registrarEmpresa, GestionarEmpresa gestionarEmpresa) {
+	EmpresaController(RegistrarEmpresa registrarEmpresa, GestionarEmpresa gestionarEmpresa,
+			ConsultarEmpresasPendientes consultarEmpresasPendientes) {
 		this.registrarEmpresa = registrarEmpresa;
 		this.gestionarEmpresa = gestionarEmpresa;
+		this.consultarEmpresasPendientes = consultarEmpresasPendientes;
+	}
+
+	/**
+	 * Cola de solicitudes PENDIENTES para el SuperAdmin, con marca de vencidas (RF-15.3/15.4).
+	 * TODO: restringir a rol SuperAdmin cuando exista auth (RF-17.4).
+	 */
+	@GetMapping("/pendientes")
+	List<EmpresaPendienteResponse> pendientes() {
+		return consultarEmpresasPendientes.ejecutar().stream().map(EmpresaPendienteResponse::desde).toList();
 	}
 
 	/** Auto-registro de una Empresa (RF-15.2): nace PENDIENTE, devuelve 201. */

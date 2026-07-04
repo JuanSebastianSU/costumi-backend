@@ -2,8 +2,10 @@ package com.costumi.backend.identidad.adaptadores.salida;
 
 import com.costumi.backend.identidad.dominio.Empresa;
 import com.costumi.backend.identidad.dominio.EmpresaRepository;
+import com.costumi.backend.identidad.dominio.EstadoEmpresa;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -26,6 +28,11 @@ class EmpresaRepositoryAdapter implements EmpresaRepository {
 	@Override
 	public Optional<Empresa> buscarPorId(UUID id) {
 		return jpa.findById(id).map(EmpresaRepositoryAdapter::aDominio);
+	}
+
+	@Override
+	public List<Empresa> listarPorEstado(EstadoEmpresa estado) {
+		return jpa.findByEstado(estado).stream().map(EmpresaRepositoryAdapter::aDominio).toList();
 	}
 
 	private static EmpresaJpaEntity aEntidad(Empresa empresa) {
