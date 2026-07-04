@@ -11,12 +11,14 @@ Empresa (RF-15.2)** end-to-end. Todo el trabajo vive en la rama `chore/scaffoldi
 (regla de Juan: nada va a `main` sin su aprobación por PR).
 
 ## Próximo paso concreto
-1. ✅ Andamiaje: Spring Boot + PostgreSQL + Flyway (Maven, Java 21) + ArchUnit + Modulith + CI.
-2. ⏳ El revisor engancha el check **`build`** (workflow `CI`) como **requerido** en el ruleset de `main`.
-3. ✅ Módulo Identidad — rebanada 1: **auto-registro de Empresa** (nace PENDIENTE), `POST /api/v1/empresas`.
-4. ⬜ Módulo Identidad — rebanada 2: **aprobar / rechazar / suspender** Empresa por SuperAdmin (RF-15.3),
-   con auditoría (RF-15.5) y el plazo de resolución (RF-15.4).
-5. ⬜ Módulo Identidad — **Sucursal** (1..N por Empresa) y luego Usuario/roles/permisos + auth (RF-1, RF-17.4).
+1. ✅ Andamiaje (mergeado a `main`) + check `build` requerido enganchado por Juan.
+2. ✅ Módulo Identidad — rebanada 1: **auto-registro de Empresa** (nace PENDIENTE), `POST /api/v1/empresas` (PR #2).
+3. ✅ Módulo Identidad — rebanada 2: **aprobar / rechazar / suspender / reactivar** Empresa (RF-15.3),
+   endpoints `POST /{id}/{accion}`, errores en Problem Details (404/409) (PR #2).
+4. ⬜ **Aislamiento multi-tenant (§5.4, RF-15.1):** `empresa_id` en el contexto de request +
+   filtro forzado, para que sea imposible leer datos de otra empresa. Depende de auth (RF-17.4).
+5. ⬜ Auditoría de acciones del SuperAdmin (RF-15.5) y plazo de resolución de 2 días (RF-15.4).
+6. ⬜ **Sucursal** (1..N por Empresa, con `empresa_id`), luego Usuario/roles/permisos + auth (RF-1, RF-17.4).
 
 ## Tablero de módulos
 Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
@@ -58,6 +60,12 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-04 (c)** — Módulo **Identidad/tenant**, rebanada 2: **ciclo de vida de la Empresa
+  por el SuperAdmin (RF-15.3)**. Casos de uso `aprobar/rechazar/suspender/reactivar`, endpoints
+  `POST /api/v1/empresas/{id}/{accion}`, `ManejadorDeErrores` con Problem Details (404 no
+  encontrada, 409 transición inválida). Build local **verde (16 tests)**. Andamiaje mergeado a
+  `main` por Juan; módulo en el **PR #2**. Pendiente: aislamiento multi-tenant (§5.4) y auditoría
+  (RF-15.5). Juan pidió continuar por §7.
 - **2026-07-04 (b)** — Módulo **Identidad/tenant**, rebanada 1: **auto-registro de Empresa
   (RF-15.2)** end-to-end sobre `chore/scaffolding-modulith`. Dominio puro `Empresa` +
   máquina de estados `EstadoEmpresa` (PENDIENTE→ACTIVA→SUSPENDIDA/RECHAZADA, RF-15.3);
