@@ -11,7 +11,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class GrupoDeStockTest {
 
 	private static GrupoDeStock nuevo(int cantidadInicial) {
-		return GrupoDeStock.crear(UUID.randomUUID(), UUID.randomUUID(), "Rojo / M", cantidadInicial);
+		return GrupoDeStock.crear(UUID.randomUUID(), UUID.randomUUID(),
+				CombinacionDeVariante.de(java.util.Map.of(UUID.randomUUID(), UUID.randomUUID())), cantidadInicial);
 	}
 
 	@Test
@@ -53,5 +54,21 @@ class GrupoDeStockTest {
 	@Test
 	void la_cantidad_inicial_no_puede_ser_negativa() {
 		assertThatThrownBy(() -> nuevo(-1)).isInstanceOf(IllegalArgumentException.class);
+	}
+
+	@Test
+	void mismaVariante_compara_por_combinacion() {
+		UUID empresa = UUID.randomUUID();
+		UUID prenda = UUID.randomUUID();
+		UUID color = UUID.randomUUID();
+		UUID rojo = UUID.randomUUID();
+		UUID azul = UUID.randomUUID();
+
+		GrupoDeStock rojoA = GrupoDeStock.crear(empresa, prenda, CombinacionDeVariante.de(java.util.Map.of(color, rojo)), 3);
+		GrupoDeStock rojoB = GrupoDeStock.crear(empresa, prenda, CombinacionDeVariante.de(java.util.Map.of(color, rojo)), 9);
+		GrupoDeStock azulA = GrupoDeStock.crear(empresa, prenda, CombinacionDeVariante.de(java.util.Map.of(color, azul)), 1);
+
+		assertThat(rojoA.mismaVariante(rojoB)).isTrue();
+		assertThat(rojoA.mismaVariante(azulA)).isFalse();
 	}
 }

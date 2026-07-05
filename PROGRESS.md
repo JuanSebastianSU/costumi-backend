@@ -12,8 +12,11 @@
   revisión a Juan ANTES de construir encima** (si el modelo núcleo o §5.4 quedan mal, todo lo de arriba se rehace).
 - **Tanda 2 = P2+P3** (ciclo operativo + dinero) · **Tanda 3 = P4+P5** (resto).
 - Reglas: **1 commit por feature**, **tests de dominio por cada feature**, **§5.4 temprano**, ambiguo → decisión aquí.
-- **En curso:** Tanda 1. Empezando por el aislamiento §5.4 (temprano) y el núcleo del modelo (variante real,
-  Prenda↔etiquetas, Disfraz/Slot, disponibilidad derivada RF-2.4).
+- **En curso:** Tanda 1 en **PR #8** (`chore/scaffolding-modulith` → `main`; **PR #7 ya lo mergeó Juan**).
+  Hecho en la tanda: (1) **§5.4 base** — `ContextoDeTenant`; (2) **motor de variantes real** — `GrupoDeStock`
+  = combinación real de valores de etiqueta. **Falta en Tanda 1:** Prenda↔etiquetas (Capa 2), taxonomía
+  completa (tipo↔categoría, por-slot, rename propaga, seed), Disfraz/Slot + disponibilidad derivada RF-2.4,
+  `X-Sucursal-Id`, tooling OpenAPI contract-first. Al terminar → ⛔ CHECKPOINT.
 
 ## Pendiente de revisión (Juan sin recursos por el momento)
 > Por acuerdo con el responsable, se siguió ejecutando en slices **sin esperar la revisión**.
@@ -152,6 +155,22 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-05 (u)** — **Tanda 1 · Motor de variantes real (P0, RF-2.7.3/2.7.4).** `GrupoDeStock` deja de
+  tener una "etiqueta" suelta y pasa a definirse por una **`CombinacionDeVariante`** (value object inmutable:
+  mapa `tipoEtiquetaId → valorEtiquetaId`, igualdad por combinación sin importar orden → habilita unicidad y
+  resolución pool→variante→stock). El caso de uso valida **combinaciones reales** contra el nuevo puerto
+  público **`catalogo.ConsultaDeTaxonomia`** (el tipo debe **definir variante**, el valor debe **pertenecer al
+  tipo**, sin repetir dimensión) y **rechaza variantes duplicadas** en la prenda (409). Persistencia en tabla
+  hija `grupo_de_stock_valor` (**V16**, se elimina `etiqueta`). DTOs por combinación (400 inválida / 409 duplicada).
+  Tests de dominio nuevos (`CombinacionDeVariante`, `mismaVariante`) + integración (real/duplicado/valor cruzado/
+  tipo no-variante/variante única). **149 tests verdes.** _Decisión:_ una combinación **vacía** = variante única
+  de una prenda sin dimensiones. _Pendiente relacionado:_ Prenda↔etiquetas (Capa 2) y validar cross-ref
+  `Prenda.categoria_id` contra tenant (parte del endurecimiento §5.4).
+- **2026-07-05 (t)** — **Tanda 1 · Base del aislamiento forzado §5.4 (P1, temprano).** Módulo `compartido` con
+  **`ContextoDeTenant`** (lee `empresa_id`/rol/usuario del JWT del `SecurityContext` en un solo lugar) +
+  `AccesoSinEmpresa` → 403 Problem Details. `CategoriaController` migrado a usarlo (ejercita la frontera
+  `catalogo → compartido`). Test de dominio sin Spring. Base para endurecer luego con filtro Hibernate/RLS.
+  Se abrió **PR #8** para la fase de cierre (**PR #7 lo mergeó Juan**).
 - **2026-07-04 (s)** — Cerrados los **3 módulos que faltaban** de §7: **Configuración (RF-12)** — interruptores
   de módulos por empresa (`GET/PUT /api/v1/configuracion`); **Notificaciones (RF-11)** — envío por canal
   (WhatsApp/FCM/EMAIL) vía adaptador log, estados PENDIENTE→ENVIADA (`POST/GET /api/v1/notificaciones`);

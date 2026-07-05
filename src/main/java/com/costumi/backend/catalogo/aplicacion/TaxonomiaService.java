@@ -1,5 +1,6 @@
 package com.costumi.backend.catalogo.aplicacion;
 
+import com.costumi.backend.catalogo.ConsultaDeTaxonomia;
 import com.costumi.backend.catalogo.dominio.TipoEtiqueta;
 import com.costumi.backend.catalogo.dominio.TipoEtiquetaRepository;
 import com.costumi.backend.catalogo.dominio.ValorEtiqueta;
@@ -12,7 +13,8 @@ import java.util.UUID;
 
 /** Casos de uso del motor de etiquetas, siempre acotados a la empresa (tenant). */
 @Service
-class TaxonomiaService implements CrearTipoEtiqueta, ConsultarTiposEtiqueta, AgregarValor, ConsultarValores {
+class TaxonomiaService
+		implements CrearTipoEtiqueta, ConsultarTiposEtiqueta, AgregarValor, ConsultarValores, ConsultaDeTaxonomia {
 
 	private final TipoEtiquetaRepository tipos;
 	private final ValorEtiquetaRepository valores;
@@ -47,6 +49,28 @@ class TaxonomiaService implements CrearTipoEtiqueta, ConsultarTiposEtiqueta, Agr
 	public List<ValorEtiqueta> deTipo(UUID empresaId, UUID tipoEtiquetaId) {
 		TipoEtiqueta tipo = tipoDelTenant(empresaId, tipoEtiquetaId);
 		return valores.listarPorTipo(tipo.id());
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public boolean tipoDefineVariante(UUID empresaId, UUID tipoEtiquetaId) {
+		return tipos.buscarPorId(tipoEtiquetaId)
+				.filter(tipo -> tipo.empresaId().equals(empresaId))
+				.map(tipo -> tipo.defineVariante() && !tipo.archivada())
+				.orElse(false);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public boolean valorPerteneceATipo(UUID empresaId, UUID tipoEtiquetaId, UUID valorEtiquetaId) {
+		boolean tipoDelTenant = tipos.buscarPorId(tipoEtiquetaId)
+				.filter(tipo -> tipo.empresaId().equals(empresaId))
+				.isPresent();
+		if (!tipoDelTenant) {
+			return false;
+		}
+		return valores.listarPorTipo(tipoEtiquetaId).stream()
+				.anyMatch(valor -> valor.id().equals(valorEtiquetaId) && !valor.archivada());
 	}
 
 	/** Carga el tipo garantizando que pertenece a la empresa; si no, 404 (no revela existencia). */

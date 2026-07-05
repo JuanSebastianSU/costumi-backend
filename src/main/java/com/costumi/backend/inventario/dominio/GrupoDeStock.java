@@ -8,39 +8,47 @@ import java.util.UUID;
  * estado (disponibles / dañadas / en limpieza / perdidas). Los movimientos entre estados
  * materializan las transiciones de RF-2.11 y alimentan el tablero de RF-9.3.
  *
- * <p>Nota: la combinación exacta de valores de etiqueta que define la variante (RF-2.7.3) se
- * modelará en un slice posterior; por ahora se guarda una {@code etiqueta} descriptiva opcional.
+ * <p>La <b>variante</b> queda definida por su {@link CombinacionDeVariante} (RF-2.7.3): la
+ * combinación de valores de etiqueta (p. ej. Color=Rojo, Talla=M). Una combinación vacía es la
+ * variante única de una prenda sin dimensiones. Dos grupos de la misma prenda no pueden compartir
+ * combinación (lo garantiza el caso de uso al comparar con {@link #mismaVariante(GrupoDeStock)}).
  */
 public class GrupoDeStock {
 
 	private final UUID id;
 	private final UUID empresaId;
 	private final UUID prendaId;
-	private String etiqueta;
+	private final CombinacionDeVariante combinacion;
 	private int disponibles;
 	private int danadas;
 	private int enLimpieza;
 	private int perdidas;
 
-	private GrupoDeStock(UUID id, UUID empresaId, UUID prendaId, String etiqueta,
+	private GrupoDeStock(UUID id, UUID empresaId, UUID prendaId, CombinacionDeVariante combinacion,
 			int disponibles, int danadas, int enLimpieza, int perdidas) {
 		this.id = Objects.requireNonNull(id, "id");
 		this.empresaId = Objects.requireNonNull(empresaId, "empresaId");
 		this.prendaId = Objects.requireNonNull(prendaId, "prendaId");
-		this.etiqueta = (etiqueta == null || etiqueta.isBlank()) ? null : etiqueta.trim();
+		this.combinacion = Objects.requireNonNull(combinacion, "combinacion");
 		this.disponibles = exigirNoNegativo(disponibles);
 		this.danadas = exigirNoNegativo(danadas);
 		this.enLimpieza = exigirNoNegativo(enLimpieza);
 		this.perdidas = exigirNoNegativo(perdidas);
 	}
 
-	public static GrupoDeStock crear(UUID empresaId, UUID prendaId, String etiqueta, int cantidadInicial) {
-		return new GrupoDeStock(UUID.randomUUID(), empresaId, prendaId, etiqueta, cantidadInicial, 0, 0, 0);
+	public static GrupoDeStock crear(UUID empresaId, UUID prendaId, CombinacionDeVariante combinacion,
+			int cantidadInicial) {
+		return new GrupoDeStock(UUID.randomUUID(), empresaId, prendaId, combinacion, cantidadInicial, 0, 0, 0);
 	}
 
-	public static GrupoDeStock rehidratar(UUID id, UUID empresaId, UUID prendaId, String etiqueta,
+	public static GrupoDeStock rehidratar(UUID id, UUID empresaId, UUID prendaId, CombinacionDeVariante combinacion,
 			int disponibles, int danadas, int enLimpieza, int perdidas) {
-		return new GrupoDeStock(id, empresaId, prendaId, etiqueta, disponibles, danadas, enLimpieza, perdidas);
+		return new GrupoDeStock(id, empresaId, prendaId, combinacion, disponibles, danadas, enLimpieza, perdidas);
+	}
+
+	/** ¿Este grupo representa la misma variante que {@code otro} (misma combinación de etiquetas)? */
+	public boolean mismaVariante(GrupoDeStock otro) {
+		return combinacion.equals(otro.combinacion);
 	}
 
 	/** Mueve {@code cantidad} unidades de un estado a otro (RF-2.11). */
@@ -100,8 +108,8 @@ public class GrupoDeStock {
 		return prendaId;
 	}
 
-	public String etiqueta() {
-		return etiqueta;
+	public CombinacionDeVariante combinacion() {
+		return combinacion;
 	}
 
 	public int disponibles() {

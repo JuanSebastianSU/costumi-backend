@@ -1,13 +1,19 @@
 package com.costumi.backend.inventario.adaptadores.salida;
 
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
 
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.UUID;
 
-/** Mapeo JPA del Grupo de stock. Lleva {@code empresa_id} (tenant) y la prenda. */
+/** Mapeo JPA del Grupo de stock. Lleva {@code empresa_id} (tenant), la prenda y su combinación de variante. */
 @Entity
 @Table(name = "grupo_de_stock")
 class GrupoDeStockJpaEntity {
@@ -21,8 +27,9 @@ class GrupoDeStockJpaEntity {
 	@Column(name = "prenda_id", nullable = false)
 	private UUID prendaId;
 
-	@Column(length = 160)
-	private String etiqueta;
+	@ElementCollection(fetch = FetchType.EAGER)
+	@CollectionTable(name = "grupo_de_stock_valor", joinColumns = @JoinColumn(name = "grupo_id"))
+	private Set<ValorDeVarianteEmbeddable> combinacion = new LinkedHashSet<>();
 
 	@Column(nullable = false)
 	private int disponibles;
@@ -40,12 +47,12 @@ class GrupoDeStockJpaEntity {
 		// requerido por JPA
 	}
 
-	GrupoDeStockJpaEntity(UUID id, UUID empresaId, UUID prendaId, String etiqueta,
+	GrupoDeStockJpaEntity(UUID id, UUID empresaId, UUID prendaId, Set<ValorDeVarianteEmbeddable> combinacion,
 			int disponibles, int danadas, int enLimpieza, int perdidas) {
 		this.id = id;
 		this.empresaId = empresaId;
 		this.prendaId = prendaId;
-		this.etiqueta = etiqueta;
+		this.combinacion = combinacion;
 		this.disponibles = disponibles;
 		this.danadas = danadas;
 		this.enLimpieza = enLimpieza;
@@ -64,8 +71,8 @@ class GrupoDeStockJpaEntity {
 		return prendaId;
 	}
 
-	String getEtiqueta() {
-		return etiqueta;
+	Set<ValorDeVarianteEmbeddable> getCombinacion() {
+		return combinacion;
 	}
 
 	int getDisponibles() {
