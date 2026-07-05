@@ -12,14 +12,20 @@
   revisión a Juan ANTES de construir encima** (si el modelo núcleo o §5.4 quedan mal, todo lo de arriba se rehace).
 - **Tanda 2 = P2+P3** (ciclo operativo + dinero) · **Tanda 3 = P4+P5** (resto).
 - Reglas: **1 commit por feature**, **tests de dominio por cada feature**, **§5.4 temprano**, ambiguo → decisión aquí.
-- **En curso:** Tanda 1 en **PR #8** (`chore/scaffolding-modulith` → `main`; **PR #7 ya lo mergeó Juan**).
-  Hecho en la tanda: (1) **§5.4 base** — `ContextoDeTenant`; (2) **motor de variantes real** — `GrupoDeStock`
-  = combinación real de valores de etiqueta; (3) **Prenda↔etiquetas (Capa 2)**; (4) **tipo↔categoría (RF-2.7.2)**;
-  (5) **Disfraz + Slot (Capa 3) + disponibilidad DERIVADA (RF-2.3/2.4)** — modo unidad-fija/por-partes, ≤8 slots,
-  dos ejes + opcional, pool personalizable; disponibilidad calculada (no contador) vía puerto de Inventario;
-  (6) **`X-Sucursal-Id`** en `ContextoDeTenant` (RF-17.4); (7) **tooling OpenAPI** (springdoc; `/v3/api-docs`
-  público, esquema JWT). **Falta en Tanda 1:** restos de taxonomía (rename-propaga endpoints, seed de básicos
-  RF-2.7.7; el "por-slot" RF-2.7.5 quedó cubierto por el `PoolDeSlot`). Al terminar → ⛔ CHECKPOINT.
+- **⛔ CHECKPOINT ALCANZADO — Tanda 1 COMPLETA en PR #8** (`chore/scaffolding-modulith` → `main`; **PR #7 ya lo
+  mergeó Juan**). **Esperando revisión de Juan del núcleo del modelo y §5.4 antes de empezar la Tanda 2.**
+  Todo verde (181 tests, CI). Hecho en la tanda:
+  (1) **§5.4 base** — `ContextoDeTenant`; (2) **motor de variantes real** — `GrupoDeStock` = combinación real de
+  valores de etiqueta; (3) **Prenda↔etiquetas (Capa 2)**; (4) **tipo↔categoría (RF-2.7.2)** impuesto; (5) **Disfraz
+  + Slot (Capa 3) + disponibilidad DERIVADA (RF-2.3/2.4)** — modo unidad-fija/por-partes, ≤8 slots, dos ejes +
+  opcional, pool personalizable, disponibilidad calculada vía puerto de Inventario; (6) **`X-Sucursal-Id`**
+  (RF-17.4); (7) **tooling OpenAPI** (springdoc); (8) **renombrar tipo/valor (RF-2.7.6)** propaga por id;
+  (9) **siembra de básicos al aprobar la empresa (RF-2.7.7)** vía evento `EmpresaAprobada` (§5.5). El "por-slot"
+  RF-2.7.5 quedó cubierto por el `PoolDeSlot`.
+- **Deuda registrada para el endurecimiento §5.4 (Tanda 2+):** filtro Hibernate/RLS por request; validación de
+  cross-refs por id contra el tenant (`Prenda.categoria_id`, `Disfraz.prendaFijaId`, categoría/valores del pool);
+  validar `X-Sucursal-Id` contra la empresa del token en el caso de uso que la consuma.
+- **Siguiente (tras el OK de Juan):** Tanda 2 = P2 (ciclo operativo renta→devolución→venta con domain events) + P3 (dinero/analítica).
 
 ## Pendiente de revisión (Juan sin recursos por el momento)
 > Por acuerdo con el responsable, se siguió ejecutando en slices **sin esperar la revisión**.
@@ -158,6 +164,15 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-05 (ab)** — **Tanda 1 · Siembra de taxonomía básica al aprobar (RF-2.7.7 / RF-13.5) → CIERRA TANDA 1.**
+  Al **aprobar** una empresa, Identidad publica el evento **`EmpresaAprobada`** (§5.5) y Catálogo lo escucha
+  (`SembradorDeTaxonomiaBasica`, síncrono en la tx) para **sembrar** categorías básicas (Camisa, Pantalón,
+  Vestido, Sombrero, Zapatos, Accesorio) y los tipos de variante **Color** (Rojo/Azul/Negro/Blanco) y **Talla**
+  (S/M/L/XL). Se siembra al **aprobar** (no al registrar) para no chocar con empresas de prueba no aprobadas y
+  porque es cuando la empresa opera. Modulith verde con la nueva arista `catalogo → identidad` (evento). Test de
+  integración (aprobar siembra; pendiente no). **181 verdes.** _Decisión:_ el set de básicos es el de arriba
+  (elegido; ampliable por el dueño). **Con esto la Tanda 1 queda COMPLETA → CHECKPOINT: se para y se pide
+  revisión a Juan antes de la Tanda 2.**
 - **2026-07-05 (aa)** — **Tanda 1 · Taxonomía: renombrar tipo/valor (RF-2.7.6).** `PATCH /api/v1/tipos-etiqueta/{id}`
   y `.../{tipoId}/valores/{valorId}` renombran (DUENO/ENCARGADO), acotados al tenant (404 ajeno). Como prendas,
   variantes y pools guardan solo **ids**, el cambio **propaga** sin tocarlos. `ValorEtiqueta.renombrar` +
