@@ -14,10 +14,11 @@
 - Reglas: **1 commit por feature**, **tests de dominio por cada feature**, **§5.4 temprano**, ambiguo → decisión aquí.
 - **En curso:** Tanda 1 en **PR #8** (`chore/scaffolding-modulith` → `main`; **PR #7 ya lo mergeó Juan**).
   Hecho en la tanda: (1) **§5.4 base** — `ContextoDeTenant`; (2) **motor de variantes real** — `GrupoDeStock`
-  = combinación real de valores de etiqueta; (3) **Prenda↔etiquetas (Capa 2)** — la prenda porta sus valores
-  de etiqueta de clasificación, validados contra la taxonomía del tenant. **Falta en Tanda 1:** taxonomía
-  completa (tipo↔categoría, por-slot, rename propaga, seed), Disfraz/Slot + disponibilidad derivada RF-2.4,
-  `X-Sucursal-Id`, tooling OpenAPI contract-first. Al terminar → ⛔ CHECKPOINT.
+  = combinación real de valores de etiqueta; (3) **Prenda↔etiquetas (Capa 2)**; (4) **tipo↔categoría (RF-2.7.2)**
+  — el tipo de etiqueta declara a qué categorías aplica (vacío = todas) y se **impone** al etiquetar prendas y
+  crear variantes. **Falta en Tanda 1:** resto de taxonomía (por-slot RF-2.7.5 — depende de Slot; rename
+  propaga endpoints; seed de básicos RF-2.7.7), Disfraz/Slot + disponibilidad derivada RF-2.4, `X-Sucursal-Id`,
+  tooling OpenAPI contract-first. Al terminar → ⛔ CHECKPOINT.
 
 ## Pendiente de revisión (Juan sin recursos por el momento)
 > Por acuerdo con el responsable, se siguió ejecutando en slices **sin esperar la revisión**.
@@ -156,6 +157,16 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-05 (w)** — **Tanda 1 · Taxonomía: el tipo de etiqueta aplica a categorías (P0, RF-2.7.2).**
+  `TipoEtiqueta` gana **`categoriasQueAplica`** (conjunto): **vacío = aplica a todas** (dimensión global tipo
+  "Color"); con valores = solo esas. Persistencia en tabla hija `tipo_etiqueta_categoria` (**V18**,
+  `@ElementCollection<UUID>`). Al crear el tipo se validan las categorías contra el tenant (400 si no son suyas).
+  Nuevo método del puerto `ConsultaDeTaxonomia.tipoAplicaACategoria`, **impuesto** en Inventario: al etiquetar
+  una prenda y al crear una variante, el tipo debe aplicar a la categoría de la prenda (400 si no). Tests de
+  dominio (`aplicaACategoria`) + integración (tipo acotado / categoría de otra empresa 400 / prenda con tipo que
+  no aplica 400). **162 verdes.** _Decisión:_ conjunto vacío = aplica a todas (evita tener que enumerar en
+  dimensiones globales). _Pendiente de la taxonomía completa (task #5):_ "seleccionable por cliente **en qué
+  slots**" (RF-2.7.5, depende de Slot), endpoints de **renombrar** tipo/valor, **siembra de básicos** (RF-2.7.7).
 - **2026-07-05 (v)** — **Tanda 1 · Prenda lleva sus valores de etiqueta (P0, RF-2.7, Capa 2).** La `Prenda`
   porta ahora una **`EtiquetasDePrenda`** (value object inmutable, mapa `tipoEtiquetaId → valorEtiquetaId`,
   una por dimensión) que la **clasifica** — concepto distinto de la combinación de variante del grupo de stock

@@ -27,7 +27,7 @@ class PrendaService implements CrearPrenda, ConsultarPrendas {
 	@Override
 	@Transactional
 	public Prenda ejecutar(CrearPrendaComando comando) {
-		EtiquetasDePrenda etiquetas = validarEtiquetas(comando.empresaId(), comando.etiquetas());
+		EtiquetasDePrenda etiquetas = validarEtiquetas(comando.empresaId(), comando.categoriaId(), comando.etiquetas());
 		return prendas.guardar(Prenda.crear(comando.empresaId(), comando.categoriaId(), comando.nombre(),
 				comando.tipoArticulo(), comando.precioRenta(), comando.precioVenta(), etiquetas));
 	}
@@ -42,7 +42,7 @@ class PrendaService implements CrearPrenda, ConsultarPrendas {
 	 * Valida que cada etiqueta referencie un valor real de la taxonomía del tenant y que no se repita
 	 * una dimensión. Cualquier tipo/valor sirve para clasificar (no se exige que "defina variante").
 	 */
-	private EtiquetasDePrenda validarEtiquetas(UUID empresaId, List<EtiquetaSeleccionada> etiquetas) {
+	private EtiquetasDePrenda validarEtiquetas(UUID empresaId, UUID categoriaId, List<EtiquetaSeleccionada> etiquetas) {
 		Map<UUID, UUID> mapa = new LinkedHashMap<>();
 		for (EtiquetaSeleccionada etiqueta : etiquetas) {
 			if (etiqueta.tipoEtiquetaId() == null || etiqueta.valorEtiquetaId() == null) {
@@ -50,6 +50,9 @@ class PrendaService implements CrearPrenda, ConsultarPrendas {
 			}
 			if (mapa.containsKey(etiqueta.tipoEtiquetaId())) {
 				throw new EtiquetaDePrendaInvalida("La prenda no puede repetir la misma dimensión de etiqueta");
+			}
+			if (!taxonomia.tipoAplicaACategoria(empresaId, etiqueta.tipoEtiquetaId(), categoriaId)) {
+				throw new EtiquetaDePrendaInvalida("El tipo de etiqueta no aplica a la categoría de la prenda");
 			}
 			if (!taxonomia.valorPerteneceATipo(empresaId, etiqueta.tipoEtiquetaId(), etiqueta.valorEtiquetaId())) {
 				throw new EtiquetaDePrendaInvalida("El valor no pertenece al tipo de etiqueta indicado");

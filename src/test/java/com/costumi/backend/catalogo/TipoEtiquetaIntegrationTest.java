@@ -63,6 +63,45 @@ class TipoEtiquetaIntegrationTest {
 		return UUID.fromString(json.readTree(body).get("id").asText());
 	}
 
+	private UUID crearCategoria(String token, String nombre) throws Exception {
+		String body = mvc.perform(post("/api/v1/categorias").header("Authorization", "Bearer " + token)
+						.contentType(MediaType.APPLICATION_JSON).content("{\"nombre\":\"" + nombre + "\"}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		return UUID.fromString(json.readTree(body).get("id").asText());
+	}
+
+	@Test
+	void crear_tipo_acotado_a_una_categoria() throws Exception {
+		String dueno = duenoDe(crearEmpresa("Empresa Cat"));
+		UUID camisas = crearCategoria(dueno, "Camisas");
+
+		String body = mvc.perform(post("/api/v1/tipos-etiqueta").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Cuello\",\"defineVariante\":false,\"seleccionablePorCliente\":false,"
+								+ "\"categoriasQueAplica\":[\"" + camisas + "\"]}"))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.categoriasQueAplica[0]").value(camisas.toString()))
+				.andReturn().getResponse().getContentAsString();
+		UUID tipoId = UUID.fromString(json.readTree(body).get("id").asText());
+
+		mvc.perform(get("/api/v1/tipos-etiqueta").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.id == '" + tipoId + "')].categoriasQueAplica[0]").value(camisas.toString()));
+	}
+
+	@Test
+	void crear_tipo_con_categoria_de_otra_empresa_devuelve_400() throws Exception {
+		String duenoA = duenoDe(crearEmpresa("Cat A"));
+		UUID categoriaDeA = crearCategoria(duenoA, "Camisas");
+
+		String duenoB = duenoDe(crearEmpresa("Cat B"));
+		mvc.perform(post("/api/v1/tipos-etiqueta").header("Authorization", "Bearer " + duenoB)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Cuello\",\"defineVariante\":false,\"seleccionablePorCliente\":false,"
+								+ "\"categoriasQueAplica\":[\"" + categoriaDeA + "\"]}"))
+				.andExpect(status().isBadRequest());
+	}
+
 	@Test
 	void crear_tipo_con_interruptores_agregar_valor_y_listar() throws Exception {
 		String dueno = duenoDe(crearEmpresa("Empresa Tax"));

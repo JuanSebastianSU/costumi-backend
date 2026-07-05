@@ -46,8 +46,8 @@ class TipoEtiquetaController {
 	ResponseEntity<TipoEtiquetaResponse> crear(@Valid @RequestBody CrearTipoEtiquetaRequest request,
 			@AuthenticationPrincipal Jwt jwt, UriComponentsBuilder uriBuilder) {
 		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
-		TipoEtiqueta tipo = crearTipoEtiqueta.ejecutar(new CrearTipoEtiquetaComando(
-				empresaId, request.nombre(), request.defineVariante(), request.seleccionablePorCliente()));
+		TipoEtiqueta tipo = crearTipoEtiqueta.ejecutar(new CrearTipoEtiquetaComando(empresaId, request.nombre(),
+				request.defineVariante(), request.seleccionablePorCliente(), request.categoriasQueAplica()));
 		URI location = uriBuilder.path("/api/v1/tipos-etiqueta/{id}").buildAndExpand(tipo.id()).toUri();
 		return ResponseEntity.created(location).body(TipoEtiquetaResponse.desde(tipo));
 	}

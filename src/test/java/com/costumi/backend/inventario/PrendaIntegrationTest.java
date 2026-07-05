@@ -98,6 +98,31 @@ class PrendaIntegrationTest {
 	}
 
 	@Test
+	void etiquetar_con_un_tipo_que_no_aplica_a_la_categoria_devuelve_400() throws Exception {
+		UUID empresa = crearEmpresa("Empresa Aplica");
+		String dueno = duenoDe(empresa);
+		UUID camisas = crearCategoria(dueno, "Camisas");
+		UUID sombreros = crearCategoria(dueno, "Sombreros");
+		// Tipo acotado SOLO a Sombreros.
+		String tipoBody = mvc.perform(post("/api/v1/tipos-etiqueta").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"AlaAncha\",\"defineVariante\":false,\"seleccionablePorCliente\":false,"
+								+ "\"categoriasQueAplica\":[\"" + sombreros + "\"]}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		UUID ala = UUID.fromString(json.readTree(tipoBody).get("id").asText());
+		UUID grande = agregarValor(dueno, ala, "Grande");
+
+		// La prenda es una Camisa: el tipo de Sombreros no le aplica.
+		mvc.perform(post("/api/v1/prendas")
+						.header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"categoriaId\":\"" + camisas + "\",\"nombre\":\"Camisa\",\"tipoArticulo\":\"VENTA\","
+								+ "\"precioVenta\":100.00,\"etiquetas\":[{\"tipoEtiquetaId\":\"" + ala
+								+ "\",\"valorEtiquetaId\":\"" + grande + "\"}]}"))
+				.andExpect(status().isBadRequest());
+	}
+
+	@Test
 	void crear_una_prenda_con_valor_de_etiqueta_de_otro_tipo_devuelve_400() throws Exception {
 		UUID empresa = crearEmpresa("Empresa TagsMix");
 		String dueno = duenoDe(empresa);

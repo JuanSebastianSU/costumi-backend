@@ -15,6 +15,9 @@ public interface ConsultaDeTaxonomia {
 	/** ¿El tipo existe en la empresa, no está archivado y sus valores definen variantes de stock? */
 	boolean tipoDefineVariante(UUID empresaId, UUID tipoEtiquetaId);
 
+	/** ¿El tipo (de la empresa) aplica a esa categoría? (un tipo sin categorías aplica a todas). */
+	boolean tipoAplicaACategoria(UUID empresaId, UUID tipoEtiquetaId, UUID categoriaId);
+
 	/** ¿El valor pertenece a ese tipo (de la empresa) y no está archivado? */
 	boolean valorPerteneceATipo(UUID empresaId, UUID tipoEtiquetaId, UUID valorEtiquetaId);
 }

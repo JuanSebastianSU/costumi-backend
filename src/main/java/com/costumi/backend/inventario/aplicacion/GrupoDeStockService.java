@@ -4,6 +4,7 @@ import com.costumi.backend.catalogo.ConsultaDeTaxonomia;
 import com.costumi.backend.inventario.dominio.CombinacionDeVariante;
 import com.costumi.backend.inventario.dominio.GrupoDeStock;
 import com.costumi.backend.inventario.dominio.GrupoDeStockRepository;
+import com.costumi.backend.inventario.dominio.Prenda;
 import com.costumi.backend.inventario.dominio.PrendaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,8 +31,9 @@ class GrupoDeStockService implements CrearGrupoDeStock, ConsultarGruposDeStock, 
 	@Override
 	@Transactional
 	public GrupoDeStock ejecutar(CrearGrupoDeStockComando comando) {
-		exigirPrendaDelTenant(comando.empresaId(), comando.prendaId());
-		CombinacionDeVariante combinacion = validarCombinacion(comando.empresaId(), comando.combinacion());
+		Prenda prenda = exigirPrendaDelTenant(comando.empresaId(), comando.prendaId());
+		CombinacionDeVariante combinacion = validarCombinacion(comando.empresaId(), prenda.categoriaId(),
+				comando.combinacion());
 		exigirVarianteNoDuplicada(comando.prendaId(), combinacion);
 		return grupos.guardar(GrupoDeStock.crear(
 				comando.empresaId(), comando.prendaId(), combinacion, comando.cantidadInicial()));
@@ -59,7 +61,8 @@ class GrupoDeStockService implements CrearGrupoDeStock, ConsultarGruposDeStock, 
 	 * ser un tipo que define variante en la empresa y cada valor debe pertenecer a ese tipo; una
 	 * dimensión no se puede repetir. Una lista vacía es la variante única.
 	 */
-	private CombinacionDeVariante validarCombinacion(UUID empresaId, List<SeleccionVariante> selecciones) {
+	private CombinacionDeVariante validarCombinacion(UUID empresaId, UUID categoriaId,
+			List<SeleccionVariante> selecciones) {
 		Map<UUID, UUID> mapa = new LinkedHashMap<>();
 		for (SeleccionVariante seleccion : selecciones) {
 			if (seleccion.tipoEtiquetaId() == null || seleccion.valorEtiquetaId() == null) {
@@ -70,6 +73,9 @@ class GrupoDeStockService implements CrearGrupoDeStock, ConsultarGruposDeStock, 
 			}
 			if (!taxonomia.tipoDefineVariante(empresaId, seleccion.tipoEtiquetaId())) {
 				throw new CombinacionDeVarianteInvalida("El tipo de etiqueta no existe o no define variantes");
+			}
+			if (!taxonomia.tipoAplicaACategoria(empresaId, seleccion.tipoEtiquetaId(), categoriaId)) {
+				throw new CombinacionDeVarianteInvalida("El tipo de etiqueta no aplica a la categoría de la prenda");
 			}
 			if (!taxonomia.valorPerteneceATipo(empresaId, seleccion.tipoEtiquetaId(), seleccion.valorEtiquetaId())) {
 				throw new CombinacionDeVarianteInvalida("El valor no pertenece al tipo de etiqueta indicado");
@@ -87,8 +93,8 @@ class GrupoDeStockService implements CrearGrupoDeStock, ConsultarGruposDeStock, 
 		}
 	}
 
-	private void exigirPrendaDelTenant(UUID empresaId, UUID prendaId) {
-		prendas.buscarPorId(prendaId)
+	private Prenda exigirPrendaDelTenant(UUID empresaId, UUID prendaId) {
+		return prendas.buscarPorId(prendaId)
 				.filter(prenda -> prenda.empresaId().equals(empresaId))
 				.orElseThrow(() -> new PrendaNoEncontrada(prendaId));
 	}

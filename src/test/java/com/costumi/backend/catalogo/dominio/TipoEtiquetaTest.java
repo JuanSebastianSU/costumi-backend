@@ -30,6 +30,23 @@ class TipoEtiquetaTest {
 	}
 
 	@Test
+	void un_tipo_sin_categorias_aplica_a_todas() {
+		TipoEtiqueta color = TipoEtiqueta.crear(UUID.randomUUID(), "Color", true, true);
+
+		assertThat(color.categoriasQueAplica()).isEmpty();
+		assertThat(color.aplicaACategoria(UUID.randomUUID())).isTrue();
+	}
+
+	@Test
+	void un_tipo_con_categorias_solo_aplica_a_esas() {
+		UUID camisas = UUID.randomUUID();
+		TipoEtiqueta cuello = TipoEtiqueta.crear(UUID.randomUUID(), "Cuello", false, false, java.util.Set.of(camisas));
+
+		assertThat(cuello.aplicaACategoria(camisas)).isTrue();
+		assertThat(cuello.aplicaACategoria(UUID.randomUUID())).isFalse();
+	}
+
+	@Test
 	void crear_un_valor_ligado_a_su_tipo() {
 		UUID empresaId = UUID.randomUUID();
 		UUID tipoId = UUID.randomUUID();

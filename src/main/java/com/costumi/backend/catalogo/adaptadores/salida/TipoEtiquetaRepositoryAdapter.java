@@ -4,8 +4,10 @@ import com.costumi.backend.catalogo.dominio.TipoEtiqueta;
 import com.costumi.backend.catalogo.dominio.TipoEtiquetaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 /** Adaptador de salida: implementa el puerto {@link TipoEtiquetaRepository} con JPA. */
@@ -35,11 +37,12 @@ class TipoEtiquetaRepositoryAdapter implements TipoEtiquetaRepository {
 
 	private static TipoEtiquetaJpaEntity aEntidad(TipoEtiqueta t) {
 		return new TipoEtiquetaJpaEntity(t.id(), t.empresaId(), t.nombre(), t.defineVariante(),
-				t.seleccionablePorCliente(), t.archivada());
+				t.seleccionablePorCliente(), new LinkedHashSet<>(t.categoriasQueAplica()), t.archivada());
 	}
 
 	private static TipoEtiqueta aDominio(TipoEtiquetaJpaEntity e) {
+		Set<UUID> categorias = new LinkedHashSet<>(e.getCategoriasQueAplica());
 		return TipoEtiqueta.rehidratar(e.getId(), e.getEmpresaId(), e.getNombre(), e.isDefineVariante(),
-				e.isSeleccionableCliente(), e.isArchivada());
+				e.isSeleccionableCliente(), categorias, e.isArchivada());
 	}
 }
