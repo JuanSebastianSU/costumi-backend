@@ -59,6 +59,7 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.POST, "/api/v1/categorias").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.POST, "/api/v1/tipos-etiqueta").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.POST, "/api/v1/tipos-etiqueta/*/valores").hasAnyRole("DUENO", "ENCARGADO")
+						.requestMatchers(HttpMethod.POST, "/api/v1/prendas").hasAnyRole("DUENO", "ENCARGADO", "BODEGA")
 						.anyRequest().authenticated())
 				.oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(convertidorDeAutoridades())));
 		return http.build();
