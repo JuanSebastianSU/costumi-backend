@@ -24,7 +24,10 @@ por rol/tenant**, y **cerradas las dos deudas de seguridad**. Todo en la rama
   5. **Catálogo — motor de etiquetas (RF-2.7.1/2.7.2)**: `TipoEtiqueta` (con interruptores
      ¿define variante? / ¿seleccionable por cliente?) + `ValorEtiqueta`; `POST/GET /api/v1/tipos-etiqueta`
      y `.../{id}/valores`, acotado al tenant (404 al tocar un tipo de otra empresa).
-  59 tests verdes en local.
+  6. **Inventario — Prenda (RF-2.1/2.10)**: nuevo módulo `inventario`; ítem con categoría, tipo
+     (renta/venta/ambos) y precios (con reglas de precio en el dominio). `POST/GET /api/v1/prendas`,
+     acotado al tenant.
+  69 tests verdes en local.
 
 ## Próximo paso concreto
 1. ✅ Andamiaje (mergeado a `main`) + check `build` requerido enganchado por Juan.
@@ -44,7 +47,8 @@ por rol/tenant**, y **cerradas las dos deudas de seguridad**. Todo en la rama
    con interruptores (PR #7). ⬜ Falta: aplicabilidad tipo↔categoría (RF-2.7.2), ciclo de vida
    archivar/renombrar por API (RF-2.7.6), y el **GrupoDeStock** (combinación de valores, RF-2.7.3/2.7.4)
    — este último ya es parte de Inventario (RF-2).
-10. ⬜ **Inventario y disponibilidad (RF-2)** — Prenda, GrupoDeStock/Variante, disponibilidad derivada.
+10. 🟨 **Inventario y disponibilidad (RF-2)** — ✅ Prenda (tipo + precios). ⬜ GrupoDeStock/Variante
+    (cantidad + estado disponibles/dañadas/limpieza/perdidas, RF-2.2), disponibilidad derivada (RF-2.4).
 
 ## Tablero de módulos
 Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
@@ -54,7 +58,7 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 | Andamiaje + control anti-erosión (ArchUnit/Modulith/CI) | — | ✅ | §5.3 — mergeado a `main` (PR #1) |
 | Identidad y tenant (Empresa/Sucursal/Usuario/permisos/auth) | Hexagonal | 🟨 | RF-1, RF-15, RF-17.4 — Empresa (PR #2/#3/#5), Sucursal (PR #4), auth+autorización (PR #6/#7). Falta refresh token y permisos granulares |
 | Catálogo y taxonomía (etiquetas, categorías) | Hexagonal | 🟨 | RF-2.7 — Categoría + TipoEtiqueta/ValorEtiqueta (PR #7); falta aplicabilidad tipo↔categoría y GrupoDeStock |
-| Inventario y disponibilidad | Hexagonal | ⬜ | RF-2 |
+| Inventario y disponibilidad | Hexagonal | 🟨 | RF-2 — Prenda (PR #7); falta GrupoDeStock y disponibilidad derivada |
 | Pedidos / carrito | Hexagonal | ⬜ | RF-16 |
 | Rentas | Hexagonal | ⬜ | RF-3 |
 | Ventas / POS | Hexagonal | ⬜ | RF-4 |
@@ -87,7 +91,10 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
   **setear `COSTUMI_JWT_SECRET` por entorno**.
 - ✅ **RESUELTO (PR #7)** — ~~Endpoints sin control de rol/tenant~~: ciclo de vida de Empresa y cola de
   pendientes exigen SUPERADMIN; alta de Sucursal exige DUENO/ENCARGADO + dueño del tenant.
-- (vacío por ahora)
+- **Referencias cross-módulo por id sin validar el tenant.** `Prenda.categoria_id` (inventario→catalogo)
+  tiene FK a `categoria` (garantiza existencia) pero **no valida por código que la categoría sea del
+  mismo tenant** (falta un puerto/API pública de `catalogo` consumible desde `inventario`, estilo
+  Spring Modulith `@NamedInterface`). Riesgo bajo hoy; cerrar al definir las APIs entre módulos.
 
 ## A re-verificar cada sesión (invariantes)
 - ¿ArchUnit y Modulith siguen en verde?
@@ -96,6 +103,11 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-04 (j)** — Iniciado **Inventario (RF-2)**: nuevo módulo `inventario` con **Prenda (RF-2.1/2.10)**
+  — ítem con categoría, `TipoArticulo` (renta/venta/ambos) y precios, con reglas de precio en el dominio
+  (renta exige precioRenta, etc.). `POST/GET /api/v1/prendas` (DUENO/ENCARGADO/BODEGA), acotado al tenant.
+  Migración `V6`; errores de dominio → 400. Build local **verde (69 tests)**. En **PR #7**. Anotada deuda:
+  falta validar por código que `categoria_id` sea del mismo tenant (API cross-módulo). Sigue GrupoDeStock.
 - **2026-07-04 (i)** — Catálogo, **motor de etiquetas (RF-2.7.1/2.7.2)**: `TipoEtiqueta` (interruptores
   ¿define variante?/¿seleccionable por cliente?) + `ValorEtiqueta`, ambos con `empresa_id`. Casos de uso
   crear tipo / listar tipos / agregar valor / listar valores; validación de que el tipo pertenece al
