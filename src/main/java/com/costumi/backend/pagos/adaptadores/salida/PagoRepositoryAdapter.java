@@ -25,7 +25,7 @@ class PagoRepositoryAdapter implements PagoRepository {
 
 	@Override
 	public Optional<Pago> buscarPorId(UUID id) {
-		return jpa.findById(id).map(PagoRepositoryAdapter::aDominio);
+		return jpa.findFirstById(id).map(PagoRepositoryAdapter::aDominio);
 	}
 
 	@Override

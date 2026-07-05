@@ -216,6 +216,22 @@ class GrupoDeStockIntegrationTest {
 	}
 
 	@Test
+	void mover_un_grupo_de_otra_empresa_devuelve_404() throws Exception {
+		// A crea un grupo con stock.
+		String duenoA = duenoDe(crearEmpresa("Mover A"));
+		UUID prendaDeA = crearPrenda(duenoA, crearCategoria(duenoA, "Camisa"));
+		UUID grupoDeA = crearGrupo(duenoA, prendaDeA, "[]", 5);
+
+		// B intenta cargar por PK y mover ese grupo: el find() forzado lo bloquea (§5.4) -> 404.
+		String duenoB = duenoDe(crearEmpresa("Mover B"));
+		mvc.perform(post("/api/v1/grupos-stock/{grupoId}/mover", grupoDeA)
+						.header("Authorization", "Bearer " + duenoB)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"desde\":\"DISPONIBLE\",\"hacia\":\"DANADA\",\"cantidad\":1}"))
+				.andExpect(status().isNotFound());
+	}
+
+	@Test
 	void sin_token_devuelve_401() throws Exception {
 		mvc.perform(get("/api/v1/prendas/{prendaId}/grupos-stock", UUID.randomUUID()))
 				.andExpect(status().isUnauthorized());

@@ -25,7 +25,7 @@ class CategoriaRepositoryAdapter implements CategoriaRepository {
 
 	@Override
 	public Optional<Categoria> buscarPorId(UUID id) {
-		return jpa.findById(id).map(CategoriaRepositoryAdapter::aDominio);
+		return jpa.findFirstById(id).map(CategoriaRepositoryAdapter::aDominio);
 	}
 
 	@Override

@@ -40,7 +40,7 @@ class DisfrazRepositoryAdapter implements DisfrazRepository {
 
 	@Override
 	public Optional<Disfraz> buscarPorId(UUID id) {
-		return cabeceras.findById(id).map(this::aDominio);
+		return cabeceras.findFirstById(id).map(this::aDominio);
 	}
 
 	@Override

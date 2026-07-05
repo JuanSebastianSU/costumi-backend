@@ -35,7 +35,7 @@ class DevolucionRepositoryAdapter implements DevolucionRepository {
 
 	@Override
 	public Optional<Devolucion> buscarPorId(UUID id) {
-		return cabeceras.findById(id).map(this::aDominio);
+		return cabeceras.findFirstById(id).map(this::aDominio);
 	}
 
 	@Override

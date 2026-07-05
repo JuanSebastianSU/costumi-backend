@@ -30,7 +30,7 @@ class GrupoDeStockRepositoryAdapter implements GrupoDeStockRepository {
 
 	@Override
 	public Optional<GrupoDeStock> buscarPorId(UUID id) {
-		return jpa.findById(id).map(GrupoDeStockRepositoryAdapter::aDominio);
+		return jpa.findFirstById(id).map(GrupoDeStockRepositoryAdapter::aDominio);
 	}
 
 	@Override

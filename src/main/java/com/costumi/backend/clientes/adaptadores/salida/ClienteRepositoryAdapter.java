@@ -25,7 +25,7 @@ class ClienteRepositoryAdapter implements ClienteRepository {
 
 	@Override
 	public Optional<Cliente> buscarPorId(UUID id) {
-		return jpa.findById(id).map(ClienteRepositoryAdapter::aDominio);
+		return jpa.findFirstById(id).map(ClienteRepositoryAdapter::aDominio);
 	}
 
 	@Override

@@ -78,4 +78,22 @@ class AislamientoForzadoIntegrationTest {
 		comoTenant(empresaA.id());
 		assertThat(valores.listarPorTipo(tipoDeA.id())).hasSize(1);
 	}
+
+	@Test
+	void buscar_por_pk_de_otro_tenant_no_encuentra() {
+		SecurityContextHolder.clearContext();
+		Empresa empresaA = empresas.guardar(Empresa.registrar("PK A"));
+		Empresa empresaB = empresas.guardar(Empresa.registrar("PK B"));
+		TipoEtiqueta tipoDeA = tipos.guardar(TipoEtiqueta.crear(empresaA.id(), "Color", true, true));
+		em.flush();
+		em.clear();
+
+		// find() por PK ahora forzado: B no carga el tipo de A ni conociendo su id.
+		comoTenant(empresaB.id());
+		assertThat(tipos.buscarPorId(tipoDeA.id())).isEmpty();
+
+		// A sí carga el suyo.
+		comoTenant(empresaA.id());
+		assertThat(tipos.buscarPorId(tipoDeA.id())).isPresent();
+	}
 }
