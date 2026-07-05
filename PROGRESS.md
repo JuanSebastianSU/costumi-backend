@@ -12,14 +12,15 @@
   revisión a Juan ANTES de construir encima** (si el modelo núcleo o §5.4 quedan mal, todo lo de arriba se rehace).
 - **Tanda 2 = P2+P3** (ciclo operativo + dinero) · **Tanda 3 = P4+P5** (resto).
 - Reglas: **1 commit por feature**, **tests de dominio por cada feature**, **§5.4 temprano**, ambiguo → decisión aquí.
-- **CHECKPOINT: Juan REVISÓ y APROBÓ el P0 (núcleo del modelo).** Exigió cerrar el **§5.4 aislamiento FORZADO**
-  antes de la Tanda 2 → **HECHO y verde (184 tests, CI)**: (a) **filtro Hibernate `@Filter`** por `empresa_id` en
-  las 19 entidades, activado por sesión desde `ContextoDeTenant` en un aspecto sobre los repositorios (OSIV off);
-  (b) **validación cross-ref por tenant** (categoría de la prenda; prenda fija, categoría y valores del pool del
-  disfraz) vía las APIs públicas `ConsultaDeTaxonomia`/`ConsultaDeInventario`; (c) **tests que prueban que no se
-  lee ni escribe cruzando tenant**. **Reavisar a Juan para su OK antes de arrancar la Tanda 2. PR #8 no se mergea
-  a `main` hasta su visto bueno.**
-- **Tanda 1 COMPLETA en PR #8** (`chore/scaffolding-modulith` → `main`; **PR #7 ya lo mergeó Juan**). Hecho en la tanda:
+- **CHECKPOINT: Juan REVISÓ y APROBÓ el P0 y MERGEÓ la Tanda 1 a `main` (PR #8, en `315b3cd`).** Exigió cerrar el
+  **§5.4 aislamiento FORZADO** antes de la Tanda 2 → **HECHO y verde (184 tests, CI) en la nueva PR #9**:
+  (a) **filtro Hibernate `@Filter`** por `empresa_id` en las 19 entidades, activado por sesión desde
+  `ContextoDeTenant` en un aspecto sobre los repositorios (OSIV off); (b) **validación cross-ref por tenant**
+  (categoría de la prenda; prenda fija, categoría y valores del pool del disfraz) vía las APIs públicas
+  `ConsultaDeTaxonomia`/`ConsultaDeInventario`; (c) **tests que prueban que no se lee ni escribe cruzando tenant**.
+  **Esperando el OK de Juan a la PR #9 antes de arrancar la Tanda 2.** (Rama `chore/scaffolding-modulith`; a `main`
+  solo lo que Juan mergea.)
+- **Tanda 1 (ya en `main`, PR #8 mergeada por Juan; antes PR #7 con los 14 módulos de §7). Contenido de la Tanda 1:**
   (1) **§5.4 base** — `ContextoDeTenant`; (2) **motor de variantes real** — `GrupoDeStock` = combinación real de
   valores de etiqueta; (3) **Prenda↔etiquetas (Capa 2)**; (4) **tipo↔categoría (RF-2.7.2)** impuesto; (5) **Disfraz
   + Slot (Capa 3) + disponibilidad DERIVADA (RF-2.3/2.4)** — modo unidad-fija/por-partes, ≤8 slots, dos ejes +
