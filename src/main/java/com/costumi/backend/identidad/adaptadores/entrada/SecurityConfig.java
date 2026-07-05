@@ -62,6 +62,8 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.POST, "/api/v1/prendas").hasAnyRole("DUENO", "ENCARGADO", "BODEGA")
 						.requestMatchers(HttpMethod.POST, "/api/v1/prendas/*/grupos-stock").hasAnyRole("DUENO", "ENCARGADO", "BODEGA")
 						.requestMatchers(HttpMethod.POST, "/api/v1/grupos-stock/*/mover").hasAnyRole("DUENO", "ENCARGADO", "BODEGA")
+						.requestMatchers(HttpMethod.POST, "/api/v1/clientes/*/lista-negra").hasAnyRole("DUENO", "ENCARGADO")
+						.requestMatchers(HttpMethod.POST, "/api/v1/clientes").hasAnyRole("DUENO", "ENCARGADO", "MOSTRADOR", "ATENCION")
 						.anyRequest().authenticated())
 				.oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(convertidorDeAutoridades())));
 		return http.build();
