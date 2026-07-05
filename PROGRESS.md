@@ -30,7 +30,10 @@ por rol/tenant**, y **cerradas las dos deudas de seguridad**. Todo en la rama
   7. **Inventario — GrupoDeStock (RF-2.2/2.11)**: conteo por estado (disponibles/dañadas/en limpieza/
      perdidas) y **movimientos entre estados**; `POST/GET /api/v1/prendas/{id}/grupos-stock` y
      `POST /api/v1/grupos-stock/{id}/mover`, acotado al tenant.
-  78 tests verdes en local.
+  8. **Clientes (RF-7)**: nuevo módulo `clientes`; ficha (teléfono/correo/documento/dirección),
+     **búsqueda por texto** y **lista negra** (RF-7.3); `POST/GET /api/v1/clientes` (?buscar=) y
+     `POST /api/v1/clientes/{id}/lista-negra`, acotado al tenant.
+  86 tests verdes en local.
 
 ## Próximo paso concreto
 1. ✅ Andamiaje (mergeado a `main`) + check `build` requerido enganchado por Juan.
@@ -53,6 +56,8 @@ por rol/tenant**, y **cerradas las dos deudas de seguridad**. Todo en la rama
 10. 🟨 **Inventario y disponibilidad (RF-2)** — ✅ Prenda + GrupoDeStock (conteo por estado + movimientos).
     ⬜ Falta: combinación de valores de etiqueta que define la variante (RF-2.7.3), y disponibilidad
     derivada del Disfraz por slots (RF-2.4) — esto último ya es el módulo de Disfraz (capa 3).
+11. ✅ **Clientes (RF-7)**: ficha + búsqueda + lista negra (adelantado, es prerequisito del Carrito).
+12. ⬜ **Carrito (RF-16)** ← siguiente — pedido pendiente segmentado por (cliente × sucursal × tipo).
 
 ## Tablero de módulos
 Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
@@ -68,7 +73,7 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 | Ventas / POS | Hexagonal | ⬜ | RF-4 |
 | Pagos, caja y depósitos | Hexagonal | ⬜ | RF-6 |
 | Devoluciones y multas | Hexagonal | ⬜ | RF-5 |
-| Clientes | Simple | ⬜ | RF-7 |
+| Clientes | Simple | 🟨 | RF-7 — ficha + búsqueda + lista negra (PR #7); falta historial (RF-7.2) |
 | Empleados | Simple | ⬜ | RF-8 |
 | Reportes | Simple | ⬜ | RF-9 |
 | Notificaciones (WhatsApp / FCM) | Simple | ⬜ | RF-11 |
@@ -107,6 +112,10 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-04 (l)** — Nuevo módulo **Clientes (RF-7)** (adelantado por ser prerequisito del Carrito):
+  ficha del cliente (teléfono/correo/documento/dirección), **búsqueda por texto** (nombre/documento/teléfono,
+  RF-7.3) y **lista negra** (RF-7.3). `POST/GET /api/v1/clientes` (con `?buscar=`), `POST /api/v1/clientes/{id}/lista-negra`
+  (DUENO/ENCARGADO), acotado al tenant. Migración `V8`. Build local **verde (86 tests, 5 módulos)**. En **PR #7**.
 - **2026-07-04 (k)** — Inventario, **GrupoDeStock (RF-2.2/2.11)**: variante con conteo por estado
   (disponibles/dañadas/en limpieza/perdidas) y **movimientos entre estados** (validando no mover más
   de las que hay). `POST/GET /api/v1/prendas/{id}/grupos-stock`, `POST /api/v1/grupos-stock/{id}/mover`
