@@ -18,7 +18,10 @@ por rol/tenant**, y **cerradas las dos deudas de seguridad**. Todo en la rama
   2. **Autorización por rol/tenant:** SUPERADMIN para ciclo de vida de Empresa y cola de
      pendientes; DUENO/ENCARGADO + dueño del tenant para alta de Sucursal → cierra la deuda de endpoints.
   3. **Bootstrap del SuperAdmin** por seed (auth usable en despliegue nuevo).
-  43 tests verdes en local.
+  4. **Catálogo — Categoría (RF-2.8)**: nuevo módulo `catalogo`; alta/listado de categorías
+     **acotadas al tenant del token** (primer uso real del aislamiento multi-tenant; una empresa
+     no ve las de otra). DUENO/ENCARGADO para crear.
+  51 tests verdes en local.
 
 ## Próximo paso concreto
 1. ✅ Andamiaje (mergeado a `main`) + check `build` requerido enganchado por Juan.
@@ -34,7 +37,9 @@ por rol/tenant**, y **cerradas las dos deudas de seguridad**. Todo en la rama
 7. 🟨 **Aislamiento multi-tenant (§5.4):** ✅ chequeo de tenant a nivel de endpoint (Sucursal, PR #7).
    ⬜ Falta el filtro **forzado** por `empresa_id` en un contexto de request (para todo módulo futuro).
 8. ⬜ Auditoría del SuperAdmin (RF-15.5) — usando el actor del token.
-9. ⬜ Siguiente módulo de §7: **Catálogo y taxonomía (RF-2.7)** — el más delicado.
+9. 🟨 **Catálogo y taxonomía (RF-2.7)** — el más delicado. ✅ Categoría (PR #7). ⬜ Motor de
+   etiquetas: `TipoEtiqueta` + `ValorEtiqueta` con interruptores (¿define variante?, ¿seleccionable
+   por cliente?, ¿a qué categorías aplica?) (RF-2.7.1–2.7.7).
 
 ## Tablero de módulos
 Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
@@ -43,7 +48,7 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 |---|---|---|---|
 | Andamiaje + control anti-erosión (ArchUnit/Modulith/CI) | — | ✅ | §5.3 — mergeado a `main` (PR #1) |
 | Identidad y tenant (Empresa/Sucursal/Usuario/permisos/auth) | Hexagonal | 🟨 | RF-1, RF-15, RF-17.4 — Empresa (PR #2/#3/#5), Sucursal (PR #4), auth+autorización (PR #6/#7). Falta refresh token y permisos granulares |
-| Catálogo y taxonomía (etiquetas, categorías) | Hexagonal | ⬜ | RF-2.7 — el más delicado |
+| Catálogo y taxonomía (etiquetas, categorías) | Hexagonal | 🟨 | RF-2.7 — Categoría + aislamiento tenant (PR #7); falta motor de etiquetas |
 | Inventario y disponibilidad | Hexagonal | ⬜ | RF-2 |
 | Pedidos / carrito | Hexagonal | ⬜ | RF-16 |
 | Rentas | Hexagonal | ⬜ | RF-3 |
@@ -86,6 +91,11 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-04 (h)** — Iniciado el módulo **Catálogo/taxonomía (RF-2.7)**: **Categoría (RF-2.8)** con
+  aislamiento multi-tenant (scope por `empresa_id` del token; una empresa no ve las de otra). Dominio
+  puro (archivar/renombrar, RF-2.7.6), puertos, servicio, JPA (`V4__crear_categoria.sql`, índice único
+  parcial por empresa entre activas), `POST/GET /api/v1/categorias` (DUENO/ENCARGADO). Build local
+  **verde (51 tests)**. En **PR #7** (run autónomo, pendiente de revisión). Sigue el motor de etiquetas.
 - **2026-07-04 (g)** — Run largo autónomo (Juan sin recursos), 3 slices de cierre de seguridad sobre
   `main`+auth: (1) **fail-fast del secreto JWT** en perfil `prod`; (2) **autorización por rol/tenant** —
   SUPERADMIN para ciclo de vida de Empresa y cola de pendientes, DUENO/ENCARGADO + dueño del tenant para
