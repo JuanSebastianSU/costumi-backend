@@ -5,10 +5,11 @@
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
 ## Fase actual
-**Fase 2 — Módulo Identidad/tenant (auth y autorización).** Empresa (registro, ciclo de vida,
-plazo) y Sucursal ya en `main`. Cerrado el cimiento de **auth por token** y la **autorización
-por rol/tenant**, y **cerradas las dos deudas de seguridad**. Todo en la rama
-`chore/scaffolding-modulith` (regla de Juan: nada a `main` sin su aprobación por PR).
+**Fase 3 — Todos los módulos de §7 con primera rebanada.** Los 14 módulos del listado de §7 tienen
+una rebanada vertical verde, multi-tenant y probada (identidad, catálogo, inventario, clientes, pedidos,
+rentas, devoluciones, ventas, pagos, reportes, configuración, notificaciones, marketplace). Todo en la
+rama `chore/scaffolding-modulith` / **PR #7** (regla de Juan: nada a `main` sin su aprobación). Sigue la
+fase de **profundizar** cada módulo + piezas transversales (§5.4/5.5/5.6/5.7).
 
 ## Pendiente de revisión (Juan sin recursos por el momento)
 > Por acuerdo con el responsable, se siguió ejecutando en slices **sin esperar la revisión**.
@@ -48,7 +49,13 @@ por rol/tenant**, y **cerradas las dos deudas de seguridad**. Todo en la rama
       transferencia) y **clave de idempotencia** (no duplica cobros, RF-17.6). `POST/GET /api/v1/pagos`.
   14. **Reportes (RF-9)**: nuevo módulo `reportes` (solo lectura); **resumen de ingresos** por renta/venta
       (JdbcClient sobre los pagos), restringido a DUENO/ENCARGADO. `GET /api/v1/reportes/ingresos`.
-  126 tests verdes en local.
+  15. **Configuración (RF-12)**: nuevo módulo `configuracion`; **interruptores de módulos** por empresa
+      (conteo de stock, multas, multi-sucursal, pago en línea), defaults sensatos. `GET/PUT /api/v1/configuracion`.
+  16. **Notificaciones (RF-11)**: nuevo módulo `notificaciones`; envío por canal (WhatsApp/FCM/EMAIL) vía
+      adaptador (log por ahora), estados PENDIENTE→ENVIADA. `POST/GET /api/v1/notificaciones`.
+  17. **Marketplace / App cliente (RF-18.1/RF-15.6)**: nuevo módulo `marketplace` (lectura, público);
+      descubrimiento de empresas **ACTIVAS**. `GET /api/v1/marketplace/empresas`.
+  **135 tests verdes en local. Todo el listado de módulos de §7 tiene su primera rebanada.**
 
 ## Próximo paso concreto
 1. ✅ Andamiaje (mergeado a `main`) + check `build` requerido enganchado por Juan.
@@ -78,7 +85,11 @@ por rol/tenant**, y **cerradas las dos deudas de seguridad**. Todo en la rama
 15. ✅ **Venta/POS (RF-4)**: venta con líneas, descuento y total, a nombre del empleado.
 16. ✅ **Pagos (RF-6)**: pago ligado a renta/venta, métodos e idempotencia. ⬜ Falta caja/turno y corte (RF-6.3/6.10).
 17. ✅ **Reportes (RF-9)**: resumen de ingresos por renta/venta (read-model). ⬜ Falta ganancia, filtros y export.
-18. ⬜ **Notificaciones (RF-11)** ← siguiente — recordatorios (vencidas, stock bajo), WhatsApp/FCM (adaptador).
+18. ✅ **Notificaciones (RF-11)** · ✅ **Configuración (RF-12)** · ✅ **Marketplace/App cliente (RF-18.1)**.
+19. 🎉 **Listado de módulos de §7 completo** (una primera rebanada vertical, verde y multi-tenant por módulo).
+    **Siguiente fase — profundizar:** completar cada módulo (ver los "Falta" del Tablero y del registro), y las
+    piezas transversales: aislamiento multi-tenant **forzado** (filtro por contexto, §5.4), **eventos de dominio**
+    (devolución→multa, venta→baja de stock, §5.5), **OpenAPI contract-first** (§5.6) y **offline/outbox** (§5.7).
 
 ## Tablero de módulos
 Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
@@ -97,9 +108,9 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 | Clientes | Simple | 🟨 | RF-7 — ficha + búsqueda + lista negra (PR #7); falta historial (RF-7.2) |
 | Empleados | Simple | ⬜ | RF-8 |
 | Reportes | Simple (lectura) | 🟨 | RF-9 — resumen de ingresos (PR #7); falta ganancia, filtros y export |
-| Notificaciones (WhatsApp / FCM) | Simple | ⬜ | RF-11 |
-| Configuración de empresa | Simple | ⬜ | RF-12 |
-| App cliente (marketplace) | — | ⬜ | RF-18 |
+| Notificaciones (WhatsApp / FCM) | Simple (adaptador) | 🟨 | RF-11 — envío por canal (log) + estados (PR #7); falta WhatsApp/FCM reales y recordatorios automáticos |
+| Configuración de empresa | Simple | 🟨 | RF-12 — interruptores de módulos (PR #7); falta aplicarlos en cada módulo |
+| App cliente (marketplace) | — | 🟨 | RF-18 — descubrimiento de empresas ACTIVAS (PR #7); falta catálogo/checkout del cliente |
 
 ## Decisiones aceptadas
 - **Decisión (2026-07-04, aprobada por Juan):** se acepta `reactivar` (SUSPENDIDA → ACTIVA)
@@ -133,6 +144,12 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-04 (s)** — Cerrados los **3 módulos que faltaban** de §7: **Configuración (RF-12)** — interruptores
+  de módulos por empresa (`GET/PUT /api/v1/configuracion`); **Notificaciones (RF-11)** — envío por canal
+  (WhatsApp/FCM/EMAIL) vía adaptador log, estados PENDIENTE→ENVIADA (`POST/GET /api/v1/notificaciones`);
+  **Marketplace/App cliente (RF-18.1/RF-15.6)** — descubrimiento **público** de empresas ACTIVAS
+  (`GET /api/v1/marketplace/empresas`, read-model con JdbcClient). Migraciones `V14` (config) y `V15` (notif).
+  Build local **verde (135 tests, 14 módulos)**. **Todo el listado de §7 tiene su primera rebanada.** En **PR #7**.
 - **2026-07-04 (r)** — Nuevo módulo **Reportes (RF-9)** (solo lectura, §5.2): **resumen de ingresos**
   (`ResumenDeIngresos`) por renta/venta, calculado con **JdbcClient** sobre la tabla `pago` (read-model
   sobre el esquema compartido, sin dependencia de código a otros módulos). `GET /api/v1/reportes/ingresos`,
