@@ -27,7 +27,10 @@ por rol/tenant**, y **cerradas las dos deudas de seguridad**. Todo en la rama
   6. **Inventario — Prenda (RF-2.1/2.10)**: nuevo módulo `inventario`; ítem con categoría, tipo
      (renta/venta/ambos) y precios (con reglas de precio en el dominio). `POST/GET /api/v1/prendas`,
      acotado al tenant.
-  69 tests verdes en local.
+  7. **Inventario — GrupoDeStock (RF-2.2/2.11)**: conteo por estado (disponibles/dañadas/en limpieza/
+     perdidas) y **movimientos entre estados**; `POST/GET /api/v1/prendas/{id}/grupos-stock` y
+     `POST /api/v1/grupos-stock/{id}/mover`, acotado al tenant.
+  78 tests verdes en local.
 
 ## Próximo paso concreto
 1. ✅ Andamiaje (mergeado a `main`) + check `build` requerido enganchado por Juan.
@@ -47,8 +50,9 @@ por rol/tenant**, y **cerradas las dos deudas de seguridad**. Todo en la rama
    con interruptores (PR #7). ⬜ Falta: aplicabilidad tipo↔categoría (RF-2.7.2), ciclo de vida
    archivar/renombrar por API (RF-2.7.6), y el **GrupoDeStock** (combinación de valores, RF-2.7.3/2.7.4)
    — este último ya es parte de Inventario (RF-2).
-10. 🟨 **Inventario y disponibilidad (RF-2)** — ✅ Prenda (tipo + precios). ⬜ GrupoDeStock/Variante
-    (cantidad + estado disponibles/dañadas/limpieza/perdidas, RF-2.2), disponibilidad derivada (RF-2.4).
+10. 🟨 **Inventario y disponibilidad (RF-2)** — ✅ Prenda + GrupoDeStock (conteo por estado + movimientos).
+    ⬜ Falta: combinación de valores de etiqueta que define la variante (RF-2.7.3), y disponibilidad
+    derivada del Disfraz por slots (RF-2.4) — esto último ya es el módulo de Disfraz (capa 3).
 
 ## Tablero de módulos
 Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
@@ -58,7 +62,7 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 | Andamiaje + control anti-erosión (ArchUnit/Modulith/CI) | — | ✅ | §5.3 — mergeado a `main` (PR #1) |
 | Identidad y tenant (Empresa/Sucursal/Usuario/permisos/auth) | Hexagonal | 🟨 | RF-1, RF-15, RF-17.4 — Empresa (PR #2/#3/#5), Sucursal (PR #4), auth+autorización (PR #6/#7). Falta refresh token y permisos granulares |
 | Catálogo y taxonomía (etiquetas, categorías) | Hexagonal | 🟨 | RF-2.7 — Categoría + TipoEtiqueta/ValorEtiqueta (PR #7); falta aplicabilidad tipo↔categoría y GrupoDeStock |
-| Inventario y disponibilidad | Hexagonal | 🟨 | RF-2 — Prenda (PR #7); falta GrupoDeStock y disponibilidad derivada |
+| Inventario y disponibilidad | Hexagonal | 🟨 | RF-2 — Prenda + GrupoDeStock (PR #7); falta variante por etiquetas y disponibilidad derivada |
 | Pedidos / carrito | Hexagonal | ⬜ | RF-16 |
 | Rentas | Hexagonal | ⬜ | RF-3 |
 | Ventas / POS | Hexagonal | ⬜ | RF-4 |
@@ -103,6 +107,11 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-04 (k)** — Inventario, **GrupoDeStock (RF-2.2/2.11)**: variante con conteo por estado
+  (disponibles/dañadas/en limpieza/perdidas) y **movimientos entre estados** (validando no mover más
+  de las que hay). `POST/GET /api/v1/prendas/{id}/grupos-stock`, `POST /api/v1/grupos-stock/{id}/mover`
+  (DUENO/ENCARGADO/BODEGA), con validación de que la prenda/grupo son del tenant (404 si no). Migración
+  `V7`. Build local **verde (78 tests)**. En **PR #7**. Sigue: variante por combinación de etiquetas y Disfraz.
 - **2026-07-04 (j)** — Iniciado **Inventario (RF-2)**: nuevo módulo `inventario` con **Prenda (RF-2.1/2.10)**
   — ítem con categoría, `TipoArticulo` (renta/venta/ambos) y precios, con reglas de precio en el dominio
   (renta exige precioRenta, etc.). `POST/GET /api/v1/prendas` (DUENO/ENCARGADO/BODEGA), acotado al tenant.
