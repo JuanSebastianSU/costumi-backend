@@ -170,6 +170,15 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-05 (ah)** — **Tanda 2 · Venta: baja de stock al confirmar (P2 CRÍTICO, RF-4.4).** La venta nace
+  CONFIRMADA → al registrarla se **descuenta el stock**. `GrupoDeStock.darDeBaja(cantidad)` (las unidades salen
+  del inventario) con tests. Nuevo puerto público de **escritura** `inventario.AjusteDeInventario.descontarDisponibles`
+  (reparte la baja entre los grupos de la prenda; `StockInsuficiente` público → 409) + impl acotada al tenant.
+  `VentaService`: valida que cada prenda de línea exista en el tenant (400) y descuenta su cantidad; si no alcanza,
+  `StockInsuficiente` **revierte toda la venta** (atómico en la tx). Manejador de errores de ventas nuevo
+  (IllegalArgument→400, StockInsuficiente→409). Arista nueva `ventas → inventario`. Tests: baja efectiva (5−2=3),
+  vender de más → 409, prenda inexistente → 400 (+ dominio de `darDeBaja`). **201 verdes.** _Pendiente RF-4:_
+  comprobante, devoluciones/cambios de venta, modo asistido.
 - **2026-07-05 (ag)** — **Tanda 2 · Renta: disponibilidad por fechas SIN traslapes + concurrencia (P2 CRÍTICO, RF-3.2/0.4).**
   Value object de dominio **`Periodo`** (retiro/devolución) con `seSolapaCon` (extremos **inclusivos**) + `dias()`,
   con tests. Al crear una renta: (1) cross-ref — la prenda debe existir en el tenant (400 si no);

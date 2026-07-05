@@ -67,6 +67,17 @@ public class GrupoDeStock {
 		fijar(hacia, contar(hacia) + cantidad);
 	}
 
+	/** Da de baja unidades disponibles (salen del inventario, p. ej. al confirmar una venta, RF-4.4). */
+	public void darDeBaja(int cantidad) {
+		if (cantidad <= 0) {
+			throw new IllegalArgumentException("La cantidad a dar de baja debe ser mayor a 0");
+		}
+		if (disponibles < cantidad) {
+			throw new IllegalArgumentException("No hay suficientes unidades disponibles para dar de baja");
+		}
+		disponibles -= cantidad;
+	}
+
 	public int total() {
 		return disponibles + danadas + enLimpieza + perdidas;
 	}

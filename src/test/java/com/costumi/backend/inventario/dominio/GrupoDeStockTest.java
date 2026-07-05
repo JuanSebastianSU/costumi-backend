@@ -57,6 +57,23 @@ class GrupoDeStockTest {
 	}
 
 	@Test
+	void dar_de_baja_reduce_disponibles_y_total() {
+		GrupoDeStock grupo = nuevo(8);
+
+		grupo.darDeBaja(3);
+
+		assertThat(grupo.disponibles()).isEqualTo(5);
+		assertThat(grupo.total()).isEqualTo(5);
+	}
+
+	@Test
+	void no_se_puede_dar_de_baja_mas_de_lo_disponible() {
+		GrupoDeStock grupo = nuevo(2);
+
+		assertThatThrownBy(() -> grupo.darDeBaja(5)).isInstanceOf(IllegalArgumentException.class);
+	}
+
+	@Test
 	void mismaVariante_compara_por_combinacion() {
 		UUID empresa = UUID.randomUUID();
 		UUID prenda = UUID.randomUUID();

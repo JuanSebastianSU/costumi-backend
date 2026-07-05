@@ -61,7 +61,16 @@ class VentaIntegrationTest {
 		UUID categoria = postId("/api/v1/categorias", dueno, "{\"nombre\":\"Peluca " + UUID.randomUUID() + "\"}");
 		UUID prenda = postId("/api/v1/prendas", dueno, "{\"categoriaId\":\"" + categoria
 				+ "\",\"nombre\":\"Peluca\",\"tipoArticulo\":\"VENTA\",\"precioVenta\":50.00}");
+		postId("/api/v1/prendas/" + prenda + "/grupos-stock", dueno,
+				"{\"combinacion\":[],\"cantidadInicial\":5}");
 		return new UUID[] { sucursal, prenda };
+	}
+
+	private int disponiblesDe(UUID prenda) throws Exception {
+		String res = mvc.perform(get("/api/v1/prendas/{id}/grupos-stock", prenda)
+						.header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+		return json.readTree(res).get(0).get("disponibles").asInt();
 	}
 
 	@Test
@@ -83,6 +92,44 @@ class VentaIntegrationTest {
 		mvc.perform(get("/api/v1/ventas").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.length()").value(1));
+	}
+
+	@Test
+	void confirmar_venta_descuenta_el_stock() throws Exception {
+		UUID[] ctx = montar();
+		UUID sucursal = ctx[0];
+		UUID prenda = ctx[1];
+
+		mvc.perform(post("/api/v1/ventas").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + sucursal + "\",\"lineas\":[{\"prendaId\":\"" + prenda
+								+ "\",\"cantidad\":2,\"precioUnitario\":50.00}]}"))
+				.andExpect(status().isCreated());
+
+		// Stock 5 - 2 vendidas = 3 disponibles (RF-4.4).
+		org.assertj.core.api.Assertions.assertThat(disponiblesDe(prenda)).isEqualTo(3);
+	}
+
+	@Test
+	void vender_mas_de_lo_disponible_devuelve_409() throws Exception {
+		UUID[] ctx = montar();
+
+		mvc.perform(post("/api/v1/ventas").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + ctx[0] + "\",\"lineas\":[{\"prendaId\":\"" + ctx[1]
+								+ "\",\"cantidad\":9,\"precioUnitario\":50.00}]}"))
+				.andExpect(status().isConflict());
+	}
+
+	@Test
+	void vender_una_prenda_inexistente_devuelve_400() throws Exception {
+		UUID[] ctx = montar();
+
+		mvc.perform(post("/api/v1/ventas").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + ctx[0] + "\",\"lineas\":[{\"prendaId\":\"" + UUID.randomUUID()
+								+ "\",\"cantidad\":1,\"precioUnitario\":50.00}]}"))
+				.andExpect(status().isBadRequest());
 	}
 
 	@Test
