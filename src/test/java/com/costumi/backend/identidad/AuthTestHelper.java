@@ -14,12 +14,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /** Utilidad de test: siembra un usuario con el rol dado y devuelve un token de acceso. */
-final class AuthTestHelper {
+public final class AuthTestHelper {
 
 	private AuthTestHelper() {
 	}
 
-	static String token(MockMvc mvc, ObjectMapper json, UsuarioRepository usuarios, PasswordEncoder passwordEncoder,
+	public static String token(MockMvc mvc, ObjectMapper json, UsuarioRepository usuarios, PasswordEncoder passwordEncoder,
 			UUID empresaId, Rol rol) throws Exception {
 		String email = "u-" + UUID.randomUUID() + "@costumi.test";
 		usuarios.guardar(Usuario.crear(empresaId, email, passwordEncoder.encode("secret123"), rol));
