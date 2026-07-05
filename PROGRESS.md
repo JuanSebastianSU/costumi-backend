@@ -44,7 +44,9 @@ por rol/tenant**, y **cerradas las dos deudas de seguridad**. Todo en la rama
       `POST/GET /api/v1/devoluciones`.
   12. **Venta/POS (RF-4)**: nuevo módulo `ventas`; venta con líneas **a nombre del empleado del token**,
       descuento y **total** (subtotal − descuento); cliente opcional. `POST/GET /api/v1/ventas`.
-  115 tests verdes en local.
+  13. **Pagos (RF-6)**: nuevo módulo `pagos`; pago ligado a renta/venta, método (efectivo/tarjeta/
+      transferencia) y **clave de idempotencia** (no duplica cobros, RF-17.6). `POST/GET /api/v1/pagos`.
+  121 tests verdes en local.
 
 ## Próximo paso concreto
 1. ✅ Andamiaje (mergeado a `main`) + check `build` requerido enganchado por Juan.
@@ -72,7 +74,8 @@ por rol/tenant**, y **cerradas las dos deudas de seguridad**. Todo en la rama
 13. ✅ **Renta (RF-3)**: crear (fechas/importe/depósito) + máquina de estados + vencidas.
 14. ✅ **Devolución (RF-5)**: checklist por pieza + liquidación del depósito.
 15. ✅ **Venta/POS (RF-4)**: venta con líneas, descuento y total, a nombre del empleado.
-16. ⬜ **Pagos, caja y depósitos (RF-6)** ← siguiente — pagos ligados a renta/venta, métodos, caja.
+16. ✅ **Pagos (RF-6)**: pago ligado a renta/venta, métodos e idempotencia. ⬜ Falta caja/turno y corte (RF-6.3/6.10).
+17. ⬜ **Reportes (RF-9)** ← siguiente — ingresos por renta/venta, ganancia, filtros (modelo de lectura).
 
 ## Tablero de módulos
 Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
@@ -86,7 +89,7 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 | Pedidos / carrito | Hexagonal | 🟨 | RF-16 — carrito segmentado + líneas (PR #7); falta confirmar/checkout y offline |
 | Rentas | Hexagonal | 🟨 | RF-3 — crear + importe + estados (PR #7); falta disponibilidad por fechas y extensión |
 | Ventas / POS | Hexagonal | 🟨 | RF-4 — venta con líneas + descuento + total (PR #7); falta descuento de stock y comprobante |
-| Pagos, caja y depósitos | Hexagonal | ⬜ | RF-6 |
+| Pagos, caja y depósitos | Hexagonal | 🟨 | RF-6 — pago ligado + método + idempotencia (PR #7); falta caja/turno y corte |
 | Devoluciones y multas | Hexagonal | 🟨 | RF-5 — checklist + liquidación (PR #7); falta multas auto y actualizar inventario |
 | Clientes | Simple | 🟨 | RF-7 — ficha + búsqueda + lista negra (PR #7); falta historial (RF-7.2) |
 | Empleados | Simple | ⬜ | RF-8 |
@@ -127,6 +130,11 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-04 (q)** — Nuevo módulo **Pagos (RF-6)**: `Pago` ligado a un concepto (RENTA/VENTA) con
+  monto, método (EFECTIVO/TARJETA/TRANSFERENCIA), referencia y **clave de idempotencia** (índice único
+  parcial por empresa → no duplica cobros, RF-17.6/CLAUDE.md). `POST/GET /api/v1/pagos?conceptoId=`.
+  Migración `V13`. Build local **verde (121 tests, 10 módulos)**. En **PR #7**. Falta (deferido): caja por
+  sucursal/turno + corte y cuadre (RF-6.3/6.10), saldos y reembolsos (RF-6.9), depósito como retención (RF-6.2).
 - **2026-07-04 (p)** — Nuevo módulo **Ventas/POS (RF-4)**: `Venta` (agregado con líneas) **a nombre del
   empleado del token** (RF-4.2), con descuento y **total = subtotal − descuento**; cliente opcional.
   `POST/GET /api/v1/ventas`. Migración `V12` (venta + linea_de_venta; `empleado_id`→usuario). Build local
