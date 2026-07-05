@@ -39,7 +39,10 @@ por rol/tenant**, y **cerradas las dos deudas de seguridad**. Todo en la rama
   10. **Renta (RF-3)**: nuevo módulo `rentas`; crear renta (fechas, **importe = precio × días**, depósito),
       máquina de estados RESERVADA→ACTIVA→DEVUELTA→CERRADA (+ CANCELADA) y detección de vencidas.
       `POST /api/v1/rentas`, `GET /api/v1/rentas`, `POST /api/v1/rentas/{id}/{entregar|devolver|cerrar|cancelar}`.
-  102 tests verdes en local.
+  11. **Devolución (RF-5)**: nuevo módulo `devoluciones`; **checklist por pieza** (¿llegó? + estado) y
+      **liquidación del depósito** (garantía − daños − recargos = remanente, sin bajar de 0).
+      `POST/GET /api/v1/devoluciones`.
+  108 tests verdes en local.
 
 ## Próximo paso concreto
 1. ✅ Andamiaje (mergeado a `main`) + check `build` requerido enganchado por Juan.
@@ -65,7 +68,8 @@ por rol/tenant**, y **cerradas las dos deudas de seguridad**. Todo en la rama
 11. ✅ **Clientes (RF-7)**: ficha + búsqueda + lista negra (adelantado, es prerequisito del Carrito).
 12. ✅ **Carrito (RF-16)**: persistente y segmentado por (sucursal × cliente × tipo), renta/venta separados.
 13. ✅ **Renta (RF-3)**: crear (fechas/importe/depósito) + máquina de estados + vencidas.
-14. ⬜ **Devolución (RF-5)** ← siguiente — checklist por pieza, multas, liquidación de depósito.
+14. ✅ **Devolución (RF-5)**: checklist por pieza + liquidación del depósito.
+15. ⬜ **Venta/POS (RF-4)** ← siguiente — carrito de venta, descuento de stock, comprobante.
 
 ## Tablero de módulos
 Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
@@ -80,7 +84,7 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 | Rentas | Hexagonal | 🟨 | RF-3 — crear + importe + estados (PR #7); falta disponibilidad por fechas y extensión |
 | Ventas / POS | Hexagonal | ⬜ | RF-4 |
 | Pagos, caja y depósitos | Hexagonal | ⬜ | RF-6 |
-| Devoluciones y multas | Hexagonal | ⬜ | RF-5 |
+| Devoluciones y multas | Hexagonal | 🟨 | RF-5 — checklist + liquidación (PR #7); falta multas auto y actualizar inventario |
 | Clientes | Simple | 🟨 | RF-7 — ficha + búsqueda + lista negra (PR #7); falta historial (RF-7.2) |
 | Empleados | Simple | ⬜ | RF-8 |
 | Reportes | Simple | ⬜ | RF-9 |
@@ -120,6 +124,12 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-04 (o)** — Nuevo módulo **Devoluciones (RF-5)**: `Devolucion` (agregado con checklist
+  `PiezaRevisada`: ¿llegó? + estado BIEN/DANADA/EN_LIMPIEZA/PERDIDA, RF-5.1) y **liquidación del
+  depósito** (RF-5.3): remanente = depósito − daños − recargos, floored en 0. `POST/GET /api/v1/devoluciones`.
+  Migración `V11` (devolucion + pieza_revisada). Build local **verde (108 tests, 8 módulos)**. En **PR #7**.
+  Falta (deferido): multa/cargo automático (RF-5.2, depende de config de multas RF-6.6), actualizar inventario
+  (RF-5.4, evento hacia GrupoDeStock) y devolución parcial (RF-5.5).
 - **2026-07-04 (n)** — Nuevo módulo **Rentas (RF-3)**: `Renta` con fechas de retiro/devolución,
   **importe = precio × días** (mínimo 1) y depósito; máquina de estados RESERVADA→ACTIVA→DEVUELTA→CERRADA
   (+ CANCELADA desde RESERVADA) y `estaVencida`. `POST /api/v1/rentas`, `GET /api/v1/rentas?clienteId=`,
