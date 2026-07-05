@@ -14,11 +14,11 @@
 - Reglas: **1 commit por feature**, **tests de dominio por cada feature**, **§5.4 temprano**, ambiguo → decisión aquí.
 - **En curso:** Tanda 1 en **PR #8** (`chore/scaffolding-modulith` → `main`; **PR #7 ya lo mergeó Juan**).
   Hecho en la tanda: (1) **§5.4 base** — `ContextoDeTenant`; (2) **motor de variantes real** — `GrupoDeStock`
-  = combinación real de valores de etiqueta; (3) **Prenda↔etiquetas (Capa 2)**; (4) **tipo↔categoría (RF-2.7.2)**
-  — el tipo de etiqueta declara a qué categorías aplica (vacío = todas) y se **impone** al etiquetar prendas y
-  crear variantes. **Falta en Tanda 1:** resto de taxonomía (por-slot RF-2.7.5 — depende de Slot; rename
-  propaga endpoints; seed de básicos RF-2.7.7), Disfraz/Slot + disponibilidad derivada RF-2.4, `X-Sucursal-Id`,
-  tooling OpenAPI contract-first. Al terminar → ⛔ CHECKPOINT.
+  = combinación real de valores de etiqueta; (3) **Prenda↔etiquetas (Capa 2)**; (4) **tipo↔categoría (RF-2.7.2)**;
+  (5) **Disfraz + Slot (Capa 3) + disponibilidad DERIVADA (RF-2.3/2.4)** — modo unidad-fija/por-partes, ≤8 slots,
+  dos ejes + opcional, pool personalizable; disponibilidad calculada (no contador) vía puerto de Inventario.
+  **Falta en Tanda 1:** resto de taxonomía (por-slot RF-2.7.5, rename-propaga endpoints, seed de básicos RF-2.7.7),
+  `X-Sucursal-Id`, tooling OpenAPI contract-first. Al terminar → ⛔ CHECKPOINT.
 
 ## Pendiente de revisión (Juan sin recursos por el momento)
 > Por acuerdo con el responsable, se siguió ejecutando en slices **sin esperar la revisión**.
@@ -157,6 +157,21 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-05 (x)** — **Tanda 1 · Disfraz + Slot (Capa 3) + disponibilidad DERIVADA (P0, RF-2.3/2.4).** Nuevo
+  módulo `disfraces`. `Disfraz` con **modo** `UNIDAD_FIJA` (una prenda fija) o `POR_PARTES` (**1..8 `Slot`**).
+  Cada `Slot` con los **dos ejes** (talla FIJA/LIBRE; prenda FIJA/PERSONALIZABLE) + **opcional**; el
+  personalizable lleva un **`PoolDeSlot`** (categoría + valores de etiqueta permitidos por dimensión, RF-2.7.5).
+  **Disponibilidad derivada:** no es un contador; se **calcula** en el dominio (`Disfraz.estaDisponible`) — unidad
+  fija disponible si su prenda tiene stock; por partes disponible si **cada slot obligatorio** se cubre (los
+  opcionales no bloquean). El cálculo usa el puerto de dominio `ConsultaDeStockDePool`, puenteado en aplicación
+  al nuevo puerto público **`inventario.ConsultaDeInventario`** (`prendaTieneStockDisponible` /
+  `poolTieneStockDisponible`). Persistencia agregado (cabecera+slots+pool) en **V19** (`disfraz`,
+  `disfraz_slot`, `disfraz_slot_etiqueta`). `POST/GET /api/v1/disfraces` y
+  `GET /api/v1/disfraces/{id}/disponibilidad` (POST DUENO/ENCARGADO). Tests de dominio (disponibilidad con stub:
+  unidad-fija, por-partes, opcionales no bloquean, talla fija, límites 1..8) + integración (disponibilidad
+  true/false derivada del stock, pool personalizable, 400/403/401). **173 verdes.** _Decisión:_ validación
+  cross-ref de `prendaFijaId`/`categoría`/valores del pool contra el tenant se difiere al **endurecimiento §5.4**
+  (hoy el dominio garantiza integridad estructural y el tenant se acota en el propio disfraz).
 - **2026-07-05 (w)** — **Tanda 1 · Taxonomía: el tipo de etiqueta aplica a categorías (P0, RF-2.7.2).**
   `TipoEtiqueta` gana **`categoriasQueAplica`** (conjunto): **vacío = aplica a todas** (dimensión global tipo
   "Color"); con valores = solo esas. Persistencia en tabla hija `tipo_etiqueta_categoria` (**V18**,
