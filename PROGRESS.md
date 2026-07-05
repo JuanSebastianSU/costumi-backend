@@ -5,10 +5,20 @@
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
 ## Fase actual
-**Fase 2 — Primer módulo (Identidad/tenant).** Andamiaje + CI listos y verdes. Arrancado
-el módulo **Identidad y tenant** con la primera rebanada vertical: **auto-registro de
-Empresa (RF-15.2)** end-to-end. Todo el trabajo vive en la rama `chore/scaffolding-modulith`
-(regla de Juan: nada va a `main` sin su aprobación por PR).
+**Fase 2 — Módulo Identidad/tenant (auth y autorización).** Empresa (registro, ciclo de vida,
+plazo) y Sucursal ya en `main`. Cerrado el cimiento de **auth por token** y la **autorización
+por rol/tenant**, y **cerradas las dos deudas de seguridad**. Todo en la rama
+`chore/scaffolding-modulith` (regla de Juan: nada a `main` sin su aprobación por PR).
+
+## Pendiente de revisión (Juan sin recursos por el momento)
+> Por acuerdo con el responsable, se siguió ejecutando en slices **sin esperar la revisión**.
+> Lo de abajo está en la rama, **verde en CI**, a la espera de que Juan revise/mergee.
+- **PR #7 — cierre de seguridad de auth** (sobre `main`, que ya tiene auth del PR #6):
+  1. **Fail-fast del secreto JWT** en producción → cierra la deuda bloqueante.
+  2. **Autorización por rol/tenant:** SUPERADMIN para ciclo de vida de Empresa y cola de
+     pendientes; DUENO/ENCARGADO + dueño del tenant para alta de Sucursal → cierra la deuda de endpoints.
+  3. **Bootstrap del SuperAdmin** por seed (auth usable en despliegue nuevo).
+  43 tests verdes en local.
 
 ## Próximo paso concreto
 1. ✅ Andamiaje (mergeado a `main`) + check `build` requerido enganchado por Juan.
@@ -17,14 +27,14 @@ Empresa (RF-15.2)** end-to-end. Todo el trabajo vive en la rama `chore/scaffoldi
    endpoints `POST /{id}/{accion}`, errores en Problem Details (404/409) (PR #3).
 4. ✅ Módulo Identidad — rebanada 3: **Sucursal** (1..N por Empresa) con `empresa_id` (RF-15.1);
    solo una empresa ACTIVA puede abrir sucursales (RF-15.4). `POST /api/v1/empresas/{id}/sucursales` (PR #4).
-5. ✅ RF-15.4 (plazo de resolución): cola `GET /api/v1/empresas/pendientes` con marca de **vencida**
-   y plazo configurable (`costumi.empresa.plazo-resolucion-dias`, default 2) (PR #5). ⬜ Falta la
-   escalada/recordatorio automático (necesita notificaciones, RF-11) y restringir a rol SuperAdmin.
-6. 🟨 **Auth por token (RF-17.4/§5.6):** ✅ circuito base (Usuario, login JWT HS256, `/me` protegido, PR #6).
-   ⬜ Falta: refresh token, editor de permisos granular (RF-1.5), bootstrap del SuperAdmin por seed.
-7. ⬜ **Aislamiento multi-tenant real (§5.4):** con el token ya lleva `empresa_id` → contexto de request +
-   filtro forzado; **blindar por rol/tenant los endpoints de la deuda** (cierra "Deuda / a sanear").
+5. ✅ RF-15.4 (plazo de resolución): cola `GET /api/v1/empresas/pendientes` (SuperAdmin) con marca
+   de **vencida** y plazo configurable (PR #5). ⬜ Falta la escalada/recordatorio automático (RF-11).
+6. ✅ **Auth por token (RF-17.4/§5.6):** circuito base (login JWT HS256, `/me`, PR #6) + **autorización
+   por rol/tenant** y **bootstrap del SuperAdmin** (PR #7). ⬜ Falta: refresh token, permisos granulares (RF-1.5).
+7. 🟨 **Aislamiento multi-tenant (§5.4):** ✅ chequeo de tenant a nivel de endpoint (Sucursal, PR #7).
+   ⬜ Falta el filtro **forzado** por `empresa_id` en un contexto de request (para todo módulo futuro).
 8. ⬜ Auditoría del SuperAdmin (RF-15.5) — usando el actor del token.
+9. ⬜ Siguiente módulo de §7: **Catálogo y taxonomía (RF-2.7)** — el más delicado.
 
 ## Tablero de módulos
 Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
@@ -32,7 +42,7 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 | Módulo | Rigor | Estado | Ref |
 |---|---|---|---|
 | Andamiaje + control anti-erosión (ArchUnit/Modulith/CI) | — | ✅ | §5.3 — mergeado a `main` (PR #1) |
-| Identidad y tenant (Empresa/Sucursal/Usuario/permisos/auth) | Hexagonal | 🟨 | RF-1, RF-15, RF-17.4 — Empresa: registro (PR #2), ciclo de vida (PR #3); Sucursal (PR #4) |
+| Identidad y tenant (Empresa/Sucursal/Usuario/permisos/auth) | Hexagonal | 🟨 | RF-1, RF-15, RF-17.4 — Empresa (PR #2/#3/#5), Sucursal (PR #4), auth+autorización (PR #6/#7). Falta refresh token y permisos granulares |
 | Catálogo y taxonomía (etiquetas, categorías) | Hexagonal | ⬜ | RF-2.7 — el más delicado |
 | Inventario y disponibilidad | Hexagonal | ⬜ | RF-2 |
 | Pedidos / carrito | Hexagonal | ⬜ | RF-16 |
@@ -62,14 +72,12 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - UX de descubrimiento del marketplace (búsqueda, cercanía, filtros, reseñas — RF-18).
 
 ## Deuda / a sanear
-- **⚠️ Secreto JWT por defecto — BLOQUEANTE antes de producción (PR #6).** `costumi.security.jwt.secret`
-  trae un default commiteado, solo para desarrollo. **Producción NO debe arrancar con ese default:**
-  exigir `COSTUMI_JWT_SECRET` y **fallar al inicio** (fail-fast) si falta o coincide con el default.
-  Cerrar antes de cualquier despliegue real.
-- **Endpoints sin control de rol/tenant (blindar al implementar auth, RF-17.4):** acciones de
-  ciclo de vida de Empresa (PR #3), alta de Sucursal — validar dueño del tenant (PR #4), cola de
-  pendientes — restringir a SuperAdmin (PR #5). Al cerrar la rebanada de auth, revisar que los tres
-  queden protegidos.
+- ✅ **RESUELTO (PR #7)** — ~~Secreto JWT por defecto bloqueante en producción~~: ahora hay fail-fast
+  en perfil `prod` si el secreto falta o es el default (`ValidacionSecretoJwt`). Pendiente al desplegar:
+  **setear `COSTUMI_JWT_SECRET` por entorno**.
+- ✅ **RESUELTO (PR #7)** — ~~Endpoints sin control de rol/tenant~~: ciclo de vida de Empresa y cola de
+  pendientes exigen SUPERADMIN; alta de Sucursal exige DUENO/ENCARGADO + dueño del tenant.
+- (vacío por ahora)
 
 ## A re-verificar cada sesión (invariantes)
 - ¿ArchUnit y Modulith siguen en verde?
@@ -78,6 +86,12 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-04 (g)** — Run largo autónomo (Juan sin recursos), 3 slices de cierre de seguridad sobre
+  `main`+auth: (1) **fail-fast del secreto JWT** en perfil `prod`; (2) **autorización por rol/tenant** —
+  SUPERADMIN para ciclo de vida de Empresa y cola de pendientes, DUENO/ENCARGADO + dueño del tenant para
+  Sucursal (401 sin token, 403 por rol/tenant); tests de integración actualizados para autenticar;
+  (3) **bootstrap del SuperAdmin** por seed (configurable por entorno). **Cerradas las 2 deudas de
+  seguridad.** Build local **verde (43 tests)**. En **PR #7**, pendiente de revisión de Juan.
 - **2026-07-04 (f)** — Módulo **Identidad/tenant**, rebanada 5: **auth por token (RF-17.4/§5.6, base)**.
   Spring Security + OAuth2 Resource Server; **JWT HS256** (secreto configurable, override por
   `COSTUMI_JWT_SECRET`). Dominio `Usuario` + `Rol` (SUPERADMIN + plantillas RF-1.3) con invariante
