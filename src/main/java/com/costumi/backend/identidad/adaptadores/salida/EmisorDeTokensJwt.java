@@ -21,18 +21,21 @@ class EmisorDeTokensJwt implements EmisorDeTokens {
 
 	private final JwtEncoder encoder;
 	private final Duration expiracion;
+	private final String issuer;
 
 	EmisorDeTokensJwt(JwtEncoder encoder,
-			@Value("${costumi.security.jwt.expiracion-minutos:60}") long expiracionMinutos) {
+			@Value("${costumi.security.jwt.expiracion-minutos:60}") long expiracionMinutos,
+			@Value("${costumi.security.jwt.issuer:costumi}") String issuer) {
 		this.encoder = encoder;
 		this.expiracion = Duration.ofMinutes(expiracionMinutos);
+		this.issuer = issuer;
 	}
 
 	@Override
 	public String emitir(Usuario usuario) {
 		Instant ahora = Instant.now();
 		JwtClaimsSet.Builder claims = JwtClaimsSet.builder()
-				.issuer("costumi")
+				.issuer(issuer)
 				.issuedAt(ahora)
 				.expiresAt(ahora.plus(expiracion))
 				.subject(usuario.id().toString())
