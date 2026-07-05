@@ -62,6 +62,10 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - UX de descubrimiento del marketplace (búsqueda, cercanía, filtros, reseñas — RF-18).
 
 ## Deuda / a sanear
+- **⚠️ Secreto JWT por defecto — BLOQUEANTE antes de producción (PR #6).** `costumi.security.jwt.secret`
+  trae un default commiteado, solo para desarrollo. **Producción NO debe arrancar con ese default:**
+  exigir `COSTUMI_JWT_SECRET` y **fallar al inicio** (fail-fast) si falta o coincide con el default.
+  Cerrar antes de cualquier despliegue real.
 - **Endpoints sin control de rol/tenant (blindar al implementar auth, RF-17.4):** acciones de
   ciclo de vida de Empresa (PR #3), alta de Sucursal — validar dueño del tenant (PR #4), cola de
   pendientes — restringir a SuperAdmin (PR #5). Al cerrar la rebanada de auth, revisar que los tres
