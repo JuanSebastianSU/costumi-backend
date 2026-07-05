@@ -21,7 +21,10 @@ por rol/tenant**, y **cerradas las dos deudas de seguridad**. Todo en la rama
   4. **Catálogo — Categoría (RF-2.8)**: nuevo módulo `catalogo`; alta/listado de categorías
      **acotadas al tenant del token** (primer uso real del aislamiento multi-tenant; una empresa
      no ve las de otra). DUENO/ENCARGADO para crear.
-  51 tests verdes en local.
+  5. **Catálogo — motor de etiquetas (RF-2.7.1/2.7.2)**: `TipoEtiqueta` (con interruptores
+     ¿define variante? / ¿seleccionable por cliente?) + `ValorEtiqueta`; `POST/GET /api/v1/tipos-etiqueta`
+     y `.../{id}/valores`, acotado al tenant (404 al tocar un tipo de otra empresa).
+  59 tests verdes en local.
 
 ## Próximo paso concreto
 1. ✅ Andamiaje (mergeado a `main`) + check `build` requerido enganchado por Juan.
@@ -37,9 +40,11 @@ por rol/tenant**, y **cerradas las dos deudas de seguridad**. Todo en la rama
 7. 🟨 **Aislamiento multi-tenant (§5.4):** ✅ chequeo de tenant a nivel de endpoint (Sucursal, PR #7).
    ⬜ Falta el filtro **forzado** por `empresa_id` en un contexto de request (para todo módulo futuro).
 8. ⬜ Auditoría del SuperAdmin (RF-15.5) — usando el actor del token.
-9. 🟨 **Catálogo y taxonomía (RF-2.7)** — el más delicado. ✅ Categoría (PR #7). ⬜ Motor de
-   etiquetas: `TipoEtiqueta` + `ValorEtiqueta` con interruptores (¿define variante?, ¿seleccionable
-   por cliente?, ¿a qué categorías aplica?) (RF-2.7.1–2.7.7).
+9. 🟨 **Catálogo y taxonomía (RF-2.7)** — el más delicado. ✅ Categoría + `TipoEtiqueta`/`ValorEtiqueta`
+   con interruptores (PR #7). ⬜ Falta: aplicabilidad tipo↔categoría (RF-2.7.2), ciclo de vida
+   archivar/renombrar por API (RF-2.7.6), y el **GrupoDeStock** (combinación de valores, RF-2.7.3/2.7.4)
+   — este último ya es parte de Inventario (RF-2).
+10. ⬜ **Inventario y disponibilidad (RF-2)** — Prenda, GrupoDeStock/Variante, disponibilidad derivada.
 
 ## Tablero de módulos
 Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
@@ -48,7 +53,7 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 |---|---|---|---|
 | Andamiaje + control anti-erosión (ArchUnit/Modulith/CI) | — | ✅ | §5.3 — mergeado a `main` (PR #1) |
 | Identidad y tenant (Empresa/Sucursal/Usuario/permisos/auth) | Hexagonal | 🟨 | RF-1, RF-15, RF-17.4 — Empresa (PR #2/#3/#5), Sucursal (PR #4), auth+autorización (PR #6/#7). Falta refresh token y permisos granulares |
-| Catálogo y taxonomía (etiquetas, categorías) | Hexagonal | 🟨 | RF-2.7 — Categoría + aislamiento tenant (PR #7); falta motor de etiquetas |
+| Catálogo y taxonomía (etiquetas, categorías) | Hexagonal | 🟨 | RF-2.7 — Categoría + TipoEtiqueta/ValorEtiqueta (PR #7); falta aplicabilidad tipo↔categoría y GrupoDeStock |
 | Inventario y disponibilidad | Hexagonal | ⬜ | RF-2 |
 | Pedidos / carrito | Hexagonal | ⬜ | RF-16 |
 | Rentas | Hexagonal | ⬜ | RF-3 |
@@ -91,6 +96,11 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-04 (i)** — Catálogo, **motor de etiquetas (RF-2.7.1/2.7.2)**: `TipoEtiqueta` (interruptores
+  ¿define variante?/¿seleccionable por cliente?) + `ValorEtiqueta`, ambos con `empresa_id`. Casos de uso
+  crear tipo / listar tipos / agregar valor / listar valores; validación de que el tipo pertenece al
+  tenant (404 si no). `POST/GET /api/v1/tipos-etiqueta` y `.../{id}/valores` (DUENO/ENCARGADO para crear).
+  Migración `V5`. Manejador de errores propio del módulo. Build local **verde (59 tests)**. En **PR #7**.
 - **2026-07-04 (h)** — Iniciado el módulo **Catálogo/taxonomía (RF-2.7)**: **Categoría (RF-2.8)** con
   aislamiento multi-tenant (scope por `empresa_id` del token; una empresa no ve las de otra). Dominio
   puro (archivar/renombrar, RF-2.7.6), puertos, servicio, JPA (`V4__crear_categoria.sql`, índice único
