@@ -5,11 +5,15 @@
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
 ## Fase actual
-**Fase 3 — Todos los módulos de §7 con primera rebanada.** Los 14 módulos del listado de §7 tienen
-una rebanada vertical verde, multi-tenant y probada (identidad, catálogo, inventario, clientes, pedidos,
-rentas, devoluciones, ventas, pagos, reportes, configuración, notificaciones, marketplace). Todo en la
-rama `chore/scaffolding-modulith` / **PR #7** (regla de Juan: nada a `main` sin su aprobación). Sigue la
-fase de **profundizar** cada módulo + piezas transversales (§5.4/5.5/5.6/5.7).
+**Fase 4 — Cierre del backend (handoff `CIERRE_BACKEND.md` de Juan).** Los 14 módulos de §7 tienen su
+1ª rebanada (ancho pero **delgado**). Ahora se cierra el backend en **3 tandas por dependencia**, modo
+"RUN GRANDE" (por tiempo, sin revisión rebanada a rebanada):
+- **Tanda 1 = P0 (núcleo del modelo) + P1 (seguridad/frontera).** ⛔ **CHECKPOINT al terminar: PARAR y pedir
+  revisión a Juan ANTES de construir encima** (si el modelo núcleo o §5.4 quedan mal, todo lo de arriba se rehace).
+- **Tanda 2 = P2+P3** (ciclo operativo + dinero) · **Tanda 3 = P4+P5** (resto).
+- Reglas: **1 commit por feature**, **tests de dominio por cada feature**, **§5.4 temprano**, ambiguo → decisión aquí.
+- **En curso:** Tanda 1. Empezando por el aislamiento §5.4 (temprano) y el núcleo del modelo (variante real,
+  Prenda↔etiquetas, Disfraz/Slot, disponibilidad derivada RF-2.4).
 
 ## Pendiente de revisión (Juan sin recursos por el momento)
 > Por acuerdo con el responsable, se siguió ejecutando en slices **sin esperar la revisión**.
@@ -113,6 +117,10 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 | App cliente (marketplace) | — | 🟨 | RF-18 — descubrimiento de empresas ACTIVAS (PR #7); falta catálogo/checkout del cliente |
 
 ## Decisiones aceptadas
+- **Plan de cierre (2026-07-04, `CIERRE_BACKEND.md` de Juan):** cerrar el backend en **3 tandas** (T1=P0+P1,
+  T2=P2+P3, T3=P4+P5), modo RUN GRANDE. **CHECKPOINT obligatorio tras Tanda 1** (parar y pedir revisión antes
+  de seguir). 1 commit por feature, tests de dominio por feature, §5.4 temprano. El cliente Kotlin se genera
+  **al final** (tras Tanda 3), no en Tanda 1. El backlog P0–P5 vive en `CIERRE_BACKEND.md`.
 - **Decisión (2026-07-04, aprobada por Juan):** se acepta `reactivar` (SUSPENDIDA → ACTIVA)
   como acción del SuperAdmin aunque no figuraba en RF-15.3; se considera complemento natural
   de `suspender`. Pendiente reflejarlo en `BACKEND_REQUIREMENTS.md` (RF-15.3).
