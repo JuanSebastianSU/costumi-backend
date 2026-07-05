@@ -55,4 +55,22 @@ class PrendaTest {
 				null, new BigDecimal("10.00")))
 				.isInstanceOf(IllegalArgumentException.class);
 	}
+
+	@Test
+	void una_prenda_lleva_sus_valores_de_etiqueta() {
+		UUID color = UUID.randomUUID();
+		UUID rojo = UUID.randomUUID();
+
+		Prenda prenda = Prenda.crear(EMPRESA, CATEGORIA, "Camisa pirata", TipoArticulo.VENTA,
+				null, new BigDecimal("10.00"), EtiquetasDePrenda.de(java.util.Map.of(color, rojo)));
+
+		assertThat(prenda.etiquetas().valorDe(color)).contains(rojo);
+	}
+
+	@Test
+	void una_prenda_sin_etiquetas_arranca_sin_clasificar() {
+		Prenda prenda = Prenda.crear(EMPRESA, CATEGORIA, "Camisa", TipoArticulo.VENTA, null, new BigDecimal("10.00"));
+
+		assertThat(prenda.etiquetas().esVacia()).isTrue();
+	}
 }

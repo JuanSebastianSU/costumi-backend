@@ -1,14 +1,20 @@
 package com.costumi.backend.inventario.adaptadores.salida;
 
 import com.costumi.backend.inventario.dominio.TipoArticulo;
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.UUID;
 
 /** Mapeo JPA de la Prenda. Lleva {@code empresa_id} (tenant) y la categoría. */
@@ -38,6 +44,10 @@ class PrendaJpaEntity {
 	@Column(name = "precio_venta", precision = 12, scale = 2)
 	private BigDecimal precioVenta;
 
+	@ElementCollection(fetch = FetchType.EAGER)
+	@CollectionTable(name = "prenda_valor_etiqueta", joinColumns = @JoinColumn(name = "prenda_id"))
+	private Set<EtiquetaDePrendaEmbeddable> etiquetas = new LinkedHashSet<>();
+
 	@Column(nullable = false)
 	private boolean archivada;
 
@@ -46,7 +56,7 @@ class PrendaJpaEntity {
 	}
 
 	PrendaJpaEntity(UUID id, UUID empresaId, UUID categoriaId, String nombre, TipoArticulo tipoArticulo,
-			BigDecimal precioRenta, BigDecimal precioVenta, boolean archivada) {
+			BigDecimal precioRenta, BigDecimal precioVenta, Set<EtiquetaDePrendaEmbeddable> etiquetas, boolean archivada) {
 		this.id = id;
 		this.empresaId = empresaId;
 		this.categoriaId = categoriaId;
@@ -54,6 +64,7 @@ class PrendaJpaEntity {
 		this.tipoArticulo = tipoArticulo;
 		this.precioRenta = precioRenta;
 		this.precioVenta = precioVenta;
+		this.etiquetas = etiquetas;
 		this.archivada = archivada;
 	}
 
@@ -83,6 +94,10 @@ class PrendaJpaEntity {
 
 	BigDecimal getPrecioVenta() {
 		return precioVenta;
+	}
+
+	Set<EtiquetaDePrendaEmbeddable> getEtiquetas() {
+		return etiquetas;
 	}
 
 	boolean isArchivada() {

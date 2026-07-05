@@ -1,6 +1,7 @@
 package com.costumi.backend.inventario.adaptadores.entrada;
 
 import com.costumi.backend.inventario.aplicacion.CombinacionDeVarianteInvalida;
+import com.costumi.backend.inventario.aplicacion.EtiquetaDePrendaInvalida;
 import com.costumi.backend.inventario.aplicacion.GrupoDeStockNoEncontrado;
 import com.costumi.backend.inventario.aplicacion.PrendaNoEncontrada;
 import com.costumi.backend.inventario.aplicacion.VarianteDuplicada;
@@ -42,6 +43,13 @@ class ManejadorDeErroresInventario {
 	ProblemDetail combinacionInvalida(CombinacionDeVarianteInvalida ex) {
 		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
 		problema.setTitle("Combinación de variante inválida");
+		return problema;
+	}
+
+	@ExceptionHandler(EtiquetaDePrendaInvalida.class)
+	ProblemDetail etiquetaInvalida(EtiquetaDePrendaInvalida ex) {
+		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+		problema.setTitle("Etiqueta de prenda inválida");
 		return problema;
 	}
 

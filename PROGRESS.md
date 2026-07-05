@@ -14,7 +14,8 @@
 - Reglas: **1 commit por feature**, **tests de dominio por cada feature**, **§5.4 temprano**, ambiguo → decisión aquí.
 - **En curso:** Tanda 1 en **PR #8** (`chore/scaffolding-modulith` → `main`; **PR #7 ya lo mergeó Juan**).
   Hecho en la tanda: (1) **§5.4 base** — `ContextoDeTenant`; (2) **motor de variantes real** — `GrupoDeStock`
-  = combinación real de valores de etiqueta. **Falta en Tanda 1:** Prenda↔etiquetas (Capa 2), taxonomía
+  = combinación real de valores de etiqueta; (3) **Prenda↔etiquetas (Capa 2)** — la prenda porta sus valores
+  de etiqueta de clasificación, validados contra la taxonomía del tenant. **Falta en Tanda 1:** taxonomía
   completa (tipo↔categoría, por-slot, rename propaga, seed), Disfraz/Slot + disponibilidad derivada RF-2.4,
   `X-Sucursal-Id`, tooling OpenAPI contract-first. Al terminar → ⛔ CHECKPOINT.
 
@@ -155,6 +156,19 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-05 (v)** — **Tanda 1 · Prenda lleva sus valores de etiqueta (P0, RF-2.7, Capa 2).** La `Prenda`
+  porta ahora una **`EtiquetasDePrenda`** (value object inmutable, mapa `tipoEtiquetaId → valorEtiquetaId`,
+  una por dimensión) que la **clasifica** — concepto distinto de la combinación de variante del grupo de stock
+  (esa solo abarca los tipos "definen variante"; esta clasifica el ítem con cualquier tipo/valor). El caso de
+  uso valida cada etiqueta contra la taxonomía del tenant (`catalogo.ConsultaDeTaxonomia.valorPerteneceATipo`,
+  sin exigir que defina variante) y rechaza dimensión repetida (400). Persistencia en tabla hija
+  `prenda_valor_etiqueta` (**V17**), `@ElementCollection`. Solo se guardan **ids** → renombrar un valor
+  **propaga** sin tocar la prenda. Tests de dominio (`EtiquetasDePrenda`, Prenda con/sin etiquetas) +
+  integración (etiquetas válidas de vuelta / valor de otro tipo 400). **157 verdes.** _Decisiones:_ (a) una
+  prenda lleva **un valor por dimensión** (no multi-valor); (b) por ahora **no** se valida que el tipo "aplique
+  a la categoría" de la prenda — ese constraint llega con la taxonomía completa (RF-2.7.2, task #5), porque
+  `TipoEtiqueta` aún no tiene el campo "categorías que aplica". _Deuda §5.4:_ validar `Prenda.categoria_id`
+  contra el tenant (cross-ref) queda para el endurecimiento del aislamiento.
 - **2026-07-05 (u)** — **Tanda 1 · Motor de variantes real (P0, RF-2.7.3/2.7.4).** `GrupoDeStock` deja de
   tener una "etiqueta" suelta y pasa a definirse por una **`CombinacionDeVariante`** (value object inmutable:
   mapa `tipoEtiquetaId → valorEtiquetaId`, igualdad por combinación sin importar orden → habilita unicidad y
