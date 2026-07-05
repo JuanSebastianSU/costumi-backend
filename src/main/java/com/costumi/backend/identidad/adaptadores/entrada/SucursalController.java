@@ -1,10 +1,13 @@
 package com.costumi.backend.identidad.adaptadores.entrada;
 
+import com.costumi.backend.identidad.aplicacion.AccesoAlTenantDenegado;
 import com.costumi.backend.identidad.aplicacion.RegistrarSucursal;
 import com.costumi.backend.identidad.aplicacion.RegistrarSucursalComando;
 import com.costumi.backend.identidad.dominio.Sucursal;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -26,14 +29,26 @@ class SucursalController {
 		this.registrarSucursal = registrarSucursal;
 	}
 
-	/** Alta de una Sucursal para la Empresa (RF-15.1). Requiere empresa ACTIVA (RF-15.4). */
+	/**
+	 * Alta de una Sucursal (RF-15.1). El rol (DUENO/ENCARGADO) lo exige la config de seguridad;
+	 * aquí se valida además que el usuario pertenezca a esa empresa (aislamiento por tenant).
+	 */
 	@PostMapping
 	ResponseEntity<SucursalResponse> registrar(@PathVariable UUID empresaId,
-			@Valid @RequestBody RegistrarSucursalRequest request, UriComponentsBuilder uriBuilder) {
+			@Valid @RequestBody RegistrarSucursalRequest request,
+			@AuthenticationPrincipal Jwt jwt, UriComponentsBuilder uriBuilder) {
+		verificarDuenoDelTenant(jwt, empresaId);
 		Sucursal sucursal = registrarSucursal.ejecutar(
 				new RegistrarSucursalComando(empresaId, request.nombre(), request.direccion()));
 		URI location = uriBuilder.path("/api/v1/empresas/{empresaId}/sucursales/{id}")
 				.buildAndExpand(empresaId, sucursal.id()).toUri();
 		return ResponseEntity.created(location).body(SucursalResponse.desde(sucursal));
+	}
+
+	private static void verificarDuenoDelTenant(Jwt jwt, UUID empresaId) {
+		String empresaDelToken = jwt.getClaimAsString("empresa_id");
+		if (empresaDelToken == null || !empresaDelToken.equals(empresaId.toString())) {
+			throw new AccesoAlTenantDenegado(empresaId);
+		}
 	}
 }

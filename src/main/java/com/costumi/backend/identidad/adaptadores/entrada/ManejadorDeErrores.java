@@ -1,5 +1,6 @@
 package com.costumi.backend.identidad.adaptadores.entrada;
 
+import com.costumi.backend.identidad.aplicacion.AccesoAlTenantDenegado;
 import com.costumi.backend.identidad.aplicacion.CredencialesInvalidas;
 import com.costumi.backend.identidad.aplicacion.EmpresaNoEncontrada;
 import com.costumi.backend.identidad.aplicacion.EmpresaNoOperativa;
@@ -38,6 +39,13 @@ class ManejadorDeErrores {
 	ProblemDetail credencialesInvalidas(CredencialesInvalidas ex) {
 		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
 		problema.setTitle("Credenciales inválidas");
+		return problema;
+	}
+
+	@ExceptionHandler(AccesoAlTenantDenegado.class)
+	ProblemDetail accesoAlTenantDenegado(AccesoAlTenantDenegado ex) {
+		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
+		problema.setTitle("Acceso denegado");
 		return problema;
 	}
 }
