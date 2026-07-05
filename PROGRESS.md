@@ -46,7 +46,9 @@ por rol/tenant**, y **cerradas las dos deudas de seguridad**. Todo en la rama
       descuento y **total** (subtotal − descuento); cliente opcional. `POST/GET /api/v1/ventas`.
   13. **Pagos (RF-6)**: nuevo módulo `pagos`; pago ligado a renta/venta, método (efectivo/tarjeta/
       transferencia) y **clave de idempotencia** (no duplica cobros, RF-17.6). `POST/GET /api/v1/pagos`.
-  121 tests verdes en local.
+  14. **Reportes (RF-9)**: nuevo módulo `reportes` (solo lectura); **resumen de ingresos** por renta/venta
+      (JdbcClient sobre los pagos), restringido a DUENO/ENCARGADO. `GET /api/v1/reportes/ingresos`.
+  126 tests verdes en local.
 
 ## Próximo paso concreto
 1. ✅ Andamiaje (mergeado a `main`) + check `build` requerido enganchado por Juan.
@@ -75,7 +77,8 @@ por rol/tenant**, y **cerradas las dos deudas de seguridad**. Todo en la rama
 14. ✅ **Devolución (RF-5)**: checklist por pieza + liquidación del depósito.
 15. ✅ **Venta/POS (RF-4)**: venta con líneas, descuento y total, a nombre del empleado.
 16. ✅ **Pagos (RF-6)**: pago ligado a renta/venta, métodos e idempotencia. ⬜ Falta caja/turno y corte (RF-6.3/6.10).
-17. ⬜ **Reportes (RF-9)** ← siguiente — ingresos por renta/venta, ganancia, filtros (modelo de lectura).
+17. ✅ **Reportes (RF-9)**: resumen de ingresos por renta/venta (read-model). ⬜ Falta ganancia, filtros y export.
+18. ⬜ **Notificaciones (RF-11)** ← siguiente — recordatorios (vencidas, stock bajo), WhatsApp/FCM (adaptador).
 
 ## Tablero de módulos
 Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
@@ -93,7 +96,7 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 | Devoluciones y multas | Hexagonal | 🟨 | RF-5 — checklist + liquidación (PR #7); falta multas auto y actualizar inventario |
 | Clientes | Simple | 🟨 | RF-7 — ficha + búsqueda + lista negra (PR #7); falta historial (RF-7.2) |
 | Empleados | Simple | ⬜ | RF-8 |
-| Reportes | Simple | ⬜ | RF-9 |
+| Reportes | Simple (lectura) | 🟨 | RF-9 — resumen de ingresos (PR #7); falta ganancia, filtros y export |
 | Notificaciones (WhatsApp / FCM) | Simple | ⬜ | RF-11 |
 | Configuración de empresa | Simple | ⬜ | RF-12 |
 | App cliente (marketplace) | — | ⬜ | RF-18 |
@@ -130,6 +133,11 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-04 (r)** — Nuevo módulo **Reportes (RF-9)** (solo lectura, §5.2): **resumen de ingresos**
+  (`ResumenDeIngresos`) por renta/venta, calculado con **JdbcClient** sobre la tabla `pago` (read-model
+  sobre el esquema compartido, sin dependencia de código a otros módulos). `GET /api/v1/reportes/ingresos`,
+  restringido a DUENO/ENCARGADO. Sin migración. Build local **verde (126 tests, 11 módulos)**. En **PR #7**.
+  Falta (deferido): ganancia (ingreso − costo), más rentados/vendidos, utilización, filtros por fecha/sucursal, export.
 - **2026-07-04 (q)** — Nuevo módulo **Pagos (RF-6)**: `Pago` ligado a un concepto (RENTA/VENTA) con
   monto, método (EFECTIVO/TARJETA/TRANSFERENCIA), referencia y **clave de idempotencia** (índice único
   parcial por empresa → no duplica cobros, RF-17.6/CLAUDE.md). `POST/GET /api/v1/pagos?conceptoId=`.
