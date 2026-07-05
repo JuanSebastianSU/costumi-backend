@@ -5,6 +5,7 @@ import com.costumi.backend.catalogo.dominio.ValorEtiquetaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /** Adaptador de salida: implementa el puerto {@link ValorEtiquetaRepository} con JPA. */
@@ -20,6 +21,11 @@ class ValorEtiquetaRepositoryAdapter implements ValorEtiquetaRepository {
 	@Override
 	public ValorEtiqueta guardar(ValorEtiqueta valorEtiqueta) {
 		return aDominio(jpa.save(aEntidad(valorEtiqueta)));
+	}
+
+	@Override
+	public Optional<ValorEtiqueta> buscarPorId(UUID id) {
+		return jpa.findById(id).map(ValorEtiquetaRepositoryAdapter::aDominio);
 	}
 
 	@Override

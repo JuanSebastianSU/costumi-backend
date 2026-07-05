@@ -1,7 +1,9 @@
 package com.costumi.backend.identidad.aplicacion;
 
+import com.costumi.backend.identidad.EmpresaAprobada;
 import com.costumi.backend.identidad.dominio.Empresa;
 import com.costumi.backend.identidad.dominio.EmpresaRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,15 +15,19 @@ import java.util.function.Consumer;
 class GestionarEmpresaService implements GestionarEmpresa {
 
 	private final EmpresaRepository empresas;
+	private final ApplicationEventPublisher eventos;
 
-	GestionarEmpresaService(EmpresaRepository empresas) {
+	GestionarEmpresaService(EmpresaRepository empresas, ApplicationEventPublisher eventos) {
 		this.empresas = empresas;
+		this.eventos = eventos;
 	}
 
 	@Override
 	@Transactional
 	public Empresa aprobar(UUID id) {
-		return aplicar(id, Empresa::aprobar);
+		Empresa empresa = aplicar(id, Empresa::aprobar);
+		eventos.publishEvent(new EmpresaAprobada(empresa.id()));
+		return empresa;
 	}
 
 	@Override

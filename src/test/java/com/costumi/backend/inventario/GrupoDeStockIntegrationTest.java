@@ -21,7 +21,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** Grupos de stock (RF-2.2): conteo por estado, movimientos y aislamiento por tenant. */
+/**
+ * Grupos de stock (RF-2.2, RF-2.7.3): variante = combinación real de valores de etiqueta, conteo
+ * por estado, movimientos y aislamiento por tenant.
+ */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
@@ -66,11 +69,31 @@ class GrupoDeStockIntegrationTest {
 		return UUID.fromString(json.readTree(body).get("id").asText());
 	}
 
-	private UUID crearGrupo(String token, UUID prendaId, int cantidad) throws Exception {
+	private UUID crearTipoVariante(String token, String nombre) throws Exception {
+		String body = mvc.perform(post("/api/v1/tipos-etiqueta").header("Authorization", "Bearer " + token)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"" + nombre + "\",\"defineVariante\":true,\"seleccionablePorCliente\":false}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		return UUID.fromString(json.readTree(body).get("id").asText());
+	}
+
+	private UUID agregarValor(String token, UUID tipoId, String valor) throws Exception {
+		String body = mvc.perform(post("/api/v1/tipos-etiqueta/{tipoId}/valores", tipoId)
+						.header("Authorization", "Bearer " + token)
+						.contentType(MediaType.APPLICATION_JSON).content("{\"valor\":\"" + valor + "\"}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		return UUID.fromString(json.readTree(body).get("id").asText());
+	}
+
+	private static String combinacion(UUID tipoId, UUID valorId) {
+		return "[{\"tipoEtiquetaId\":\"" + tipoId + "\",\"valorEtiquetaId\":\"" + valorId + "\"}]";
+	}
+
+	private UUID crearGrupo(String token, UUID prendaId, String combinacionJson, int cantidad) throws Exception {
 		String body = mvc.perform(post("/api/v1/prendas/{prendaId}/grupos-stock", prendaId)
 						.header("Authorization", "Bearer " + token)
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"etiqueta\":\"Rojo / M\",\"cantidadInicial\":" + cantidad + "}"))
+						.content("{\"combinacion\":" + combinacionJson + ",\"cantidadInicial\":" + cantidad + "}"))
 				.andExpect(status().isCreated())
 				.andExpect(jsonPath("$.disponibles").value(cantidad))
 				.andExpect(jsonPath("$.total").value(cantidad))
@@ -79,15 +102,19 @@ class GrupoDeStockIntegrationTest {
 	}
 
 	@Test
-	void crear_listar_y_mover_unidades() throws Exception {
+	void crear_con_combinacion_real_listar_y_mover_unidades() throws Exception {
 		UUID empresa = crearEmpresa("Empresa Stock");
 		String dueno = duenoDe(empresa);
 		UUID prenda = crearPrenda(dueno, crearCategoria(dueno, "Camisa"));
-		UUID grupo = crearGrupo(dueno, prenda, 8);
+		UUID color = crearTipoVariante(dueno, "Color");
+		UUID rojo = agregarValor(dueno, color, "Rojo");
+		UUID grupo = crearGrupo(dueno, prenda, combinacion(color, rojo), 8);
 
 		mvc.perform(get("/api/v1/prendas/{prendaId}/grupos-stock", prenda).header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.id == '" + grupo + "')]").exists());
+				.andExpect(jsonPath("$[?(@.id == '" + grupo + "')]").exists())
+				.andExpect(jsonPath("$[0].combinacion[0].tipoEtiquetaId").value(color.toString()))
+				.andExpect(jsonPath("$[0].combinacion[0].valorEtiquetaId").value(rojo.toString()));
 
 		mvc.perform(post("/api/v1/grupos-stock/{grupoId}/mover", grupo)
 						.header("Authorization", "Bearer " + dueno)
@@ -100,11 +127,73 @@ class GrupoDeStockIntegrationTest {
 	}
 
 	@Test
+	void dos_grupos_con_la_misma_combinacion_devuelve_409() throws Exception {
+		UUID empresa = crearEmpresa("Empresa Dup");
+		String dueno = duenoDe(empresa);
+		UUID prenda = crearPrenda(dueno, crearCategoria(dueno, "Camisa"));
+		UUID color = crearTipoVariante(dueno, "Color");
+		UUID rojo = agregarValor(dueno, color, "Rojo");
+		crearGrupo(dueno, prenda, combinacion(color, rojo), 5);
+
+		mvc.perform(post("/api/v1/prendas/{prendaId}/grupos-stock", prenda)
+						.header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"combinacion\":" + combinacion(color, rojo) + ",\"cantidadInicial\":3}"))
+				.andExpect(status().isConflict());
+	}
+
+	@Test
+	void combinacion_con_valor_de_otro_tipo_devuelve_400() throws Exception {
+		UUID empresa = crearEmpresa("Empresa Mix");
+		String dueno = duenoDe(empresa);
+		UUID prenda = crearPrenda(dueno, crearCategoria(dueno, "Camisa"));
+		UUID color = crearTipoVariante(dueno, "Color");
+		UUID talla = crearTipoVariante(dueno, "Talla");
+		UUID valorDeTalla = agregarValor(dueno, talla, "M");
+
+		// Se pide Color=<valor que en realidad es de Talla> -> el valor no pertenece al tipo.
+		mvc.perform(post("/api/v1/prendas/{prendaId}/grupos-stock", prenda)
+						.header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"combinacion\":" + combinacion(color, valorDeTalla) + ",\"cantidadInicial\":3}"))
+				.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	void combinacion_con_tipo_que_no_define_variante_devuelve_400() throws Exception {
+		UUID empresa = crearEmpresa("Empresa NoVar");
+		String dueno = duenoDe(empresa);
+		UUID prenda = crearPrenda(dueno, crearCategoria(dueno, "Camisa"));
+		// Tipo con defineVariante=false.
+		String tipoBody = mvc.perform(post("/api/v1/tipos-etiqueta").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Material\",\"defineVariante\":false,\"seleccionablePorCliente\":false}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		UUID material = UUID.fromString(json.readTree(tipoBody).get("id").asText());
+		UUID algodon = agregarValor(dueno, material, "Algodón");
+
+		mvc.perform(post("/api/v1/prendas/{prendaId}/grupos-stock", prenda)
+						.header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"combinacion\":" + combinacion(material, algodon) + ",\"cantidadInicial\":3}"))
+				.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	void variante_unica_sin_combinacion_es_valida() throws Exception {
+		UUID empresa = crearEmpresa("Empresa Unica");
+		String dueno = duenoDe(empresa);
+		UUID prenda = crearPrenda(dueno, crearCategoria(dueno, "Camisa"));
+
+		crearGrupo(dueno, prenda, "[]", 4);
+	}
+
+	@Test
 	void mover_mas_de_las_que_hay_devuelve_400() throws Exception {
 		UUID empresa = crearEmpresa("Empresa Stock2");
 		String dueno = duenoDe(empresa);
 		UUID prenda = crearPrenda(dueno, crearCategoria(dueno, "Camisa"));
-		UUID grupo = crearGrupo(dueno, prenda, 2);
+		UUID grupo = crearGrupo(dueno, prenda, "[]", 2);
 
 		mvc.perform(post("/api/v1/grupos-stock/{grupoId}/mover", grupo)
 						.header("Authorization", "Bearer " + dueno)

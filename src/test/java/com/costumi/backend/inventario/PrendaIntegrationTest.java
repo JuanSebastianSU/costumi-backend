@@ -62,6 +62,85 @@ class PrendaIntegrationTest {
 		return UUID.fromString(json.readTree(body).get("id").asText());
 	}
 
+	private UUID crearTipo(String token, String nombre) throws Exception {
+		String body = mvc.perform(post("/api/v1/tipos-etiqueta").header("Authorization", "Bearer " + token)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"" + nombre + "\",\"defineVariante\":false,\"seleccionablePorCliente\":false}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		return UUID.fromString(json.readTree(body).get("id").asText());
+	}
+
+	private UUID agregarValor(String token, UUID tipoId, String valor) throws Exception {
+		String body = mvc.perform(post("/api/v1/tipos-etiqueta/{tipoId}/valores", tipoId)
+						.header("Authorization", "Bearer " + token)
+						.contentType(MediaType.APPLICATION_JSON).content("{\"valor\":\"" + valor + "\"}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		return UUID.fromString(json.readTree(body).get("id").asText());
+	}
+
+	@Test
+	void crear_una_prenda_con_valores_de_etiqueta() throws Exception {
+		UUID empresa = crearEmpresa("Empresa Tags");
+		String dueno = duenoDe(empresa);
+		UUID categoria = crearCategoria(dueno, "Camisa");
+		UUID tema = crearTipo(dueno, "Tema");
+		UUID superheroe = agregarValor(dueno, tema, "Superhéroe");
+
+		mvc.perform(post("/api/v1/prendas")
+						.header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"categoriaId\":\"" + categoria + "\",\"nombre\":\"Traje\",\"tipoArticulo\":\"VENTA\","
+								+ "\"precioVenta\":100.00,\"etiquetas\":[{\"tipoEtiquetaId\":\"" + tema
+								+ "\",\"valorEtiquetaId\":\"" + superheroe + "\"}]}"))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.etiquetas[0].tipoEtiquetaId").value(tema.toString()))
+				.andExpect(jsonPath("$.etiquetas[0].valorEtiquetaId").value(superheroe.toString()));
+	}
+
+	@Test
+	void etiquetar_con_un_tipo_que_no_aplica_a_la_categoria_devuelve_400() throws Exception {
+		UUID empresa = crearEmpresa("Empresa Aplica");
+		String dueno = duenoDe(empresa);
+		UUID camisas = crearCategoria(dueno, "Camisas");
+		UUID sombreros = crearCategoria(dueno, "Sombreros");
+		// Tipo acotado SOLO a Sombreros.
+		String tipoBody = mvc.perform(post("/api/v1/tipos-etiqueta").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"AlaAncha\",\"defineVariante\":false,\"seleccionablePorCliente\":false,"
+								+ "\"categoriasQueAplica\":[\"" + sombreros + "\"]}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		UUID ala = UUID.fromString(json.readTree(tipoBody).get("id").asText());
+		UUID grande = agregarValor(dueno, ala, "Grande");
+
+		// La prenda es una Camisa: el tipo de Sombreros no le aplica.
+		mvc.perform(post("/api/v1/prendas")
+						.header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"categoriaId\":\"" + camisas + "\",\"nombre\":\"Camisa\",\"tipoArticulo\":\"VENTA\","
+								+ "\"precioVenta\":100.00,\"etiquetas\":[{\"tipoEtiquetaId\":\"" + ala
+								+ "\",\"valorEtiquetaId\":\"" + grande + "\"}]}"))
+				.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	void crear_una_prenda_con_valor_de_etiqueta_de_otro_tipo_devuelve_400() throws Exception {
+		UUID empresa = crearEmpresa("Empresa TagsMix");
+		String dueno = duenoDe(empresa);
+		UUID categoria = crearCategoria(dueno, "Camisa");
+		UUID tema = crearTipo(dueno, "Tema");
+		UUID material = crearTipo(dueno, "Material");
+		UUID algodon = agregarValor(dueno, material, "Algodón");
+
+		// Se pide Tema=<valor que en realidad es de Material> -> el valor no pertenece al tipo.
+		mvc.perform(post("/api/v1/prendas")
+						.header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"categoriaId\":\"" + categoria + "\",\"nombre\":\"Traje\",\"tipoArticulo\":\"VENTA\","
+								+ "\"precioVenta\":100.00,\"etiquetas\":[{\"tipoEtiquetaId\":\"" + tema
+								+ "\",\"valorEtiquetaId\":\"" + algodon + "\"}]}"))
+				.andExpect(status().isBadRequest());
+	}
+
 	@Test
 	void crear_una_prenda_de_renta_y_listarla() throws Exception {
 		UUID empresa = crearEmpresa("Empresa Inv");

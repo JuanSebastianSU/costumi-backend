@@ -1,12 +1,17 @@
 package com.costumi.backend.inventario.adaptadores.salida;
 
+import com.costumi.backend.inventario.dominio.CombinacionDeVariante;
 import com.costumi.backend.inventario.dominio.GrupoDeStock;
 import com.costumi.backend.inventario.dominio.GrupoDeStockRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /** Adaptador de salida: implementa el puerto {@link GrupoDeStockRepository} con JPA. */
 @Repository
@@ -34,12 +39,17 @@ class GrupoDeStockRepositoryAdapter implements GrupoDeStockRepository {
 	}
 
 	private static GrupoDeStockJpaEntity aEntidad(GrupoDeStock g) {
-		return new GrupoDeStockJpaEntity(g.id(), g.empresaId(), g.prendaId(), g.etiqueta(),
+		Set<ValorDeVarianteEmbeddable> combinacion = g.combinacion().valores().entrySet().stream()
+				.map(e -> new ValorDeVarianteEmbeddable(e.getKey(), e.getValue()))
+				.collect(Collectors.toCollection(java.util.LinkedHashSet::new));
+		return new GrupoDeStockJpaEntity(g.id(), g.empresaId(), g.prendaId(), combinacion,
 				g.disponibles(), g.danadas(), g.enLimpieza(), g.perdidas());
 	}
 
 	private static GrupoDeStock aDominio(GrupoDeStockJpaEntity e) {
-		return GrupoDeStock.rehidratar(e.getId(), e.getEmpresaId(), e.getPrendaId(), e.getEtiqueta(),
+		Map<UUID, UUID> valores = new LinkedHashMap<>();
+		e.getCombinacion().forEach(v -> valores.put(v.getTipoEtiquetaId(), v.getValorEtiquetaId()));
+		return GrupoDeStock.rehidratar(e.getId(), e.getEmpresaId(), e.getPrendaId(), CombinacionDeVariante.de(valores),
 				e.getDisponibles(), e.getDanadas(), e.getEnLimpieza(), e.getPerdidas());
 	}
 }

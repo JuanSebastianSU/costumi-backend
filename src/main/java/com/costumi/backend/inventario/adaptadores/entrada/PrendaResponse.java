@@ -4,14 +4,18 @@ import com.costumi.backend.inventario.dominio.Prenda;
 import com.costumi.backend.inventario.dominio.TipoArticulo;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
-/** DTO de salida de la Prenda. */
+/** DTO de salida de la Prenda, con sus valores de etiqueta de clasificación (RF-2.7). */
 public record PrendaResponse(UUID id, UUID empresaId, UUID categoriaId, String nombre, TipoArticulo tipoArticulo,
-		BigDecimal precioRenta, BigDecimal precioVenta, boolean archivada) {
+		BigDecimal precioRenta, BigDecimal precioVenta, List<EtiquetaSeleccionadaDto> etiquetas, boolean archivada) {
 
 	static PrendaResponse desde(Prenda p) {
+		List<EtiquetaSeleccionadaDto> etiquetas = p.etiquetas().valores().entrySet().stream()
+				.map(e -> new EtiquetaSeleccionadaDto(e.getKey(), e.getValue()))
+				.toList();
 		return new PrendaResponse(p.id(), p.empresaId(), p.categoriaId(), p.nombre(), p.tipoArticulo(),
-				p.precioRenta(), p.precioVenta(), p.archivada());
+				p.precioRenta(), p.precioVenta(), etiquetas, p.archivada());
 	}
 }

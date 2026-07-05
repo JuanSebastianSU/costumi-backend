@@ -17,6 +17,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -61,6 +62,45 @@ class TipoEtiquetaIntegrationTest {
 				.andExpect(status().isCreated())
 				.andReturn().getResponse().getContentAsString();
 		return UUID.fromString(json.readTree(body).get("id").asText());
+	}
+
+	private UUID crearCategoria(String token, String nombre) throws Exception {
+		String body = mvc.perform(post("/api/v1/categorias").header("Authorization", "Bearer " + token)
+						.contentType(MediaType.APPLICATION_JSON).content("{\"nombre\":\"" + nombre + "\"}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		return UUID.fromString(json.readTree(body).get("id").asText());
+	}
+
+	@Test
+	void crear_tipo_acotado_a_una_categoria() throws Exception {
+		String dueno = duenoDe(crearEmpresa("Empresa Cat"));
+		UUID camisas = crearCategoria(dueno, "Camisas");
+
+		String body = mvc.perform(post("/api/v1/tipos-etiqueta").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Cuello\",\"defineVariante\":false,\"seleccionablePorCliente\":false,"
+								+ "\"categoriasQueAplica\":[\"" + camisas + "\"]}"))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.categoriasQueAplica[0]").value(camisas.toString()))
+				.andReturn().getResponse().getContentAsString();
+		UUID tipoId = UUID.fromString(json.readTree(body).get("id").asText());
+
+		mvc.perform(get("/api/v1/tipos-etiqueta").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.id == '" + tipoId + "')].categoriasQueAplica[0]").value(camisas.toString()));
+	}
+
+	@Test
+	void crear_tipo_con_categoria_de_otra_empresa_devuelve_400() throws Exception {
+		String duenoA = duenoDe(crearEmpresa("Cat A"));
+		UUID categoriaDeA = crearCategoria(duenoA, "Camisas");
+
+		String duenoB = duenoDe(crearEmpresa("Cat B"));
+		mvc.perform(post("/api/v1/tipos-etiqueta").header("Authorization", "Bearer " + duenoB)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Cuello\",\"defineVariante\":false,\"seleccionablePorCliente\":false,"
+								+ "\"categoriasQueAplica\":[\"" + categoriaDeA + "\"]}"))
+				.andExpect(status().isBadRequest());
 	}
 
 	@Test
@@ -108,6 +148,53 @@ class TipoEtiquetaIntegrationTest {
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"nombre\":\"Color\",\"defineVariante\":true,\"seleccionablePorCliente\":true}"))
 				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void renombrar_tipo_y_valor_propaga_conservando_ids() throws Exception {
+		String dueno = duenoDe(crearEmpresa("Empresa Rename"));
+		UUID tipoId = crearTipo(dueno, "Color", true, true);
+		String valorBody = mvc.perform(post("/api/v1/tipos-etiqueta/{tipoId}/valores", tipoId)
+						.header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON).content("{\"valor\":\"Rojo\"}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		UUID valorId = UUID.fromString(json.readTree(valorBody).get("id").asText());
+
+		// Renombrar el tipo.
+		mvc.perform(patch("/api/v1/tipos-etiqueta/{tipoId}", tipoId).header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON).content("{\"nombre\":\"Tono\"}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.nombre").value("Tono"))
+				.andExpect(jsonPath("$.id").value(tipoId.toString()));
+
+		// Renombrar el valor: mismo id, texto nuevo (propaga por id a quien lo referencia).
+		mvc.perform(patch("/api/v1/tipos-etiqueta/{tipoId}/valores/{valorId}", tipoId, valorId)
+						.header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON).content("{\"nombre\":\"Escarlata\"}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.valor").value("Escarlata"))
+				.andExpect(jsonPath("$.id").value(valorId.toString()));
+
+		mvc.perform(get("/api/v1/tipos-etiqueta/{tipoId}/valores", tipoId).header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.id == '" + valorId + "')].valor").value("Escarlata"));
+	}
+
+	@Test
+	void renombrar_un_valor_de_otra_empresa_devuelve_404() throws Exception {
+		String duenoA = duenoDe(crearEmpresa("Rename A"));
+		UUID tipoDeA = crearTipo(duenoA, "Color", true, false);
+		String valorBody = mvc.perform(post("/api/v1/tipos-etiqueta/{tipoId}/valores", tipoDeA)
+						.header("Authorization", "Bearer " + duenoA)
+						.contentType(MediaType.APPLICATION_JSON).content("{\"valor\":\"Rojo\"}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		UUID valorDeA = UUID.fromString(json.readTree(valorBody).get("id").asText());
+
+		String duenoB = duenoDe(crearEmpresa("Rename B"));
+		mvc.perform(patch("/api/v1/tipos-etiqueta/{tipoId}/valores/{valorId}", tipoDeA, valorDeA)
+						.header("Authorization", "Bearer " + duenoB)
+						.contentType(MediaType.APPLICATION_JSON).content("{\"nombre\":\"Azul\"}"))
+				.andExpect(status().isNotFound());
 	}
 
 	@Test

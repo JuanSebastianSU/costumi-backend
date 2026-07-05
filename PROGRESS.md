@@ -5,11 +5,27 @@
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
 ## Fase actual
-**Fase 3 — Todos los módulos de §7 con primera rebanada.** Los 14 módulos del listado de §7 tienen
-una rebanada vertical verde, multi-tenant y probada (identidad, catálogo, inventario, clientes, pedidos,
-rentas, devoluciones, ventas, pagos, reportes, configuración, notificaciones, marketplace). Todo en la
-rama `chore/scaffolding-modulith` / **PR #7** (regla de Juan: nada a `main` sin su aprobación). Sigue la
-fase de **profundizar** cada módulo + piezas transversales (§5.4/5.5/5.6/5.7).
+**Fase 4 — Cierre del backend (handoff `CIERRE_BACKEND.md` de Juan).** Los 14 módulos de §7 tienen su
+1ª rebanada (ancho pero **delgado**). Ahora se cierra el backend en **3 tandas por dependencia**, modo
+"RUN GRANDE" (por tiempo, sin revisión rebanada a rebanada):
+- **Tanda 1 = P0 (núcleo del modelo) + P1 (seguridad/frontera).** ⛔ **CHECKPOINT al terminar: PARAR y pedir
+  revisión a Juan ANTES de construir encima** (si el modelo núcleo o §5.4 quedan mal, todo lo de arriba se rehace).
+- **Tanda 2 = P2+P3** (ciclo operativo + dinero) · **Tanda 3 = P4+P5** (resto).
+- Reglas: **1 commit por feature**, **tests de dominio por cada feature**, **§5.4 temprano**, ambiguo → decisión aquí.
+- **⛔ CHECKPOINT ALCANZADO — Tanda 1 COMPLETA en PR #8** (`chore/scaffolding-modulith` → `main`; **PR #7 ya lo
+  mergeó Juan**). **Esperando revisión de Juan del núcleo del modelo y §5.4 antes de empezar la Tanda 2.**
+  Todo verde (181 tests, CI). Hecho en la tanda:
+  (1) **§5.4 base** — `ContextoDeTenant`; (2) **motor de variantes real** — `GrupoDeStock` = combinación real de
+  valores de etiqueta; (3) **Prenda↔etiquetas (Capa 2)**; (4) **tipo↔categoría (RF-2.7.2)** impuesto; (5) **Disfraz
+  + Slot (Capa 3) + disponibilidad DERIVADA (RF-2.3/2.4)** — modo unidad-fija/por-partes, ≤8 slots, dos ejes +
+  opcional, pool personalizable, disponibilidad calculada vía puerto de Inventario; (6) **`X-Sucursal-Id`**
+  (RF-17.4); (7) **tooling OpenAPI** (springdoc); (8) **renombrar tipo/valor (RF-2.7.6)** propaga por id;
+  (9) **siembra de básicos al aprobar la empresa (RF-2.7.7)** vía evento `EmpresaAprobada` (§5.5). El "por-slot"
+  RF-2.7.5 quedó cubierto por el `PoolDeSlot`.
+- **Deuda registrada para el endurecimiento §5.4 (Tanda 2+):** filtro Hibernate/RLS por request; validación de
+  cross-refs por id contra el tenant (`Prenda.categoria_id`, `Disfraz.prendaFijaId`, categoría/valores del pool);
+  validar `X-Sucursal-Id` contra la empresa del token en el caso de uso que la consuma.
+- **Siguiente (tras el OK de Juan):** Tanda 2 = P2 (ciclo operativo renta→devolución→venta con domain events) + P3 (dinero/analítica).
 
 ## Pendiente de revisión (Juan sin recursos por el momento)
 > Por acuerdo con el responsable, se siguió ejecutando en slices **sin esperar la revisión**.
@@ -113,6 +129,10 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 | App cliente (marketplace) | — | 🟨 | RF-18 — descubrimiento de empresas ACTIVAS (PR #7); falta catálogo/checkout del cliente |
 
 ## Decisiones aceptadas
+- **Plan de cierre (2026-07-04, `CIERRE_BACKEND.md` de Juan):** cerrar el backend en **3 tandas** (T1=P0+P1,
+  T2=P2+P3, T3=P4+P5), modo RUN GRANDE. **CHECKPOINT obligatorio tras Tanda 1** (parar y pedir revisión antes
+  de seguir). 1 commit por feature, tests de dominio por feature, §5.4 temprano. El cliente Kotlin se genera
+  **al final** (tras Tanda 3), no en Tanda 1. El backlog P0–P5 vive en `CIERRE_BACKEND.md`.
 - **Decisión (2026-07-04, aprobada por Juan):** se acepta `reactivar` (SUSPENDIDA → ACTIVA)
   como acción del SuperAdmin aunque no figuraba en RF-15.3; se considera complemento natural
   de `suspender`. Pendiente reflejarlo en `BACKEND_REQUIREMENTS.md` (RF-15.3).
@@ -144,6 +164,88 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-05 (ab)** — **Tanda 1 · Siembra de taxonomía básica al aprobar (RF-2.7.7 / RF-13.5) → CIERRA TANDA 1.**
+  Al **aprobar** una empresa, Identidad publica el evento **`EmpresaAprobada`** (§5.5) y Catálogo lo escucha
+  (`SembradorDeTaxonomiaBasica`, síncrono en la tx) para **sembrar** categorías básicas (Camisa, Pantalón,
+  Vestido, Sombrero, Zapatos, Accesorio) y los tipos de variante **Color** (Rojo/Azul/Negro/Blanco) y **Talla**
+  (S/M/L/XL). Se siembra al **aprobar** (no al registrar) para no chocar con empresas de prueba no aprobadas y
+  porque es cuando la empresa opera. Modulith verde con la nueva arista `catalogo → identidad` (evento). Test de
+  integración (aprobar siembra; pendiente no). **181 verdes.** _Decisión:_ el set de básicos es el de arriba
+  (elegido; ampliable por el dueño). **Con esto la Tanda 1 queda COMPLETA → CHECKPOINT: se para y se pide
+  revisión a Juan antes de la Tanda 2.**
+- **2026-07-05 (aa)** — **Tanda 1 · Taxonomía: renombrar tipo/valor (RF-2.7.6).** `PATCH /api/v1/tipos-etiqueta/{id}`
+  y `.../{tipoId}/valores/{valorId}` renombran (DUENO/ENCARGADO), acotados al tenant (404 ajeno). Como prendas,
+  variantes y pools guardan solo **ids**, el cambio **propaga** sin tocarlos. `ValorEtiqueta.renombrar` +
+  `ValorEtiquetaRepository.buscarPorId`. Tests dominio + integración (renombra tipo y valor conservando id,
+  404 de otra empresa). **179 verdes.**
+- **2026-07-05 (z)** — **Tanda 1 · Tooling OpenAPI contract-first (P1, RF-17.3, §5.6).** Se instala
+  **springdoc-openapi** (starter webmvc-ui): el backend expone el contrato en `/v3/api-docs` y la UI en
+  `/swagger-ui.html`, **públicos** (permitAll en `SecurityConfig`). `OpenApiConfig` documenta el título/versión
+  y el **esquema de seguridad JWT (bearer)**. Es la fuente única de la que, **al cerrar el backend tras la
+  Tanda 3**, se generará el cliente Kotlin (NO ahora). Test de integración del contrato. **176 verdes.**
+  _Decisión:_ hoy es **code-first con salida OpenAPI** (los endpoints ya existen); migrar a contract-first
+  estricto (spec→stubs) no aporta en esta fase y el contrato completo solo existe al final (Tandas 2/3 añaden
+  endpoints), así que se difiere; lo que se "monta" ahora es la herramienta y la disciplina del contrato.
+- **2026-07-05 (y)** — **Tanda 1 · `X-Sucursal-Id`: sucursal activa por cabecera (P1, RF-17.4).**
+  `ContextoDeTenant` gana `sucursalActiva()` / `sucursalActivaRequerida()`, que leen la cabecera
+  `X-Sucursal-Id` de la petición (vía `RequestContextHolder`); si falta, `SucursalNoIndicada` → 400
+  (Problem Details). Tests unitarios (con/sin cabecera). **175 verdes.** _Decisión:_ la validación de que la
+  sucursal **pertenece a la empresa del token** se aplica en el caso de uso que la consuma (ninguno en Tanda 1
+  aún); parte del endurecimiento §5.4.
+- **2026-07-05 (x)** — **Tanda 1 · Disfraz + Slot (Capa 3) + disponibilidad DERIVADA (P0, RF-2.3/2.4).** Nuevo
+  módulo `disfraces`. `Disfraz` con **modo** `UNIDAD_FIJA` (una prenda fija) o `POR_PARTES` (**1..8 `Slot`**).
+  Cada `Slot` con los **dos ejes** (talla FIJA/LIBRE; prenda FIJA/PERSONALIZABLE) + **opcional**; el
+  personalizable lleva un **`PoolDeSlot`** (categoría + valores de etiqueta permitidos por dimensión, RF-2.7.5).
+  **Disponibilidad derivada:** no es un contador; se **calcula** en el dominio (`Disfraz.estaDisponible`) — unidad
+  fija disponible si su prenda tiene stock; por partes disponible si **cada slot obligatorio** se cubre (los
+  opcionales no bloquean). El cálculo usa el puerto de dominio `ConsultaDeStockDePool`, puenteado en aplicación
+  al nuevo puerto público **`inventario.ConsultaDeInventario`** (`prendaTieneStockDisponible` /
+  `poolTieneStockDisponible`). Persistencia agregado (cabecera+slots+pool) en **V19** (`disfraz`,
+  `disfraz_slot`, `disfraz_slot_etiqueta`). `POST/GET /api/v1/disfraces` y
+  `GET /api/v1/disfraces/{id}/disponibilidad` (POST DUENO/ENCARGADO). Tests de dominio (disponibilidad con stub:
+  unidad-fija, por-partes, opcionales no bloquean, talla fija, límites 1..8) + integración (disponibilidad
+  true/false derivada del stock, pool personalizable, 400/403/401). **173 verdes.** _Decisión:_ validación
+  cross-ref de `prendaFijaId`/`categoría`/valores del pool contra el tenant se difiere al **endurecimiento §5.4**
+  (hoy el dominio garantiza integridad estructural y el tenant se acota en el propio disfraz).
+- **2026-07-05 (w)** — **Tanda 1 · Taxonomía: el tipo de etiqueta aplica a categorías (P0, RF-2.7.2).**
+  `TipoEtiqueta` gana **`categoriasQueAplica`** (conjunto): **vacío = aplica a todas** (dimensión global tipo
+  "Color"); con valores = solo esas. Persistencia en tabla hija `tipo_etiqueta_categoria` (**V18**,
+  `@ElementCollection<UUID>`). Al crear el tipo se validan las categorías contra el tenant (400 si no son suyas).
+  Nuevo método del puerto `ConsultaDeTaxonomia.tipoAplicaACategoria`, **impuesto** en Inventario: al etiquetar
+  una prenda y al crear una variante, el tipo debe aplicar a la categoría de la prenda (400 si no). Tests de
+  dominio (`aplicaACategoria`) + integración (tipo acotado / categoría de otra empresa 400 / prenda con tipo que
+  no aplica 400). **162 verdes.** _Decisión:_ conjunto vacío = aplica a todas (evita tener que enumerar en
+  dimensiones globales). _Pendiente de la taxonomía completa (task #5):_ "seleccionable por cliente **en qué
+  slots**" (RF-2.7.5, depende de Slot), endpoints de **renombrar** tipo/valor, **siembra de básicos** (RF-2.7.7).
+- **2026-07-05 (v)** — **Tanda 1 · Prenda lleva sus valores de etiqueta (P0, RF-2.7, Capa 2).** La `Prenda`
+  porta ahora una **`EtiquetasDePrenda`** (value object inmutable, mapa `tipoEtiquetaId → valorEtiquetaId`,
+  una por dimensión) que la **clasifica** — concepto distinto de la combinación de variante del grupo de stock
+  (esa solo abarca los tipos "definen variante"; esta clasifica el ítem con cualquier tipo/valor). El caso de
+  uso valida cada etiqueta contra la taxonomía del tenant (`catalogo.ConsultaDeTaxonomia.valorPerteneceATipo`,
+  sin exigir que defina variante) y rechaza dimensión repetida (400). Persistencia en tabla hija
+  `prenda_valor_etiqueta` (**V17**), `@ElementCollection`. Solo se guardan **ids** → renombrar un valor
+  **propaga** sin tocar la prenda. Tests de dominio (`EtiquetasDePrenda`, Prenda con/sin etiquetas) +
+  integración (etiquetas válidas de vuelta / valor de otro tipo 400). **157 verdes.** _Decisiones:_ (a) una
+  prenda lleva **un valor por dimensión** (no multi-valor); (b) por ahora **no** se valida que el tipo "aplique
+  a la categoría" de la prenda — ese constraint llega con la taxonomía completa (RF-2.7.2, task #5), porque
+  `TipoEtiqueta` aún no tiene el campo "categorías que aplica". _Deuda §5.4:_ validar `Prenda.categoria_id`
+  contra el tenant (cross-ref) queda para el endurecimiento del aislamiento.
+- **2026-07-05 (u)** — **Tanda 1 · Motor de variantes real (P0, RF-2.7.3/2.7.4).** `GrupoDeStock` deja de
+  tener una "etiqueta" suelta y pasa a definirse por una **`CombinacionDeVariante`** (value object inmutable:
+  mapa `tipoEtiquetaId → valorEtiquetaId`, igualdad por combinación sin importar orden → habilita unicidad y
+  resolución pool→variante→stock). El caso de uso valida **combinaciones reales** contra el nuevo puerto
+  público **`catalogo.ConsultaDeTaxonomia`** (el tipo debe **definir variante**, el valor debe **pertenecer al
+  tipo**, sin repetir dimensión) y **rechaza variantes duplicadas** en la prenda (409). Persistencia en tabla
+  hija `grupo_de_stock_valor` (**V16**, se elimina `etiqueta`). DTOs por combinación (400 inválida / 409 duplicada).
+  Tests de dominio nuevos (`CombinacionDeVariante`, `mismaVariante`) + integración (real/duplicado/valor cruzado/
+  tipo no-variante/variante única). **149 tests verdes.** _Decisión:_ una combinación **vacía** = variante única
+  de una prenda sin dimensiones. _Pendiente relacionado:_ Prenda↔etiquetas (Capa 2) y validar cross-ref
+  `Prenda.categoria_id` contra tenant (parte del endurecimiento §5.4).
+- **2026-07-05 (t)** — **Tanda 1 · Base del aislamiento forzado §5.4 (P1, temprano).** Módulo `compartido` con
+  **`ContextoDeTenant`** (lee `empresa_id`/rol/usuario del JWT del `SecurityContext` en un solo lugar) +
+  `AccesoSinEmpresa` → 403 Problem Details. `CategoriaController` migrado a usarlo (ejercita la frontera
+  `catalogo → compartido`). Test de dominio sin Spring. Base para endurecer luego con filtro Hibernate/RLS.
+  Se abrió **PR #8** para la fase de cierre (**PR #7 lo mergeó Juan**).
 - **2026-07-04 (s)** — Cerrados los **3 módulos que faltaban** de §7: **Configuración (RF-12)** — interruptores
   de módulos por empresa (`GET/PUT /api/v1/configuracion`); **Notificaciones (RF-11)** — envío por canal
   (WhatsApp/FCM/EMAIL) vía adaptador log, estados PENDIENTE→ENVIADA (`POST/GET /api/v1/notificaciones`);

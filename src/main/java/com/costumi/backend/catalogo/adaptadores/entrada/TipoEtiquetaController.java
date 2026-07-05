@@ -6,6 +6,8 @@ import com.costumi.backend.catalogo.aplicacion.ConsultarTiposEtiqueta;
 import com.costumi.backend.catalogo.aplicacion.ConsultarValores;
 import com.costumi.backend.catalogo.aplicacion.CrearTipoEtiqueta;
 import com.costumi.backend.catalogo.aplicacion.CrearTipoEtiquetaComando;
+import com.costumi.backend.catalogo.aplicacion.RenombrarTipoEtiqueta;
+import com.costumi.backend.catalogo.aplicacion.RenombrarValor;
 import com.costumi.backend.catalogo.dominio.TipoEtiqueta;
 import com.costumi.backend.catalogo.dominio.ValorEtiqueta;
 import jakarta.validation.Valid;
@@ -13,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -33,21 +36,26 @@ class TipoEtiquetaController {
 	private final ConsultarTiposEtiqueta consultarTiposEtiqueta;
 	private final AgregarValor agregarValor;
 	private final ConsultarValores consultarValores;
+	private final RenombrarTipoEtiqueta renombrarTipoEtiqueta;
+	private final RenombrarValor renombrarValor;
 
 	TipoEtiquetaController(CrearTipoEtiqueta crearTipoEtiqueta, ConsultarTiposEtiqueta consultarTiposEtiqueta,
-			AgregarValor agregarValor, ConsultarValores consultarValores) {
+			AgregarValor agregarValor, ConsultarValores consultarValores, RenombrarTipoEtiqueta renombrarTipoEtiqueta,
+			RenombrarValor renombrarValor) {
 		this.crearTipoEtiqueta = crearTipoEtiqueta;
 		this.consultarTiposEtiqueta = consultarTiposEtiqueta;
 		this.agregarValor = agregarValor;
 		this.consultarValores = consultarValores;
+		this.renombrarTipoEtiqueta = renombrarTipoEtiqueta;
+		this.renombrarValor = renombrarValor;
 	}
 
 	@PostMapping
 	ResponseEntity<TipoEtiquetaResponse> crear(@Valid @RequestBody CrearTipoEtiquetaRequest request,
 			@AuthenticationPrincipal Jwt jwt, UriComponentsBuilder uriBuilder) {
 		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
-		TipoEtiqueta tipo = crearTipoEtiqueta.ejecutar(new CrearTipoEtiquetaComando(
-				empresaId, request.nombre(), request.defineVariante(), request.seleccionablePorCliente()));
+		TipoEtiqueta tipo = crearTipoEtiqueta.ejecutar(new CrearTipoEtiquetaComando(empresaId, request.nombre(),
+				request.defineVariante(), request.seleccionablePorCliente(), request.categoriasQueAplica()));
 		URI location = uriBuilder.path("/api/v1/tipos-etiqueta/{id}").buildAndExpand(tipo.id()).toUri();
 		return ResponseEntity.created(location).body(TipoEtiquetaResponse.desde(tipo));
 	}
@@ -81,5 +89,19 @@ class TipoEtiquetaController {
 		}
 		return consultarValores.deTipo(UUID.fromString(empresaId), tipoId).stream()
 				.map(ValorEtiquetaResponse::desde).toList();
+	}
+
+	@PatchMapping("/{tipoId}")
+	TipoEtiquetaResponse renombrar(@PathVariable UUID tipoId, @Valid @RequestBody RenombrarRequest request,
+			@AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		return TipoEtiquetaResponse.desde(renombrarTipoEtiqueta.ejecutar(empresaId, tipoId, request.nombre()));
+	}
+
+	@PatchMapping("/{tipoId}/valores/{valorId}")
+	ValorEtiquetaResponse renombrarValor(@PathVariable UUID tipoId, @PathVariable UUID valorId,
+			@Valid @RequestBody RenombrarRequest request, @AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		return ValorEtiquetaResponse.desde(renombrarValor.ejecutar(empresaId, tipoId, valorId, request.nombre()));
 	}
 }

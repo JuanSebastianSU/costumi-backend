@@ -5,6 +5,7 @@ import com.costumi.backend.inventario.aplicacion.CrearGrupoDeStock;
 import com.costumi.backend.inventario.aplicacion.CrearGrupoDeStockComando;
 import com.costumi.backend.inventario.aplicacion.MoverUnidades;
 import com.costumi.backend.inventario.aplicacion.MoverUnidadesComando;
+import com.costumi.backend.inventario.aplicacion.SeleccionVariante;
 import com.costumi.backend.inventario.dominio.GrupoDeStock;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -41,8 +42,11 @@ class GrupoDeStockController {
 			@Valid @RequestBody CrearGrupoDeStockRequest request, @AuthenticationPrincipal Jwt jwt,
 			UriComponentsBuilder uriBuilder) {
 		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		List<SeleccionVariante> combinacion = request.combinacion().stream()
+				.map(s -> new SeleccionVariante(s.tipoEtiquetaId(), s.valorEtiquetaId()))
+				.toList();
 		GrupoDeStock grupo = crearGrupoDeStock.ejecutar(new CrearGrupoDeStockComando(
-				empresaId, prendaId, request.etiqueta(), request.cantidadInicial()));
+				empresaId, prendaId, combinacion, request.cantidadInicial()));
 		URI location = uriBuilder.path("/api/v1/grupos-stock/{id}").buildAndExpand(grupo.id()).toUri();
 		return ResponseEntity.created(location).body(GrupoDeStockResponse.desde(grupo));
 	}

@@ -36,6 +36,11 @@ public class ValorEtiqueta {
 		this.archivada = true;
 	}
 
+	/** Renombra el valor (RF-2.7.6). Como las prendas/variantes guardan el id, el cambio propaga. */
+	public void renombrar(String nuevoValor) {
+		this.valor = exigirValor(nuevoValor);
+	}
+
 	private static String exigirValor(String valor) {
 		if (valor == null || valor.isBlank()) {
 			throw new IllegalArgumentException("El valor de etiqueta es obligatorio");

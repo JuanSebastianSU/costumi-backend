@@ -6,7 +6,8 @@ import java.util.UUID;
 
 /**
  * Prenda: ítem concreto de la biblioteca de inventario (RF-2, capa 2). Pertenece a una Empresa
- * (tenant) y a una Categoría, y define su tipo (renta/venta/ambos) y precios (RF-2.1, RF-2.10).
+ * (tenant) y a una Categoría, define su tipo (renta/venta/ambos) y precios (RF-2.1, RF-2.10) y
+ * <b>lleva sus valores de etiqueta</b> que la clasifican (RF-2.7, {@link EtiquetasDePrenda}).
  *
  * <p>Reglas de precio: si el artículo se renta, exige precio de renta; si se vende, precio de venta.
  */
@@ -19,10 +20,11 @@ public class Prenda {
 	private final TipoArticulo tipoArticulo;
 	private BigDecimal precioRenta;
 	private BigDecimal precioVenta;
+	private EtiquetasDePrenda etiquetas;
 	private boolean archivada;
 
 	private Prenda(UUID id, UUID empresaId, UUID categoriaId, String nombre, TipoArticulo tipoArticulo,
-			BigDecimal precioRenta, BigDecimal precioVenta, boolean archivada) {
+			BigDecimal precioRenta, BigDecimal precioVenta, EtiquetasDePrenda etiquetas, boolean archivada) {
 		this.id = Objects.requireNonNull(id, "id");
 		this.empresaId = Objects.requireNonNull(empresaId, "empresaId");
 		this.categoriaId = Objects.requireNonNull(categoriaId, "categoriaId");
@@ -30,17 +32,29 @@ public class Prenda {
 		this.nombre = exigirNombre(nombre);
 		this.precioRenta = validarPrecio(precioRenta, tipoArticulo.incluyeRenta(), "renta");
 		this.precioVenta = validarPrecio(precioVenta, tipoArticulo.incluyeVenta(), "venta");
+		this.etiquetas = Objects.requireNonNull(etiquetas, "etiquetas");
 		this.archivada = archivada;
 	}
 
 	public static Prenda crear(UUID empresaId, UUID categoriaId, String nombre, TipoArticulo tipoArticulo,
 			BigDecimal precioRenta, BigDecimal precioVenta) {
-		return new Prenda(UUID.randomUUID(), empresaId, categoriaId, nombre, tipoArticulo, precioRenta, precioVenta, false);
+		return crear(empresaId, categoriaId, nombre, tipoArticulo, precioRenta, precioVenta, EtiquetasDePrenda.ninguna());
+	}
+
+	public static Prenda crear(UUID empresaId, UUID categoriaId, String nombre, TipoArticulo tipoArticulo,
+			BigDecimal precioRenta, BigDecimal precioVenta, EtiquetasDePrenda etiquetas) {
+		return new Prenda(UUID.randomUUID(), empresaId, categoriaId, nombre, tipoArticulo, precioRenta, precioVenta,
+				etiquetas, false);
 	}
 
 	public static Prenda rehidratar(UUID id, UUID empresaId, UUID categoriaId, String nombre, TipoArticulo tipoArticulo,
-			BigDecimal precioRenta, BigDecimal precioVenta, boolean archivada) {
-		return new Prenda(id, empresaId, categoriaId, nombre, tipoArticulo, precioRenta, precioVenta, archivada);
+			BigDecimal precioRenta, BigDecimal precioVenta, EtiquetasDePrenda etiquetas, boolean archivada) {
+		return new Prenda(id, empresaId, categoriaId, nombre, tipoArticulo, precioRenta, precioVenta, etiquetas, archivada);
+	}
+
+	/** Reemplaza las etiquetas de clasificación de la prenda (RF-2.7, Capa 2). */
+	public void reetiquetar(EtiquetasDePrenda nuevas) {
+		this.etiquetas = Objects.requireNonNull(nuevas, "etiquetas");
 	}
 
 	public void archivar() {
@@ -95,6 +109,10 @@ public class Prenda {
 
 	public BigDecimal precioVenta() {
 		return precioVenta;
+	}
+
+	public EtiquetasDePrenda etiquetas() {
+		return etiquetas;
 	}
 
 	public boolean archivada() {

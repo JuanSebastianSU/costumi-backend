@@ -3,6 +3,7 @@ package com.costumi.backend.inventario.adaptadores.entrada;
 import com.costumi.backend.inventario.aplicacion.ConsultarPrendas;
 import com.costumi.backend.inventario.aplicacion.CrearPrenda;
 import com.costumi.backend.inventario.aplicacion.CrearPrendaComando;
+import com.costumi.backend.inventario.aplicacion.EtiquetaSeleccionada;
 import com.costumi.backend.inventario.dominio.Prenda;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -36,8 +37,11 @@ class PrendaController {
 	ResponseEntity<PrendaResponse> crear(@Valid @RequestBody CrearPrendaRequest request,
 			@AuthenticationPrincipal Jwt jwt, UriComponentsBuilder uriBuilder) {
 		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		List<EtiquetaSeleccionada> etiquetas = request.etiquetas().stream()
+				.map(e -> new EtiquetaSeleccionada(e.tipoEtiquetaId(), e.valorEtiquetaId()))
+				.toList();
 		Prenda prenda = crearPrenda.ejecutar(new CrearPrendaComando(empresaId, request.categoriaId(),
-				request.nombre(), request.tipoArticulo(), request.precioRenta(), request.precioVenta()));
+				request.nombre(), request.tipoArticulo(), request.precioRenta(), request.precioVenta(), etiquetas));
 		URI location = uriBuilder.path("/api/v1/prendas/{id}").buildAndExpand(prenda.id()).toUri();
 		return ResponseEntity.created(location).body(PrendaResponse.desde(prenda));
 	}
