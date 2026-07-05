@@ -1,5 +1,8 @@
 package com.costumi.backend.clientes.adaptadores.salida;
 
+import com.costumi.backend.compartido.FiltroTenant;
+import org.hibernate.annotations.Filter;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -10,6 +13,7 @@ import java.util.UUID;
 /** Mapeo JPA del Cliente. Lleva {@code empresa_id} (tenant). */
 @Entity
 @Table(name = "cliente")
+@Filter(name = FiltroTenant.NOMBRE)
 class ClienteJpaEntity {
 
 	@Id

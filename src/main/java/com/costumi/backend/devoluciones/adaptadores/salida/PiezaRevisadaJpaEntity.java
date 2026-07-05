@@ -1,5 +1,8 @@
 package com.costumi.backend.devoluciones.adaptadores.salida;
 
+import com.costumi.backend.compartido.FiltroTenant;
+import org.hibernate.annotations.Filter;
+
 import com.costumi.backend.devoluciones.dominio.EstadoPieza;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -13,6 +16,7 @@ import java.util.UUID;
 /** Mapeo JPA de un ítem del checklist de devolución. */
 @Entity
 @Table(name = "pieza_revisada")
+@Filter(name = FiltroTenant.NOMBRE)
 class PiezaRevisadaJpaEntity {
 
 	@Id

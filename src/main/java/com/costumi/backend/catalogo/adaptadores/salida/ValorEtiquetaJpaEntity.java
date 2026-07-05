@@ -1,5 +1,8 @@
 package com.costumi.backend.catalogo.adaptadores.salida;
 
+import com.costumi.backend.compartido.FiltroTenant;
+import org.hibernate.annotations.Filter;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -10,6 +13,7 @@ import java.util.UUID;
 /** Mapeo JPA del Valor de etiqueta. Lleva {@code empresa_id} (tenant) y su tipo. */
 @Entity
 @Table(name = "valor_etiqueta")
+@Filter(name = FiltroTenant.NOMBRE)
 class ValorEtiquetaJpaEntity {
 
 	@Id

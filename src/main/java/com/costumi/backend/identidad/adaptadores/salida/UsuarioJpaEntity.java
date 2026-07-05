@@ -1,5 +1,8 @@
 package com.costumi.backend.identidad.adaptadores.salida;
 
+import com.costumi.backend.compartido.FiltroTenant;
+import org.hibernate.annotations.Filter;
+
 import com.costumi.backend.identidad.dominio.Rol;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -13,6 +16,7 @@ import java.util.UUID;
 /** Mapeo JPA del Usuario. {@code empresa_id} nulo para el SuperAdmin (plataforma). */
 @Entity
 @Table(name = "usuario")
+@Filter(name = FiltroTenant.NOMBRE)
 class UsuarioJpaEntity {
 
 	@Id

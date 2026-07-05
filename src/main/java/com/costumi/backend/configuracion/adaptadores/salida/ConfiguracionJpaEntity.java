@@ -1,5 +1,8 @@
 package com.costumi.backend.configuracion.adaptadores.salida;
 
+import com.costumi.backend.compartido.FiltroTenant;
+import org.hibernate.annotations.Filter;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -10,6 +13,7 @@ import java.util.UUID;
 /** Mapeo JPA de la configuración; la PK es {@code empresa_id} (una por empresa). */
 @Entity
 @Table(name = "configuracion_empresa")
+@Filter(name = FiltroTenant.NOMBRE)
 class ConfiguracionJpaEntity {
 
 	@Id

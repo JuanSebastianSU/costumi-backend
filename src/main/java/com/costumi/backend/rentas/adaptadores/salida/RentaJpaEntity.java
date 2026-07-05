@@ -1,5 +1,8 @@
 package com.costumi.backend.rentas.adaptadores.salida;
 
+import com.costumi.backend.compartido.FiltroTenant;
+import org.hibernate.annotations.Filter;
+
 import com.costumi.backend.rentas.dominio.EstadoRenta;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -15,6 +18,7 @@ import java.util.UUID;
 /** Mapeo JPA de la Renta. Lleva {@code empresa_id} (tenant). */
 @Entity
 @Table(name = "renta")
+@Filter(name = FiltroTenant.NOMBRE)
 class RentaJpaEntity {
 
 	@Id

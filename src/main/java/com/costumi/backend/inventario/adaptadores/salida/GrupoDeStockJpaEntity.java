@@ -1,5 +1,8 @@
 package com.costumi.backend.inventario.adaptadores.salida;
 
+import com.costumi.backend.compartido.FiltroTenant;
+import org.hibernate.annotations.Filter;
+
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
@@ -16,6 +19,7 @@ import java.util.UUID;
 /** Mapeo JPA del Grupo de stock. Lleva {@code empresa_id} (tenant), la prenda y su combinación de variante. */
 @Entity
 @Table(name = "grupo_de_stock")
+@Filter(name = FiltroTenant.NOMBRE)
 class GrupoDeStockJpaEntity {
 
 	@Id

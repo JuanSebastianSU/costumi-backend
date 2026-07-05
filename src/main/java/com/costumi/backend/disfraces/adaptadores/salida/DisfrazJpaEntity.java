@@ -1,5 +1,8 @@
 package com.costumi.backend.disfraces.adaptadores.salida;
 
+import com.costumi.backend.compartido.FiltroTenant;
+import org.hibernate.annotations.Filter;
+
 import com.costumi.backend.disfraces.dominio.ModoDeDisfraz;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -13,6 +16,7 @@ import java.util.UUID;
 /** Mapeo JPA de la cabecera del Disfraz. Lleva {@code empresa_id} (tenant). */
 @Entity
 @Table(name = "disfraz")
+@Filter(name = FiltroTenant.NOMBRE)
 class DisfrazJpaEntity {
 
 	@Id
