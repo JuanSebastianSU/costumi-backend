@@ -51,6 +51,7 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/v1/empresas").permitAll()
 						.requestMatchers("/actuator/health", "/actuator/info").permitAll()
+						.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/v1/marketplace/**").permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/v1/empresas/pendientes").hasRole("SUPERADMIN")
 						.requestMatchers(HttpMethod.POST,

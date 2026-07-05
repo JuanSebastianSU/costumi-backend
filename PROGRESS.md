@@ -16,9 +16,10 @@
   Hecho en la tanda: (1) **§5.4 base** — `ContextoDeTenant`; (2) **motor de variantes real** — `GrupoDeStock`
   = combinación real de valores de etiqueta; (3) **Prenda↔etiquetas (Capa 2)**; (4) **tipo↔categoría (RF-2.7.2)**;
   (5) **Disfraz + Slot (Capa 3) + disponibilidad DERIVADA (RF-2.3/2.4)** — modo unidad-fija/por-partes, ≤8 slots,
-  dos ejes + opcional, pool personalizable; disponibilidad calculada (no contador) vía puerto de Inventario.
-  **Falta en Tanda 1:** resto de taxonomía (por-slot RF-2.7.5, rename-propaga endpoints, seed de básicos RF-2.7.7),
-  `X-Sucursal-Id`, tooling OpenAPI contract-first. Al terminar → ⛔ CHECKPOINT.
+  dos ejes + opcional, pool personalizable; disponibilidad calculada (no contador) vía puerto de Inventario;
+  (6) **`X-Sucursal-Id`** en `ContextoDeTenant` (RF-17.4); (7) **tooling OpenAPI** (springdoc; `/v3/api-docs`
+  público, esquema JWT). **Falta en Tanda 1:** restos de taxonomía (rename-propaga endpoints, seed de básicos
+  RF-2.7.7; el "por-slot" RF-2.7.5 quedó cubierto por el `PoolDeSlot`). Al terminar → ⛔ CHECKPOINT.
 
 ## Pendiente de revisión (Juan sin recursos por el momento)
 > Por acuerdo con el responsable, se siguió ejecutando en slices **sin esperar la revisión**.
@@ -157,6 +158,20 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-05 (z)** — **Tanda 1 · Tooling OpenAPI contract-first (P1, RF-17.3, §5.6).** Se instala
+  **springdoc-openapi** (starter webmvc-ui): el backend expone el contrato en `/v3/api-docs` y la UI en
+  `/swagger-ui.html`, **públicos** (permitAll en `SecurityConfig`). `OpenApiConfig` documenta el título/versión
+  y el **esquema de seguridad JWT (bearer)**. Es la fuente única de la que, **al cerrar el backend tras la
+  Tanda 3**, se generará el cliente Kotlin (NO ahora). Test de integración del contrato. **176 verdes.**
+  _Decisión:_ hoy es **code-first con salida OpenAPI** (los endpoints ya existen); migrar a contract-first
+  estricto (spec→stubs) no aporta en esta fase y el contrato completo solo existe al final (Tandas 2/3 añaden
+  endpoints), así que se difiere; lo que se "monta" ahora es la herramienta y la disciplina del contrato.
+- **2026-07-05 (y)** — **Tanda 1 · `X-Sucursal-Id`: sucursal activa por cabecera (P1, RF-17.4).**
+  `ContextoDeTenant` gana `sucursalActiva()` / `sucursalActivaRequerida()`, que leen la cabecera
+  `X-Sucursal-Id` de la petición (vía `RequestContextHolder`); si falta, `SucursalNoIndicada` → 400
+  (Problem Details). Tests unitarios (con/sin cabecera). **175 verdes.** _Decisión:_ la validación de que la
+  sucursal **pertenece a la empresa del token** se aplica en el caso de uso que la consuma (ninguno en Tanda 1
+  aún); parte del endurecimiento §5.4.
 - **2026-07-05 (x)** — **Tanda 1 · Disfraz + Slot (Capa 3) + disponibilidad DERIVADA (P0, RF-2.3/2.4).** Nuevo
   módulo `disfraces`. `Disfraz` con **modo** `UNIDAD_FIJA` (una prenda fija) o `POR_PARTES` (**1..8 `Slot`**).
   Cada `Slot` con los **dos ejes** (talla FIJA/LIBRE; prenda FIJA/PERSONALIZABLE) + **opcional**; el
