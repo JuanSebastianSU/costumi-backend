@@ -158,6 +158,11 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-05 (aa)** — **Tanda 1 · Taxonomía: renombrar tipo/valor (RF-2.7.6).** `PATCH /api/v1/tipos-etiqueta/{id}`
+  y `.../{tipoId}/valores/{valorId}` renombran (DUENO/ENCARGADO), acotados al tenant (404 ajeno). Como prendas,
+  variantes y pools guardan solo **ids**, el cambio **propaga** sin tocarlos. `ValorEtiqueta.renombrar` +
+  `ValorEtiquetaRepository.buscarPorId`. Tests dominio + integración (renombra tipo y valor conservando id,
+  404 de otra empresa). **179 verdes.**
 - **2026-07-05 (z)** — **Tanda 1 · Tooling OpenAPI contract-first (P1, RF-17.3, §5.6).** Se instala
   **springdoc-openapi** (starter webmvc-ui): el backend expone el contrato en `/v3/api-docs` y la UI en
   `/swagger-ui.html`, **públicos** (permitAll en `SecurityConfig`). `OpenApiConfig` documenta el título/versión

@@ -16,8 +16,8 @@ import java.util.UUID;
 
 /** Casos de uso del motor de etiquetas, siempre acotados a la empresa (tenant). */
 @Service
-class TaxonomiaService
-		implements CrearTipoEtiqueta, ConsultarTiposEtiqueta, AgregarValor, ConsultarValores, ConsultaDeTaxonomia {
+class TaxonomiaService implements CrearTipoEtiqueta, ConsultarTiposEtiqueta, AgregarValor, ConsultarValores,
+		RenombrarTipoEtiqueta, RenombrarValor, ConsultaDeTaxonomia {
 
 	private final TipoEtiquetaRepository tipos;
 	private final ValorEtiquetaRepository valores;
@@ -70,6 +70,25 @@ class TaxonomiaService
 	public List<ValorEtiqueta> deTipo(UUID empresaId, UUID tipoEtiquetaId) {
 		TipoEtiqueta tipo = tipoDelTenant(empresaId, tipoEtiquetaId);
 		return valores.listarPorTipo(tipo.id());
+	}
+
+	@Override
+	@Transactional
+	public TipoEtiqueta ejecutar(UUID empresaId, UUID tipoEtiquetaId, String nuevoNombre) {
+		TipoEtiqueta tipo = tipoDelTenant(empresaId, tipoEtiquetaId);
+		tipo.renombrar(nuevoNombre);
+		return tipos.guardar(tipo);
+	}
+
+	@Override
+	@Transactional
+	public ValorEtiqueta ejecutar(UUID empresaId, UUID tipoEtiquetaId, UUID valorEtiquetaId, String nuevoValor) {
+		tipoDelTenant(empresaId, tipoEtiquetaId);
+		ValorEtiqueta valor = valores.buscarPorId(valorEtiquetaId)
+				.filter(v -> v.empresaId().equals(empresaId) && v.tipoEtiquetaId().equals(tipoEtiquetaId))
+				.orElseThrow(() -> new ValorEtiquetaNoEncontrado(valorEtiquetaId));
+		valor.renombrar(nuevoValor);
+		return valores.guardar(valor);
 	}
 
 	@Override

@@ -63,4 +63,15 @@ class TipoEtiquetaTest {
 		assertThatThrownBy(() -> ValorEtiqueta.crear(UUID.randomUUID(), UUID.randomUUID(), "  "))
 				.isInstanceOf(IllegalArgumentException.class);
 	}
+
+	@Test
+	void renombrar_un_valor_conserva_su_identidad() {
+		ValorEtiqueta rojo = ValorEtiqueta.crear(UUID.randomUUID(), UUID.randomUUID(), "Rojo");
+		UUID id = rojo.id();
+
+		rojo.renombrar("Escarlata");
+
+		assertThat(rojo.valor()).isEqualTo("Escarlata");
+		assertThat(rojo.id()).isEqualTo(id);
+	}
 }
