@@ -1,0 +1,57 @@
+package com.costumi.backend.inventario.dominio;
+
+import org.junit.jupiter.api.Test;
+
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+/** Pruebas de dominio del GrupoDeStock: puras, sin BD ni Spring. */
+class GrupoDeStockTest {
+
+	private static GrupoDeStock nuevo(int cantidadInicial) {
+		return GrupoDeStock.crear(UUID.randomUUID(), UUID.randomUUID(), "Rojo / M", cantidadInicial);
+	}
+
+	@Test
+	void crear_deja_todo_disponible() {
+		GrupoDeStock grupo = nuevo(8);
+
+		assertThat(grupo.disponibles()).isEqualTo(8);
+		assertThat(grupo.total()).isEqualTo(8);
+		assertThat(grupo.danadas()).isZero();
+	}
+
+	@Test
+	void mover_unidades_a_danadas() {
+		GrupoDeStock grupo = nuevo(8);
+
+		grupo.mover(EstadoUnidad.DISPONIBLE, EstadoUnidad.DANADA, 3);
+
+		assertThat(grupo.disponibles()).isEqualTo(5);
+		assertThat(grupo.danadas()).isEqualTo(3);
+		assertThat(grupo.total()).isEqualTo(8);
+	}
+
+	@Test
+	void no_se_pueden_mover_mas_unidades_de_las_que_hay() {
+		GrupoDeStock grupo = nuevo(2);
+
+		assertThatThrownBy(() -> grupo.mover(EstadoUnidad.DISPONIBLE, EstadoUnidad.PERDIDA, 5))
+				.isInstanceOf(IllegalArgumentException.class);
+	}
+
+	@Test
+	void mover_al_mismo_estado_es_invalido() {
+		GrupoDeStock grupo = nuevo(2);
+
+		assertThatThrownBy(() -> grupo.mover(EstadoUnidad.DISPONIBLE, EstadoUnidad.DISPONIBLE, 1))
+				.isInstanceOf(IllegalArgumentException.class);
+	}
+
+	@Test
+	void la_cantidad_inicial_no_puede_ser_negativa() {
+		assertThatThrownBy(() -> nuevo(-1)).isInstanceOf(IllegalArgumentException.class);
+	}
+}

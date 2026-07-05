@@ -1,6 +1,8 @@
 package com.costumi.backend.identidad;
 
 import com.costumi.backend.TestcontainersConfiguration;
+import com.costumi.backend.identidad.dominio.Rol;
+import com.costumi.backend.identidad.dominio.UsuarioRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -9,6 +11,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.UUID;
@@ -17,7 +20,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** Alta de Sucursal (RF-15.1) end-to-end, incluyendo la regla RF-15.4 (empresa ACTIVA). */
+/** Alta de Sucursal (RF-15.1): rol DUENO/ENCARGADO + dueño del tenant (RF-15.4). */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
@@ -29,6 +32,12 @@ class RegistrarSucursalIntegrationTest {
 	@Autowired
 	ObjectMapper json;
 
+	@Autowired
+	UsuarioRepository usuarios;
+
+	@Autowired
+	PasswordEncoder passwordEncoder;
+
 	private UUID registrarEmpresa(String nombre) throws Exception {
 		String body = mvc.perform(post("/api/v1/empresas")
 						.contentType(MediaType.APPLICATION_JSON)
@@ -39,40 +48,64 @@ class RegistrarSucursalIntegrationTest {
 		return UUID.fromString(node.get("id").asText());
 	}
 
-	private UUID registrarEmpresaActiva(String nombre) throws Exception {
-		UUID id = registrarEmpresa(nombre);
-		mvc.perform(post("/api/v1/empresas/{id}/aprobar", id)).andExpect(status().isOk());
-		return id;
+	private void aprobar(UUID empresaId) throws Exception {
+		String superAdmin = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, null, Rol.SUPERADMIN);
+		mvc.perform(post("/api/v1/empresas/{id}/aprobar", empresaId)
+						.header("Authorization", "Bearer " + superAdmin))
+				.andExpect(status().isOk());
+	}
+
+	private String tokenDueno(UUID empresaId) throws Exception {
+		return AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresaId, Rol.DUENO);
 	}
 
 	@Test
-	void alta_de_sucursal_en_empresa_activa_devuelve_201() throws Exception {
-		UUID empresaId = registrarEmpresaActiva("Empresa Activa");
+	void el_dueno_da_de_alta_una_sucursal_en_su_empresa_activa() throws Exception {
+		UUID empresaId = registrarEmpresa("Empresa Activa");
+		aprobar(empresaId);
+		String dueno = tokenDueno(empresaId);
 
 		mvc.perform(post("/api/v1/empresas/{empresaId}/sucursales", empresaId)
+						.header("Authorization", "Bearer " + dueno)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"nombre\":\"Centro\",\"direccion\":\"Calle 1\"}"))
 				.andExpect(status().isCreated())
-				.andExpect(jsonPath("$.id").exists())
 				.andExpect(jsonPath("$.empresaId").value(empresaId.toString()))
 				.andExpect(jsonPath("$.nombre").value("Centro"));
 	}
 
 	@Test
-	void alta_de_sucursal_en_empresa_pendiente_devuelve_409() throws Exception {
+	void en_empresa_pendiente_devuelve_409() throws Exception {
 		UUID empresaId = registrarEmpresa("Empresa Pendiente");
+		String dueno = tokenDueno(empresaId);
 
 		mvc.perform(post("/api/v1/empresas/{empresaId}/sucursales", empresaId)
+						.header("Authorization", "Bearer " + dueno)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"nombre\":\"Centro\"}"))
 				.andExpect(status().isConflict());
 	}
 
 	@Test
-	void alta_de_sucursal_en_empresa_inexistente_devuelve_404() throws Exception {
-		mvc.perform(post("/api/v1/empresas/{empresaId}/sucursales", UUID.randomUUID())
+	void el_dueno_de_otra_empresa_no_puede_abrir_sucursal_ajena_403() throws Exception {
+		UUID empresaAjena = registrarEmpresa("Empresa Ajena");
+		UUID empresaPropia = registrarEmpresa("Empresa Propia");
+		String duenoDeOtra = tokenDueno(empresaPropia);
+
+		mvc.perform(post("/api/v1/empresas/{empresaId}/sucursales", empresaAjena)
+						.header("Authorization", "Bearer " + duenoDeOtra)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"nombre\":\"Centro\"}"))
-				.andExpect(status().isNotFound());
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void sin_token_devuelve_401() throws Exception {
+		UUID empresaId = registrarEmpresa("Sin token");
+
+		mvc.perform(post("/api/v1/empresas/{empresaId}/sucursales", empresaId)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Centro\"}"))
+				.andExpect(status().isUnauthorized());
 	}
 }

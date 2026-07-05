@@ -1,0 +1,93 @@
+package com.costumi.backend.clientes.dominio;
+
+import java.util.Objects;
+import java.util.UUID;
+
+/**
+ * Cliente: ficha del cliente de una Empresa (tenant) (RF-7.1). Incluye datos de contacto y
+ * documento de identidad (garantía), y un estado de confianza / lista negra (RF-7.3).
+ */
+public class Cliente {
+
+	private final UUID id;
+	private final UUID empresaId;
+	private String nombre;
+	private String telefono;
+	private String email;
+	private String documento;
+	private String direccion;
+	private boolean enListaNegra;
+
+	private Cliente(UUID id, UUID empresaId, String nombre, String telefono, String email, String documento,
+			String direccion, boolean enListaNegra) {
+		this.id = Objects.requireNonNull(id, "id");
+		this.empresaId = Objects.requireNonNull(empresaId, "empresaId");
+		this.nombre = exigirNombre(nombre);
+		this.telefono = limpiar(telefono);
+		this.email = limpiar(email);
+		this.documento = limpiar(documento);
+		this.direccion = limpiar(direccion);
+		this.enListaNegra = enListaNegra;
+	}
+
+	public static Cliente crear(UUID empresaId, String nombre, String telefono, String email, String documento,
+			String direccion) {
+		return new Cliente(UUID.randomUUID(), empresaId, nombre, telefono, email, documento, direccion, false);
+	}
+
+	public static Cliente rehidratar(UUID id, UUID empresaId, String nombre, String telefono, String email,
+			String documento, String direccion, boolean enListaNegra) {
+		return new Cliente(id, empresaId, nombre, telefono, email, documento, direccion, enListaNegra);
+	}
+
+	public void ponerEnListaNegra() {
+		this.enListaNegra = true;
+	}
+
+	public void quitarDeListaNegra() {
+		this.enListaNegra = false;
+	}
+
+	private static String exigirNombre(String nombre) {
+		if (nombre == null || nombre.isBlank()) {
+			throw new IllegalArgumentException("El nombre del cliente es obligatorio");
+		}
+		return nombre.trim();
+	}
+
+	private static String limpiar(String valor) {
+		return (valor == null || valor.isBlank()) ? null : valor.trim();
+	}
+
+	public UUID id() {
+		return id;
+	}
+
+	public UUID empresaId() {
+		return empresaId;
+	}
+
+	public String nombre() {
+		return nombre;
+	}
+
+	public String telefono() {
+		return telefono;
+	}
+
+	public String email() {
+		return email;
+	}
+
+	public String documento() {
+		return documento;
+	}
+
+	public String direccion() {
+		return direccion;
+	}
+
+	public boolean enListaNegra() {
+		return enListaNegra;
+	}
+}

@@ -1,0 +1,125 @@
+package com.costumi.backend.pedidos;
+
+import com.costumi.backend.TestcontainersConfiguration;
+import com.costumi.backend.identidad.AuthTestHelper;
+import com.costumi.backend.identidad.dominio.Rol;
+import com.costumi.backend.identidad.dominio.UsuarioRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.web.servlet.MockMvc;
+
+import java.util.UUID;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+/** Carrito (RF-16): agrega ítems, suma, y renta/venta quedan en carritos separados. */
+@SpringBootTest
+@AutoConfigureMockMvc
+@Import(TestcontainersConfiguration.class)
+class CarritoIntegrationTest {
+
+	@Autowired
+	MockMvc mvc;
+
+	@Autowired
+	ObjectMapper json;
+
+	@Autowired
+	UsuarioRepository usuarios;
+
+	@Autowired
+	PasswordEncoder passwordEncoder;
+
+	private record Ctx(String dueno, UUID sucursal, UUID cliente, UUID prenda) {
+	}
+
+	private UUID postId(String path, String token, String body) throws Exception {
+		String res = mvc.perform(post(path).header("Authorization", "Bearer " + token)
+						.contentType(MediaType.APPLICATION_JSON).content(body))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		return UUID.fromString(json.readTree(res).get("id").asText());
+	}
+
+	private Ctx montar() throws Exception {
+		String res = mvc.perform(post("/api/v1/empresas").contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Carrito " + UUID.randomUUID() + "\"}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		UUID empresa = UUID.fromString(json.readTree(res).get("id").asText());
+
+		String superAdmin = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, null, Rol.SUPERADMIN);
+		mvc.perform(post("/api/v1/empresas/{id}/aprobar", empresa).header("Authorization", "Bearer " + superAdmin))
+				.andExpect(status().isOk());
+
+		String dueno = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.DUENO);
+		UUID sucursal = postId("/api/v1/empresas/" + empresa + "/sucursales", dueno, "{\"nombre\":\"Centro\"}");
+		UUID cliente = postId("/api/v1/clientes", dueno, "{\"nombre\":\"Cliente\"}");
+		UUID categoria = postId("/api/v1/categorias", dueno, "{\"nombre\":\"Camisa " + UUID.randomUUID() + "\"}");
+		UUID prenda = postId("/api/v1/prendas", dueno, "{\"categoriaId\":\"" + categoria
+				+ "\",\"nombre\":\"Camisa\",\"tipoArticulo\":\"AMBOS\",\"precioRenta\":30.00,\"precioVenta\":90.00}");
+		return new Ctx(dueno, sucursal, cliente, prenda);
+	}
+
+	private void agregar(Ctx c, String tipo, int cantidad) throws Exception {
+		mvc.perform(post("/api/v1/carritos/items").header("Authorization", "Bearer " + c.dueno())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + c.sucursal() + "\",\"clienteId\":\"" + c.cliente()
+								+ "\",\"tipo\":\"" + tipo + "\",\"prendaId\":\"" + c.prenda() + "\",\"cantidad\":" + cantidad + "}"))
+				.andExpect(status().isOk());
+	}
+
+	@Test
+	void agregar_la_misma_prenda_suma_la_cantidad() throws Exception {
+		Ctx c = montar();
+
+		agregar(c, "RENTA", 2);
+		agregar(c, "RENTA", 3);
+
+		mvc.perform(get("/api/v1/carritos").header("Authorization", "Bearer " + c.dueno())
+						.param("sucursalId", c.sucursal().toString())
+						.param("clienteId", c.cliente().toString())
+						.param("tipo", "RENTA"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.lineas.length()").value(1))
+				.andExpect(jsonPath("$.lineas[0].cantidad").value(5));
+	}
+
+	@Test
+	void renta_y_venta_quedan_en_carritos_separados() throws Exception {
+		Ctx c = montar();
+
+		agregar(c, "RENTA", 1);
+		agregar(c, "VENTA", 1);
+
+		mvc.perform(get("/api/v1/carritos").header("Authorization", "Bearer " + c.dueno())
+						.param("sucursalId", c.sucursal().toString())
+						.param("clienteId", c.cliente().toString())
+						.param("tipo", "RENTA"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.tipo").value("RENTA"));
+
+		mvc.perform(get("/api/v1/carritos").header("Authorization", "Bearer " + c.dueno())
+						.param("sucursalId", c.sucursal().toString())
+						.param("clienteId", c.cliente().toString())
+						.param("tipo", "VENTA"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.tipo").value("VENTA"));
+	}
+
+	@Test
+	void sin_token_devuelve_401() throws Exception {
+		mvc.perform(get("/api/v1/carritos")
+						.param("sucursalId", UUID.randomUUID().toString())
+						.param("clienteId", UUID.randomUUID().toString())
+						.param("tipo", "RENTA"))
+				.andExpect(status().isUnauthorized());
+	}
+}
