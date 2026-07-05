@@ -1,0 +1,54 @@
+package com.costumi.backend.notificaciones.adaptadores.entrada;
+
+import com.costumi.backend.notificaciones.aplicacion.ConsultarNotificaciones;
+import com.costumi.backend.notificaciones.aplicacion.EnviarNotificacion;
+import com.costumi.backend.notificaciones.aplicacion.EnviarNotificacionComando;
+import com.costumi.backend.notificaciones.dominio.Notificacion;
+import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.util.UriComponentsBuilder;
+
+import java.net.URI;
+import java.util.List;
+import java.util.UUID;
+
+/** Notificaciones (RF-11), acotadas al tenant del token. */
+@RestController
+@RequestMapping("/api/v1/notificaciones")
+class NotificacionController {
+
+	private final EnviarNotificacion enviarNotificacion;
+	private final ConsultarNotificaciones consultarNotificaciones;
+
+	NotificacionController(EnviarNotificacion enviarNotificacion, ConsultarNotificaciones consultarNotificaciones) {
+		this.enviarNotificacion = enviarNotificacion;
+		this.consultarNotificaciones = consultarNotificaciones;
+	}
+
+	@PostMapping
+	ResponseEntity<NotificacionResponse> enviar(@Valid @RequestBody EnviarNotificacionRequest request,
+			@AuthenticationPrincipal Jwt jwt, UriComponentsBuilder uriBuilder) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		Notificacion notificacion = enviarNotificacion.ejecutar(new EnviarNotificacionComando(
+				empresaId, request.clienteId(), request.canal(), request.mensaje()));
+		URI location = uriBuilder.path("/api/v1/notificaciones/{id}").buildAndExpand(notificacion.id()).toUri();
+		return ResponseEntity.created(location).body(NotificacionResponse.desde(notificacion));
+	}
+
+	@GetMapping
+	List<NotificacionResponse> listar(@AuthenticationPrincipal Jwt jwt) {
+		String empresaId = jwt.getClaimAsString("empresa_id");
+		if (empresaId == null) {
+			return List.of();
+		}
+		return consultarNotificaciones.deEmpresa(UUID.fromString(empresaId)).stream()
+				.map(NotificacionResponse::desde).toList();
+	}
+}

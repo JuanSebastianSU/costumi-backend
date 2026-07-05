@@ -51,6 +51,7 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/v1/empresas").permitAll()
 						.requestMatchers("/actuator/health", "/actuator/info").permitAll()
+						.requestMatchers(HttpMethod.GET, "/api/v1/marketplace/**").permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/v1/empresas/pendientes").hasRole("SUPERADMIN")
 						.requestMatchers(HttpMethod.POST,
 								"/api/v1/empresas/*/aprobar", "/api/v1/empresas/*/rechazar",
@@ -72,6 +73,8 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.POST, "/api/v1/ventas").hasAnyRole("DUENO", "ENCARGADO", "MOSTRADOR", "ATENCION")
 						.requestMatchers(HttpMethod.POST, "/api/v1/pagos").hasAnyRole("DUENO", "ENCARGADO", "MOSTRADOR", "ATENCION")
 						.requestMatchers(HttpMethod.GET, "/api/v1/reportes/**").hasAnyRole("DUENO", "ENCARGADO")
+						.requestMatchers(HttpMethod.PUT, "/api/v1/configuracion").hasAnyRole("DUENO", "ENCARGADO")
+						.requestMatchers(HttpMethod.POST, "/api/v1/notificaciones").hasAnyRole("DUENO", "ENCARGADO", "ATENCION")
 						.anyRequest().authenticated())
 				.oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(convertidorDeAutoridades())));
 		return http.build();
