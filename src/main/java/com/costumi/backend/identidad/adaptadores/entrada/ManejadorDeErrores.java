@@ -1,5 +1,6 @@
 package com.costumi.backend.identidad.adaptadores.entrada;
 
+import com.costumi.backend.identidad.aplicacion.CredencialesInvalidas;
 import com.costumi.backend.identidad.aplicacion.EmpresaNoEncontrada;
 import com.costumi.backend.identidad.aplicacion.EmpresaNoOperativa;
 import com.costumi.backend.identidad.dominio.TransicionDeEstadoInvalida;
@@ -30,6 +31,13 @@ class ManejadorDeErrores {
 	ProblemDetail empresaNoOperativa(EmpresaNoOperativa ex) {
 		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
 		problema.setTitle("Empresa no operativa");
+		return problema;
+	}
+
+	@ExceptionHandler(CredencialesInvalidas.class)
+	ProblemDetail credencialesInvalidas(CredencialesInvalidas ex) {
+		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
+		problema.setTitle("Credenciales inválidas");
 		return problema;
 	}
 }
