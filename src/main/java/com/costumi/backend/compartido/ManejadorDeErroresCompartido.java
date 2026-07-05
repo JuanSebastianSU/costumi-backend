@@ -15,4 +15,11 @@ class ManejadorDeErroresCompartido {
 		problema.setTitle("Acceso denegado");
 		return problema;
 	}
+
+	@ExceptionHandler(SucursalNoIndicada.class)
+	ProblemDetail sucursalNoIndicada(SucursalNoIndicada ex) {
+		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+		problema.setTitle("Sucursal no indicada");
+		return problema;
+	}
 }

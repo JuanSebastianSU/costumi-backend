@@ -2,9 +2,12 @@ package com.costumi.backend.compartido;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -20,6 +23,15 @@ class ContextoDeTenantTest {
 	@AfterEach
 	void limpiar() {
 		SecurityContextHolder.clearContext();
+		RequestContextHolder.resetRequestAttributes();
+	}
+
+	private static void conCabeceraSucursal(String valor) {
+		MockHttpServletRequest request = new MockHttpServletRequest();
+		if (valor != null) {
+			request.addHeader("X-Sucursal-Id", valor);
+		}
+		RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
 	}
 
 	private static void autenticarCon(Jwt jwt) {
@@ -53,5 +65,22 @@ class ContextoDeTenantTest {
 	@Test
 	void sin_autenticacion_no_hay_empresa() {
 		assertThat(contexto.empresaId()).isEmpty();
+	}
+
+	@Test
+	void lee_la_sucursal_activa_de_la_cabecera() {
+		UUID sucursal = UUID.randomUUID();
+		conCabeceraSucursal(sucursal.toString());
+
+		assertThat(contexto.sucursalActiva()).contains(sucursal);
+		assertThat(contexto.sucursalActivaRequerida()).isEqualTo(sucursal);
+	}
+
+	@Test
+	void sin_cabecera_de_sucursal_falla_la_requerida() {
+		conCabeceraSucursal(null);
+
+		assertThat(contexto.sucursalActiva()).isEmpty();
+		assertThatThrownBy(contexto::sucursalActivaRequerida).isInstanceOf(SucursalNoIndicada.class);
 	}
 }
