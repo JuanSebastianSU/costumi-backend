@@ -1,5 +1,8 @@
 package com.costumi.backend.inventario.adaptadores.salida;
 
+import com.costumi.backend.compartido.FiltroTenant;
+import org.hibernate.annotations.Filter;
+
 import com.costumi.backend.inventario.dominio.TipoArticulo;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
@@ -20,6 +23,7 @@ import java.util.UUID;
 /** Mapeo JPA de la Prenda. Lleva {@code empresa_id} (tenant) y la categoría. */
 @Entity
 @Table(name = "prenda")
+@Filter(name = FiltroTenant.NOMBRE)
 class PrendaJpaEntity {
 
 	@Id

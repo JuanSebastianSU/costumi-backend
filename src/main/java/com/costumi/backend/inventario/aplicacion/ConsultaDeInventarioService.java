@@ -25,6 +25,14 @@ class ConsultaDeInventarioService implements ConsultaDeInventario {
 
 	@Override
 	@Transactional(readOnly = true)
+	public boolean prendaExiste(UUID empresaId, UUID prendaId) {
+		return prendas.buscarPorId(prendaId)
+				.filter(prenda -> prenda.empresaId().equals(empresaId))
+				.isPresent();
+	}
+
+	@Override
+	@Transactional(readOnly = true)
 	public boolean prendaTieneStockDisponible(UUID empresaId, UUID prendaId) {
 		return prendas.buscarPorId(prendaId)
 				.filter(prenda -> prenda.empresaId().equals(empresaId))

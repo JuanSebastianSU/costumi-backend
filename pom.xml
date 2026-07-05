@@ -33,6 +33,12 @@
 			<artifactId>spring-boot-starter-validation</artifactId>
 		</dependency>
 
+		<!-- AOP: aspecto que fuerza el filtro multi-tenant por sesión (§5.4) -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-aop</artifactId>
+		</dependency>
+
 		<!-- Persistencia: JPA + PostgreSQL + Flyway -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

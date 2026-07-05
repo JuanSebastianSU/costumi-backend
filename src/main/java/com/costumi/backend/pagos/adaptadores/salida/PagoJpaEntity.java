@@ -1,5 +1,8 @@
 package com.costumi.backend.pagos.adaptadores.salida;
 
+import com.costumi.backend.compartido.FiltroTenant;
+import org.hibernate.annotations.Filter;
+
 import com.costumi.backend.pagos.dominio.MetodoPago;
 import com.costumi.backend.pagos.dominio.TipoConcepto;
 import jakarta.persistence.Column;
@@ -16,6 +19,7 @@ import java.util.UUID;
 /** Mapeo JPA del Pago. Lleva {@code empresa_id} (tenant). */
 @Entity
 @Table(name = "pago")
+@Filter(name = FiltroTenant.NOMBRE)
 class PagoJpaEntity {
 
 	@Id

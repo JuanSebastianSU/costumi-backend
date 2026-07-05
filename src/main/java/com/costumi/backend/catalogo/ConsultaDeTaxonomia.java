@@ -12,6 +12,9 @@ import java.util.UUID;
  */
 public interface ConsultaDeTaxonomia {
 
+	/** ¿La categoría existe y pertenece a la empresa? (validación de referencia cruzada por tenant, §5.4). */
+	boolean categoriaExiste(UUID empresaId, UUID categoriaId);
+
 	/** ¿El tipo existe en la empresa, no está archivado y sus valores definen variantes de stock? */
 	boolean tipoDefineVariante(UUID empresaId, UUID tipoEtiquetaId);
 

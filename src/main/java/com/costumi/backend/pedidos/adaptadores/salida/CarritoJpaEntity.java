@@ -1,5 +1,8 @@
 package com.costumi.backend.pedidos.adaptadores.salida;
 
+import com.costumi.backend.compartido.FiltroTenant;
+import org.hibernate.annotations.Filter;
+
 import com.costumi.backend.pedidos.dominio.EstadoCarrito;
 import com.costumi.backend.pedidos.dominio.TipoPedido;
 import jakarta.persistence.Column;
@@ -14,6 +17,7 @@ import java.util.UUID;
 /** Mapeo JPA de la cabecera del Carrito. Lleva {@code empresa_id} (tenant). */
 @Entity
 @Table(name = "carrito")
+@Filter(name = FiltroTenant.NOMBRE)
 class CarritoJpaEntity {
 
 	@Id

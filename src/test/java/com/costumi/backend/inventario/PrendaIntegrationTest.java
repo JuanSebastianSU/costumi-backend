@@ -212,6 +212,21 @@ class PrendaIntegrationTest {
 	}
 
 	@Test
+	void crear_prenda_con_categoria_de_otra_empresa_devuelve_400() throws Exception {
+		String duenoA = duenoDe(crearEmpresa("Cross A"));
+		UUID categoriaDeA = crearCategoria(duenoA, "Camisa");
+
+		String duenoB = duenoDe(crearEmpresa("Cross B"));
+		// B intenta crear una prenda referenciando la categoría de A (cross-ref por tenant, §5.4).
+		mvc.perform(post("/api/v1/prendas")
+						.header("Authorization", "Bearer " + duenoB)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"categoriaId\":\"" + categoriaDeA + "\",\"nombre\":\"X\","
+								+ "\"tipoArticulo\":\"VENTA\",\"precioVenta\":10.00}"))
+				.andExpect(status().isBadRequest());
+	}
+
+	@Test
 	void sin_token_devuelve_401() throws Exception {
 		mvc.perform(get("/api/v1/prendas")).andExpect(status().isUnauthorized());
 	}

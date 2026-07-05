@@ -151,6 +151,20 @@ class DisfrazIntegrationTest {
 	}
 
 	@Test
+	void crear_disfraz_con_prenda_de_otra_empresa_devuelve_400() throws Exception {
+		String duenoA = duenoDe(crearEmpresa("Disfraz Cross A"));
+		UUID categoriaA = crearCategoria(duenoA, "Traje");
+		UUID prendaDeA = crearPrenda(duenoA, categoriaA);
+
+		String duenoB = duenoDe(crearEmpresa("Disfraz Cross B"));
+		// B intenta un disfraz de unidad fija con la prenda de A (cross-ref por tenant, §5.4).
+		mvc.perform(post("/api/v1/disfraces").header("Authorization", "Bearer " + duenoB)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Robo\",\"modo\":\"UNIDAD_FIJA\",\"prendaFijaId\":\"" + prendaDeA + "\"}"))
+				.andExpect(status().isBadRequest());
+	}
+
+	@Test
 	void sin_token_devuelve_401() throws Exception {
 		mvc.perform(get("/api/v1/disfraces")).andExpect(status().isUnauthorized());
 	}

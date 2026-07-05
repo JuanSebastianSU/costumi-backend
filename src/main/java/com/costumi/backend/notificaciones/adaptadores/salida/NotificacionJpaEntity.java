@@ -1,5 +1,8 @@
 package com.costumi.backend.notificaciones.adaptadores.salida;
 
+import com.costumi.backend.compartido.FiltroTenant;
+import org.hibernate.annotations.Filter;
+
 import com.costumi.backend.notificaciones.dominio.CanalNotificacion;
 import com.costumi.backend.notificaciones.dominio.EstadoNotificacion;
 import jakarta.persistence.Column;
@@ -15,6 +18,7 @@ import java.util.UUID;
 /** Mapeo JPA de la Notificación. Lleva {@code empresa_id} (tenant). */
 @Entity
 @Table(name = "notificacion")
+@Filter(name = FiltroTenant.NOMBRE)
 class NotificacionJpaEntity {
 
 	@Id

@@ -11,6 +11,9 @@ import java.util.UUID;
  */
 public interface ConsultaDeInventario {
 
+	/** ¿La prenda existe y pertenece a la empresa? (validación de referencia cruzada por tenant, §5.4). */
+	boolean prendaExiste(UUID empresaId, UUID prendaId);
+
 	/** ¿La prenda (de la empresa) tiene al menos una unidad disponible en algún grupo de stock? */
 	boolean prendaTieneStockDisponible(UUID empresaId, UUID prendaId);
 

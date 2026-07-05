@@ -1,5 +1,8 @@
 package com.costumi.backend.catalogo.adaptadores.salida;
 
+import com.costumi.backend.compartido.FiltroTenant;
+import org.hibernate.annotations.Filter;
+
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
@@ -16,6 +19,7 @@ import java.util.UUID;
 /** Mapeo JPA del Tipo de etiqueta. Lleva {@code empresa_id} (tenant) y a qué categorías aplica. */
 @Entity
 @Table(name = "tipo_etiqueta")
+@Filter(name = FiltroTenant.NOMBRE)
 class TipoEtiquetaJpaEntity {
 
 	@Id

@@ -27,6 +27,9 @@ class PrendaService implements CrearPrenda, ConsultarPrendas {
 	@Override
 	@Transactional
 	public Prenda ejecutar(CrearPrendaComando comando) {
+		if (!taxonomia.categoriaExiste(comando.empresaId(), comando.categoriaId())) {
+			throw new EtiquetaDePrendaInvalida("La categoría no existe en esta empresa");
+		}
 		EtiquetasDePrenda etiquetas = validarEtiquetas(comando.empresaId(), comando.categoriaId(), comando.etiquetas());
 		return prendas.guardar(Prenda.crear(comando.empresaId(), comando.categoriaId(), comando.nombre(),
 				comando.tipoArticulo(), comando.precioRenta(), comando.precioVenta(), etiquetas));

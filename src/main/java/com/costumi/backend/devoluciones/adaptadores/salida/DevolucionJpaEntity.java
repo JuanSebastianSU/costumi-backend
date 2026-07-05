@@ -1,5 +1,8 @@
 package com.costumi.backend.devoluciones.adaptadores.salida;
 
+import com.costumi.backend.compartido.FiltroTenant;
+import org.hibernate.annotations.Filter;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -11,6 +14,7 @@ import java.util.UUID;
 /** Mapeo JPA de la cabecera de la Devolución. Lleva {@code empresa_id} (tenant). */
 @Entity
 @Table(name = "devolucion")
+@Filter(name = FiltroTenant.NOMBRE)
 class DevolucionJpaEntity {
 
 	@Id

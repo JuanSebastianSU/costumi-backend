@@ -93,6 +93,14 @@ class TaxonomiaService implements CrearTipoEtiqueta, ConsultarTiposEtiqueta, Agr
 
 	@Override
 	@Transactional(readOnly = true)
+	public boolean categoriaExiste(UUID empresaId, UUID categoriaId) {
+		return categorias.buscarPorId(categoriaId)
+				.filter(categoria -> categoria.empresaId().equals(empresaId))
+				.isPresent();
+	}
+
+	@Override
+	@Transactional(readOnly = true)
 	public boolean tipoDefineVariante(UUID empresaId, UUID tipoEtiquetaId) {
 		return tipos.buscarPorId(tipoEtiquetaId)
 				.filter(tipo -> tipo.empresaId().equals(empresaId))

@@ -12,9 +12,15 @@
   revisión a Juan ANTES de construir encima** (si el modelo núcleo o §5.4 quedan mal, todo lo de arriba se rehace).
 - **Tanda 2 = P2+P3** (ciclo operativo + dinero) · **Tanda 3 = P4+P5** (resto).
 - Reglas: **1 commit por feature**, **tests de dominio por cada feature**, **§5.4 temprano**, ambiguo → decisión aquí.
-- **⛔ CHECKPOINT ALCANZADO — Tanda 1 COMPLETA en PR #8** (`chore/scaffolding-modulith` → `main`; **PR #7 ya lo
-  mergeó Juan**). **Esperando revisión de Juan del núcleo del modelo y §5.4 antes de empezar la Tanda 2.**
-  Todo verde (181 tests, CI). Hecho en la tanda:
+- **CHECKPOINT: Juan REVISÓ y APROBÓ el P0 y MERGEÓ la Tanda 1 a `main` (PR #8, en `315b3cd`).** Exigió cerrar el
+  **§5.4 aislamiento FORZADO** antes de la Tanda 2 → **HECHO y verde (184 tests, CI) en la nueva PR #9**:
+  (a) **filtro Hibernate `@Filter`** por `empresa_id` en las 19 entidades, activado por sesión desde
+  `ContextoDeTenant` en un aspecto sobre los repositorios (OSIV off); (b) **validación cross-ref por tenant**
+  (categoría de la prenda; prenda fija, categoría y valores del pool del disfraz) vía las APIs públicas
+  `ConsultaDeTaxonomia`/`ConsultaDeInventario`; (c) **tests que prueban que no se lee ni escribe cruzando tenant**.
+  **Esperando el OK de Juan a la PR #9 antes de arrancar la Tanda 2.** (Rama `chore/scaffolding-modulith`; a `main`
+  solo lo que Juan mergea.)
+- **Tanda 1 (ya en `main`, PR #8 mergeada por Juan; antes PR #7 con los 14 módulos de §7). Contenido de la Tanda 1:**
   (1) **§5.4 base** — `ContextoDeTenant`; (2) **motor de variantes real** — `GrupoDeStock` = combinación real de
   valores de etiqueta; (3) **Prenda↔etiquetas (Capa 2)**; (4) **tipo↔categoría (RF-2.7.2)** impuesto; (5) **Disfraz
   + Slot (Capa 3) + disponibilidad DERIVADA (RF-2.3/2.4)** — modo unidad-fija/por-partes, ≤8 slots, dos ejes +
@@ -164,6 +170,22 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-05 (ad)** — **§5.4 · Validación cross-ref por tenant (escritura) — pedido de Juan tras el checkpoint.**
+  Toda referencia por id se valida contra el tenant vía las APIs públicas entre módulos: `PrendaService` exige
+  que la **categoría** sea de la empresa (`ConsultaDeTaxonomia.categoriaExiste`); `DisfrazService` exige que la
+  **prenda fija**, la **categoría del pool** y los **valores del pool** sean del tenant
+  (`ConsultaDeInventario.prendaExiste` + `ConsultaDeTaxonomia.categoriaExiste`/`valorPerteneceATipo`). Cruzar
+  tenant → 400. Tests: B no puede crear prenda con categoría de A, ni disfraz con prenda de A. **184 verdes.**
+  (Nota: la validación usa el chequeo manual `empresaId` porque los filtros Hibernate no aplican a `find()` por PK.)
+- **2026-07-05 (ac)** — **§5.4 · Aislamiento multi-tenant FORZADO (lectura) — pedido de Juan tras el checkpoint.**
+  Filtro Hibernate `@FilterDef`/`@Filter` (`empresa_id = :empresaId`) en las **19 entidades** con `empresa_id`
+  (definido una vez en `SucursalJpaEntity`). Se activa por sesión con el `empresa_id` del token en
+  **`FiltroDeTenantAspect`** (aspecto `@Around` sobre `*RepositoryAdapter`), enganchado en el repositorio y no en
+  el request porque **OSIV está off** (el adaptador siempre corre dentro de la tx del servicio, con sesión viva).
+  SuperAdmin/login sin tenant → filtro no se activa. Se añadió `spring-boot-starter-aop`. Test que prueba que un
+  tenant no ve por **consulta** los datos de otro (sorteando el caché de 1er nivel; los filtros aplican a queries,
+  no a `find()` por PK — el `find` queda cubierto por el chequeo manual de los servicios). **182 verdes.**
+  _Decisión:_ RLS Postgres queda como posible 2º cinturón futuro; con el `@Filter` + cross-ref basta para cerrar §5.4.
 - **2026-07-05 (ab)** — **Tanda 1 · Siembra de taxonomía básica al aprobar (RF-2.7.7 / RF-13.5) → CIERRA TANDA 1.**
   Al **aprobar** una empresa, Identidad publica el evento **`EmpresaAprobada`** (§5.5) y Catálogo lo escucha
   (`SembradorDeTaxonomiaBasica`, síncrono en la tx) para **sembrar** categorías básicas (Camisa, Pantalón,
