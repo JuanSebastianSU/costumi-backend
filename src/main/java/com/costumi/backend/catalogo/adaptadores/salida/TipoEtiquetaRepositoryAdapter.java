@@ -27,7 +27,7 @@ class TipoEtiquetaRepositoryAdapter implements TipoEtiquetaRepository {
 
 	@Override
 	public Optional<TipoEtiqueta> buscarPorId(UUID id) {
-		return jpa.findById(id).map(TipoEtiquetaRepositoryAdapter::aDominio);
+		return jpa.findFirstById(id).map(TipoEtiquetaRepositoryAdapter::aDominio);
 	}
 
 	@Override

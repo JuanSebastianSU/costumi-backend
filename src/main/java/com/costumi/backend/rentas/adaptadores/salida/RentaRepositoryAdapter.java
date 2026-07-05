@@ -25,7 +25,7 @@ class RentaRepositoryAdapter implements RentaRepository {
 
 	@Override
 	public Optional<Renta> buscarPorId(UUID id) {
-		return jpa.findById(id).map(RentaRepositoryAdapter::aDominio);
+		return jpa.findFirstById(id).map(RentaRepositoryAdapter::aDominio);
 	}
 
 	@Override

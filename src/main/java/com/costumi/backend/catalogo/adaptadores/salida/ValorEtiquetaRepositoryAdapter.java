@@ -25,7 +25,7 @@ class ValorEtiquetaRepositoryAdapter implements ValorEtiquetaRepository {
 
 	@Override
 	public Optional<ValorEtiqueta> buscarPorId(UUID id) {
-		return jpa.findById(id).map(ValorEtiquetaRepositoryAdapter::aDominio);
+		return jpa.findFirstById(id).map(ValorEtiquetaRepositoryAdapter::aDominio);
 	}
 
 	@Override

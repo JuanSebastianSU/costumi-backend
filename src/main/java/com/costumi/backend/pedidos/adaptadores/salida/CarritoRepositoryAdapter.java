@@ -37,7 +37,7 @@ class CarritoRepositoryAdapter implements CarritoRepository {
 
 	@Override
 	public Optional<Carrito> buscarPorId(UUID id) {
-		return cabeceras.findById(id).map(this::aDominio);
+		return cabeceras.findFirstById(id).map(this::aDominio);
 	}
 
 	@Override

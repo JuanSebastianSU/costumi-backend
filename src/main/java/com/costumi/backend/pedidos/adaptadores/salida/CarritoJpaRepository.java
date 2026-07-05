@@ -11,4 +11,7 @@ interface CarritoJpaRepository extends JpaRepository<CarritoJpaEntity, UUID> {
 
 	Optional<CarritoJpaEntity> findByEmpresaIdAndSucursalIdAndClienteIdAndTipoAndEstado(
 			UUID empresaId, UUID sucursalId, UUID clienteId, TipoPedido tipo, EstadoCarrito estado);
+
+	/** Carga por PK como QUERY (no em.find) para que el @Filter multi-tenant la acote (§5.4). */
+	Optional<CarritoJpaEntity> findFirstById(UUID id);
 }

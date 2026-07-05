@@ -170,6 +170,15 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-05 (ae)** — **§5.4 · `find()` por PK forzado por construcción — 3er pedido de Juan.** El `@Filter` no
+  cubre `findById` (em.find); el hueco se tapaba con `.filter(empresaId)` manual por servicio (RentaRepositoryAdapter
+  iba sin guard). Cerrado en los adaptadores: `buscarPorId` pasa de `findById` (em.find) a **`findFirstById`**
+  (query derivada) → atraviesa el `@Filter` forzado ya aprobado → devuelve **empty si `empresa_id ≠ tenant`**, sin
+  chequeo manual. Aplicado a los **13 adaptadores** con `empresa_id` (se excluyen `Empresa` = el propio tenant, y
+  `Configuracion` = PK es `empresa_id`). Tests: `buscarPorId` con id de otro tenant → empty; cargar-por-PK-y-mover
+  (dinero-adyacente) cruzando tenant → 404. **186 verdes.** _Nota:_ los `.filter(empresaId)` que quedan en los
+  servicios son ahora **redundantes** (defensa en profundidad sobre el find forzado), no la línea de defensa.
+  _RLS Postgres:_ 2º cinturón opcional; con `@Filter` (queries) + `findFirstById` (PK) + cross-ref, §5.4 queda cerrado.
 - **2026-07-05 (ad)** — **§5.4 · Validación cross-ref por tenant (escritura) — pedido de Juan tras el checkpoint.**
   Toda referencia por id se valida contra el tenant vía las APIs públicas entre módulos: `PrendaService` exige
   que la **categoría** sea de la empresa (`ConsultaDeTaxonomia.categoriaExiste`); `DisfrazService` exige que la

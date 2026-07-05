@@ -34,7 +34,7 @@ class VentaRepositoryAdapter implements VentaRepository {
 
 	@Override
 	public Optional<Venta> buscarPorId(UUID id) {
-		return cabeceras.findById(id).map(this::aDominio);
+		return cabeceras.findFirstById(id).map(this::aDominio);
 	}
 
 	@Override

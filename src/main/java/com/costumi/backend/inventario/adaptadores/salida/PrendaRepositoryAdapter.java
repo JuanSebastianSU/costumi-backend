@@ -31,7 +31,7 @@ class PrendaRepositoryAdapter implements PrendaRepository {
 
 	@Override
 	public Optional<Prenda> buscarPorId(UUID id) {
-		return jpa.findById(id).map(PrendaRepositoryAdapter::aDominio);
+		return jpa.findFirstById(id).map(PrendaRepositoryAdapter::aDominio);
 	}
 
 	@Override

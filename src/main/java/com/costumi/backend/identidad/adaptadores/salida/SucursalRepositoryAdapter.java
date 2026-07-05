@@ -25,7 +25,7 @@ class SucursalRepositoryAdapter implements SucursalRepository {
 
 	@Override
 	public Optional<Sucursal> buscarPorId(UUID id) {
-		return jpa.findById(id).map(SucursalRepositoryAdapter::aDominio);
+		return jpa.findFirstById(id).map(SucursalRepositoryAdapter::aDominio);
 	}
 
 	@Override
