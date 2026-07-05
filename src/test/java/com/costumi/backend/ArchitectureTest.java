@@ -5,6 +5,8 @@ import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 
+import static com.tngtech.archunit.core.domain.JavaCall.Predicates.target;
+import static com.tngtech.archunit.core.domain.properties.HasName.Predicates.name;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.library.Architectures.layeredArchitecture;
 
@@ -33,6 +35,22 @@ class ArchitectureTest {
 							"com.fasterxml.jackson..")
 					.allowEmptyShould(true)
 					.because("el dominio debe ser puro y testeable sin BD ni Spring (CLAUDE.md)");
+
+	/**
+	 * Aislamiento multi-tenant §5.4 (cheap insurance): los adaptadores cargan por PK con
+	 * {@code findFirstById} (query que atraviesa el filtro por tenant), <b>nunca</b> con {@code findById}
+	 * (que va por {@code em.find} y se salta el filtro). Se exceptúan Empresa (es el propio tenant) y
+	 * Configuración (su PK ya <b>es</b> {@code empresa_id}).
+	 */
+	@ArchTest
+	static final ArchRule cargar_por_pk_no_usa_findById =
+			noClasses().that().resideInAPackage("..adaptadores.salida..")
+					.and().haveSimpleNameNotEndingWith("EmpresaRepositoryAdapter")
+					.and().haveSimpleNameNotEndingWith("ConfiguracionRepositoryAdapter")
+					.should().callMethodWhere(target(name("findById")))
+					.as("cargar por PK debe usar findFirstById (filtrado por tenant §5.4), no findById")
+					.because("findById va por em.find y se salta el filtro multi-tenant; reabriría el hueco de §5.4")
+					.allowEmptyShould(true);
 
 	/** Las dependencias apuntan hacia adentro: adaptadores -> aplicacion -> dominio. Nunca al revés. */
 	@ArchTest

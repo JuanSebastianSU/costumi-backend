@@ -170,6 +170,14 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-05 (af)** — **§5.4 APROBADO por Juan (checkpoint Tanda 1 cerrado). LUZ VERDE: correr Tanda 2 → Tanda 3
+  de largo, SIN checkpoint intermedio; revisión final completa al terminar la Tanda 3 (esa reemplaza los
+  checkpoints).** Condiciones firmes de Juan: tests de dominio por CADA feature (no desactivar ninguno); **rigor
+  extra** en disponibilidad de renta por fechas (traslapes/concurrencia) y en dinero/caja (idempotencia, BigDecimal,
+  depósito-retención, cuadre); **1 commit por feature**; OpenAPI crece con cada endpoint; PROGRESS al día; no
+  inventar (ambiguo → PROGRESS). Añadido su "cheap insurance": **regla ArchUnit** que prohíbe `findById` en los
+  adaptadores (excepto Empresa/Configuración) para que el hueco de tenant no se reabra sin fallar el build.
+  PR #8/#9 (y #10 del find-por-PK) listos para mergear a `main`.
 - **2026-07-05 (ae)** — **§5.4 · `find()` por PK forzado por construcción — 3er pedido de Juan.** El `@Filter` no
   cubre `findById` (em.find); el hueco se tapaba con `.filter(empresaId)` manual por servicio (RentaRepositoryAdapter
   iba sin guard). Cerrado en los adaptadores: `buscarPorId` pasa de `findById` (em.find) a **`findFirstById`**
