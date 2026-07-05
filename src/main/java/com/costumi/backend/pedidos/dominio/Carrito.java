@@ -1,0 +1,82 @@
+package com.costumi.backend.pedidos.dominio;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
+
+/**
+ * Carrito / pedido pendiente (RF-16). Segmentación estricta (RF-16.2): identificado por
+ * (empresa × sucursal × cliente × tipo); jamás mezcla locales ni tipos. Persistente en el
+ * servidor (RF-16.5). Agregado de dominio que contiene sus líneas.
+ */
+public class Carrito {
+
+	private final UUID id;
+	private final UUID empresaId;
+	private final UUID sucursalId;
+	private final UUID clienteId;
+	private final TipoPedido tipo;
+	private EstadoCarrito estado;
+	private final List<LineaDeCarrito> lineas;
+
+	private Carrito(UUID id, UUID empresaId, UUID sucursalId, UUID clienteId, TipoPedido tipo,
+			EstadoCarrito estado, List<LineaDeCarrito> lineas) {
+		this.id = Objects.requireNonNull(id, "id");
+		this.empresaId = Objects.requireNonNull(empresaId, "empresaId");
+		this.sucursalId = Objects.requireNonNull(sucursalId, "sucursalId");
+		this.clienteId = Objects.requireNonNull(clienteId, "clienteId");
+		this.tipo = Objects.requireNonNull(tipo, "tipo");
+		this.estado = Objects.requireNonNull(estado, "estado");
+		this.lineas = new ArrayList<>(lineas);
+	}
+
+	public static Carrito crear(UUID empresaId, UUID sucursalId, UUID clienteId, TipoPedido tipo) {
+		return new Carrito(UUID.randomUUID(), empresaId, sucursalId, clienteId, tipo,
+				EstadoCarrito.PENDIENTE, new ArrayList<>());
+	}
+
+	public static Carrito rehidratar(UUID id, UUID empresaId, UUID sucursalId, UUID clienteId, TipoPedido tipo,
+			EstadoCarrito estado, List<LineaDeCarrito> lineas) {
+		return new Carrito(id, empresaId, sucursalId, clienteId, tipo, estado, lineas);
+	}
+
+	/** Agrega una prenda; si ya está en el carrito, suma a su cantidad. */
+	public void agregarItem(UUID prendaId, int cantidad) {
+		for (LineaDeCarrito linea : lineas) {
+			if (linea.prendaId().equals(prendaId)) {
+				linea.incrementar(cantidad);
+				return;
+			}
+		}
+		lineas.add(LineaDeCarrito.de(prendaId, cantidad));
+	}
+
+	public List<LineaDeCarrito> lineas() {
+		return List.copyOf(lineas);
+	}
+
+	public UUID id() {
+		return id;
+	}
+
+	public UUID empresaId() {
+		return empresaId;
+	}
+
+	public UUID sucursalId() {
+		return sucursalId;
+	}
+
+	public UUID clienteId() {
+		return clienteId;
+	}
+
+	public TipoPedido tipo() {
+		return tipo;
+	}
+
+	public EstadoCarrito estado() {
+		return estado;
+	}
+}
