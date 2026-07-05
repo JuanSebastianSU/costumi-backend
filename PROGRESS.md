@@ -36,7 +36,10 @@ por rol/tenant**, y **cerradas las dos deudas de seguridad**. Todo en la rama
   9. **Carrito (RF-16)**: nuevo módulo `pedidos`; carrito persistente **segmentado por (empresa ×
      sucursal × cliente × tipo)** con líneas; agregar suma cantidades; renta y venta en carritos
      separados. `POST /api/v1/carritos/items`, `GET /api/v1/carritos`.
-  93 tests verdes en local.
+  10. **Renta (RF-3)**: nuevo módulo `rentas`; crear renta (fechas, **importe = precio × días**, depósito),
+      máquina de estados RESERVADA→ACTIVA→DEVUELTA→CERRADA (+ CANCELADA) y detección de vencidas.
+      `POST /api/v1/rentas`, `GET /api/v1/rentas`, `POST /api/v1/rentas/{id}/{entregar|devolver|cerrar|cancelar}`.
+  102 tests verdes en local.
 
 ## Próximo paso concreto
 1. ✅ Andamiaje (mergeado a `main`) + check `build` requerido enganchado por Juan.
@@ -61,7 +64,8 @@ por rol/tenant**, y **cerradas las dos deudas de seguridad**. Todo en la rama
     derivada del Disfraz por slots (RF-2.4) — esto último ya es el módulo de Disfraz (capa 3).
 11. ✅ **Clientes (RF-7)**: ficha + búsqueda + lista negra (adelantado, es prerequisito del Carrito).
 12. ✅ **Carrito (RF-16)**: persistente y segmentado por (sucursal × cliente × tipo), renta/venta separados.
-13. ⬜ **Renta (RF-3)** ← siguiente — crear renta (fechas, depósito, estados), modo asistido.
+13. ✅ **Renta (RF-3)**: crear (fechas/importe/depósito) + máquina de estados + vencidas.
+14. ⬜ **Devolución (RF-5)** ← siguiente — checklist por pieza, multas, liquidación de depósito.
 
 ## Tablero de módulos
 Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
@@ -73,7 +77,7 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 | Catálogo y taxonomía (etiquetas, categorías) | Hexagonal | 🟨 | RF-2.7 — Categoría + TipoEtiqueta/ValorEtiqueta (PR #7); falta aplicabilidad tipo↔categoría y GrupoDeStock |
 | Inventario y disponibilidad | Hexagonal | 🟨 | RF-2 — Prenda + GrupoDeStock (PR #7); falta variante por etiquetas y disponibilidad derivada |
 | Pedidos / carrito | Hexagonal | 🟨 | RF-16 — carrito segmentado + líneas (PR #7); falta confirmar/checkout y offline |
-| Rentas | Hexagonal | ⬜ | RF-3 |
+| Rentas | Hexagonal | 🟨 | RF-3 — crear + importe + estados (PR #7); falta disponibilidad por fechas y extensión |
 | Ventas / POS | Hexagonal | ⬜ | RF-4 |
 | Pagos, caja y depósitos | Hexagonal | ⬜ | RF-6 |
 | Devoluciones y multas | Hexagonal | ⬜ | RF-5 |
@@ -116,6 +120,12 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-04 (n)** — Nuevo módulo **Rentas (RF-3)**: `Renta` con fechas de retiro/devolución,
+  **importe = precio × días** (mínimo 1) y depósito; máquina de estados RESERVADA→ACTIVA→DEVUELTA→CERRADA
+  (+ CANCELADA desde RESERVADA) y `estaVencida`. `POST /api/v1/rentas`, `GET /api/v1/rentas?clienteId=`,
+  `POST /api/v1/rentas/{id}/{entregar|devolver|cerrar|cancelar}` (409 en transición inválida, 404 fuera del tenant).
+  Migración `V10`. Build local **verde (102 tests, 7 módulos)**. En **PR #7**. Falta: verificación de disponibilidad
+  por fechas (RF-3.2, sin traslapes) y extensión/renovación (RF-3.6); precio derivado de la prenda.
 - **2026-07-04 (m)** — Nuevo módulo **Pedidos/Carrito (RF-16)**: agregado `Carrito` (agregado con líneas)
   **segmentado estrictamente** por (empresa × sucursal × cliente × tipo) con índice único parcial sobre
   los PENDIENTE; agregar la misma prenda **suma** cantidades; **renta y venta quedan en carritos separados**
