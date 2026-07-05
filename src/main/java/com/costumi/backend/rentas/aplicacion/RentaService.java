@@ -1,5 +1,6 @@
 package com.costumi.backend.rentas.aplicacion;
 
+import com.costumi.backend.inventario.ConsultaDeInventario;
 import com.costumi.backend.rentas.dominio.Renta;
 import com.costumi.backend.rentas.dominio.RentaRepository;
 import org.springframework.stereotype.Service;
@@ -14,14 +15,27 @@ import java.util.function.Consumer;
 class RentaService implements CrearRenta, ConsultarRentas, GestionarRenta {
 
 	private final RentaRepository rentas;
+	private final ConsultaDeInventario inventario;
 
-	RentaService(RentaRepository rentas) {
+	RentaService(RentaRepository rentas, ConsultaDeInventario inventario) {
 		this.rentas = rentas;
+		this.inventario = inventario;
 	}
 
 	@Override
 	@Transactional
 	public Renta ejecutar(CrearRentaComando comando) {
+		if (!inventario.prendaExiste(comando.empresaId(), comando.prendaId())) {
+			throw new IllegalArgumentException("La prenda no existe en esta empresa");
+		}
+		// Serializa las reservas de esta prenda (evita doble asignación) antes de contar disponibilidad.
+		rentas.bloquearReservaDePrenda(comando.prendaId());
+		int disponibles = inventario.unidadesDisponibles(comando.empresaId(), comando.prendaId());
+		long ocupadas = rentas.contarSolapadas(comando.empresaId(), comando.prendaId(),
+				comando.fechaRetiro(), comando.fechaDevolucion());
+		if (ocupadas >= disponibles) {
+			throw new SinDisponibilidad();
+		}
 		return rentas.guardar(Renta.crear(comando.empresaId(), comando.sucursalId(), comando.clienteId(),
 				comando.prendaId(), comando.fechaRetiro(), comando.fechaDevolucion(), comando.precioPorDia(),
 				comando.deposito()));

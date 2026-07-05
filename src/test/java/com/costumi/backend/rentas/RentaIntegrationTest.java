@@ -50,6 +50,10 @@ class RentaIntegrationTest {
 	}
 
 	private Ctx montar() throws Exception {
+		return montar(2);
+	}
+
+	private Ctx montar(int stock) throws Exception {
 		String res = mvc.perform(post("/api/v1/empresas").contentType(MediaType.APPLICATION_JSON)
 						.content("{\"nombre\":\"Renta " + UUID.randomUUID() + "\"}"))
 				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
@@ -65,13 +69,19 @@ class RentaIntegrationTest {
 		UUID categoria = postId("/api/v1/categorias", dueno, "{\"nombre\":\"Camisa " + UUID.randomUUID() + "\"}");
 		UUID prenda = postId("/api/v1/prendas", dueno, "{\"categoriaId\":\"" + categoria
 				+ "\",\"nombre\":\"Camisa\",\"tipoArticulo\":\"RENTA\",\"precioRenta\":20.00}");
+		postId("/api/v1/prendas/" + prenda + "/grupos-stock", dueno,
+				"{\"combinacion\":[],\"cantidadInicial\":" + stock + "}");
 		return new Ctx(dueno, sucursal, cliente, prenda);
 	}
 
+	private String rentaBody(Ctx c, String retiro, String devolucion) {
+		return "{\"sucursalId\":\"" + c.sucursal() + "\",\"clienteId\":\"" + c.cliente() + "\",\"prendaId\":\""
+				+ c.prenda() + "\",\"fechaRetiro\":\"" + retiro + "\",\"fechaDevolucion\":\"" + devolucion
+				+ "\",\"precioPorDia\":20.00,\"deposito\":50.00}";
+	}
+
 	private UUID crearRenta(Ctx c) throws Exception {
-		return postId("/api/v1/rentas", c.dueno(), "{\"sucursalId\":\"" + c.sucursal() + "\",\"clienteId\":\""
-				+ c.cliente() + "\",\"prendaId\":\"" + c.prenda() + "\",\"fechaRetiro\":\"2026-08-01\","
-				+ "\"fechaDevolucion\":\"2026-08-04\",\"precioPorDia\":20.00,\"deposito\":50.00}");
+		return postId("/api/v1/rentas", c.dueno(), rentaBody(c, "2026-08-01", "2026-08-04"));
 	}
 
 	@Test
@@ -101,6 +111,39 @@ class RentaIntegrationTest {
 
 		mvc.perform(post("/api/v1/rentas/{id}/devolver", renta).header("Authorization", "Bearer " + c.dueno()))
 				.andExpect(status().isConflict());
+	}
+
+	@Test
+	void sin_disponibilidad_en_fechas_traslapadas_devuelve_409() throws Exception {
+		Ctx c = montar(1); // una sola unidad
+		crearRenta(c); // 08-01..08-04 ocupa la única unidad
+
+		// Segunda renta que se traslapa -> no hay disponibilidad -> 409.
+		mvc.perform(post("/api/v1/rentas").header("Authorization", "Bearer " + c.dueno())
+						.contentType(MediaType.APPLICATION_JSON).content(rentaBody(c, "2026-08-03", "2026-08-06")))
+				.andExpect(status().isConflict());
+	}
+
+	@Test
+	void se_puede_rentar_en_fechas_que_no_se_traslapan() throws Exception {
+		Ctx c = montar(1);
+		crearRenta(c); // 08-01..08-04
+
+		// Fechas disjuntas -> disponible -> 201.
+		mvc.perform(post("/api/v1/rentas").header("Authorization", "Bearer " + c.dueno())
+						.contentType(MediaType.APPLICATION_JSON).content(rentaBody(c, "2026-08-10", "2026-08-12")))
+				.andExpect(status().isCreated());
+	}
+
+	@Test
+	void rentar_una_prenda_inexistente_devuelve_400() throws Exception {
+		Ctx c = montar(1);
+		String body = "{\"sucursalId\":\"" + c.sucursal() + "\",\"clienteId\":\"" + c.cliente()
+				+ "\",\"prendaId\":\"" + UUID.randomUUID() + "\",\"fechaRetiro\":\"2026-08-01\","
+				+ "\"fechaDevolucion\":\"2026-08-04\",\"precioPorDia\":20.00,\"deposito\":50.00}";
+		mvc.perform(post("/api/v1/rentas").header("Authorization", "Bearer " + c.dueno())
+						.contentType(MediaType.APPLICATION_JSON).content(body))
+				.andExpect(status().isBadRequest());
 	}
 
 	@Test

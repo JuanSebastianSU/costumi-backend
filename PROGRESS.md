@@ -170,6 +170,18 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-05 (ag)** — **Tanda 2 · Renta: disponibilidad por fechas SIN traslapes + concurrencia (P2 CRÍTICO, RF-3.2/0.4).**
+  Value object de dominio **`Periodo`** (retiro/devolución) con `seSolapaCon` (extremos **inclusivos**) + `dias()`,
+  con tests. Al crear una renta: (1) cross-ref — la prenda debe existir en el tenant (400 si no);
+  (2) **advisory lock por prenda** (`pg_advisory_xact_lock`, se libera al commit) para **serializar reservas
+  concurrentes** y evitar doble asignación; (3) se cuentan las rentas **vigentes** (RESERVADA/ACTIVA) que se
+  **traslapan** (`RentaRepository.contarSolapadas`) y se comparan con las **unidades disponibles** de la prenda
+  (`ConsultaDeInventario.unidadesDisponibles`); si ocupadas ≥ disponibles → **409** (`SinDisponibilidad`). Arista
+  nueva `rentas → inventario` (puerto público). Tests: traslape → 409, fechas disjuntas → 201, prenda inexistente
+  → 400 (+ dominio de `Periodo`). **196 verdes.** _Decisiones:_ (a) traslape **inclusivo** en extremos (no se
+  asume rotación el mismo día); (b) disponibilidad = suma de `disponibles` de los grupos de la prenda (a nivel
+  prenda; el detalle por variante/unidad concreta queda para el armado multi-artículo). _Pendiente RF-3:_
+  multi-artículo/armado por partes, extensión/renovación, cobro al retiro + contrato, asistido, vencidas como proceso.
 - **2026-07-05 (af)** — **§5.4 APROBADO por Juan (checkpoint Tanda 1 cerrado). LUZ VERDE: correr Tanda 2 → Tanda 3
   de largo, SIN checkpoint intermedio; revisión final completa al terminar la Tanda 3 (esa reemplaza los
   checkpoints).** Condiciones firmes de Juan: tests de dominio por CADA feature (no desactivar ninguno); **rigor
