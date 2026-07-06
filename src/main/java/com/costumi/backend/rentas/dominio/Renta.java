@@ -19,10 +19,10 @@ public class Renta {
 	private final UUID clienteId;
 	private final UUID prendaId;
 	private final LocalDate fechaRetiro;
-	private final LocalDate fechaDevolucion;
+	private LocalDate fechaDevolucion;
 	private final BigDecimal precioPorDia;
 	private final BigDecimal deposito;
-	private final BigDecimal importe;
+	private BigDecimal importe;
 	private EstadoRenta estado;
 	private final String claveIdempotencia;
 
@@ -97,6 +97,21 @@ public class Renta {
 
 	public void cancelar() {
 		transicionarA(EstadoRenta.CANCELADA);
+	}
+
+	/**
+	 * Extiende/renueva la renta a una nueva fecha de devolución posterior (RF-3.6). Solo si está
+	 * RESERVADA o ACTIVA; recalcula el importe = precio × nuevo periodo.
+	 */
+	public void extender(LocalDate nuevaFechaDevolucion) {
+		if (estado != EstadoRenta.RESERVADA && estado != EstadoRenta.ACTIVA) {
+			throw new IllegalArgumentException("Solo se puede extender una renta RESERVADA o ACTIVA");
+		}
+		if (!nuevaFechaDevolucion.isAfter(fechaDevolucion)) {
+			throw new IllegalArgumentException("La nueva fecha de devolución debe ser posterior a la actual");
+		}
+		this.fechaDevolucion = nuevaFechaDevolucion;
+		this.importe = precioPorDia.multiply(BigDecimal.valueOf(dias(fechaRetiro, nuevaFechaDevolucion)));
 	}
 
 	/** Vencida (RF-3.5): activa y ya pasó la fecha de devolución. */

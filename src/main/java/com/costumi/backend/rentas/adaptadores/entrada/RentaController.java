@@ -73,6 +73,15 @@ class RentaController {
 		return RentaResponse.desde(gestionarRenta.cerrar(empresa(jwt), id));
 	}
 
+	@PostMapping("/{id}/extender")
+	RentaResponse extender(@PathVariable UUID id, @RequestBody ExtenderRentaRequest request,
+			@AuthenticationPrincipal Jwt jwt) {
+		return RentaResponse.desde(gestionarRenta.extender(empresa(jwt), id, request.nuevaFechaDevolucion()));
+	}
+
+	record ExtenderRentaRequest(java.time.LocalDate nuevaFechaDevolucion) {
+	}
+
 	@PostMapping("/{id}/cancelar")
 	RentaResponse cancelar(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
 		return RentaResponse.desde(gestionarRenta.cancelar(empresa(jwt), id));

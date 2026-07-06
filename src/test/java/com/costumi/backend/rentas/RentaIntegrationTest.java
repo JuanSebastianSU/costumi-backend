@@ -85,6 +85,26 @@ class RentaIntegrationTest {
 	}
 
 	@Test
+	void extender_una_renta_recalcula_el_importe() throws Exception {
+		Ctx c = montar();
+		UUID renta = crearRenta(c);
+		mvc.perform(post("/api/v1/rentas/{id}/entregar", renta).header("Authorization", "Bearer " + c.dueno()))
+				.andExpect(status().isOk());
+
+		// 3 días (importe 60) -> extender a 2026-08-08 = 7 días (importe 140), RF-3.6.
+		mvc.perform(post("/api/v1/rentas/{id}/extender", renta).header("Authorization", "Bearer " + c.dueno())
+						.contentType(MediaType.APPLICATION_JSON).content("{\"nuevaFechaDevolucion\":\"2026-08-08\"}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.fechaDevolucion").value("2026-08-08"))
+				.andExpect(jsonPath("$.importe").value(140.00));
+
+		// Extender a una fecha que no es posterior a la actual -> 400.
+		mvc.perform(post("/api/v1/rentas/{id}/extender", renta).header("Authorization", "Bearer " + c.dueno())
+						.contentType(MediaType.APPLICATION_JSON).content("{\"nuevaFechaDevolucion\":\"2026-08-05\"}"))
+				.andExpect(status().isBadRequest());
+	}
+
+	@Test
 	void crear_calcula_importe_y_recorre_el_ciclo() throws Exception {
 		Ctx c = montar();
 		UUID renta = crearRenta(c);

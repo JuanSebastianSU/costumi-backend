@@ -116,6 +116,12 @@ class RentaService implements CrearRenta, ConsultarRentas, GestionarRenta, Consu
 		return aplicar(empresaId, rentaId, Renta::cancelar);
 	}
 
+	@Override
+	@Transactional
+	public Renta extender(UUID empresaId, UUID rentaId, java.time.LocalDate nuevaFechaDevolucion) {
+		return aplicar(empresaId, rentaId, r -> r.extender(nuevaFechaDevolucion));
+	}
+
 	private Renta aplicar(UUID empresaId, UUID rentaId, Consumer<Renta> accion) {
 		Renta renta = rentas.buscarPorId(rentaId)
 				.filter(r -> r.empresaId().equals(empresaId))
