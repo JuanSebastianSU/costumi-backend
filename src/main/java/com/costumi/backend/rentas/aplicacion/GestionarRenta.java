@@ -2,6 +2,7 @@ package com.costumi.backend.rentas.aplicacion;
 
 import com.costumi.backend.rentas.dominio.Renta;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 /** Puerto de entrada: transiciones de estado de una Renta (RF-3.5/3.6). */
@@ -14,4 +15,7 @@ public interface GestionarRenta {
 	Renta cerrar(UUID empresaId, UUID rentaId);
 
 	Renta cancelar(UUID empresaId, UUID rentaId);
+
+	/** Extiende/renueva la renta a una nueva fecha de devolución (RF-3.6). */
+	Renta extender(UUID empresaId, UUID rentaId, LocalDate nuevaFechaDevolucion);
 }

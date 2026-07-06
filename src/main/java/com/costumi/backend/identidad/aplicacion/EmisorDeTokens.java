@@ -8,5 +8,9 @@ import com.costumi.backend.identidad.dominio.Usuario;
  */
 public interface EmisorDeTokens {
 
+	/** Token de acceso (corta vida) para el Usuario. */
 	String emitir(Usuario usuario);
+
+	/** Token de refresco (larga vida) para renovar el acceso sin volver a loguearse (RF-1.1). */
+	String emitirRefresh(Usuario usuario);
 }

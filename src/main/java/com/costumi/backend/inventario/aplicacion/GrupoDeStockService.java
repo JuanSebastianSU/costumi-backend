@@ -1,11 +1,13 @@
 package com.costumi.backend.inventario.aplicacion;
 
 import com.costumi.backend.catalogo.ConsultaDeTaxonomia;
+import com.costumi.backend.inventario.StockAjustado;
 import com.costumi.backend.inventario.dominio.CombinacionDeVariante;
 import com.costumi.backend.inventario.dominio.GrupoDeStock;
 import com.costumi.backend.inventario.dominio.GrupoDeStockRepository;
 import com.costumi.backend.inventario.dominio.Prenda;
 import com.costumi.backend.inventario.dominio.PrendaRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,17 +18,20 @@ import java.util.UUID;
 
 /** Casos de uso de Grupos de stock (variantes), acotados a la empresa (tenant). */
 @Service
-class GrupoDeStockService
-		implements CrearGrupoDeStock, ConsultarGruposDeStock, MoverUnidades, ReabastecerGrupo, ConsultarStockBajo {
+class GrupoDeStockService implements CrearGrupoDeStock, ConsultarGruposDeStock, MoverUnidades, ReabastecerGrupo,
+		ConsultarStockBajo, AjustarStock {
 
 	private final PrendaRepository prendas;
 	private final GrupoDeStockRepository grupos;
 	private final ConsultaDeTaxonomia taxonomia;
+	private final ApplicationEventPublisher eventos;
 
-	GrupoDeStockService(PrendaRepository prendas, GrupoDeStockRepository grupos, ConsultaDeTaxonomia taxonomia) {
+	GrupoDeStockService(PrendaRepository prendas, GrupoDeStockRepository grupos, ConsultaDeTaxonomia taxonomia,
+			ApplicationEventPublisher eventos) {
 		this.prendas = prendas;
 		this.grupos = grupos;
 		this.taxonomia = taxonomia;
+		this.eventos = eventos;
 	}
 
 	@Override
@@ -71,6 +76,20 @@ class GrupoDeStockService
 	@Transactional(readOnly = true)
 	public List<GrupoDeStock> deEmpresa(UUID empresaId, int umbral) {
 		return grupos.listarBajoUmbral(empresaId, umbral);
+	}
+
+	@Override
+	@Transactional
+	public GrupoDeStock ejecutar(AjustarStockComando comando) {
+		GrupoDeStock grupo = grupos.buscarPorId(comando.grupoId())
+				.filter(g -> g.empresaId().equals(comando.empresaId()))
+				.orElseThrow(() -> new GrupoDeStockNoEncontrado(comando.grupoId()));
+		grupo.ajustar(comando.estado(), comando.delta());
+		GrupoDeStock guardado = grupos.guardar(grupo);
+		// Traza del ajuste (RF-10): Auditoría lo registra vía el evento (§5.5).
+		eventos.publishEvent(new StockAjustado(comando.empresaId(), guardado.prendaId(), guardado.id(),
+				comando.estado().name(), comando.delta(), comando.motivo()));
+		return guardado;
 	}
 
 	/**

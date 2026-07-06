@@ -28,4 +28,17 @@ class OpenApiIntegrationTest {
 				.andExpect(jsonPath("$.info.title").value("Costumi API"))
 				.andExpect(jsonPath("$.components.securitySchemes.bearer-jwt.scheme").value("bearer"));
 	}
+
+	@Test
+	void el_contrato_publica_los_endpoints_del_cierre() throws Exception {
+		// El contrato (fuente del cliente Kotlin) incluye los endpoints agregados en el cierre (RF-17.3).
+		mvc.perform(get("/v3/api-docs"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.paths['/api/v1/auth/refresh']").exists())
+				.andExpect(jsonPath("$.paths['/api/v1/empleados']").exists())
+				.andExpect(jsonPath("$.paths['/api/v1/pagos/mixto']").exists())
+				.andExpect(jsonPath("$.paths['/api/v1/reportes/rentas-vencidas']").exists())
+				.andExpect(jsonPath("$.paths['/api/v1/clientes/{id}/historial']").exists())
+				.andExpect(jsonPath("$.paths['/api/v1/notificaciones/recordar-vencidas']").exists());
+	}
 }

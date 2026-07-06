@@ -67,6 +67,18 @@ public class GrupoDeStock {
 		fijar(hacia, contar(hacia) + cantidad);
 	}
 
+	/**
+	 * Ajuste de inventario con corrección de un estado (RF-10): suma {@code delta} (±) a las unidades
+	 * de ese estado; no puede dejar el conteo en negativo. El motivo/auditoría lo lleva el caso de uso.
+	 */
+	public void ajustar(EstadoUnidad estado, int delta) {
+		int nuevo = contar(estado) + delta;
+		if (nuevo < 0) {
+			throw new IllegalArgumentException("El ajuste dejaría el conteo de " + estado + " en negativo");
+		}
+		fijar(estado, nuevo);
+	}
+
 	/** Reabastece unidades disponibles (entrada de mercancía, RF-10). */
 	public void reabastecer(int cantidad) {
 		if (cantidad <= 0) {

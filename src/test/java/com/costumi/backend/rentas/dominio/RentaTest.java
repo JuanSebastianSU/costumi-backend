@@ -58,6 +58,20 @@ class RentaTest {
 	}
 
 	@Test
+	void extender_recalcula_el_importe_y_rechaza_fecha_no_posterior() {
+		Renta renta = nueva(LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 4)); // 3 días, importe 60
+		renta.entregar();
+
+		renta.extender(LocalDate.of(2026, 7, 8)); // 7 días
+		assertThat(renta.fechaDevolucion()).isEqualTo(LocalDate.of(2026, 7, 8));
+		assertThat(renta.importe()).isEqualByComparingTo("140.00");
+
+		// No posterior a la actual -> rechaza.
+		assertThatThrownBy(() -> renta.extender(LocalDate.of(2026, 7, 8)))
+				.isInstanceOf(IllegalArgumentException.class);
+	}
+
+	@Test
 	void una_activa_vencida_se_detecta() {
 		Renta renta = nueva(LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 4));
 		renta.entregar();

@@ -48,7 +48,7 @@ class SecurityConfig {
 				.csrf(csrf -> csrf.disable())
 				.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(auth -> auth
-						.requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
+						.requestMatchers(HttpMethod.POST, "/api/v1/auth/login", "/api/v1/auth/refresh").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/v1/empresas").permitAll()
 						.requestMatchers("/actuator/health", "/actuator/info").permitAll()
 						.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
@@ -58,6 +58,7 @@ class SecurityConfig {
 								"/api/v1/empresas/*/aprobar", "/api/v1/empresas/*/rechazar",
 								"/api/v1/empresas/*/suspender", "/api/v1/empresas/*/reactivar").hasRole("SUPERADMIN")
 						.requestMatchers(HttpMethod.POST, "/api/v1/empresas/*/sucursales").hasAnyRole("DUENO", "ENCARGADO")
+						.requestMatchers(HttpMethod.POST, "/api/v1/empleados").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.POST, "/api/v1/categorias").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.POST, "/api/v1/tipos-etiqueta").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.POST, "/api/v1/tipos-etiqueta/*/valores").hasAnyRole("DUENO", "ENCARGADO")
@@ -66,12 +67,14 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.POST, "/api/v1/prendas/*/grupos-stock").hasAnyRole("DUENO", "ENCARGADO", "BODEGA")
 						.requestMatchers(HttpMethod.POST, "/api/v1/grupos-stock/*/mover").hasAnyRole("DUENO", "ENCARGADO", "BODEGA")
 						.requestMatchers(HttpMethod.POST, "/api/v1/grupos-stock/*/entrada").hasAnyRole("DUENO", "ENCARGADO", "BODEGA")
+						.requestMatchers(HttpMethod.POST, "/api/v1/grupos-stock/*/ajuste").hasAnyRole("DUENO", "ENCARGADO", "BODEGA")
 						.requestMatchers(HttpMethod.POST, "/api/v1/disfraces").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.POST, "/api/v1/clientes/*/lista-negra").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.POST, "/api/v1/clientes").hasAnyRole("DUENO", "ENCARGADO", "MOSTRADOR", "ATENCION")
 						.requestMatchers(HttpMethod.POST, "/api/v1/carritos/items", "/api/v1/carritos/checkout").hasAnyRole("DUENO", "ENCARGADO", "MOSTRADOR", "ATENCION")
 						.requestMatchers(HttpMethod.POST, "/api/v1/rentas", "/api/v1/rentas/*/entregar",
-								"/api/v1/rentas/*/devolver", "/api/v1/rentas/*/cerrar", "/api/v1/rentas/*/cancelar")
+								"/api/v1/rentas/*/devolver", "/api/v1/rentas/*/cerrar", "/api/v1/rentas/*/cancelar",
+								"/api/v1/rentas/*/extender")
 						.hasAnyRole("DUENO", "ENCARGADO", "MOSTRADOR", "ATENCION")
 						.requestMatchers(HttpMethod.POST, "/api/v1/devoluciones").hasAnyRole("DUENO", "ENCARGADO", "MOSTRADOR", "ATENCION")
 						.requestMatchers(HttpMethod.POST, "/api/v1/ventas").hasAnyRole("DUENO", "ENCARGADO", "MOSTRADOR", "ATENCION")
@@ -82,6 +85,7 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.GET, "/api/v1/auditoria").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.PUT, "/api/v1/configuracion").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.POST, "/api/v1/configuracion/import").hasAnyRole("DUENO", "ENCARGADO")
+						.requestMatchers(HttpMethod.POST, "/api/v1/notificaciones/recordar-vencidas").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.POST, "/api/v1/notificaciones").hasAnyRole("DUENO", "ENCARGADO", "ATENCION")
 						.anyRequest().authenticated())
 				.oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(convertidorDeAutoridades())));

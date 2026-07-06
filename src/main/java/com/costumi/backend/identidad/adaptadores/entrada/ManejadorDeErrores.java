@@ -2,9 +2,11 @@ package com.costumi.backend.identidad.adaptadores.entrada;
 
 import com.costumi.backend.identidad.aplicacion.AccesoAlTenantDenegado;
 import com.costumi.backend.identidad.aplicacion.CredencialesInvalidas;
+import com.costumi.backend.identidad.aplicacion.EmailYaRegistrado;
 import com.costumi.backend.identidad.aplicacion.EmpresaNoEncontrada;
 import com.costumi.backend.identidad.aplicacion.EmpresaNoOperativa;
 import com.costumi.backend.identidad.aplicacion.LimiteDeSucursales;
+import com.costumi.backend.identidad.aplicacion.RefreshInvalido;
 import com.costumi.backend.identidad.dominio.TransicionDeEstadoInvalida;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -43,10 +45,31 @@ class ManejadorDeErrores {
 		return problema;
 	}
 
+	@ExceptionHandler(EmailYaRegistrado.class)
+	ProblemDetail emailYaRegistrado(EmailYaRegistrado ex) {
+		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+		problema.setTitle("Correo ya registrado");
+		return problema;
+	}
+
+	@ExceptionHandler(IllegalArgumentException.class)
+	ProblemDetail argumentoInvalido(IllegalArgumentException ex) {
+		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+		problema.setTitle("Solicitud inválida");
+		return problema;
+	}
+
 	@ExceptionHandler(CredencialesInvalidas.class)
 	ProblemDetail credencialesInvalidas(CredencialesInvalidas ex) {
 		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
 		problema.setTitle("Credenciales inválidas");
+		return problema;
+	}
+
+	@ExceptionHandler(RefreshInvalido.class)
+	ProblemDetail refreshInvalido(RefreshInvalido ex) {
+		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
+		problema.setTitle("Token de refresco inválido");
 		return problema;
 	}
 
