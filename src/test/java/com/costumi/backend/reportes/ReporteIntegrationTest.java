@@ -16,6 +16,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.greaterThan;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -113,6 +114,43 @@ class ReporteIntegrationTest {
 				.andExpect(jsonPath("$.ingresos").value(100.00))
 				.andExpect(jsonPath("$.costoDeVentas").value(60.00))
 				.andExpect(jsonPath("$.ganancia").value(40.00));
+	}
+
+	@Test
+	void reporta_rentas_vencidas_y_depositos_activos() throws Exception {
+		montar();
+		String dueno = tokenRol(Rol.DUENO);
+		UUID cliente = postId("/api/v1/clientes", dueno, "{\"nombre\":\"Cliente\"}");
+		UUID categoria = postId("/api/v1/categorias", dueno, "{\"nombre\":\"Camisa " + UUID.randomUUID() + "\"}");
+		UUID prenda = postId("/api/v1/prendas", dueno, "{\"categoriaId\":\"" + categoria
+				+ "\",\"nombre\":\"Camisa\",\"tipoArticulo\":\"RENTA\",\"precioRenta\":20.00}");
+		postId("/api/v1/prendas/" + prenda + "/grupos-stock", dueno, "{\"combinacion\":[],\"cantidadInicial\":2}");
+
+		// Renta con fechas de 2020 (ya pasadas) y depósito 100; se entrega -> queda ACTIVA (y vencida).
+		UUID renta = postId("/api/v1/rentas", dueno, "{\"sucursalId\":\"" + sucursal + "\",\"clienteId\":\"" + cliente
+				+ "\",\"prendaId\":\"" + prenda + "\",\"fechaRetiro\":\"2020-01-01\",\"fechaDevolucion\":\"2020-01-05\","
+				+ "\"precioPorDia\":20.00,\"deposito\":100.00}");
+		mvc.perform(post("/api/v1/rentas/{id}/entregar", renta).header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk());
+
+		// RF-9.1: la renta ACTIVA con devolución en el pasado aparece como vencida, con días de atraso.
+		mvc.perform(get("/api/v1/reportes/rentas-vencidas").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(1))
+				.andExpect(jsonPath("$[0].rentaId").value(renta.toString()))
+				.andExpect(jsonPath("$[0].diasVencida").value(greaterThan(0)))
+				.andExpect(jsonPath("$[0].deposito").value(100.00));
+
+		// RF-9.1: su depósito (100) cuenta como activo mientras la renta no se cierra.
+		mvc.perform(get("/api/v1/reportes/depositos-activos").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.total").value(100.00));
+
+		// Filtrar por otra sucursal no muestra esta renta.
+		mvc.perform(get("/api/v1/reportes/rentas-vencidas").param("sucursalId", UUID.randomUUID().toString())
+						.header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(0));
 	}
 
 	@Test
