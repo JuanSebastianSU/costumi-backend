@@ -84,6 +84,37 @@ class ReporteIntegrationTest {
 				.andExpect(jsonPath("$.total").value(100.00));
 	}
 
+	private UUID postId(String path, String token, String body) throws Exception {
+		String res = mvc.perform(post(path).header("Authorization", "Bearer " + token)
+						.contentType(MediaType.APPLICATION_JSON).content(body))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		return UUID.fromString(json.readTree(res).get("id").asText());
+	}
+
+	@Test
+	void la_ganancia_es_ingreso_menos_costo_de_ventas() throws Exception {
+		montar();
+		String dueno = tokenRol(Rol.DUENO);
+		UUID categoria = postId("/api/v1/categorias", dueno, "{\"nombre\":\"Peluca " + UUID.randomUUID() + "\"}");
+		UUID prenda = postId("/api/v1/prendas", dueno, "{\"categoriaId\":\"" + categoria + "\",\"nombre\":\"Peluca\","
+				+ "\"tipoArticulo\":\"VENTA\",\"precioVenta\":50.00,\"costoAdquisicion\":30.00}");
+		postId("/api/v1/prendas/" + prenda + "/grupos-stock", dueno, "{\"combinacion\":[],\"cantidadInicial\":5}");
+
+		// Vende 2 unidades (costo 2×30 = 60) y registra un pago de venta por 100 (ingreso).
+		mvc.perform(post("/api/v1/ventas").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + sucursal + "\",\"lineas\":[{\"prendaId\":\"" + prenda
+								+ "\",\"cantidad\":2,\"precioUnitario\":50.00}]}"))
+				.andExpect(status().isCreated());
+		pago(dueno, "VENTA", "100.00");
+
+		mvc.perform(get("/api/v1/reportes/ganancia").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.ingresos").value(100.00))
+				.andExpect(jsonPath("$.costoDeVentas").value(60.00))
+				.andExpect(jsonPath("$.ganancia").value(40.00));
+	}
+
 	@Test
 	void un_rol_sin_permiso_no_ve_reportes_403() throws Exception {
 		montar();

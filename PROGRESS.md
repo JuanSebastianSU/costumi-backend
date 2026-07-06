@@ -170,6 +170,11 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-05 (am)** — **Tanda 2/P3 · Reportes: ganancia = ingreso − costo (RF-9).** Read model
+  `ResumenDeGanancia` (JdbcClient): **ingresos** = suma de pagos; **costo de ventas** = Σ(línea.cantidad ×
+  prenda.costo_adquisicion) por join `linea_de_venta`×`prenda`; **ganancia** = ingresos − costo. Endpoint
+  `GET /api/v1/reportes/ganancia` (DUENO/ENCARGADO). Test integración (venta con costo → ganancia correcta).
+  **215 verdes.** _Pendiente RF-9:_ más cortes (utilización, vencidas, por empleado, desglose por etiqueta, export).
 - **2026-07-05 (al)** — **Tanda 2/P3 · Caja/Turno/MovimientoDeCaja + corte y cuadre (RF-6.3/6.10, rigor dinero).**
   Nuevo módulo `caja`. `Turno` (agregado): se **abre** con fondo inicial (efectivo), acumula **movimientos**
   (ingreso/egreso por método EFECTIVO/TARJETA/TRANSFERENCIA), y se **cierra** con el efectivo contado. Dominio con
