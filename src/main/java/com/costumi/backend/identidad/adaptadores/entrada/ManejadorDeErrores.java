@@ -2,6 +2,7 @@ package com.costumi.backend.identidad.adaptadores.entrada;
 
 import com.costumi.backend.identidad.aplicacion.AccesoAlTenantDenegado;
 import com.costumi.backend.identidad.aplicacion.CredencialesInvalidas;
+import com.costumi.backend.identidad.aplicacion.EmailYaRegistrado;
 import com.costumi.backend.identidad.aplicacion.EmpresaNoEncontrada;
 import com.costumi.backend.identidad.aplicacion.EmpresaNoOperativa;
 import com.costumi.backend.identidad.aplicacion.LimiteDeSucursales;
@@ -40,6 +41,20 @@ class ManejadorDeErrores {
 	ProblemDetail limiteDeSucursales(LimiteDeSucursales ex) {
 		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
 		problema.setTitle("Multi-sucursal desactivado");
+		return problema;
+	}
+
+	@ExceptionHandler(EmailYaRegistrado.class)
+	ProblemDetail emailYaRegistrado(EmailYaRegistrado ex) {
+		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+		problema.setTitle("Correo ya registrado");
+		return problema;
+	}
+
+	@ExceptionHandler(IllegalArgumentException.class)
+	ProblemDetail argumentoInvalido(IllegalArgumentException ex) {
+		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+		problema.setTitle("Solicitud inválida");
 		return problema;
 	}
 

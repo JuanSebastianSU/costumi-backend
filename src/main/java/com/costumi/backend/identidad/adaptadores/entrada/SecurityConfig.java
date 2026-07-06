@@ -58,6 +58,7 @@ class SecurityConfig {
 								"/api/v1/empresas/*/aprobar", "/api/v1/empresas/*/rechazar",
 								"/api/v1/empresas/*/suspender", "/api/v1/empresas/*/reactivar").hasRole("SUPERADMIN")
 						.requestMatchers(HttpMethod.POST, "/api/v1/empresas/*/sucursales").hasAnyRole("DUENO", "ENCARGADO")
+						.requestMatchers(HttpMethod.POST, "/api/v1/empleados").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.POST, "/api/v1/categorias").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.POST, "/api/v1/tipos-etiqueta").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.POST, "/api/v1/tipos-etiqueta/*/valores").hasAnyRole("DUENO", "ENCARGADO")
