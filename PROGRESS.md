@@ -80,7 +80,7 @@ Estado: ✅ hecho y **mergeado en `main`** · 🔵 en **PR abierta** (sin mergea
 | Devoluciones y multas | Hexagonal | 🟨 | Checklist + multa (respeta switch) + inventario + evento. ⬜ Falta devolución parcial (RF-5.5) |
 | Clientes | Simple | 🟨 | Ficha + búsqueda + lista negra. ⬜ Falta historial (RF-7.2), foto/ID, filtros de pendientes (11.5/11.6) |
 | Empleados | Simple | ⬜ | RF-8 — sin empezar |
-| Reportes | Simple (lectura) | 🔵 | Ingresos, ganancia, **rentas vencidas, depósitos activos, ingresos por método, rankings vendidos/rentados, ventas por empleado, tablero de inventario (9.3) + resumen (valor/utilización/dañados)** en PR de Reportes. ⬜ Falta desglose por etiqueta + export PDF/CSV (9.2) |
+| Reportes | Simple (lectura) | 🔵 | Ingresos, ganancia, rentas vencidas, depósitos activos, ingresos por método, rankings, ventas por empleado, **desglose por etiqueta**, tablero de inventario (9.3)+resumen, **export CSV (9.2)** — PR #15. ⬜ Solo falta export **PDF** (requiere librería = decisión) |
 | Notificaciones (WhatsApp/FCM) | Simple (adaptador) | 🟨 | Envío por canal (log) + estados + disparador de multas por evento. ⬜ Falta recordatorio de vencidas (RF-11.1); WhatsApp/FCM reales = 🚫 infra |
 | Configuración de empresa | Simple | 🟨 | Interruptores (multas real) + tasa de impuesto (PR #13). ⬜ Falta que TODOS los switches controlen comportamiento + defaults/backup (RF-12.2/3) |
 | Auditoría | Simple | ✅ | Registro por domain events |
