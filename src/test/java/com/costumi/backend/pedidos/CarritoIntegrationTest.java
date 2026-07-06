@@ -115,6 +115,27 @@ class CarritoIntegrationTest {
 	}
 
 	@Test
+	void checkout_de_venta_crea_la_venta_y_confirma_el_carrito() throws Exception {
+		Ctx c = montar();
+		mvc.perform(post("/api/v1/prendas/{id}/grupos-stock", c.prenda()).header("Authorization", "Bearer " + c.dueno())
+						.contentType(MediaType.APPLICATION_JSON).content("{\"combinacion\":[],\"cantidadInicial\":5}"))
+				.andExpect(status().isCreated());
+		agregar(c, "VENTA", 2);
+
+		String res = mvc.perform(post("/api/v1/carritos/checkout").header("Authorization", "Bearer " + c.dueno())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + c.sucursal() + "\",\"clienteId\":\"" + c.cliente() + "\"}"))
+				.andExpect(status().isOk())
+				.andReturn().getResponse().getContentAsString();
+		org.assertj.core.api.Assertions.assertThat(json.readTree(res).get("ventaId").asText()).isNotBlank();
+
+		// La venta quedó registrada (2 × 90 = 180).
+		mvc.perform(get("/api/v1/ventas").header("Authorization", "Bearer " + c.dueno()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.total == 180.00)]").exists());
+	}
+
+	@Test
 	void sin_token_devuelve_401() throws Exception {
 		mvc.perform(get("/api/v1/carritos")
 						.param("sucursalId", UUID.randomUUID().toString())

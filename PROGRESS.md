@@ -175,6 +175,11 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-05 (au)** — **Tanda 3/P4 · Carrito: checkout → venta (RF-16).** `POST /api/v1/carritos/checkout`
+  toma el carrito de VENTA pendiente, resuelve el precio de cada línea (`ConsultaDeInventario.precioVenta`), crea
+  la venta vía nuevo puerto público `ventas.RegistroDeVentas` (descuenta stock) y **confirma** el carrito
+  (`Carrito.confirmar`). Aristas `pedidos → ventas` y `pedidos → inventario`. Test: checkout crea la venta (2×90=180)
+  y confirma el carrito. **226 verdes.** _Nota:_ el checkout de RENTA (necesita fechas por línea) queda pendiente.
 - **2026-07-05 (at)** — **Tanda 3/P5 · Renta idempotente al confirmar (RF-17.6, offline/outbox).** `Renta` acepta
   `claveIdempotencia` (**V24**, índice único parcial por empresa+clave). `RentaService`: si la clave ya existe,
   devuelve la renta existente (no duplica por reintento/offline). Tests: misma clave dos veces → una sola renta.
