@@ -36,18 +36,26 @@ class ConfiguracionJpaEntity {
 	@Column(name = "tasa_impuesto", nullable = false, precision = 5, scale = 4)
 	private BigDecimal tasaImpuesto;
 
+	@Column(name = "moneda", nullable = false, length = 3)
+	private String moneda;
+
+	@Column(name = "recargo_retraso_dia", nullable = false, precision = 12, scale = 2)
+	private BigDecimal recargoPorRetrasoPorDia;
+
 	protected ConfiguracionJpaEntity() {
 		// requerido por JPA
 	}
 
 	ConfiguracionJpaEntity(UUID empresaId, boolean conteoStock, boolean multasActivo, boolean multiSucursal,
-			boolean pagoEnLinea, BigDecimal tasaImpuesto) {
+			boolean pagoEnLinea, BigDecimal tasaImpuesto, String moneda, BigDecimal recargoPorRetrasoPorDia) {
 		this.empresaId = empresaId;
 		this.conteoStock = conteoStock;
 		this.multasActivo = multasActivo;
 		this.multiSucursal = multiSucursal;
 		this.pagoEnLinea = pagoEnLinea;
 		this.tasaImpuesto = tasaImpuesto;
+		this.moneda = moneda;
+		this.recargoPorRetrasoPorDia = recargoPorRetrasoPorDia;
 	}
 
 	UUID getEmpresaId() {
@@ -72,5 +80,13 @@ class ConfiguracionJpaEntity {
 
 	BigDecimal getTasaImpuesto() {
 		return tasaImpuesto;
+	}
+
+	String getMoneda() {
+		return moneda;
+	}
+
+	BigDecimal getRecargoPorRetrasoPorDia() {
+		return recargoPorRetrasoPorDia;
 	}
 }
