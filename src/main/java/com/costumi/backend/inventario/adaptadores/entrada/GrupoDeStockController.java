@@ -1,5 +1,6 @@
 package com.costumi.backend.inventario.adaptadores.entrada;
 
+import com.costumi.backend.inventario.aplicacion.AjustarStock;
 import com.costumi.backend.inventario.aplicacion.ConsultarGruposDeStock;
 import com.costumi.backend.inventario.aplicacion.ConsultarStockBajo;
 import com.costumi.backend.inventario.aplicacion.CrearGrupoDeStock;
@@ -34,14 +35,17 @@ class GrupoDeStockController {
 	private final MoverUnidades moverUnidades;
 	private final ReabastecerGrupo reabastecerGrupo;
 	private final ConsultarStockBajo consultarStockBajo;
+	private final AjustarStock ajustarStock;
 
 	GrupoDeStockController(CrearGrupoDeStock crearGrupoDeStock, ConsultarGruposDeStock consultarGruposDeStock,
-			MoverUnidades moverUnidades, ReabastecerGrupo reabastecerGrupo, ConsultarStockBajo consultarStockBajo) {
+			MoverUnidades moverUnidades, ReabastecerGrupo reabastecerGrupo, ConsultarStockBajo consultarStockBajo,
+			AjustarStock ajustarStock) {
 		this.crearGrupoDeStock = crearGrupoDeStock;
 		this.consultarGruposDeStock = consultarGruposDeStock;
 		this.moverUnidades = moverUnidades;
 		this.reabastecerGrupo = reabastecerGrupo;
 		this.consultarStockBajo = consultarStockBajo;
+		this.ajustarStock = ajustarStock;
 	}
 
 	@PostMapping("/api/v1/prendas/{prendaId}/grupos-stock")
@@ -82,6 +86,14 @@ class GrupoDeStockController {
 			@AuthenticationPrincipal Jwt jwt) {
 		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
 		return GrupoDeStockResponse.desde(reabastecerGrupo.ejecutar(empresaId, grupoId, request.cantidad()));
+	}
+
+	@PostMapping("/api/v1/grupos-stock/{grupoId}/ajuste")
+	GrupoDeStockResponse ajustar(@PathVariable UUID grupoId, @Valid @RequestBody AjusteDeStockRequest request,
+			@AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		return GrupoDeStockResponse.desde(ajustarStock.ejecutar(new AjustarStock.AjustarStockComando(
+				empresaId, grupoId, request.estado(), request.delta(), request.motivo())));
 	}
 
 	@GetMapping("/api/v1/grupos-stock/stock-bajo")

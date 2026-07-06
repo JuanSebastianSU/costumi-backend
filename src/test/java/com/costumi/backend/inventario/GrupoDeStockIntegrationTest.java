@@ -102,6 +102,32 @@ class GrupoDeStockIntegrationTest {
 	}
 
 	@Test
+	void ajuste_de_stock_con_motivo_corrige_y_queda_auditado() throws Exception {
+		UUID empresa = crearEmpresa("Empresa Ajuste " + UUID.randomUUID());
+		String dueno = duenoDe(empresa);
+		UUID prenda = crearPrenda(dueno, crearCategoria(dueno, "Camisa " + UUID.randomUUID()));
+		UUID grupo = crearGrupo(dueno, prenda, "[]", 5);
+
+		// Ajuste con motivo: -2 disponibles (RF-10).
+		mvc.perform(post("/api/v1/grupos-stock/{id}/ajuste", grupo).header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"estado\":\"DISPONIBLE\",\"delta\":-2,\"motivo\":\"merma por conteo\"}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.disponibles").value(3));
+
+		// Un ajuste que dejaría el conteo en negativo -> 400.
+		mvc.perform(post("/api/v1/grupos-stock/{id}/ajuste", grupo).header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"estado\":\"DISPONIBLE\",\"delta\":-10,\"motivo\":\"x\"}"))
+				.andExpect(status().isBadRequest());
+
+		// El ajuste quedó auditado (RF-10 + RF-0.5).
+		mvc.perform(get("/api/v1/auditoria").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.accion == 'STOCK_AJUSTADO')]").exists());
+	}
+
+	@Test
 	void crear_con_combinacion_real_listar_y_mover_unidades() throws Exception {
 		UUID empresa = crearEmpresa("Empresa Stock");
 		String dueno = duenoDe(empresa);
