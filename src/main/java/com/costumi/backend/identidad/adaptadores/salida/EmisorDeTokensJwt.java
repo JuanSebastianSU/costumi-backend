@@ -21,26 +21,39 @@ class EmisorDeTokensJwt implements EmisorDeTokens {
 
 	private final JwtEncoder encoder;
 	private final Duration expiracion;
+	private final Duration expiracionRefresh;
 	private final String issuer;
 
 	EmisorDeTokensJwt(JwtEncoder encoder,
 			@Value("${costumi.security.jwt.expiracion-minutos:60}") long expiracionMinutos,
+			@Value("${costumi.security.jwt.refresh-dias:7}") long refreshDias,
 			@Value("${costumi.security.jwt.issuer:costumi}") String issuer) {
 		this.encoder = encoder;
 		this.expiracion = Duration.ofMinutes(expiracionMinutos);
+		this.expiracionRefresh = Duration.ofDays(refreshDias);
 		this.issuer = issuer;
 	}
 
 	@Override
 	public String emitir(Usuario usuario) {
+		return emitir(usuario, expiracion, "access");
+	}
+
+	@Override
+	public String emitirRefresh(Usuario usuario) {
+		return emitir(usuario, expiracionRefresh, "refresh");
+	}
+
+	private String emitir(Usuario usuario, Duration duracion, String uso) {
 		Instant ahora = Instant.now();
 		JwtClaimsSet.Builder claims = JwtClaimsSet.builder()
 				.issuer(issuer)
 				.issuedAt(ahora)
-				.expiresAt(ahora.plus(expiracion))
+				.expiresAt(ahora.plus(duracion))
 				.subject(usuario.id().toString())
 				.claim("email", usuario.email())
-				.claim("rol", usuario.rol().name());
+				.claim("rol", usuario.rol().name())
+				.claim("token_use", uso);
 		if (usuario.empresaId() != null) {
 			claims.claim("empresa_id", usuario.empresaId().toString());
 		}

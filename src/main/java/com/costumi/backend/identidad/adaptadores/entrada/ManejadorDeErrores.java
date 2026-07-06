@@ -6,6 +6,7 @@ import com.costumi.backend.identidad.aplicacion.EmailYaRegistrado;
 import com.costumi.backend.identidad.aplicacion.EmpresaNoEncontrada;
 import com.costumi.backend.identidad.aplicacion.EmpresaNoOperativa;
 import com.costumi.backend.identidad.aplicacion.LimiteDeSucursales;
+import com.costumi.backend.identidad.aplicacion.RefreshInvalido;
 import com.costumi.backend.identidad.dominio.TransicionDeEstadoInvalida;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -62,6 +63,13 @@ class ManejadorDeErrores {
 	ProblemDetail credencialesInvalidas(CredencialesInvalidas ex) {
 		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
 		problema.setTitle("Credenciales inválidas");
+		return problema;
+	}
+
+	@ExceptionHandler(RefreshInvalido.class)
+	ProblemDetail refreshInvalido(RefreshInvalido ex) {
+		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
+		problema.setTitle("Token de refresco inválido");
 		return problema;
 	}
 

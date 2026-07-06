@@ -65,6 +65,36 @@ class AuthIntegrationTest {
 	}
 
 	@Test
+	void refresh_renueva_el_acceso_y_rechaza_un_token_de_acceso() throws Exception {
+		String email = "sa-" + UUID.randomUUID() + "@costumi.test";
+		sembrarSuperAdmin(email, "secret123");
+		String body = mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+						.content("{\"email\":\"" + email + "\",\"password\":\"secret123\"}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.refreshToken").exists())
+				.andReturn().getResponse().getContentAsString();
+		String refresh = json.readTree(body).get("refreshToken").asText();
+		String access = json.readTree(body).get("accessToken").asText();
+
+		// Con el token de refresco se obtiene un nuevo par (RF-1.1).
+		mvc.perform(post("/api/v1/auth/refresh").contentType(MediaType.APPLICATION_JSON)
+						.content("{\"refreshToken\":\"" + refresh + "\"}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.accessToken").exists())
+				.andExpect(jsonPath("$.refreshToken").exists());
+
+		// Un token de acceso NO sirve para refrescar -> 401.
+		mvc.perform(post("/api/v1/auth/refresh").contentType(MediaType.APPLICATION_JSON)
+						.content("{\"refreshToken\":\"" + access + "\"}"))
+				.andExpect(status().isUnauthorized());
+
+		// Un token basura -> 401.
+		mvc.perform(post("/api/v1/auth/refresh").contentType(MediaType.APPLICATION_JSON)
+						.content("{\"refreshToken\":\"no-es-un-jwt\"}"))
+				.andExpect(status().isUnauthorized());
+	}
+
+	@Test
 	void login_con_password_incorrecta_devuelve_401() throws Exception {
 		String email = "sa-" + UUID.randomUUID() + "@costumi.test";
 		sembrarSuperAdmin(email, "secret123");

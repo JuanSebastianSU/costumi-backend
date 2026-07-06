@@ -35,6 +35,6 @@ class AutenticarUsuarioService implements AutenticarUsuario {
 		if (!passwordEncoder.matches(password, usuario.passwordHash())) {
 			throw new CredencialesInvalidas();
 		}
-		return new Credenciales(emisor.emitir(usuario));
+		return new Credenciales(emisor.emitir(usuario), emisor.emitirRefresh(usuario));
 	}
 }
