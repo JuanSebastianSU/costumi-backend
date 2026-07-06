@@ -170,6 +170,14 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-05 (al)** — **Tanda 2/P3 · Caja/Turno/MovimientoDeCaja + corte y cuadre (RF-6.3/6.10, rigor dinero).**
+  Nuevo módulo `caja`. `Turno` (agregado): se **abre** con fondo inicial (efectivo), acumula **movimientos**
+  (ingreso/egreso por método EFECTIVO/TARJETA/TRANSFERENCIA), y se **cierra** con el efectivo contado. Dominio con
+  **corte por método** (`totalPorMetodo`, el efectivo incluye el fondo) y **cuadre** (`diferenciaDeEfectivo` =
+  contado − esperado), todo en `BigDecimal`. Estados ABIERTO/CERRADO (no se mueve/cierra un turno cerrado →
+  `TurnoNoAbierto` 409). Persistencia agregado (turno + movimientos hijo) **V21**, con `@Filter` y `findFirstById`.
+  `POST /api/v1/caja/turnos`, `.../{id}/movimientos`, `.../{id}/cerrar`, `GET` (DUENO/ENCARGADO/MOSTRADOR/ATENCION).
+  Tests dominio (corte/cuadre, turno cerrado) + integración (flujo completo, 409, 404 cross-tenant). **214 verdes.**
 - **2026-07-05 (ak)** — **Tanda 2/P3 · Prenda: costo de adquisición + depósito sugerido (RF-2.10).** `Prenda`
   gana `costoAdquisicion` y `depositoSugerido` (opcionales, no negativos), migración **V20**, en dominio/entidad/
   DTOs. Es la base del **margen** para los reportes (ganancia = ingreso − costo). Tests dominio + integración.
