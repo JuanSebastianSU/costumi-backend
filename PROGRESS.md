@@ -175,6 +175,10 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-05 (ap)** — **Tanda 3/P4 · Marketplace: búsqueda por texto (RF-18.1).** `GET /api/v1/marketplace/
+  empresas?buscar=texto` (público) filtra empresas ACTIVAS por nombre (read model JdbcClient, like insensible a
+  mayúsculas). Test: búsqueda devuelve solo la coincidente. **219 verdes.** _Pendiente RF-18/14:_ búsqueda por
+  categoría/cercanía, enlace/QR por empresa/sucursal, selección de sucursal.
 - **2026-07-05 (ao)** — **Tanda 3/P4 · Notificaciones: disparador por evento (RF-11.1, §5.5).** Se cierra el
   loop de domain events: `notificaciones` **escucha** `DevolucionRegistrada` (`DisparadorDeMultas`,
   `@EventListener` síncrono) y, si hay **multa** (>0) y cliente, **envía una notificación** al cliente

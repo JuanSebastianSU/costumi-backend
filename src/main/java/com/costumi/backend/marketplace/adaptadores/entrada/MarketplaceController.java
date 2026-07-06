@@ -3,6 +3,7 @@ package com.costumi.backend.marketplace.adaptadores.entrada;
 import com.costumi.backend.marketplace.aplicacion.DescubrirEmpresas;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -19,7 +20,10 @@ class MarketplaceController {
 	}
 
 	@GetMapping("/empresas")
-	List<EmpresaVitrinaResponse> empresas() {
-		return descubrirEmpresas.activas().stream().map(EmpresaVitrinaResponse::desde).toList();
+	List<EmpresaVitrinaResponse> empresas(@RequestParam(name = "buscar", required = false) String buscar) {
+		List<com.costumi.backend.marketplace.dominio.EmpresaEnVitrina> empresas = (buscar == null || buscar.isBlank())
+				? descubrirEmpresas.activas()
+				: descubrirEmpresas.buscar(buscar);
+		return empresas.stream().map(EmpresaVitrinaResponse::desde).toList();
 	}
 }
