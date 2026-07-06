@@ -45,6 +45,10 @@ class PagoJpaEntity {
 	private BigDecimal monto;
 
 	@Enumerated(EnumType.STRING)
+	@Column(name = "tipo_pago", nullable = false, length = 10)
+	private com.costumi.backend.pagos.dominio.TipoPago tipoPago;
+
+	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 15)
 	private MetodoPago metodo;
 
@@ -62,8 +66,8 @@ class PagoJpaEntity {
 	}
 
 	PagoJpaEntity(UUID id, UUID empresaId, UUID sucursalId, UUID empleadoId, TipoConcepto tipoConcepto,
-			UUID conceptoId, BigDecimal monto, MetodoPago metodo, String referencia, Instant fecha,
-			String claveIdempotencia) {
+			UUID conceptoId, BigDecimal monto, com.costumi.backend.pagos.dominio.TipoPago tipoPago, MetodoPago metodo,
+			String referencia, Instant fecha, String claveIdempotencia) {
 		this.id = id;
 		this.empresaId = empresaId;
 		this.sucursalId = sucursalId;
@@ -71,10 +75,15 @@ class PagoJpaEntity {
 		this.tipoConcepto = tipoConcepto;
 		this.conceptoId = conceptoId;
 		this.monto = monto;
+		this.tipoPago = tipoPago;
 		this.metodo = metodo;
 		this.referencia = referencia;
 		this.fecha = fecha;
 		this.claveIdempotencia = claveIdempotencia;
+	}
+
+	com.costumi.backend.pagos.dominio.TipoPago getTipoPago() {
+		return tipoPago;
 	}
 
 	UUID getId() {

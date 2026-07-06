@@ -175,6 +175,10 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-05 (aq)** — **Tanda 2/P3 · Pagos: reembolsos + saldo neto por operación (RF-6.9).** `Pago` gana
+  `TipoPago` (COBRO/REEMBOLSO, **V22**) y `montoNeto()` (cobro suma, reembolso resta). Nuevo `GET /api/v1/pagos/
+  saldo?conceptoId=` → saldo neto (cobros − reembolsos) de la renta/venta. Tests dominio + integración (cobro 100 −
+  reembolso 30 = 70). **221 verdes.** _Pendiente RF-6:_ depósito como retención separada, pago mixto+vuelto, impuestos.
 - **2026-07-05 (ap)** — **Tanda 3/P4 · Marketplace: búsqueda por texto (RF-18.1).** `GET /api/v1/marketplace/
   empresas?buscar=texto` (público) filtra empresas ACTIVAS por nombre (read model JdbcClient, like insensible a
   mayúsculas). Test: búsqueda devuelve solo la coincidente. **219 verdes.** _Pendiente RF-18/14:_ búsqueda por

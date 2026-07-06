@@ -39,7 +39,7 @@ class PagoController {
 		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
 		UUID empleadoId = UUID.fromString(jwt.getSubject());
 		Pago pago = registrarPago.ejecutar(new RegistrarPagoComando(empresaId, request.sucursalId(), empleadoId,
-				request.tipoConcepto(), request.conceptoId(), request.monto(), request.metodo(),
+				request.tipoConcepto(), request.conceptoId(), request.monto(), request.tipoPago(), request.metodo(),
 				request.referencia(), request.claveIdempotencia()));
 		URI location = uriBuilder.path("/api/v1/pagos/{id}").buildAndExpand(pago.id()).toUri();
 		return ResponseEntity.created(location).body(PagoResponse.desde(pago));
@@ -53,5 +53,14 @@ class PagoController {
 		}
 		return consultarPagos.deConcepto(UUID.fromString(empresaId), conceptoId).stream()
 				.map(PagoResponse::desde).toList();
+	}
+
+	@GetMapping("/saldo")
+	SaldoResponse saldo(@RequestParam UUID conceptoId, @AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		return new SaldoResponse(conceptoId, consultarPagos.saldoNeto(empresaId, conceptoId));
+	}
+
+	record SaldoResponse(UUID conceptoId, java.math.BigDecimal saldoNeto) {
 	}
 }

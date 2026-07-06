@@ -1,5 +1,6 @@
 package com.costumi.backend.pagos.dominio;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -15,4 +16,7 @@ public interface PagoRepository {
 
 	/** Para idempotencia: el pago con esa clave en la empresa, si existe (RF-17.6). */
 	Optional<Pago> buscarPorClave(UUID empresaId, String claveIdempotencia);
+
+	/** Saldo neto pagado de una operación (cobros − reembolsos), RF-6.9. */
+	BigDecimal saldoNetoPorConcepto(UUID empresaId, UUID conceptoId);
 }

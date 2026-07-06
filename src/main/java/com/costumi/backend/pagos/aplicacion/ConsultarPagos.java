@@ -2,6 +2,7 @@ package com.costumi.backend.pagos.aplicacion;
 
 import com.costumi.backend.pagos.dominio.Pago;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -9,4 +10,7 @@ import java.util.UUID;
 public interface ConsultarPagos {
 
 	List<Pago> deConcepto(UUID empresaId, UUID conceptoId);
+
+	/** Saldo neto pagado de la operación (cobros − reembolsos), RF-6.9. */
+	BigDecimal saldoNeto(UUID empresaId, UUID conceptoId);
 }
