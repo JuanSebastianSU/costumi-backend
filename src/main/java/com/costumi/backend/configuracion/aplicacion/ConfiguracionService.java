@@ -40,6 +40,12 @@ class ConfiguracionService implements GestionarConfiguracion, ConsultaDeConfigur
 
 	@Override
 	@Transactional(readOnly = true)
+	public boolean conteoStock(UUID empresaId) {
+		return deEmpresa(empresaId).conteoStock();
+	}
+
+	@Override
+	@Transactional(readOnly = true)
 	public boolean multiSucursal(UUID empresaId) {
 		return deEmpresa(empresaId).multiSucursal();
 	}

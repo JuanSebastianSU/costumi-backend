@@ -18,6 +18,7 @@ import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -108,6 +109,29 @@ class VentaIntegrationTest {
 
 		// Stock 5 - 2 vendidas = 3 disponibles (RF-4.4).
 		org.assertj.core.api.Assertions.assertThat(disponiblesDe(prenda)).isEqualTo(3);
+	}
+
+	@Test
+	void con_conteo_de_stock_apagado_la_venta_no_controla_inventario() throws Exception {
+		UUID[] ctx = montar();
+		UUID sucursal = ctx[0];
+		UUID prenda = ctx[1];
+
+		// Apagar el conteo de stock (RF-12.4).
+		mvc.perform(put("/api/v1/configuracion").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"conteoStock\":false,\"multasActivo\":true,\"multiSucursal\":false,\"pagoEnLinea\":false}"))
+				.andExpect(status().isOk());
+
+		// Vender 9 con solo 5 en stock: ahora se permite (no controla inventario).
+		mvc.perform(post("/api/v1/ventas").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + sucursal + "\",\"lineas\":[{\"prendaId\":\"" + prenda
+								+ "\",\"cantidad\":9,\"precioUnitario\":50.00}]}"))
+				.andExpect(status().isCreated());
+
+		// El stock quedó intacto (no se descontó).
+		org.assertj.core.api.Assertions.assertThat(disponiblesDe(prenda)).isEqualTo(5);
 	}
 
 	@Test

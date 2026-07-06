@@ -1,5 +1,6 @@
 package com.costumi.backend.rentas.aplicacion;
 
+import com.costumi.backend.configuracion.ConsultaDeConfiguracion;
 import com.costumi.backend.inventario.ConsultaDeInventario;
 import com.costumi.backend.rentas.ConsultaDeRentas;
 import com.costumi.backend.rentas.dominio.Renta;
@@ -18,10 +19,12 @@ class RentaService implements CrearRenta, ConsultarRentas, GestionarRenta, Consu
 
 	private final RentaRepository rentas;
 	private final ConsultaDeInventario inventario;
+	private final ConsultaDeConfiguracion configuracion;
 
-	RentaService(RentaRepository rentas, ConsultaDeInventario inventario) {
+	RentaService(RentaRepository rentas, ConsultaDeInventario inventario, ConsultaDeConfiguracion configuracion) {
 		this.rentas = rentas;
 		this.inventario = inventario;
+		this.configuracion = configuracion;
 	}
 
 	@Override
@@ -36,13 +39,16 @@ class RentaService implements CrearRenta, ConsultarRentas, GestionarRenta, Consu
 		if (!inventario.prendaExiste(comando.empresaId(), comando.prendaId())) {
 			throw new IllegalArgumentException("La prenda no existe en esta empresa");
 		}
-		// Serializa las reservas de esta prenda (evita doble asignación) antes de contar disponibilidad.
-		rentas.bloquearReservaDePrenda(comando.prendaId());
-		int disponibles = inventario.unidadesDisponibles(comando.empresaId(), comando.prendaId());
-		long ocupadas = rentas.contarSolapadas(comando.empresaId(), comando.prendaId(),
-				comando.fechaRetiro(), comando.fechaDevolucion());
-		if (ocupadas >= disponibles) {
-			throw new SinDisponibilidad();
+		// RF-12.4: la disponibilidad por fechas solo se controla si la empresa cuenta stock.
+		if (configuracion.conteoStock(comando.empresaId())) {
+			// Serializa las reservas de esta prenda (evita doble asignación) antes de contar disponibilidad.
+			rentas.bloquearReservaDePrenda(comando.prendaId());
+			int disponibles = inventario.unidadesDisponibles(comando.empresaId(), comando.prendaId());
+			long ocupadas = rentas.contarSolapadas(comando.empresaId(), comando.prendaId(),
+					comando.fechaRetiro(), comando.fechaDevolucion());
+			if (ocupadas >= disponibles) {
+				throw new SinDisponibilidad();
+			}
 		}
 		return rentas.guardar(Renta.crear(comando.empresaId(), comando.sucursalId(), comando.clienteId(),
 				comando.prendaId(), comando.fechaRetiro(), comando.fechaDevolucion(), comando.precioPorDia(),

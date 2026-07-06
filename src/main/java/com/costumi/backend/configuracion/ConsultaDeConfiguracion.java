@@ -13,6 +13,9 @@ public interface ConsultaDeConfiguracion {
 	/** ¿El módulo de multas está activo para la empresa? (por defecto sí). */
 	boolean multasActivas(UUID empresaId);
 
+	/** ¿La empresa cuenta stock? (por defecto sí; si no, venta/renta no controlan inventario, RF-12.4). */
+	boolean conteoStock(UUID empresaId);
+
 	/** ¿La empresa tiene habilitado multi-sucursal? (por defecto no → una sola sucursal, RF-12.4). */
 	boolean multiSucursal(UUID empresaId);
 
