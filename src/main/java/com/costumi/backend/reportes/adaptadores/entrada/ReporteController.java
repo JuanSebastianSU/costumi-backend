@@ -14,6 +14,7 @@ import com.costumi.backend.reportes.dominio.ResumenDeIngresos;
 import com.costumi.backend.reportes.dominio.ResumenInventario;
 import com.costumi.backend.reportes.dominio.ValorEtiquetaRanking;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -130,6 +131,50 @@ class ReporteController {
 	ResumenInventario resumenDeInventario(@AuthenticationPrincipal Jwt jwt) {
 		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
 		return consultarInventario.resumenDeInventario(empresaId);
+	}
+
+	// --- Export CSV (RF-9.2). El export a PDF requiere una librería (decisión pendiente). ---
+
+	@GetMapping(value = "/export/rentas-vencidas.csv", produces = "text/csv")
+	ResponseEntity<String> exportRentasVencidas(@RequestParam(required = false) UUID sucursalId,
+			@AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		LocalDate hoy = LocalDate.now();
+		StringBuilder csv = new StringBuilder("rentaId,clienteId,prendaId,fechaDevolucion,diasVencida,importe,deposito\n");
+		for (var r : consultarOperaciones.rentasVencidas(empresaId, sucursalId)) {
+			RentaVencidaResponse f = RentaVencidaResponse.desde(r, hoy);
+			csv.append(f.rentaId()).append(',').append(f.clienteId()).append(',').append(f.prendaId()).append(',')
+					.append(f.fechaDevolucion()).append(',').append(f.diasVencida()).append(',').append(f.importe())
+					.append(',').append(f.deposito()).append('\n');
+		}
+		return csvAdjunto("rentas-vencidas.csv", csv.toString());
+	}
+
+	@GetMapping(value = "/export/inventario-tablero.csv", produces = "text/csv")
+	ResponseEntity<String> exportInventarioTablero(@AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		StringBuilder csv = new StringBuilder("prendaId,prenda,disponibles,danadas,enLimpieza,perdidas\n");
+		for (GrupoInventario g : consultarInventario.tableroDeInventario(empresaId)) {
+			csv.append(g.prendaId()).append(',').append(campo(g.prendaNombre())).append(',').append(g.disponibles())
+					.append(',').append(g.danadas()).append(',').append(g.enLimpieza()).append(',').append(g.perdidas())
+					.append('\n');
+		}
+		return csvAdjunto("inventario-tablero.csv", csv.toString());
+	}
+
+	private static ResponseEntity<String> csvAdjunto(String archivo, String cuerpo) {
+		return ResponseEntity.ok().header("Content-Disposition", "attachment; filename=" + archivo).body(cuerpo);
+	}
+
+	/** Escapa un texto para CSV: entre comillas si trae coma/comilla/salto, doblando las comillas. */
+	private static String campo(String valor) {
+		if (valor == null) {
+			return "";
+		}
+		if (valor.contains(",") || valor.contains("\"") || valor.contains("\n")) {
+			return '"' + valor.replace("\"", "\"\"") + '"';
+		}
+		return valor;
 	}
 
 	record DepositosActivosResponse(BigDecimal total) {

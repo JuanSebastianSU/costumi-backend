@@ -16,9 +16,12 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -286,6 +289,24 @@ class ReporteIntegrationTest {
 				.andExpect(jsonPath("$[0].valor").value("Rojo"))
 				.andExpect(jsonPath("$[0].unidades").value(2))
 				.andExpect(jsonPath("$[0].monto").value(100.00));
+	}
+
+	@Test
+	void exporta_el_tablero_de_inventario_en_csv() throws Exception {
+		montar();
+		String dueno = tokenRol(Rol.DUENO);
+		UUID categoria = postId("/api/v1/categorias", dueno, "{\"nombre\":\"Cat " + UUID.randomUUID() + "\"}");
+		UUID prenda = postId("/api/v1/prendas", dueno, "{\"categoriaId\":\"" + categoria
+				+ "\",\"nombre\":\"Peluca\",\"tipoArticulo\":\"VENTA\",\"precioVenta\":50.00}");
+		postId("/api/v1/prendas/" + prenda + "/grupos-stock", dueno, "{\"combinacion\":[],\"cantidadInicial\":10}");
+
+		// RF-9.2: export a CSV, descargable (Content-Disposition adjunto).
+		mvc.perform(get("/api/v1/reportes/export/inventario-tablero.csv").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(content().contentTypeCompatibleWith("text/csv"))
+				.andExpect(header().string("Content-Disposition", containsString("inventario-tablero.csv")))
+				.andExpect(content().string(containsString("prendaId,prenda,disponibles")))
+				.andExpect(content().string(containsString("Peluca")));
 	}
 
 	@Test
