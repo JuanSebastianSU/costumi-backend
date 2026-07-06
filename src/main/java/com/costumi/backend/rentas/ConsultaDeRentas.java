@@ -1,5 +1,6 @@
 package com.costumi.backend.rentas;
 
+import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -15,6 +16,9 @@ public interface ConsultaDeRentas {
 
 	/** Cliente de la renta, si existe y pertenece a la empresa (para notificar multas, RF-11.1). */
 	Optional<UUID> clienteDeRenta(UUID empresaId, UUID rentaId);
+
+	/** Importe a cobrar de la renta (RF-3.3), si existe y pertenece a la empresa. Para el saldo (RF-6.1). */
+	Optional<BigDecimal> importeDeRenta(UUID empresaId, UUID rentaId);
 
 	/**
 	 * Marca la renta como DEVUELTA al registrarse su devolución (RF-5.1, "checklist conectado"). Exige

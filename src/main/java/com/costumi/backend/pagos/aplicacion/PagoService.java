@@ -4,7 +4,10 @@ import com.costumi.backend.pagos.dominio.CobroMixto;
 import com.costumi.backend.pagos.dominio.Pago;
 import com.costumi.backend.pagos.dominio.PagoRepository;
 import com.costumi.backend.pagos.dominio.PorcionDePago;
+import com.costumi.backend.pagos.dominio.TipoConcepto;
 import com.costumi.backend.pagos.dominio.TipoPago;
+import com.costumi.backend.rentas.ConsultaDeRentas;
+import com.costumi.backend.ventas.ConsultaDeVentas;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,9 +22,13 @@ import java.util.UUID;
 class PagoService implements RegistrarPago, ConsultarPagos, RegistrarCobroMixto {
 
 	private final PagoRepository pagos;
+	private final ConsultaDeRentas rentas;
+	private final ConsultaDeVentas ventas;
 
-	PagoService(PagoRepository pagos) {
+	PagoService(PagoRepository pagos, ConsultaDeRentas rentas, ConsultaDeVentas ventas) {
 		this.pagos = pagos;
+		this.rentas = rentas;
+		this.ventas = ventas;
 	}
 
 	@Override
@@ -45,6 +52,19 @@ class PagoService implements RegistrarPago, ConsultarPagos, RegistrarCobroMixto 
 		CobroMixto calculo = new CobroMixto(comando.porciones(), comando.efectivoRecibido());
 		String claveBase = (comando.claveIdempotencia() == null || comando.claveIdempotencia().isBlank()) ? null
 				: comando.claveIdempotencia().trim();
+		// En un reintento idempotente las porciones ya existen: no se revalida el saldo (ya está cobrado).
+		boolean reintento = claveBase != null
+				&& pagos.buscarPorClave(comando.empresaId(), claveBase + "#0").isPresent();
+		if (!reintento) {
+			// El cobro mixto liquida el saldo pendiente: no puede cobrar de más ni de menos (RF-6.1).
+			BigDecimal total = totalDelConcepto(comando.empresaId(), comando.tipoConcepto(), comando.conceptoId());
+			BigDecimal saldoPendiente = total.subtract(pagos.saldoNetoPorConcepto(comando.empresaId(),
+					comando.conceptoId()));
+			if (calculo.total().compareTo(saldoPendiente) != 0) {
+				throw new IllegalArgumentException("El cobro (" + calculo.total()
+						+ ") no cuadra con el saldo pendiente (" + saldoPendiente + ")");
+			}
+		}
 		List<Pago> generados = new ArrayList<>();
 		int indice = 0;
 		for (PorcionDePago porcion : comando.porciones()) {
@@ -56,6 +76,16 @@ class PagoService implements RegistrarPago, ConsultarPagos, RegistrarCobroMixto 
 			indice++;
 		}
 		return new ResultadoCobroMixto(generados, calculo.total(), calculo.vuelto());
+	}
+
+	/** Monto total a cobrar del concepto (importe de renta o total de venta); falla si no existe en la empresa. */
+	private BigDecimal totalDelConcepto(UUID empresaId, TipoConcepto tipoConcepto, UUID conceptoId) {
+		Optional<BigDecimal> total = switch (tipoConcepto) {
+			case RENTA -> rentas.importeDeRenta(empresaId, conceptoId);
+			case VENTA -> ventas.totalDeVenta(empresaId, conceptoId);
+		};
+		return total.orElseThrow(
+				() -> new IllegalArgumentException("La operación a cobrar no existe en esta empresa"));
 	}
 
 	@Override
