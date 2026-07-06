@@ -170,6 +170,11 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-05 (an)** — **Tanda 3/P4 · Reabastecimiento: entrada de stock + alerta de stock bajo (RF-10).**
+  `GrupoDeStock.reabastecer(cantidad)` (entrada de mercancía) con test. `POST /api/v1/grupos-stock/{id}/entrada`
+  (DUENO/ENCARGADO/BODEGA) y `GET /api/v1/grupos-stock/stock-bajo?umbral=N` (grupos con disponibles < umbral).
+  Query `listarBajoUmbral`. Tests dominio + integración (entrada sube stock; stock-bajo aparece/desaparece).
+  **217 verdes.** _Pendiente RF-10:_ Proveedor, transferencias entre sucursales, ajustes con motivo+auditoría.
 - **2026-07-05 (am)** — **Tanda 2/P3 · Reportes: ganancia = ingreso − costo (RF-9).** Read model
   `ResumenDeGanancia` (JdbcClient): **ingresos** = suma de pagos; **costo de ventas** = Σ(línea.cantidad ×
   prenda.costo_adquisicion) por join `linea_de_venta`×`prenda`; **ganancia** = ingresos − costo. Endpoint

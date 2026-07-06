@@ -16,7 +16,8 @@ import java.util.UUID;
 
 /** Casos de uso de Grupos de stock (variantes), acotados a la empresa (tenant). */
 @Service
-class GrupoDeStockService implements CrearGrupoDeStock, ConsultarGruposDeStock, MoverUnidades {
+class GrupoDeStockService
+		implements CrearGrupoDeStock, ConsultarGruposDeStock, MoverUnidades, ReabastecerGrupo, ConsultarStockBajo {
 
 	private final PrendaRepository prendas;
 	private final GrupoDeStockRepository grupos;
@@ -54,6 +55,22 @@ class GrupoDeStockService implements CrearGrupoDeStock, ConsultarGruposDeStock, 
 				.orElseThrow(() -> new GrupoDeStockNoEncontrado(comando.grupoId()));
 		grupo.mover(comando.desde(), comando.hacia(), comando.cantidad());
 		return grupos.guardar(grupo);
+	}
+
+	@Override
+	@Transactional
+	public GrupoDeStock ejecutar(UUID empresaId, UUID grupoId, int cantidad) {
+		GrupoDeStock grupo = grupos.buscarPorId(grupoId)
+				.filter(g -> g.empresaId().equals(empresaId))
+				.orElseThrow(() -> new GrupoDeStockNoEncontrado(grupoId));
+		grupo.reabastecer(cantidad);
+		return grupos.guardar(grupo);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<GrupoDeStock> deEmpresa(UUID empresaId, int umbral) {
+		return grupos.listarBajoUmbral(empresaId, umbral);
 	}
 
 	/**

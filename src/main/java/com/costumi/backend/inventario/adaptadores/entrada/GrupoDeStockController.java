@@ -1,10 +1,12 @@
 package com.costumi.backend.inventario.adaptadores.entrada;
 
 import com.costumi.backend.inventario.aplicacion.ConsultarGruposDeStock;
+import com.costumi.backend.inventario.aplicacion.ConsultarStockBajo;
 import com.costumi.backend.inventario.aplicacion.CrearGrupoDeStock;
 import com.costumi.backend.inventario.aplicacion.CrearGrupoDeStockComando;
 import com.costumi.backend.inventario.aplicacion.MoverUnidades;
 import com.costumi.backend.inventario.aplicacion.MoverUnidadesComando;
+import com.costumi.backend.inventario.aplicacion.ReabastecerGrupo;
 import com.costumi.backend.inventario.aplicacion.SeleccionVariante;
 import com.costumi.backend.inventario.dominio.GrupoDeStock;
 import jakarta.validation.Valid;
@@ -15,6 +17,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -22,19 +25,23 @@ import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 
-/** Grupos de stock (variantes) de una Prenda y sus movimientos de estado (RF-2.2, RF-2.11). */
+/** Grupos de stock (variantes) de una Prenda, movimientos de estado y reabastecimiento (RF-2.2/2.11/10). */
 @RestController
 class GrupoDeStockController {
 
 	private final CrearGrupoDeStock crearGrupoDeStock;
 	private final ConsultarGruposDeStock consultarGruposDeStock;
 	private final MoverUnidades moverUnidades;
+	private final ReabastecerGrupo reabastecerGrupo;
+	private final ConsultarStockBajo consultarStockBajo;
 
 	GrupoDeStockController(CrearGrupoDeStock crearGrupoDeStock, ConsultarGruposDeStock consultarGruposDeStock,
-			MoverUnidades moverUnidades) {
+			MoverUnidades moverUnidades, ReabastecerGrupo reabastecerGrupo, ConsultarStockBajo consultarStockBajo) {
 		this.crearGrupoDeStock = crearGrupoDeStock;
 		this.consultarGruposDeStock = consultarGruposDeStock;
 		this.moverUnidades = moverUnidades;
+		this.reabastecerGrupo = reabastecerGrupo;
+		this.consultarStockBajo = consultarStockBajo;
 	}
 
 	@PostMapping("/api/v1/prendas/{prendaId}/grupos-stock")
@@ -68,5 +75,23 @@ class GrupoDeStockController {
 		GrupoDeStock grupo = moverUnidades.ejecutar(new MoverUnidadesComando(
 				empresaId, grupoId, request.desde(), request.hacia(), request.cantidad()));
 		return GrupoDeStockResponse.desde(grupo);
+	}
+
+	@PostMapping("/api/v1/grupos-stock/{grupoId}/entrada")
+	GrupoDeStockResponse reabastecer(@PathVariable UUID grupoId, @Valid @RequestBody EntradaDeStockRequest request,
+			@AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		return GrupoDeStockResponse.desde(reabastecerGrupo.ejecutar(empresaId, grupoId, request.cantidad()));
+	}
+
+	@GetMapping("/api/v1/grupos-stock/stock-bajo")
+	List<GrupoDeStockResponse> stockBajo(@RequestParam(defaultValue = "1") int umbral,
+			@AuthenticationPrincipal Jwt jwt) {
+		String empresaId = jwt.getClaimAsString("empresa_id");
+		if (empresaId == null) {
+			return List.of();
+		}
+		return consultarStockBajo.deEmpresa(UUID.fromString(empresaId), umbral).stream()
+				.map(GrupoDeStockResponse::desde).toList();
 	}
 }

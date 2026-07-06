@@ -67,6 +67,14 @@ public class GrupoDeStock {
 		fijar(hacia, contar(hacia) + cantidad);
 	}
 
+	/** Reabastece unidades disponibles (entrada de mercancía, RF-10). */
+	public void reabastecer(int cantidad) {
+		if (cantidad <= 0) {
+			throw new IllegalArgumentException("La cantidad a reabastecer debe ser mayor a 0");
+		}
+		disponibles += cantidad;
+	}
+
 	/** Da de baja unidades disponibles (salen del inventario, p. ej. al confirmar una venta, RF-4.4). */
 	public void darDeBaja(int cantidad) {
 		if (cantidad <= 0) {

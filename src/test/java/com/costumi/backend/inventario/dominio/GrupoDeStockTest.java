@@ -57,6 +57,16 @@ class GrupoDeStockTest {
 	}
 
 	@Test
+	void reabastecer_aumenta_disponibles() {
+		GrupoDeStock grupo = nuevo(3);
+
+		grupo.reabastecer(5);
+
+		assertThat(grupo.disponibles()).isEqualTo(8);
+		assertThat(grupo.total()).isEqualTo(8);
+	}
+
+	@Test
 	void dar_de_baja_reduce_disponibles_y_total() {
 		GrupoDeStock grupo = nuevo(8);
 
