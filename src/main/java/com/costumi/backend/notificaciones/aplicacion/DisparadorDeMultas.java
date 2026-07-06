@@ -3,8 +3,11 @@ package com.costumi.backend.notificaciones.aplicacion;
 import com.costumi.backend.configuracion.ConsultaDeConfiguracion;
 import com.costumi.backend.devoluciones.DevolucionRegistrada;
 import com.costumi.backend.notificaciones.dominio.CanalNotificacion;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
  * Disparador por evento (RF-11.1, §5.5): cuando una devolución genera una <b>multa</b> automática
@@ -23,7 +26,8 @@ class DisparadorDeMultas {
 		this.configuracion = configuracion;
 	}
 
-	@EventListener
+	@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+	@Transactional(propagation = Propagation.REQUIRES_NEW)
 	void alRegistrarseUnaDevolucion(DevolucionRegistrada evento) {
 		if (evento.clienteId() == null || evento.multa().signum() <= 0) {
 			return;

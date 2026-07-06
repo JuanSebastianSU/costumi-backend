@@ -2,8 +2,10 @@ package com.costumi.backend.auditoria.aplicacion;
 
 import com.costumi.backend.devoluciones.DevolucionRegistrada;
 import com.costumi.backend.identidad.EmpresaAprobada;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
  * Alimenta la auditoría (RF-0.5) a partir de los domain events (§5.5). A medida que más operaciones
@@ -18,12 +20,14 @@ class AuditoriaDeEventos {
 		this.auditoria = auditoria;
 	}
 
-	@EventListener
+	@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+	@Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
 	void empresaAprobada(EmpresaAprobada evento) {
 		auditoria.registrar(evento.empresaId(), "EMPRESA_APROBADA", "La empresa fue aprobada por el SuperAdmin");
 	}
 
-	@EventListener
+	@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+	@Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
 	void devolucionRegistrada(DevolucionRegistrada evento) {
 		auditoria.registrar(evento.empresaId(), "DEVOLUCION_REGISTRADA",
 				"Devolución " + evento.devolucionId() + " (renta " + evento.rentaId() + ", multa " + evento.multa() + ")");
