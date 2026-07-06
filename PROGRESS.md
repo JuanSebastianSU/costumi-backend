@@ -80,7 +80,7 @@ Estado: ✅ hecho y **mergeado en `main`** · 🔵 en **PR abierta** (sin mergea
 | Devoluciones y multas | Hexagonal | 🟨 | Checklist + multa (respeta switch) + inventario + evento. ⬜ Falta devolución parcial (RF-5.5) |
 | Clientes | Simple | 🟨 | Ficha + búsqueda + lista negra. ⬜ Falta historial (RF-7.2), foto/ID, filtros de pendientes (11.5/11.6) |
 | Empleados | Simple | ⬜ | RF-8 — sin empezar |
-| Reportes | Simple (lectura) | 🟨 | Ingresos + ganancia (ingreso−costo). ⬜ Falta lo real: utilización, rankings, vencidas, por empleado, depósitos, export PDF/CSV, tablero (RF-9) — **siguiente bloque** |
+| Reportes | Simple (lectura) | 🔵 | Ingresos, ganancia, **rentas vencidas, depósitos activos, ingresos por método, rankings vendidos/rentados, ventas por empleado, tablero de inventario (9.3) + resumen (valor/utilización/dañados)** en PR de Reportes. ⬜ Falta desglose por etiqueta + export PDF/CSV (9.2) |
 | Notificaciones (WhatsApp/FCM) | Simple (adaptador) | 🟨 | Envío por canal (log) + estados + disparador de multas por evento. ⬜ Falta recordatorio de vencidas (RF-11.1); WhatsApp/FCM reales = 🚫 infra |
 | Configuración de empresa | Simple | 🟨 | Interruptores (multas real) + tasa de impuesto (PR #13). ⬜ Falta que TODOS los switches controlen comportamiento + defaults/backup (RF-12.2/3) |
 | Auditoría | Simple | ✅ | Registro por domain events |
@@ -118,6 +118,12 @@ Estado: ✅ hecho y **mergeado en `main`** · 🔵 en **PR abierta** (sin mergea
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-06 (c)** — **Reportes reales (RF-9), bloque en curso (rama `feat/cierre-reportes-rf9`).** Read-models
+  JdbcClient acotados al tenant, filtros opcionales fecha/sucursal: **rentas vencidas** + **depósitos activos**;
+  **ingresos netos por método** (cobros−reembolsos, depósitos no); **rankings** más vendidos/rentados; **ventas por
+  empleado**; **tablero de inventario (9.3)** + **resumen** (valor, utilización, dañados/perdidos). 245 verdes.
+  ⬜ Falta en el bloque: **desglose por etiqueta** (9.1) y **export PDF/CSV** (9.2). _Nota:_ Juan mergeó la PR #13
+  en estado pre-revisión; sus fixes (mixto+impuestos) + saneo de PROGRESS se recuperaron en la **PR #14** (mergeada).
 - **2026-07-06 (b)** — **Revisión de Juan sobre PR #13 atendida + saneo del PROGRESS.** (1) El **cobro mixto**
   ahora valida que la suma de porciones = **saldo pendiente** (total del concepto − ya cobrado): cobrar de más o
   de menos → 400; Pagos consulta el total vía `ConsultaDeVentas.totalDeVenta`/`ConsultaDeRentas.importeDeRenta`.
