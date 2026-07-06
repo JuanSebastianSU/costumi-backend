@@ -2,13 +2,16 @@ package com.costumi.backend.reportes.adaptadores.entrada;
 
 import com.costumi.backend.reportes.aplicacion.ConsultarGanancia;
 import com.costumi.backend.reportes.aplicacion.ConsultarIngresos;
+import com.costumi.backend.reportes.aplicacion.ConsultarInventario;
 import com.costumi.backend.reportes.aplicacion.ConsultarOperaciones;
 import com.costumi.backend.reportes.aplicacion.ConsultarRankings;
 import com.costumi.backend.reportes.dominio.ArticuloRanking;
 import com.costumi.backend.reportes.dominio.EmpleadoVentas;
+import com.costumi.backend.reportes.dominio.GrupoInventario;
 import com.costumi.backend.reportes.dominio.IngresosPorMetodo;
 import com.costumi.backend.reportes.dominio.ResumenDeGanancia;
 import com.costumi.backend.reportes.dominio.ResumenDeIngresos;
+import com.costumi.backend.reportes.dominio.ResumenInventario;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -31,13 +34,16 @@ class ReporteController {
 	private final ConsultarGanancia consultarGanancia;
 	private final ConsultarOperaciones consultarOperaciones;
 	private final ConsultarRankings consultarRankings;
+	private final ConsultarInventario consultarInventario;
 
 	ReporteController(ConsultarIngresos consultarIngresos, ConsultarGanancia consultarGanancia,
-			ConsultarOperaciones consultarOperaciones, ConsultarRankings consultarRankings) {
+			ConsultarOperaciones consultarOperaciones, ConsultarRankings consultarRankings,
+			ConsultarInventario consultarInventario) {
 		this.consultarIngresos = consultarIngresos;
 		this.consultarGanancia = consultarGanancia;
 		this.consultarOperaciones = consultarOperaciones;
 		this.consultarRankings = consultarRankings;
+		this.consultarInventario = consultarInventario;
 	}
 
 	@GetMapping("/ingresos")
@@ -104,6 +110,18 @@ class ReporteController {
 			@AuthenticationPrincipal Jwt jwt) {
 		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
 		return consultarRankings.ventasPorEmpleado(empresaId, sucursalId);
+	}
+
+	@GetMapping("/inventario/tablero")
+	List<GrupoInventario> tableroDeInventario(@AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		return consultarInventario.tableroDeInventario(empresaId);
+	}
+
+	@GetMapping("/inventario/resumen")
+	ResumenInventario resumenDeInventario(@AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		return consultarInventario.resumenDeInventario(empresaId);
 	}
 
 	record DepositosActivosResponse(BigDecimal total) {

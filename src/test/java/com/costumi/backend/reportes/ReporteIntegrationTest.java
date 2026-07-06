@@ -232,6 +232,32 @@ class ReporteIntegrationTest {
 	}
 
 	@Test
+	void reporta_el_tablero_y_el_resumen_de_inventario() throws Exception {
+		montar();
+		String dueno = tokenRol(Rol.DUENO);
+		UUID categoria = postId("/api/v1/categorias", dueno, "{\"nombre\":\"Cat " + UUID.randomUUID() + "\"}");
+		UUID prenda = postId("/api/v1/prendas", dueno, "{\"categoriaId\":\"" + categoria
+				+ "\",\"nombre\":\"Peluca\",\"tipoArticulo\":\"VENTA\",\"precioVenta\":50.00}");
+		postId("/api/v1/prendas/" + prenda + "/grupos-stock", dueno, "{\"combinacion\":[],\"cantidadInicial\":10}");
+
+		// RF-9.3: tablero por grupo con el conteo por estado.
+		mvc.perform(get("/api/v1/reportes/inventario/tablero").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(1))
+				.andExpect(jsonPath("$[0].prendaId").value(prenda.toString()))
+				.andExpect(jsonPath("$[0].disponibles").value(10))
+				.andExpect(jsonPath("$[0].danadas").value(0));
+
+		// RF-9.1: resumen con total, valor de inventario (10 × 50) y utilización (sin rentas activas = 0).
+		mvc.perform(get("/api/v1/reportes/inventario/resumen").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.totalUnidades").value(10))
+				.andExpect(jsonPath("$.disponibles").value(10))
+				.andExpect(jsonPath("$.rentadasAhora").value(0))
+				.andExpect(jsonPath("$.valorInventario").value(500.00));
+	}
+
+	@Test
 	void un_rol_sin_permiso_no_ve_reportes_403() throws Exception {
 		montar();
 		String mostrador = tokenRol(Rol.MOSTRADOR);
