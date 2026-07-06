@@ -13,6 +13,7 @@ import com.costumi.backend.reportes.dominio.RentaVencida;
 import com.costumi.backend.reportes.dominio.ResumenDeGanancia;
 import com.costumi.backend.reportes.dominio.ResumenDeIngresos;
 import com.costumi.backend.reportes.dominio.ResumenInventario;
+import com.costumi.backend.reportes.dominio.ValorEtiquetaRanking;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -89,6 +90,12 @@ class ReporteService
 	@Transactional(readOnly = true)
 	public List<EmpleadoVentas> ventasPorEmpleado(UUID empresaId, UUID sucursalId) {
 		return rankings.ventasPorEmpleado(empresaId, sucursalId);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<ValorEtiquetaRanking> ventasPorEtiqueta(UUID empresaId, UUID tipoEtiquetaId) {
+		return rankings.ventasPorEtiqueta(empresaId, tipoEtiquetaId);
 	}
 
 	@Override

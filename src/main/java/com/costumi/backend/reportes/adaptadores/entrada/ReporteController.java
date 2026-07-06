@@ -12,6 +12,7 @@ import com.costumi.backend.reportes.dominio.IngresosPorMetodo;
 import com.costumi.backend.reportes.dominio.ResumenDeGanancia;
 import com.costumi.backend.reportes.dominio.ResumenDeIngresos;
 import com.costumi.backend.reportes.dominio.ResumenInventario;
+import com.costumi.backend.reportes.dominio.ValorEtiquetaRanking;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -110,6 +111,13 @@ class ReporteController {
 			@AuthenticationPrincipal Jwt jwt) {
 		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
 		return consultarRankings.ventasPorEmpleado(empresaId, sucursalId);
+	}
+
+	@GetMapping("/ventas-por-etiqueta")
+	List<ValorEtiquetaRanking> ventasPorEtiqueta(@RequestParam UUID tipoEtiquetaId,
+			@AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		return consultarRankings.ventasPorEtiqueta(empresaId, tipoEtiquetaId);
 	}
 
 	@GetMapping("/inventario/tablero")

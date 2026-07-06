@@ -3,6 +3,7 @@ package com.costumi.backend.reportes.adaptadores.salida;
 import com.costumi.backend.reportes.dominio.ArticuloRanking;
 import com.costumi.backend.reportes.dominio.EmpleadoVentas;
 import com.costumi.backend.reportes.dominio.RankingReadRepository;
+import com.costumi.backend.reportes.dominio.ValorEtiquetaRanking;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
@@ -72,5 +73,20 @@ class RankingJdbcAdapter implements RankingReadRepository {
 			spec = spec.param("sucursalId", sucursalId);
 		}
 		return spec.query(EmpleadoVentas.class).list();
+	}
+
+	@Override
+	public List<ValorEtiquetaRanking> ventasPorEtiqueta(UUID empresaId, UUID tipoEtiquetaId) {
+		String sql = "select ve.valor,"
+				+ " coalesce(sum(lv.cantidad), 0) as unidades,"
+				+ " coalesce(sum(lv.cantidad * lv.precio_unitario), 0) as monto"
+				+ " from linea_de_venta lv"
+				+ " join prenda_valor_etiqueta pve"
+				+ "   on pve.prenda_id = lv.prenda_id and pve.tipo_etiqueta_id = :tipoEtiquetaId"
+				+ " join valor_etiqueta ve on ve.id = pve.valor_etiqueta_id"
+				+ " where lv.empresa_id = :empresaId"
+				+ " group by ve.valor order by unidades desc";
+		return jdbc.sql(sql).param("empresaId", empresaId).param("tipoEtiquetaId", tipoEtiquetaId)
+				.query(ValorEtiquetaRanking.class).list();
 	}
 }

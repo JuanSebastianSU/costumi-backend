@@ -258,6 +258,37 @@ class ReporteIntegrationTest {
 	}
 
 	@Test
+	void desglosa_las_ventas_por_dimension_de_etiqueta() throws Exception {
+		montar();
+		String dueno = tokenRol(Rol.DUENO);
+		// Dimensión "Color" (aplica a todas las categorías) con el valor "Rojo".
+		UUID tipoColor = postId("/api/v1/tipos-etiqueta", dueno, "{\"nombre\":\"Color " + UUID.randomUUID()
+				+ "\",\"defineVariante\":true,\"seleccionablePorCliente\":false,\"categoriasQueAplica\":[]}");
+		UUID rojo = postId("/api/v1/tipos-etiqueta/" + tipoColor + "/valores", dueno, "{\"valor\":\"Rojo\"}");
+
+		UUID categoria = postId("/api/v1/categorias", dueno, "{\"nombre\":\"Cat " + UUID.randomUUID() + "\"}");
+		UUID prenda = postId("/api/v1/prendas", dueno, "{\"categoriaId\":\"" + categoria
+				+ "\",\"nombre\":\"Peluca\",\"tipoArticulo\":\"VENTA\",\"precioVenta\":50.00,\"etiquetas\":[{"
+				+ "\"tipoEtiquetaId\":\"" + tipoColor + "\",\"valorEtiquetaId\":\"" + rojo + "\"}]}");
+		postId("/api/v1/prendas/" + prenda + "/grupos-stock", dueno, "{\"combinacion\":[],\"cantidadInicial\":10}");
+
+		mvc.perform(post("/api/v1/ventas").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + sucursal + "\",\"lineas\":[{\"prendaId\":\"" + prenda
+								+ "\",\"cantidad\":2,\"precioUnitario\":50.00}]}"))
+				.andExpect(status().isCreated());
+
+		// RF-9.1: ventas desglosadas por la dimensión Color -> Rojo con 2 unidades y 100 de monto.
+		mvc.perform(get("/api/v1/reportes/ventas-por-etiqueta").param("tipoEtiquetaId", tipoColor.toString())
+						.header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(1))
+				.andExpect(jsonPath("$[0].valor").value("Rojo"))
+				.andExpect(jsonPath("$[0].unidades").value(2))
+				.andExpect(jsonPath("$[0].monto").value(100.00));
+	}
+
+	@Test
 	void un_rol_sin_permiso_no_ve_reportes_403() throws Exception {
 		montar();
 		String mostrador = tokenRol(Rol.MOSTRADOR);
