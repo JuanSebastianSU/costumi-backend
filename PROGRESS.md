@@ -170,6 +170,15 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-05 (ai)** — **Tanda 2 · Devolución actualiza el inventario según el checklist (P2, RF-5.4/5.6).** Al
+  registrar una devolución: (1) valida que la **renta sea del tenant** vía nuevo puerto público
+  `rentas.ConsultaDeRentas.prendaDeRenta` (400 si no existe/ajena); (2) agrega el checklist por estado y
+  **mueve unidades de disponible → dañadas/en-limpieza/perdidas** vía `AjusteDeInventario.procesarRetornoDeRenta`
+  (las que vuelven BIEN quedan disponibles); (3) liquida el depósito como ya hacía. Aristas nuevas
+  `devoluciones → rentas` y `devoluciones → inventario`. Manejador de errores de devoluciones nuevo. Test:
+  devolución con pieza DAÑADA deja el grupo en disponibles 0 / dañadas 1; renta inexistente → 400. **202 verdes.**
+  _Pendiente RF-5 (para próximas rebanadas):_ **multa automática** (RF-5.2), transición de la renta a DEVUELTA
+  al registrar (checklist "conectado" completo) y **domain events** (devolución→multa), devolución parcial (RF-5.5).
 - **2026-07-05 (ah)** — **Tanda 2 · Venta: baja de stock al confirmar (P2 CRÍTICO, RF-4.4).** La venta nace
   CONFIRMADA → al registrarla se **descuenta el stock**. `GrupoDeStock.darDeBaja(cantidad)` (las unidades salen
   del inventario) con tests. Nuevo puerto público de **escritura** `inventario.AjusteDeInventario.descontarDisponibles`

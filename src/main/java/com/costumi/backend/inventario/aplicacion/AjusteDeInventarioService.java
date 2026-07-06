@@ -2,6 +2,7 @@ package com.costumi.backend.inventario.aplicacion;
 
 import com.costumi.backend.inventario.AjusteDeInventario;
 import com.costumi.backend.inventario.StockInsuficiente;
+import com.costumi.backend.inventario.dominio.EstadoUnidad;
 import com.costumi.backend.inventario.dominio.GrupoDeStock;
 import com.costumi.backend.inventario.dominio.GrupoDeStockRepository;
 import com.costumi.backend.inventario.dominio.PrendaRepository;
@@ -49,6 +50,41 @@ class AjusteDeInventarioService implements AjusteDeInventario {
 				grupos.guardar(grupo);
 				restante -= aDescontar;
 			}
+		}
+	}
+
+	@Override
+	@Transactional
+	public void procesarRetornoDeRenta(UUID empresaId, UUID prendaId, int danadas, int enLimpieza, int perdidas) {
+		boolean delTenant = prendas.buscarPorId(prendaId).filter(p -> p.empresaId().equals(empresaId)).isPresent();
+		if (!delTenant) {
+			throw new StockInsuficiente(prendaId);
+		}
+		List<GrupoDeStock> deLaPrenda = grupos.listarPorPrenda(prendaId);
+		moverDesdeDisponible(deLaPrenda, prendaId, EstadoUnidad.DANADA, danadas);
+		moverDesdeDisponible(deLaPrenda, prendaId, EstadoUnidad.EN_LIMPIEZA, enLimpieza);
+		moverDesdeDisponible(deLaPrenda, prendaId, EstadoUnidad.PERDIDA, perdidas);
+	}
+
+	/** Mueve {@code cantidad} unidades de DISPONIBLE al estado destino, repartiendo entre los grupos. */
+	private void moverDesdeDisponible(List<GrupoDeStock> grupos, UUID prendaId, EstadoUnidad destino, int cantidad) {
+		if (cantidad <= 0) {
+			return;
+		}
+		int restante = cantidad;
+		for (GrupoDeStock grupo : grupos) {
+			if (restante == 0) {
+				break;
+			}
+			int aMover = Math.min(grupo.disponibles(), restante);
+			if (aMover > 0) {
+				grupo.mover(EstadoUnidad.DISPONIBLE, destino, aMover);
+				this.grupos.guardar(grupo);
+				restante -= aMover;
+			}
+		}
+		if (restante > 0) {
+			throw new StockInsuficiente(prendaId);
 		}
 	}
 }

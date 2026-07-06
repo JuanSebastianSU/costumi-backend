@@ -1,18 +1,20 @@
 package com.costumi.backend.rentas.aplicacion;
 
 import com.costumi.backend.inventario.ConsultaDeInventario;
+import com.costumi.backend.rentas.ConsultaDeRentas;
 import com.costumi.backend.rentas.dominio.Renta;
 import com.costumi.backend.rentas.dominio.RentaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
 
 /** Casos de uso de Rentas: crear, listar y transiciones de estado, acotados a la empresa (tenant). */
 @Service
-class RentaService implements CrearRenta, ConsultarRentas, GestionarRenta {
+class RentaService implements CrearRenta, ConsultarRentas, GestionarRenta, ConsultaDeRentas {
 
 	private final RentaRepository rentas;
 	private final ConsultaDeInventario inventario;
@@ -39,6 +41,14 @@ class RentaService implements CrearRenta, ConsultarRentas, GestionarRenta {
 		return rentas.guardar(Renta.crear(comando.empresaId(), comando.sucursalId(), comando.clienteId(),
 				comando.prendaId(), comando.fechaRetiro(), comando.fechaDevolucion(), comando.precioPorDia(),
 				comando.deposito()));
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public Optional<UUID> prendaDeRenta(UUID empresaId, UUID rentaId) {
+		return rentas.buscarPorId(rentaId)
+				.filter(renta -> renta.empresaId().equals(empresaId))
+				.map(Renta::prendaId);
 	}
 
 	@Override

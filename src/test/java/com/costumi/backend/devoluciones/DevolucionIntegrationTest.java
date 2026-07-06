@@ -60,6 +60,7 @@ class DevolucionIntegrationTest {
 		UUID categoria = postId("/api/v1/categorias", dueno, "{\"nombre\":\"Camisa " + UUID.randomUUID() + "\"}");
 		UUID prenda = postId("/api/v1/prendas", dueno, "{\"categoriaId\":\"" + categoria
 				+ "\",\"nombre\":\"Camisa\",\"tipoArticulo\":\"RENTA\",\"precioRenta\":20.00}");
+		this.prenda = prenda;
 		postId("/api/v1/prendas/" + prenda + "/grupos-stock", dueno, "{\"combinacion\":[],\"cantidadInicial\":1}");
 		return postId("/api/v1/rentas", dueno, "{\"sucursalId\":\"" + sucursal + "\",\"clienteId\":\"" + cliente
 				+ "\",\"prendaId\":\"" + prenda + "\",\"fechaRetiro\":\"2026-08-01\",\"fechaDevolucion\":\"2026-08-04\","
@@ -67,9 +68,10 @@ class DevolucionIntegrationTest {
 	}
 
 	private String dueno;
+	private UUID prenda;
 
 	@Test
-	void registrar_devolucion_liquida_el_deposito_y_guarda_el_checklist() throws Exception {
+	void registrar_devolucion_liquida_deposito_guarda_checklist_y_actualiza_inventario() throws Exception {
 		UUID renta = rentaDePrueba();
 
 		mvc.perform(post("/api/v1/devoluciones").header("Authorization", "Bearer " + dueno)
@@ -85,6 +87,24 @@ class DevolucionIntegrationTest {
 		mvc.perform(get("/api/v1/devoluciones").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$[?(@.rentaId == '" + renta + "')]").exists());
+
+		// RF-5.4/5.6: la pieza dañada movió la unidad de disponible a dañada.
+		mvc.perform(get("/api/v1/prendas/{id}/grupos-stock", prenda).header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[0].disponibles").value(0))
+				.andExpect(jsonPath("$[0].danadas").value(1));
+	}
+
+	@Test
+	void devolver_una_renta_de_otra_empresa_devuelve_400() throws Exception {
+		rentaDePrueba(); // deja this.dueno de la empresa A con una renta
+		String duenoDeA = this.dueno;
+
+		mvc.perform(post("/api/v1/devoluciones").header("Authorization", "Bearer " + duenoDeA)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"rentaId\":\"" + UUID.randomUUID() + "\",\"deposito\":100.00,\"cargoPorDanos\":0,"
+								+ "\"cargoPorRetraso\":0,\"piezas\":[{\"descripcion\":\"X\",\"llego\":true,\"estado\":\"BIEN\"}]}"))
+				.andExpect(status().isBadRequest());
 	}
 
 	@Test

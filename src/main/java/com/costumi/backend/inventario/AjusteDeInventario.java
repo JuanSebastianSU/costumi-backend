@@ -13,4 +13,11 @@ public interface AjusteDeInventario {
 	 * Lanza {@link StockInsuficiente} si no hay suficientes unidades disponibles.
 	 */
 	void descontarDisponibles(UUID empresaId, UUID prendaId, int cantidad);
+
+	/**
+	 * Procesa el retorno de una renta según el checklist de la devolución (RF-5.4/5.6): mueve unidades
+	 * de <b>disponible</b> a dañadas / en limpieza / perdidas. Las piezas que vuelven bien quedan
+	 * disponibles (no se mueven). Lanza {@link StockInsuficiente} si no hay disponibles suficientes.
+	 */
+	void procesarRetornoDeRenta(UUID empresaId, UUID prendaId, int danadas, int enLimpieza, int perdidas);
 }
