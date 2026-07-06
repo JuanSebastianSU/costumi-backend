@@ -6,6 +6,8 @@ import com.costumi.backend.inventario.dominio.EstadoUnidad;
 import com.costumi.backend.inventario.dominio.GrupoDeStock;
 import com.costumi.backend.inventario.dominio.GrupoDeStockRepository;
 import com.costumi.backend.inventario.dominio.PrendaRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,9 +21,23 @@ class AjusteDeInventarioService implements AjusteDeInventario {
 	private final PrendaRepository prendas;
 	private final GrupoDeStockRepository grupos;
 
+	@PersistenceContext
+	private EntityManager em;
+
 	AjusteDeInventarioService(PrendaRepository prendas, GrupoDeStockRepository grupos) {
 		this.prendas = prendas;
 		this.grupos = grupos;
+	}
+
+	/**
+	 * Lock de transacción por prenda (se libera al commit): serializa las bajas/movimientos de stock de
+	 * una misma prenda para evitar la <b>sobreventa</b> por read-then-write concurrente (como en renta).
+	 */
+	private void bloquearPrenda(UUID prendaId) {
+		em.createNativeQuery(
+						"select count(*) from (select pg_advisory_xact_lock(hashtext('prenda:' || cast(:p as text)))) as l")
+				.setParameter("p", prendaId.toString())
+				.getSingleResult();
 	}
 
 	@Override
@@ -30,6 +46,7 @@ class AjusteDeInventarioService implements AjusteDeInventario {
 		if (cantidad <= 0) {
 			throw new IllegalArgumentException("La cantidad a descontar debe ser mayor a 0");
 		}
+		bloquearPrenda(prendaId);
 		boolean delTenant = prendas.buscarPorId(prendaId).filter(p -> p.empresaId().equals(empresaId)).isPresent();
 		if (!delTenant) {
 			throw new StockInsuficiente(prendaId);
@@ -56,6 +73,7 @@ class AjusteDeInventarioService implements AjusteDeInventario {
 	@Override
 	@Transactional
 	public void procesarRetornoDeRenta(UUID empresaId, UUID prendaId, int danadas, int enLimpieza, int perdidas) {
+		bloquearPrenda(prendaId);
 		boolean delTenant = prendas.buscarPorId(prendaId).filter(p -> p.empresaId().equals(empresaId)).isPresent();
 		if (!delTenant) {
 			throw new StockInsuficiente(prendaId);

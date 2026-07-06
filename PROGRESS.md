@@ -182,6 +182,13 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-05 (av)** — **Fixes de la revisión final de Juan (PR #11).** (1) **Multa respeta el switch (RF-6.6):**
+  `DevolucionService` consulta `multasActivas` y con el módulo OFF pone el `cargoPorRetraso` en 0 → no se cobra ni
+  reduce el remanente (el daño sí se recupera, no es multa). (2) **Sobreventa:** `AjusteDeInventarioService` toma un
+  **advisory lock por prenda** (`pg_advisory_xact_lock`) antes de descontar/mover stock (read-then-write), como la
+  renta → dos ventas simultáneas del último ejemplar ya no sobrevenden. (3) **Minor:** auditoría y notificación pasan
+  a `@TransactionalEventListener(AFTER_COMMIT)` + `REQUIRES_NEW` → un fallo de aviso no revierte la devolución.
+  (`Periodo` ya exigía retiro ≤ devolución). **226 verdes.** Con esto Juan da OK para OpenAPI completo + cliente Kotlin.
 - **2026-07-05 (au)** — **Tanda 3/P4 · Carrito: checkout → venta (RF-16).** `POST /api/v1/carritos/checkout`
   toma el carrito de VENTA pendiente, resuelve el precio de cada línea (`ConsultaDeInventario.precioVenta`), crea
   la venta vía nuevo puerto público `ventas.RegistroDeVentas` (descuenta stock) y **confirma** el carrito
