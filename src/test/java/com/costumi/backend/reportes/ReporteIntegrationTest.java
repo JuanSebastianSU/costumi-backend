@@ -16,8 +16,12 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.greaterThan;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -70,6 +74,15 @@ class ReporteIntegrationTest {
 				.andExpect(status().isCreated());
 	}
 
+	private void pago(String token, String tipo, String monto, String metodo, String tipoPago) throws Exception {
+		mvc.perform(post("/api/v1/pagos").header("Authorization", "Bearer " + token)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + sucursal + "\",\"tipoConcepto\":\"" + tipo + "\",\"conceptoId\":\""
+								+ UUID.randomUUID() + "\",\"monto\":" + monto + ",\"metodo\":\"" + metodo
+								+ "\",\"tipoPago\":\"" + tipoPago + "\"}"))
+				.andExpect(status().isCreated());
+	}
+
 	@Test
 	void el_resumen_suma_los_ingresos_por_tipo() throws Exception {
 		montar();
@@ -113,6 +126,187 @@ class ReporteIntegrationTest {
 				.andExpect(jsonPath("$.ingresos").value(100.00))
 				.andExpect(jsonPath("$.costoDeVentas").value(60.00))
 				.andExpect(jsonPath("$.ganancia").value(40.00));
+	}
+
+	@Test
+	void reporta_rentas_vencidas_y_depositos_activos() throws Exception {
+		montar();
+		String dueno = tokenRol(Rol.DUENO);
+		UUID cliente = postId("/api/v1/clientes", dueno, "{\"nombre\":\"Cliente\"}");
+		UUID categoria = postId("/api/v1/categorias", dueno, "{\"nombre\":\"Camisa " + UUID.randomUUID() + "\"}");
+		UUID prenda = postId("/api/v1/prendas", dueno, "{\"categoriaId\":\"" + categoria
+				+ "\",\"nombre\":\"Camisa\",\"tipoArticulo\":\"RENTA\",\"precioRenta\":20.00}");
+		postId("/api/v1/prendas/" + prenda + "/grupos-stock", dueno, "{\"combinacion\":[],\"cantidadInicial\":2}");
+
+		// Renta con fechas de 2020 (ya pasadas) y depósito 100; se entrega -> queda ACTIVA (y vencida).
+		UUID renta = postId("/api/v1/rentas", dueno, "{\"sucursalId\":\"" + sucursal + "\",\"clienteId\":\"" + cliente
+				+ "\",\"prendaId\":\"" + prenda + "\",\"fechaRetiro\":\"2020-01-01\",\"fechaDevolucion\":\"2020-01-05\","
+				+ "\"precioPorDia\":20.00,\"deposito\":100.00}");
+		mvc.perform(post("/api/v1/rentas/{id}/entregar", renta).header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk());
+
+		// RF-9.1: la renta ACTIVA con devolución en el pasado aparece como vencida, con días de atraso.
+		mvc.perform(get("/api/v1/reportes/rentas-vencidas").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(1))
+				.andExpect(jsonPath("$[0].rentaId").value(renta.toString()))
+				.andExpect(jsonPath("$[0].diasVencida").value(greaterThan(0)))
+				.andExpect(jsonPath("$[0].deposito").value(100.00));
+
+		// RF-9.1: su depósito (100) cuenta como activo mientras la renta no se cierra.
+		mvc.perform(get("/api/v1/reportes/depositos-activos").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.total").value(100.00));
+
+		// Filtrar por otra sucursal no muestra esta renta.
+		mvc.perform(get("/api/v1/reportes/rentas-vencidas").param("sucursalId", UUID.randomUUID().toString())
+						.header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(0));
+	}
+
+	@Test
+	void reporta_ingresos_netos_por_metodo() throws Exception {
+		montar();
+		String dueno = tokenRol(Rol.DUENO);
+		// Cobros: efectivo 100, tarjeta 50, transferencia 30. Reembolso efectivo 20. Depósito tarjeta 200 (no ingreso).
+		pago(dueno, "VENTA", "100.00", "EFECTIVO", "COBRO");
+		pago(dueno, "VENTA", "50.00", "TARJETA", "COBRO");
+		pago(dueno, "RENTA", "30.00", "TRANSFERENCIA", "COBRO");
+		pago(dueno, "VENTA", "20.00", "EFECTIVO", "REEMBOLSO");
+		pago(dueno, "RENTA", "200.00", "TARJETA", "DEPOSITO");
+
+		mvc.perform(get("/api/v1/reportes/ingresos-por-metodo").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.efectivo").value(80.00)) // 100 − 20 reembolso
+				.andExpect(jsonPath("$.tarjeta").value(50.00)) // el depósito 200 NO es ingreso
+				.andExpect(jsonPath("$.transferencia").value(30.00))
+				.andExpect(jsonPath("$.total").value(160.00));
+
+		// Rango en el futuro -> sin ingresos.
+		mvc.perform(get("/api/v1/reportes/ingresos-por-metodo").param("desde", "2099-01-01")
+						.header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.total").value(0));
+	}
+
+	@Test
+	void reporta_rankings_y_ventas_por_empleado() throws Exception {
+		montar();
+		String dueno = tokenRol(Rol.DUENO);
+		UUID cliente = postId("/api/v1/clientes", dueno, "{\"nombre\":\"Cliente\"}");
+		UUID categoria = postId("/api/v1/categorias", dueno, "{\"nombre\":\"Cat " + UUID.randomUUID() + "\"}");
+		UUID prendaV = postId("/api/v1/prendas", dueno, "{\"categoriaId\":\"" + categoria
+				+ "\",\"nombre\":\"Peluca\",\"tipoArticulo\":\"VENTA\",\"precioVenta\":50.00}");
+		postId("/api/v1/prendas/" + prendaV + "/grupos-stock", dueno, "{\"combinacion\":[],\"cantidadInicial\":10}");
+		UUID prendaR = postId("/api/v1/prendas", dueno, "{\"categoriaId\":\"" + categoria
+				+ "\",\"nombre\":\"Traje\",\"tipoArticulo\":\"RENTA\",\"precioRenta\":20.00}");
+		postId("/api/v1/prendas/" + prendaR + "/grupos-stock", dueno, "{\"combinacion\":[],\"cantidadInicial\":5}");
+
+		// Vende 3 de la prenda de venta.
+		mvc.perform(post("/api/v1/ventas").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + sucursal + "\",\"lineas\":[{\"prendaId\":\"" + prendaV
+								+ "\",\"cantidad\":3,\"precioUnitario\":50.00}]}"))
+				.andExpect(status().isCreated());
+		// Renta la prenda de renta.
+		postId("/api/v1/rentas", dueno, "{\"sucursalId\":\"" + sucursal + "\",\"clienteId\":\"" + cliente
+				+ "\",\"prendaId\":\"" + prendaR + "\",\"fechaRetiro\":\"2026-09-01\",\"fechaDevolucion\":\"2026-09-03\","
+				+ "\"precioPorDia\":20.00,\"deposito\":100.00}");
+
+		mvc.perform(get("/api/v1/reportes/mas-vendidos").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(1))
+				.andExpect(jsonPath("$[0].prendaId").value(prendaV.toString()))
+				.andExpect(jsonPath("$[0].unidades").value(3))
+				.andExpect(jsonPath("$[0].monto").value(150.00));
+
+		mvc.perform(get("/api/v1/reportes/mas-rentados").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(1))
+				.andExpect(jsonPath("$[0].prendaId").value(prendaR.toString()))
+				.andExpect(jsonPath("$[0].unidades").value(1));
+
+		mvc.perform(get("/api/v1/reportes/ventas-por-empleado").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(1))
+				.andExpect(jsonPath("$[0].numeroVentas").value(1))
+				.andExpect(jsonPath("$[0].total").value(150.00));
+	}
+
+	@Test
+	void reporta_el_tablero_y_el_resumen_de_inventario() throws Exception {
+		montar();
+		String dueno = tokenRol(Rol.DUENO);
+		UUID categoria = postId("/api/v1/categorias", dueno, "{\"nombre\":\"Cat " + UUID.randomUUID() + "\"}");
+		UUID prenda = postId("/api/v1/prendas", dueno, "{\"categoriaId\":\"" + categoria
+				+ "\",\"nombre\":\"Peluca\",\"tipoArticulo\":\"VENTA\",\"precioVenta\":50.00}");
+		postId("/api/v1/prendas/" + prenda + "/grupos-stock", dueno, "{\"combinacion\":[],\"cantidadInicial\":10}");
+
+		// RF-9.3: tablero por grupo con el conteo por estado.
+		mvc.perform(get("/api/v1/reportes/inventario/tablero").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(1))
+				.andExpect(jsonPath("$[0].prendaId").value(prenda.toString()))
+				.andExpect(jsonPath("$[0].disponibles").value(10))
+				.andExpect(jsonPath("$[0].danadas").value(0));
+
+		// RF-9.1: resumen con total, valor de inventario (10 × 50) y utilización (sin rentas activas = 0).
+		mvc.perform(get("/api/v1/reportes/inventario/resumen").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.totalUnidades").value(10))
+				.andExpect(jsonPath("$.disponibles").value(10))
+				.andExpect(jsonPath("$.rentadasAhora").value(0))
+				.andExpect(jsonPath("$.valorInventario").value(500.00));
+	}
+
+	@Test
+	void desglosa_las_ventas_por_dimension_de_etiqueta() throws Exception {
+		montar();
+		String dueno = tokenRol(Rol.DUENO);
+		// Dimensión "Color" (aplica a todas las categorías) con el valor "Rojo".
+		UUID tipoColor = postId("/api/v1/tipos-etiqueta", dueno, "{\"nombre\":\"Color " + UUID.randomUUID()
+				+ "\",\"defineVariante\":true,\"seleccionablePorCliente\":false,\"categoriasQueAplica\":[]}");
+		UUID rojo = postId("/api/v1/tipos-etiqueta/" + tipoColor + "/valores", dueno, "{\"valor\":\"Rojo\"}");
+
+		UUID categoria = postId("/api/v1/categorias", dueno, "{\"nombre\":\"Cat " + UUID.randomUUID() + "\"}");
+		UUID prenda = postId("/api/v1/prendas", dueno, "{\"categoriaId\":\"" + categoria
+				+ "\",\"nombre\":\"Peluca\",\"tipoArticulo\":\"VENTA\",\"precioVenta\":50.00,\"etiquetas\":[{"
+				+ "\"tipoEtiquetaId\":\"" + tipoColor + "\",\"valorEtiquetaId\":\"" + rojo + "\"}]}");
+		postId("/api/v1/prendas/" + prenda + "/grupos-stock", dueno, "{\"combinacion\":[],\"cantidadInicial\":10}");
+
+		mvc.perform(post("/api/v1/ventas").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + sucursal + "\",\"lineas\":[{\"prendaId\":\"" + prenda
+								+ "\",\"cantidad\":2,\"precioUnitario\":50.00}]}"))
+				.andExpect(status().isCreated());
+
+		// RF-9.1: ventas desglosadas por la dimensión Color -> Rojo con 2 unidades y 100 de monto.
+		mvc.perform(get("/api/v1/reportes/ventas-por-etiqueta").param("tipoEtiquetaId", tipoColor.toString())
+						.header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(1))
+				.andExpect(jsonPath("$[0].valor").value("Rojo"))
+				.andExpect(jsonPath("$[0].unidades").value(2))
+				.andExpect(jsonPath("$[0].monto").value(100.00));
+	}
+
+	@Test
+	void exporta_el_tablero_de_inventario_en_csv() throws Exception {
+		montar();
+		String dueno = tokenRol(Rol.DUENO);
+		UUID categoria = postId("/api/v1/categorias", dueno, "{\"nombre\":\"Cat " + UUID.randomUUID() + "\"}");
+		UUID prenda = postId("/api/v1/prendas", dueno, "{\"categoriaId\":\"" + categoria
+				+ "\",\"nombre\":\"Peluca\",\"tipoArticulo\":\"VENTA\",\"precioVenta\":50.00}");
+		postId("/api/v1/prendas/" + prenda + "/grupos-stock", dueno, "{\"combinacion\":[],\"cantidadInicial\":10}");
+
+		// RF-9.2: export a CSV, descargable (Content-Disposition adjunto).
+		mvc.perform(get("/api/v1/reportes/export/inventario-tablero.csv").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(content().contentTypeCompatibleWith("text/csv"))
+				.andExpect(header().string("Content-Disposition", containsString("inventario-tablero.csv")))
+				.andExpect(content().string(containsString("prendaId,prenda,disponibles")))
+				.andExpect(content().string(containsString("Peluca")));
 	}
 
 	@Test

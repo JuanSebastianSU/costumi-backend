@@ -3,9 +3,11 @@ package com.costumi.backend.clientes.adaptadores.entrada;
 import com.costumi.backend.clientes.aplicacion.CambiarListaNegra;
 import com.costumi.backend.clientes.aplicacion.CambiarListaNegraComando;
 import com.costumi.backend.clientes.aplicacion.ConsultarClientes;
+import com.costumi.backend.clientes.aplicacion.ConsultarHistorial;
 import com.costumi.backend.clientes.aplicacion.CrearCliente;
 import com.costumi.backend.clientes.aplicacion.CrearClienteComando;
 import com.costumi.backend.clientes.dominio.Cliente;
+import com.costumi.backend.clientes.dominio.HistorialItem;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -31,12 +33,14 @@ class ClienteController {
 	private final CrearCliente crearCliente;
 	private final ConsultarClientes consultarClientes;
 	private final CambiarListaNegra cambiarListaNegra;
+	private final ConsultarHistorial consultarHistorial;
 
 	ClienteController(CrearCliente crearCliente, ConsultarClientes consultarClientes,
-			CambiarListaNegra cambiarListaNegra) {
+			CambiarListaNegra cambiarListaNegra, ConsultarHistorial consultarHistorial) {
 		this.crearCliente = crearCliente;
 		this.consultarClientes = consultarClientes;
 		this.cambiarListaNegra = cambiarListaNegra;
+		this.consultarHistorial = consultarHistorial;
 	}
 
 	@PostMapping
@@ -50,13 +54,27 @@ class ClienteController {
 	}
 
 	@GetMapping
-	List<ClienteResponse> listar(@RequestParam(required = false) String buscar, @AuthenticationPrincipal Jwt jwt) {
-		String empresaId = jwt.getClaimAsString("empresa_id");
-		if (empresaId == null) {
+	List<ClienteResponse> listar(@RequestParam(required = false) String buscar,
+			@RequestParam(required = false, defaultValue = "false") boolean conPendientes,
+			@AuthenticationPrincipal Jwt jwt) {
+		String empresaIdClaim = jwt.getClaimAsString("empresa_id");
+		if (empresaIdClaim == null) {
 			return List.of();
 		}
-		return consultarClientes.buscar(UUID.fromString(empresaId), buscar).stream()
-				.map(ClienteResponse::desde).toList();
+		UUID empresaId = UUID.fromString(empresaIdClaim);
+		var clientes = consultarClientes.buscar(empresaId, buscar);
+		if (conPendientes) {
+			// RF-11.5/11.6: solo los clientes con rentas activas pendientes de devolver.
+			var pendientes = new java.util.HashSet<>(consultarHistorial.clientesConPendientes(empresaId));
+			clientes = clientes.stream().filter(c -> pendientes.contains(c.id())).toList();
+		}
+		return clientes.stream().map(ClienteResponse::desde).toList();
+	}
+
+	@GetMapping("/{id}/historial")
+	List<HistorialItem> historial(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		return consultarHistorial.historialDeCliente(empresaId, id);
 	}
 
 	@PostMapping("/{id}/lista-negra")

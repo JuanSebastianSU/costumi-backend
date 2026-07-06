@@ -17,6 +17,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -97,6 +98,34 @@ class RegistrarSucursalIntegrationTest {
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"nombre\":\"Centro\"}"))
 				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void sin_multi_sucursal_la_segunda_devuelve_409_y_con_el_switch_on_se_permite() throws Exception {
+		UUID empresaId = registrarEmpresa("Multi " + UUID.randomUUID());
+		aprobar(empresaId);
+		String dueno = tokenDueno(empresaId);
+
+		// Primera sucursal: siempre permitida.
+		mvc.perform(post("/api/v1/empresas/{empresaId}/sucursales", empresaId).header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON).content("{\"nombre\":\"Centro\"}"))
+				.andExpect(status().isCreated());
+
+		// Segunda con multi-sucursal APAGADO (por defecto): 409 (RF-12.4).
+		mvc.perform(post("/api/v1/empresas/{empresaId}/sucursales", empresaId).header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON).content("{\"nombre\":\"Norte\"}"))
+				.andExpect(status().isConflict());
+
+		// Enciende multi-sucursal.
+		mvc.perform(put("/api/v1/configuracion").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"conteoStock\":true,\"multasActivo\":true,\"multiSucursal\":true,\"pagoEnLinea\":false}"))
+				.andExpect(status().isOk());
+
+		// Ahora sí se permite la segunda sucursal.
+		mvc.perform(post("/api/v1/empresas/{empresaId}/sucursales", empresaId).header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON).content("{\"nombre\":\"Norte\"}"))
+				.andExpect(status().isCreated());
 	}
 
 	@Test

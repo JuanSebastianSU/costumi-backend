@@ -2,20 +2,24 @@ package com.costumi.backend.clientes.aplicacion;
 
 import com.costumi.backend.clientes.dominio.Cliente;
 import com.costumi.backend.clientes.dominio.ClienteRepository;
+import com.costumi.backend.clientes.dominio.HistorialItem;
+import com.costumi.backend.clientes.dominio.HistorialReadRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
 
-/** Casos de uso de Clientes: crear, buscar y lista negra, acotados a la empresa (tenant). */
+/** Casos de uso de Clientes: crear, buscar, lista negra e historial, acotados a la empresa (tenant). */
 @Service
-class ClienteService implements CrearCliente, ConsultarClientes, CambiarListaNegra {
+class ClienteService implements CrearCliente, ConsultarClientes, CambiarListaNegra, ConsultarHistorial {
 
 	private final ClienteRepository clientes;
+	private final HistorialReadRepository historial;
 
-	ClienteService(ClienteRepository clientes) {
+	ClienteService(ClienteRepository clientes, HistorialReadRepository historial) {
 		this.clientes = clientes;
+		this.historial = historial;
 	}
 
 	@Override
@@ -46,5 +50,17 @@ class ClienteService implements CrearCliente, ConsultarClientes, CambiarListaNeg
 			cliente.quitarDeListaNegra();
 		}
 		return clientes.guardar(cliente);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<HistorialItem> historialDeCliente(UUID empresaId, UUID clienteId) {
+		return historial.deCliente(empresaId, clienteId);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<UUID> clientesConPendientes(UUID empresaId) {
+		return historial.clientesConPendientes(empresaId);
 	}
 }

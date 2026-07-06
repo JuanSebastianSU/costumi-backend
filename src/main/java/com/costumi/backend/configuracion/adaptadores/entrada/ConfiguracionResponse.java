@@ -4,12 +4,12 @@ import com.costumi.backend.configuracion.dominio.ConfiguracionDeEmpresa;
 
 import java.math.BigDecimal;
 
-/** DTO de salida de la configuración de la empresa. */
+/** DTO de salida de la configuración de la empresa. Sirve también de respaldo (RF-12.3). */
 public record ConfiguracionResponse(boolean conteoStock, boolean multasActivo, boolean multiSucursal,
-		boolean pagoEnLinea, BigDecimal tasaImpuesto) {
+		boolean pagoEnLinea, BigDecimal tasaImpuesto, String moneda, BigDecimal recargoPorRetrasoPorDia) {
 
 	static ConfiguracionResponse desde(ConfiguracionDeEmpresa c) {
 		return new ConfiguracionResponse(c.conteoStock(), c.multasActivo(), c.multiSucursal(), c.pagoEnLinea(),
-				c.tasaImpuesto());
+				c.tasaImpuesto(), c.moneda(), c.recargoPorRetrasoPorDia());
 	}
 }

@@ -59,6 +59,45 @@ class ClienteIntegrationTest {
 		return UUID.fromString(json.readTree(body).get("id").asText());
 	}
 
+	private UUID postId(String path, String tk, String body) throws Exception {
+		String res = mvc.perform(post(path).header("Authorization", "Bearer " + tk)
+						.contentType(MediaType.APPLICATION_JSON).content(body))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		return UUID.fromString(json.readTree(res).get("id").asText());
+	}
+
+	@Test
+	void historial_del_cliente_y_filtro_de_pendientes() throws Exception {
+		UUID empresa = crearEmpresa("Cli Hist " + UUID.randomUUID());
+		String superAdmin = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, null, Rol.SUPERADMIN);
+		mvc.perform(post("/api/v1/empresas/{id}/aprobar", empresa).header("Authorization", "Bearer " + superAdmin))
+				.andExpect(status().isOk());
+		String dueno = token(empresa, Rol.DUENO);
+		UUID sucursal = postId("/api/v1/empresas/" + empresa + "/sucursales", dueno, "{\"nombre\":\"Centro\"}");
+		UUID cliente = crearCliente(dueno, "Cliente", "DOC-" + UUID.randomUUID());
+		UUID categoria = postId("/api/v1/categorias", dueno, "{\"nombre\":\"Cat " + UUID.randomUUID() + "\"}");
+		UUID prenda = postId("/api/v1/prendas", dueno, "{\"categoriaId\":\"" + categoria
+				+ "\",\"nombre\":\"Traje\",\"tipoArticulo\":\"RENTA\",\"precioRenta\":20.00}");
+		postId("/api/v1/prendas/" + prenda + "/grupos-stock", dueno, "{\"combinacion\":[],\"cantidadInicial\":2}");
+		UUID renta = postId("/api/v1/rentas", dueno, "{\"sucursalId\":\"" + sucursal + "\",\"clienteId\":\"" + cliente
+				+ "\",\"prendaId\":\"" + prenda + "\",\"fechaRetiro\":\"2026-09-01\",\"fechaDevolucion\":\"2026-09-03\","
+				+ "\"precioPorDia\":20.00,\"deposito\":100.00}");
+		mvc.perform(post("/api/v1/rentas/{id}/entregar", renta).header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk());
+
+		// RF-7.2: el historial muestra su renta.
+		mvc.perform(get("/api/v1/clientes/{id}/historial", cliente).header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(1))
+				.andExpect(jsonPath("$[0].tipo").value("RENTA"))
+				.andExpect(jsonPath("$[0].estado").value("ACTIVA"));
+
+		// RF-11.5/11.6: con la renta ACTIVA, el cliente sale en el filtro de pendientes.
+		mvc.perform(get("/api/v1/clientes").param("conPendientes", "true").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.id == '" + cliente + "')]").exists());
+	}
+
 	@Test
 	void crear_buscar_por_documento_y_ponerlo_en_lista_negra() throws Exception {
 		UUID empresa = crearEmpresa("Empresa Cli");

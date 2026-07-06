@@ -97,6 +97,36 @@ class ConfiguracionIntegrationTest {
 	}
 
 	@Test
+	void configura_reglas_por_defecto_y_respalda_restaura() throws Exception {
+		montar();
+		String dueno = tokenRol(Rol.DUENO);
+
+		// RF-12.2: moneda + recargo por retraso por día.
+		mvc.perform(put("/api/v1/configuracion").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"conteoStock\":true,\"multasActivo\":true,\"multiSucursal\":false,\"pagoEnLinea\":false,"
+								+ "\"tasaImpuesto\":0,\"moneda\":\"usd\",\"recargoPorRetrasoPorDia\":3.50}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.moneda").value("USD"))
+				.andExpect(jsonPath("$.recargoPorRetrasoPorDia").value(3.50));
+
+		// RF-12.3: el export refleja la config actual (sirve de respaldo).
+		mvc.perform(get("/api/v1/configuracion/export").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.moneda").value("USD"))
+				.andExpect(jsonPath("$.recargoPorRetrasoPorDia").value(3.50));
+
+		// RF-12.3: import restaura otro respaldo.
+		mvc.perform(post("/api/v1/configuracion/import").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"conteoStock\":true,\"multasActivo\":true,\"multiSucursal\":true,\"pagoEnLinea\":false,"
+								+ "\"tasaImpuesto\":0,\"moneda\":\"MXN\",\"recargoPorRetrasoPorDia\":0}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.moneda").value("MXN"))
+				.andExpect(jsonPath("$.multiSucursal").value(true));
+	}
+
+	@Test
 	void un_rol_sin_permiso_no_puede_actualizar_403() throws Exception {
 		montar();
 		String mostrador = tokenRol(Rol.MOSTRADOR);

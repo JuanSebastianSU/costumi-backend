@@ -1,5 +1,6 @@
 package com.costumi.backend.ventas.aplicacion;
 
+import com.costumi.backend.configuracion.ConsultaDeConfiguracion;
 import com.costumi.backend.inventario.AjusteDeInventario;
 import com.costumi.backend.inventario.ConsultaDeInventario;
 import com.costumi.backend.ventas.ConsultaDeVentas;
@@ -22,11 +23,14 @@ class VentaService implements RegistrarVenta, ConsultarVentas, RegistroDeVentas,
 	private final VentaRepository ventas;
 	private final ConsultaDeInventario inventario;
 	private final AjusteDeInventario ajusteDeInventario;
+	private final ConsultaDeConfiguracion configuracion;
 
-	VentaService(VentaRepository ventas, ConsultaDeInventario inventario, AjusteDeInventario ajusteDeInventario) {
+	VentaService(VentaRepository ventas, ConsultaDeInventario inventario, AjusteDeInventario ajusteDeInventario,
+			ConsultaDeConfiguracion configuracion) {
 		this.ventas = ventas;
 		this.inventario = inventario;
 		this.ajusteDeInventario = ajusteDeInventario;
+		this.configuracion = configuracion;
 	}
 
 	@Override
@@ -39,9 +43,12 @@ class VentaService implements RegistrarVenta, ConsultarVentas, RegistroDeVentas,
 		}
 		Venta venta = Venta.crear(comando.empresaId(), comando.sucursalId(), comando.empleadoId(),
 				comando.clienteId(), comando.descuento(), comando.lineas());
-		// Baja de stock al confirmar (RF-4.4): si no alcanza, StockInsuficiente revierte toda la venta.
-		for (LineaDeVenta linea : comando.lineas()) {
-			ajusteDeInventario.descontarDisponibles(comando.empresaId(), linea.prendaId(), linea.cantidad());
+		// RF-12.4: solo se descuenta stock si la empresa cuenta stock; si no, la venta no toca inventario.
+		if (configuracion.conteoStock(comando.empresaId())) {
+			// Baja de stock al confirmar (RF-4.4): si no alcanza, StockInsuficiente revierte toda la venta.
+			for (LineaDeVenta linea : comando.lineas()) {
+				ajusteDeInventario.descontarDisponibles(comando.empresaId(), linea.prendaId(), linea.cantidad());
+			}
 		}
 		return ventas.guardar(venta);
 	}

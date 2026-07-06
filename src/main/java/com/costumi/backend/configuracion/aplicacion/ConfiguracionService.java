@@ -29,13 +29,26 @@ class ConfiguracionService implements GestionarConfiguracion, ConsultaDeConfigur
 	@Transactional
 	public ConfiguracionDeEmpresa actualizar(ActualizarConfiguracionComando comando) {
 		return configuraciones.guardar(ConfiguracionDeEmpresa.de(comando.empresaId(), comando.conteoStock(),
-				comando.multasActivo(), comando.multiSucursal(), comando.pagoEnLinea(), comando.tasaImpuesto()));
+				comando.multasActivo(), comando.multiSucursal(), comando.pagoEnLinea(), comando.tasaImpuesto(),
+				comando.moneda(), comando.recargoPorRetrasoPorDia()));
 	}
 
 	@Override
 	@Transactional(readOnly = true)
 	public boolean multasActivas(UUID empresaId) {
 		return deEmpresa(empresaId).multasActivo();
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public boolean conteoStock(UUID empresaId) {
+		return deEmpresa(empresaId).conteoStock();
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public boolean multiSucursal(UUID empresaId) {
+		return deEmpresa(empresaId).multiSucursal();
 	}
 
 	@Override

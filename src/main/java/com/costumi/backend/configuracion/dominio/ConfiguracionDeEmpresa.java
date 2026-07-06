@@ -18,9 +18,11 @@ public class ConfiguracionDeEmpresa {
 	private final boolean multiSucursal;
 	private final boolean pagoEnLinea;
 	private final BigDecimal tasaImpuesto;
+	private final String moneda;
+	private final BigDecimal recargoPorRetrasoPorDia;
 
 	private ConfiguracionDeEmpresa(UUID empresaId, boolean conteoStock, boolean multasActivo, boolean multiSucursal,
-			boolean pagoEnLinea, BigDecimal tasaImpuesto) {
+			boolean pagoEnLinea, BigDecimal tasaImpuesto, String moneda, BigDecimal recargoPorRetrasoPorDia) {
 		this.empresaId = Objects.requireNonNull(empresaId, "empresaId");
 		this.conteoStock = conteoStock;
 		this.multasActivo = multasActivo;
@@ -31,17 +33,27 @@ public class ConfiguracionDeEmpresa {
 			throw new IllegalArgumentException("La tasa de impuesto debe estar en [0, 1) (p. ej. 0.19 = 19%)");
 		}
 		this.tasaImpuesto = tasaImpuesto;
+		if (moneda == null || moneda.isBlank()) {
+			throw new IllegalArgumentException("La moneda es obligatoria (código, p. ej. COP)");
+		}
+		this.moneda = moneda.trim().toUpperCase();
+		Objects.requireNonNull(recargoPorRetrasoPorDia, "recargoPorRetrasoPorDia");
+		if (recargoPorRetrasoPorDia.signum() < 0) {
+			throw new IllegalArgumentException("El recargo por retraso por día no puede ser negativo");
+		}
+		this.recargoPorRetrasoPorDia = recargoPorRetrasoPorDia;
 	}
 
-	/** Defaults sensatos (RF-1, RF-13.5): conteo y multas activos; multi-sucursal, pago en línea e impuesto en 0. */
+	/** Defaults sensatos (RF-1/12.2): conteo y multas activos; multi-sucursal/pago en línea/impuesto/recargo en 0; moneda COP. */
 	public static ConfiguracionDeEmpresa porDefecto(UUID empresaId) {
-		return new ConfiguracionDeEmpresa(empresaId, true, true, false, false, BigDecimal.ZERO);
+		return new ConfiguracionDeEmpresa(empresaId, true, true, false, false, BigDecimal.ZERO, "COP", BigDecimal.ZERO);
 	}
 
 	public static ConfiguracionDeEmpresa de(UUID empresaId, boolean conteoStock, boolean multasActivo,
-			boolean multiSucursal, boolean pagoEnLinea, BigDecimal tasaImpuesto) {
+			boolean multiSucursal, boolean pagoEnLinea, BigDecimal tasaImpuesto, String moneda,
+			BigDecimal recargoPorRetrasoPorDia) {
 		return new ConfiguracionDeEmpresa(empresaId, conteoStock, multasActivo, multiSucursal, pagoEnLinea,
-				tasaImpuesto);
+				tasaImpuesto, moneda, recargoPorRetrasoPorDia);
 	}
 
 	public UUID empresaId() {
@@ -50,6 +62,14 @@ public class ConfiguracionDeEmpresa {
 
 	public BigDecimal tasaImpuesto() {
 		return tasaImpuesto;
+	}
+
+	public String moneda() {
+		return moneda;
+	}
+
+	public BigDecimal recargoPorRetrasoPorDia() {
+		return recargoPorRetrasoPorDia;
 	}
 
 	public boolean conteoStock() {
