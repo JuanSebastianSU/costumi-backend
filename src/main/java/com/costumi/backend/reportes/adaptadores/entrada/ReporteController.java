@@ -3,6 +3,9 @@ package com.costumi.backend.reportes.adaptadores.entrada;
 import com.costumi.backend.reportes.aplicacion.ConsultarGanancia;
 import com.costumi.backend.reportes.aplicacion.ConsultarIngresos;
 import com.costumi.backend.reportes.aplicacion.ConsultarOperaciones;
+import com.costumi.backend.reportes.aplicacion.ConsultarRankings;
+import com.costumi.backend.reportes.dominio.ArticuloRanking;
+import com.costumi.backend.reportes.dominio.EmpleadoVentas;
 import com.costumi.backend.reportes.dominio.IngresosPorMetodo;
 import com.costumi.backend.reportes.dominio.ResumenDeGanancia;
 import com.costumi.backend.reportes.dominio.ResumenDeIngresos;
@@ -27,12 +30,14 @@ class ReporteController {
 	private final ConsultarIngresos consultarIngresos;
 	private final ConsultarGanancia consultarGanancia;
 	private final ConsultarOperaciones consultarOperaciones;
+	private final ConsultarRankings consultarRankings;
 
 	ReporteController(ConsultarIngresos consultarIngresos, ConsultarGanancia consultarGanancia,
-			ConsultarOperaciones consultarOperaciones) {
+			ConsultarOperaciones consultarOperaciones, ConsultarRankings consultarRankings) {
 		this.consultarIngresos = consultarIngresos;
 		this.consultarGanancia = consultarGanancia;
 		this.consultarOperaciones = consultarOperaciones;
+		this.consultarRankings = consultarRankings;
 	}
 
 	@GetMapping("/ingresos")
@@ -76,6 +81,29 @@ class ReporteController {
 			@RequestParam(required = false) UUID sucursalId, @AuthenticationPrincipal Jwt jwt) {
 		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
 		return consultarOperaciones.ingresosPorMetodo(empresaId, desde, hasta, sucursalId);
+	}
+
+	@GetMapping("/mas-vendidos")
+	List<ArticuloRanking> masVendidos(@RequestParam(required = false) UUID sucursalId,
+			@RequestParam(defaultValue = "10") int limite, @AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		return consultarRankings.masVendidos(empresaId, sucursalId, limite);
+	}
+
+	@GetMapping("/mas-rentados")
+	List<ArticuloRanking> masRentados(@RequestParam(required = false) UUID sucursalId,
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+			@RequestParam(defaultValue = "10") int limite, @AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		return consultarRankings.masRentados(empresaId, sucursalId, desde, hasta, limite);
+	}
+
+	@GetMapping("/ventas-por-empleado")
+	List<EmpleadoVentas> ventasPorEmpleado(@RequestParam(required = false) UUID sucursalId,
+			@AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		return consultarRankings.ventasPorEmpleado(empresaId, sucursalId);
 	}
 
 	record DepositosActivosResponse(BigDecimal total) {

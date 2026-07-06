@@ -188,6 +188,50 @@ class ReporteIntegrationTest {
 	}
 
 	@Test
+	void reporta_rankings_y_ventas_por_empleado() throws Exception {
+		montar();
+		String dueno = tokenRol(Rol.DUENO);
+		UUID cliente = postId("/api/v1/clientes", dueno, "{\"nombre\":\"Cliente\"}");
+		UUID categoria = postId("/api/v1/categorias", dueno, "{\"nombre\":\"Cat " + UUID.randomUUID() + "\"}");
+		UUID prendaV = postId("/api/v1/prendas", dueno, "{\"categoriaId\":\"" + categoria
+				+ "\",\"nombre\":\"Peluca\",\"tipoArticulo\":\"VENTA\",\"precioVenta\":50.00}");
+		postId("/api/v1/prendas/" + prendaV + "/grupos-stock", dueno, "{\"combinacion\":[],\"cantidadInicial\":10}");
+		UUID prendaR = postId("/api/v1/prendas", dueno, "{\"categoriaId\":\"" + categoria
+				+ "\",\"nombre\":\"Traje\",\"tipoArticulo\":\"RENTA\",\"precioRenta\":20.00}");
+		postId("/api/v1/prendas/" + prendaR + "/grupos-stock", dueno, "{\"combinacion\":[],\"cantidadInicial\":5}");
+
+		// Vende 3 de la prenda de venta.
+		mvc.perform(post("/api/v1/ventas").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + sucursal + "\",\"lineas\":[{\"prendaId\":\"" + prendaV
+								+ "\",\"cantidad\":3,\"precioUnitario\":50.00}]}"))
+				.andExpect(status().isCreated());
+		// Renta la prenda de renta.
+		postId("/api/v1/rentas", dueno, "{\"sucursalId\":\"" + sucursal + "\",\"clienteId\":\"" + cliente
+				+ "\",\"prendaId\":\"" + prendaR + "\",\"fechaRetiro\":\"2026-09-01\",\"fechaDevolucion\":\"2026-09-03\","
+				+ "\"precioPorDia\":20.00,\"deposito\":100.00}");
+
+		mvc.perform(get("/api/v1/reportes/mas-vendidos").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(1))
+				.andExpect(jsonPath("$[0].prendaId").value(prendaV.toString()))
+				.andExpect(jsonPath("$[0].unidades").value(3))
+				.andExpect(jsonPath("$[0].monto").value(150.00));
+
+		mvc.perform(get("/api/v1/reportes/mas-rentados").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(1))
+				.andExpect(jsonPath("$[0].prendaId").value(prendaR.toString()))
+				.andExpect(jsonPath("$[0].unidades").value(1));
+
+		mvc.perform(get("/api/v1/reportes/ventas-por-empleado").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(1))
+				.andExpect(jsonPath("$[0].numeroVentas").value(1))
+				.andExpect(jsonPath("$[0].total").value(150.00));
+	}
+
+	@Test
 	void un_rol_sin_permiso_no_ve_reportes_403() throws Exception {
 		montar();
 		String mostrador = tokenRol(Rol.MOSTRADOR);
