@@ -4,6 +4,7 @@ import com.costumi.backend.pagos.dominio.CobroMixto;
 import com.costumi.backend.pagos.dominio.Pago;
 import com.costumi.backend.pagos.dominio.PagoRepository;
 import com.costumi.backend.pagos.dominio.PorcionDePago;
+import com.costumi.backend.configuracion.ConsultaDeConfiguracion;
 import com.costumi.backend.pagos.dominio.TipoConcepto;
 import com.costumi.backend.pagos.dominio.TipoPago;
 import com.costumi.backend.rentas.ConsultaDeRentas;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -24,11 +26,14 @@ class PagoService implements RegistrarPago, ConsultarPagos, RegistrarCobroMixto 
 	private final PagoRepository pagos;
 	private final ConsultaDeRentas rentas;
 	private final ConsultaDeVentas ventas;
+	private final ConsultaDeConfiguracion configuracion;
 
-	PagoService(PagoRepository pagos, ConsultaDeRentas rentas, ConsultaDeVentas ventas) {
+	PagoService(PagoRepository pagos, ConsultaDeRentas rentas, ConsultaDeVentas ventas,
+			ConsultaDeConfiguracion configuracion) {
 		this.pagos = pagos;
 		this.rentas = rentas;
 		this.ventas = ventas;
+		this.configuracion = configuracion;
 	}
 
 	@Override
@@ -113,8 +118,12 @@ class PagoService implements RegistrarPago, ConsultarPagos, RegistrarCobroMixto 
 		BigDecimal totalCobrado = sumaPorTipo(delConcepto, TipoPago.COBRO);
 		BigDecimal totalReembolsado = sumaPorTipo(delConcepto, TipoPago.REEMBOLSO);
 		BigDecimal saldoNeto = delConcepto.stream().map(Pago::montoNeto).reduce(BigDecimal.ZERO, BigDecimal::add);
+		// Impuesto-incluido (RF-6.5): el total cobrado ya lo trae; se desglosa base + impuesto según la tasa.
+		BigDecimal tasa = configuracion.tasaImpuesto(empresaId);
+		BigDecimal base = totalCobrado.divide(BigDecimal.ONE.add(tasa), 2, RoundingMode.HALF_UP);
+		BigDecimal impuesto = totalCobrado.subtract(base);
 		return new Comprobante(conceptoId, delConcepto, totalCobrado, totalReembolsado, saldoNeto,
-				estadoDeposito(conceptoId, delConcepto));
+				estadoDeposito(conceptoId, delConcepto), tasa, base, impuesto);
 	}
 
 	private static EstadoDeposito estadoDeposito(UUID conceptoId, List<Pago> delConcepto) {

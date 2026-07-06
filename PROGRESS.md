@@ -43,7 +43,8 @@ multa respeta el switch, advisory lock anti-sobreventa, avisos en AFTER_COMMIT).
 9. **OpenAPI completo publicado** — crece con cada feature; se publica completo al cierre (puente con el repo Android). — EN CURSO
 
 ### 🚫 Bloqueado por decisión/infra (va detrás de config, NO frena el resto)
-- **Impuestos (RF-6.5/12.2)** — el spec no define el modelo (base/tasa/inclusión) → **decisión de Juan** antes de codear.
+- ~~Impuestos (RF-6.5/12.2)~~ — **RESUELTO** (decisión de Juan): tasa única por empresa en `ConfiguracionEmpresa`,
+  precio impuesto-incluido, desglose (base+impuesto) en el comprobante. En la PR #13.
 - **Pasarela de pago (RF-6.11)**, **S3/fotos (RF-2.9)**, **WhatsApp/FCM (RF-11.4/18.11)** — credenciales/decisión externa.
 
 ### Arquitectura fijada (2026-07-06)

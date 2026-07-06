@@ -8,6 +8,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 /** Mapeo JPA de la configuración; la PK es {@code empresa_id} (una por empresa). */
@@ -32,17 +33,21 @@ class ConfiguracionJpaEntity {
 	@Column(name = "pago_en_linea", nullable = false)
 	private boolean pagoEnLinea;
 
+	@Column(name = "tasa_impuesto", nullable = false, precision = 5, scale = 4)
+	private BigDecimal tasaImpuesto;
+
 	protected ConfiguracionJpaEntity() {
 		// requerido por JPA
 	}
 
 	ConfiguracionJpaEntity(UUID empresaId, boolean conteoStock, boolean multasActivo, boolean multiSucursal,
-			boolean pagoEnLinea) {
+			boolean pagoEnLinea, BigDecimal tasaImpuesto) {
 		this.empresaId = empresaId;
 		this.conteoStock = conteoStock;
 		this.multasActivo = multasActivo;
 		this.multiSucursal = multiSucursal;
 		this.pagoEnLinea = pagoEnLinea;
+		this.tasaImpuesto = tasaImpuesto;
 	}
 
 	UUID getEmpresaId() {
@@ -63,5 +68,9 @@ class ConfiguracionJpaEntity {
 
 	boolean isPagoEnLinea() {
 		return pagoEnLinea;
+	}
+
+	BigDecimal getTasaImpuesto() {
+		return tasaImpuesto;
 	}
 }

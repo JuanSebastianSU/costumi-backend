@@ -1,6 +1,8 @@
 package com.costumi.backend.configuracion.adaptadores.entrada;
 
-/** DTO de entrada para actualizar los interruptores de módulos. */
+import java.math.BigDecimal;
+
+/** DTO de entrada para actualizar los interruptores de módulos y la tasa de impuesto ({@code null} = 0). */
 public record ConfiguracionRequest(boolean conteoStock, boolean multasActivo, boolean multiSucursal,
-		boolean pagoEnLinea) {
+		boolean pagoEnLinea, BigDecimal tasaImpuesto) {
 }
