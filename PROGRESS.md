@@ -5,9 +5,10 @@
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
 ## Fase actual
-**Fase 5 — Cierre del backend para presentar (backlog de Juan, 2026-07-06).** El **núcleo** del backend está
-hecho y **mergeado en `main`** (PR #6→#12). Encima de eso corre el backlog de cierre de Juan; **la mayor parte
-es código pendiente**, NO solo infra. Estado honesto abajo (no marcar "hecho" lo que no esté verde+mergeado).
+**Fase 5 — Cierre del backend (backlog de Juan, 2026-07-06) — COMPLETO en código.** El **núcleo** está mergeado en
+`main` (PR #6→#15); el **backlog de cierre completo** está en la **PR final `feat/cierre-final`** (262 tests verdes),
+lista para el merge de Juan. Solo queda lo bloqueado por infra/decisión externa (envío real WhatsApp/FCM/email, S3,
+pasarela, export PDF) y deuda menor (permisos granulares por-usuario, devolución parcial, transferencias entre sucursales).
 
 > ⚠️ **Dónde vive este PROGRESS:** se actualiza en cada **rama de feature**; en `main` solo aparece cuando Juan
 > **mergea** la PR (regla: nada entra a `main` sin su revisión). Si en `main` se ve viejo, es porque la PR con el
@@ -34,18 +35,22 @@ cerrados** (PR #12: multa respeta el switch, advisory lock anti-sobreventa, avis
 - **Clientes (RF-7):** historial del cliente (7.2), filtro de pendientes (11.5/11.6).
 
 ### 🔵 En revisión (PR abierta, NO mergeada)
-- **Nada de código pendiente de merge.** La única PR abierta es la **#16 (solo docs)**, que trae este mismo
-  PROGRESS a `main`. Los bloques que faltan (abajo) todavía no se empiezan → no hay trabajo a medias.
+- **PR final del cierre (rama `feat/cierre-final`)** — los **6 bloques restantes**, 262 verdes: empleados (RF-8),
+  reabastecimiento/ajuste con motivo (RF-10), extensión de renta (RF-3.6), recordatorio de vencidas (RF-11.1),
+  refresh token (RF-1.1) y verificación del contrato OpenAPI completo (RF-17.3). **Con este merge el backend queda cerrado.**
+- **PR #16 (solo docs)** — trae el PROGRESS al día a `main`.
 
-### ⬜ PENDIENTE — backlog de cierre (código, NO solo infra). Orden de Juan, mayor→menor:
-1. **Permisos granulares (RF-1.5) + empleados (RF-8)** — usuario↔1..N sucursales (1.2), turno/actividad. — PENDIENTE
-2. **Reabastecimiento (RF-10)** — ajustes con motivo+auditoría (hacible); **transferencias entre sucursales bloqueado
-   por esquema** (el stock hoy es por empresa/prenda, no por sucursal → cambio de esquema, decisión de Juan). — PENDIENTE
-3. **Huecos de Renta/Devolución** — extensión/renovación (3.6), checkout con fechas, multi-artículo/armado, devolución
-   parcial (5.5), modo asistido (3.7/4.6). — PENDIENTE
-4. **Notificaciones** — recordatorio de devolución vencida al cliente y al dueño (11.1). — PENDIENTE
-5. **Plataforma** — refresh token + recuperación de contraseña (1.1); idempotencia/outbox donde falte (17.6). — PENDIENTE
-6. **OpenAPI completo publicado** — ya se autogenera con springdoc en `/v3/api-docs`; crece con cada feature. — EN CURSO
+### ✅ Backlog de cierre COMPLETO (código) — en la PR final del cierre
+Todo lo code-doable del backlog de Juan quedó hecho y verde (262 tests):
+1. **Empleados (RF-8)** — alta de empleado por la empresa (`POST /empleados`), correo único, no SUPERADMIN, login.
+2. **Reabastecimiento (RF-10)** — ajuste de stock con motivo, auditado por evento (`POST /grupos-stock/{id}/ajuste`).
+3. **Huecos renta** — extensión/renovación de renta con recálculo de importe (`POST /rentas/{id}/extender`).
+4. **Notificaciones (RF-11.1)** — recordatorio de vencidas al cliente (`POST /notificaciones/recordar-vencidas`).
+5. **Plataforma (RF-1.1)** — refresh token (`POST /auth/refresh`, rotación).
+6. **OpenAPI** — el contrato en `/v3/api-docs` publica TODOS los endpoints (test que lo verifica).
+
+**Deuda menor pendiente (no bloquea el cierre):** permisos granulares por-usuario (RF-1.5) y usuario↔N sucursales
+(RF-1.2) — hoy el rol da los permisos por perfil; **devolución parcial** (RF-5.5) — necesita renta multi-artículo.
 
 ### 🚫 Bloqueado por decisión/infra (va detrás de config, NO frena el resto)
 - ~~Impuestos (RF-6.5/12.2)~~ — **RESUELTO y MERGEADO** (decisión de Juan): tasa única por empresa en
@@ -73,20 +78,20 @@ Estado: ✅ hecho y **mergeado en `main`** · 🔵 en **PR abierta** (sin mergea
 | Módulo | Rigor | Estado | Detalle (mergeado salvo que diga PR) |
 |---|---|---|---|
 | Andamiaje + anti-erosión (ArchUnit/Modulith/CI) | — | ✅ | PR #1 |
-| Identidad y tenant (Empresa/Sucursal/Usuario/auth) | Hexagonal | 🟨 | Auth JWT + rol/tenant + bootstrap + §5.4 forzado hechos. ⬜ Falta refresh token + recuperación (RF-1.1) y permisos granulares (RF-1.5) |
+| Identidad y tenant (Empresa/Sucursal/Usuario/auth) | Hexagonal | 🔵 | Auth JWT + rol/tenant + bootstrap + §5.4 forzado (mergeado) + **refresh token (RF-1.1)** + **alta de empleados (RF-8)** en PR de cierre. ⬜ Falta recuperación de contraseña (infra) + permisos granulares por-usuario (RF-1.5) |
 | Catálogo y taxonomía (etiquetas, categorías) | Hexagonal | ✅ | Categoría, TipoEtiqueta/ValorEtiqueta, tipo↔categoría, renombrar, siembra al aprobar |
-| Inventario y disponibilidad | Hexagonal | 🟨 | Prenda, GrupoDeStock, variantes reales, stock-bajo. ⬜ Falta transferencias entre sucursales + ajustes con motivo (RF-10) |
+| Inventario y disponibilidad | Hexagonal | 🔵 | Prenda, GrupoDeStock, variantes, stock-bajo (mergeado) + **ajuste con motivo auditado (RF-10)** en PR de cierre. ⬜ Falta transferencias entre sucursales (requiere stock por sucursal = esquema) |
 | Disfraces (capa 3) | Hexagonal | ✅ | Disfraz+Slot+pool + disponibilidad derivada |
 | Pedidos / carrito | Hexagonal | 🟨 | Carrito segmentado + checkout→venta. ⬜ Falta checkout de RENTA (fechas por línea) |
-| Rentas | Hexagonal | 🟨 | Crear + estados + disponibilidad por fechas + advisory lock + idempotencia. ⬜ Falta extensión/renovación, multi-artículo, asistido |
+| Rentas | Hexagonal | 🔵 | Crear + estados + disponibilidad + advisory lock + idempotencia (mergeado) + **extensión/renovación (RF-3.6)** en PR de cierre. ⬜ Falta multi-artículo/armado |
 | Ventas / POS | Hexagonal | ✅ | Venta + descuento + total + baja de stock atómica (anti-sobreventa) |
 | Pagos, caja y depósitos | Hexagonal | ✅ | Reembolsos/saldo/idempotencia + **mixto+vuelto (cuadra con saldo), depósito-retención, comprobante, impuesto configurable** — mergeado (PR #13/#14) |
 | Caja / turno | Hexagonal | ✅ | Turno + movimientos + corte y cuadre por método |
 | Devoluciones y multas | Hexagonal | 🟨 | Checklist + multa (respeta switch) + inventario + evento. ⬜ Falta devolución parcial (RF-5.5) |
 | Clientes | Simple | ✅ | Ficha + búsqueda + lista negra + **historial (7.2)** + **filtro de pendientes (11.5/11.6)** — mergeado (PR #15). Falta foto (S3, infra) |
-| Empleados | Simple | ⬜ | RF-8 — sin empezar |
+| Empleados | Simple | 🔵 | **Alta de empleado por la empresa (RF-8)** — correo único, sin SUPERADMIN, login — en PR de cierre. ⬜ Falta usuario↔N sucursales (RF-1.2), turno/actividad |
 | Reportes | Simple (lectura) | ✅ | Ingresos, ganancia, rentas vencidas, depósitos activos, ingresos por método, rankings, ventas por empleado, **desglose por etiqueta**, tablero de inventario (9.3)+resumen, **export CSV (9.2)** — mergeado (PR #15). ⬜ Solo falta export **PDF** (requiere librería = decisión) |
-| Notificaciones (WhatsApp/FCM) | Simple (adaptador) | 🟨 | Envío por canal (log) + estados + disparador de multas por evento. ⬜ Falta recordatorio de vencidas (RF-11.1); WhatsApp/FCM reales = 🚫 infra |
+| Notificaciones (WhatsApp/FCM) | Simple (adaptador) | 🔵 | Envío por canal (log) + estados + disparador de multas + **recordatorio de vencidas (RF-11.1)** en PR de cierre. WhatsApp/FCM reales = 🚫 infra |
 | Configuración de empresa | Simple | ✅ | Switches que controlan de verdad (multas, multi-sucursal, conteo-stock) + reglas por defecto (moneda/recargo, 12.2) + respaldo/restauración (12.3) — mergeado (PR #15). Falta pagoEnLinea (infra) |
 | Auditoría | Simple | ✅ | Registro por domain events |
 | App cliente (marketplace) | — | 🟨 | Descubrimiento + búsqueda por texto de empresas ACTIVAS. ⬜ Falta catálogo/checkout del cliente |
@@ -123,6 +128,14 @@ Estado: ✅ hecho y **mergeado en `main`** · 🔵 en **PR abierta** (sin mergea
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-06 (e)** — **Cierre final del backend: 6 bloques restantes, todos verdes (rama `feat/cierre-final`).**
+  **Notificaciones** recordatorio de vencidas al cliente (RF-11.1); **Renta** extensión/renovación con recálculo de
+  importe (RF-3.6); **Inventario** ajuste de stock con motivo auditado por evento `StockAjustado` (RF-10);
+  **Empleados** alta por la empresa con correo único, sin SUPERADMIN, y login (RF-8); **Plataforma** refresh token
+  con rotación `POST /auth/refresh` (RF-1.1); **OpenAPI** contrato publica todos los endpoints (test que lo prueba,
+  RF-17.3). **262 tests verdes.** _Bloqueado por infra/decisión (no código):_ transferencias entre sucursales
+  (stock por sucursal), devolución parcial (renta multi-artículo), recuperación de contraseña + WhatsApp/FCM/S3
+  (envío real), pasarela (6.11), export PDF, permisos granulares por-usuario. Rama lista para el merge final de Juan.
 - **2026-07-06 (d)** — **Config (RF-12) + Clientes (RF-7) en la PR #15 acumulada (con Reportes).** **Config:** los
   switches controlan comportamiento de verdad — `multiSucursal` off ⇒ una sola sucursal (409 la 2ª); `conteoStock`
   off ⇒ venta no descuenta y renta no chequea disponibilidad (multas ya lo hacía). Reglas por defecto **moneda +
