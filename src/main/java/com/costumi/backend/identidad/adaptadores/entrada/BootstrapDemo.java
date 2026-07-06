@@ -3,6 +3,8 @@ package com.costumi.backend.identidad.adaptadores.entrada;
 import com.costumi.backend.identidad.dominio.Empresa;
 import com.costumi.backend.identidad.dominio.EmpresaRepository;
 import com.costumi.backend.identidad.dominio.Rol;
+import com.costumi.backend.identidad.dominio.Sucursal;
+import com.costumi.backend.identidad.dominio.SucursalRepository;
 import com.costumi.backend.identidad.dominio.Usuario;
 import com.costumi.backend.identidad.dominio.UsuarioRepository;
 import org.slf4j.Logger;
@@ -28,17 +30,20 @@ class BootstrapDemo implements ApplicationRunner {
 	private static final Logger log = LoggerFactory.getLogger(BootstrapDemo.class);
 
 	private final EmpresaRepository empresas;
+	private final SucursalRepository sucursales;
 	private final UsuarioRepository usuarios;
 	private final PasswordEncoder passwordEncoder;
 	private final String email;
 	private final String password;
 	private final String nombreEmpresa;
 
-	BootstrapDemo(EmpresaRepository empresas, UsuarioRepository usuarios, PasswordEncoder passwordEncoder,
+	BootstrapDemo(EmpresaRepository empresas, SucursalRepository sucursales, UsuarioRepository usuarios,
+			PasswordEncoder passwordEncoder,
 			@Value("${costumi.demo.dueno.email:}") String email,
 			@Value("${costumi.demo.dueno.password:}") String password,
 			@Value("${costumi.demo.empresa.nombre:Costumi Demo}") String nombreEmpresa) {
 		this.empresas = empresas;
+		this.sucursales = sucursales;
 		this.usuarios = usuarios;
 		this.passwordEncoder = passwordEncoder;
 		this.email = email;
@@ -58,7 +63,10 @@ class BootstrapDemo implements ApplicationRunner {
 		Empresa empresa = Empresa.registrar(nombreEmpresa);
 		empresa.aprobar(); // PENDIENTE -> ACTIVA (puede operar)
 		empresa = empresas.guardar(empresa);
+		// Casa matriz: sin al menos una sucursal, la empresa no puede operar rentas/ventas (necesitan sucursalId).
+		Sucursal casaMatriz = sucursales.guardar(Sucursal.crear(empresa.id(), "Casa Matriz", null));
 		usuarios.guardar(Usuario.crear(empresa.id(), email, passwordEncoder.encode(password), Rol.DUENO));
-		log.info("Empresa demo ACTIVA '{}' y dueño de bootstrap creados: {}", nombreEmpresa, email);
+		log.info("Empresa demo ACTIVA '{}' (sucursal '{}') y dueño de bootstrap creados: {}",
+				nombreEmpresa, casaMatriz.id(), email);
 	}
 }

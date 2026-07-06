@@ -16,6 +16,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.UUID;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -136,5 +137,48 @@ class RegistrarSucursalIntegrationTest {
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"nombre\":\"Centro\"}"))
 				.andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	void lista_las_sucursales_de_la_empresa() throws Exception {
+		UUID empresaId = registrarEmpresa("Con Sucursal " + UUID.randomUUID());
+		aprobar(empresaId);
+		String dueno = tokenDueno(empresaId);
+		mvc.perform(post("/api/v1/empresas/{empresaId}/sucursales", empresaId).header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON).content("{\"nombre\":\"Centro\"}"))
+				.andExpect(status().isCreated());
+
+		mvc.perform(get("/api/v1/empresas/{empresaId}/sucursales", empresaId)
+						.header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[0].empresaId").value(empresaId.toString()))
+				.andExpect(jsonPath("$[0].nombre").value("Centro"));
+	}
+
+	@Test
+	void mostrador_del_tenant_puede_listar_sucursales() throws Exception {
+		UUID empresaId = registrarEmpresa("Mostrador Lista " + UUID.randomUUID());
+		aprobar(empresaId);
+		String dueno = tokenDueno(empresaId);
+		mvc.perform(post("/api/v1/empresas/{empresaId}/sucursales", empresaId).header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON).content("{\"nombre\":\"Centro\"}"))
+				.andExpect(status().isCreated());
+
+		String mostrador = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresaId, Rol.MOSTRADOR);
+		mvc.perform(get("/api/v1/empresas/{empresaId}/sucursales", empresaId)
+						.header("Authorization", "Bearer " + mostrador))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[0].nombre").value("Centro"));
+	}
+
+	@Test
+	void no_puede_listar_sucursales_de_otra_empresa_403() throws Exception {
+		UUID empresaAjena = registrarEmpresa("Ajena Lista " + UUID.randomUUID());
+		UUID empresaPropia = registrarEmpresa("Propia Lista " + UUID.randomUUID());
+		String duenoDeOtra = tokenDueno(empresaPropia);
+
+		mvc.perform(get("/api/v1/empresas/{empresaId}/sucursales", empresaAjena)
+						.header("Authorization", "Bearer " + duenoDeOtra))
+				.andExpect(status().isForbidden());
 	}
 }
