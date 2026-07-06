@@ -12,4 +12,7 @@ public interface GrupoDeStockRepository {
 	Optional<GrupoDeStock> buscarPorId(UUID id);
 
 	List<GrupoDeStock> listarPorPrenda(UUID prendaId);
+
+	/** Grupos de la empresa con disponibles por debajo del umbral (alerta de stock bajo, RF-10). */
+	List<GrupoDeStock> listarBajoUmbral(UUID empresaId, int umbral);
 }

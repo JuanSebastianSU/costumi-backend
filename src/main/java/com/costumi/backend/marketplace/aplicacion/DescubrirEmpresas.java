@@ -8,4 +8,7 @@ import java.util.List;
 public interface DescubrirEmpresas {
 
 	List<EmpresaEnVitrina> activas();
+
+	/** Empresas ACTIVAS que coinciden con el texto de búsqueda (RF-18.1). */
+	List<EmpresaEnVitrina> buscar(String texto);
 }

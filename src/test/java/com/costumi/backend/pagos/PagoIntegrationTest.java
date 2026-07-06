@@ -97,6 +97,32 @@ class PagoIntegrationTest {
 	}
 
 	@Test
+	void el_saldo_neto_resta_los_reembolsos_de_los_cobros() throws Exception {
+		UUID sucursal = sucursalDePrueba();
+		UUID concepto = UUID.randomUUID();
+
+		// Cobro 100 (COBRO por defecto) y reembolso 30 -> saldo neto 70 (RF-6.9).
+		mvc.perform(post("/api/v1/pagos").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + sucursal + "\",\"tipoConcepto\":\"RENTA\",\"conceptoId\":\""
+								+ concepto + "\",\"monto\":100.00,\"metodo\":\"EFECTIVO\"}"))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.tipoPago").value("COBRO"));
+
+		mvc.perform(post("/api/v1/pagos").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + sucursal + "\",\"tipoConcepto\":\"RENTA\",\"conceptoId\":\""
+								+ concepto + "\",\"monto\":30.00,\"tipoPago\":\"REEMBOLSO\",\"metodo\":\"EFECTIVO\"}"))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.tipoPago").value("REEMBOLSO"));
+
+		mvc.perform(get("/api/v1/pagos/saldo").param("conceptoId", concepto.toString())
+						.header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.saldoNeto").value(70.00));
+	}
+
+	@Test
 	void sin_token_devuelve_401() throws Exception {
 		mvc.perform(get("/api/v1/pagos").param("conceptoId", UUID.randomUUID().toString()))
 				.andExpect(status().isUnauthorized());

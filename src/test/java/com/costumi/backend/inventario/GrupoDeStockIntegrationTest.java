@@ -232,6 +232,31 @@ class GrupoDeStockIntegrationTest {
 	}
 
 	@Test
+	void reabastecer_aumenta_el_stock_y_stock_bajo_lo_lista() throws Exception {
+		String dueno = duenoDe(crearEmpresa("Reabastecer"));
+		UUID prenda = crearPrenda(dueno, crearCategoria(dueno, "Camisa"));
+		UUID grupo = crearGrupo(dueno, prenda, "[]", 2);
+
+		// Con umbral 5, el grupo (2 disponibles) sale en stock bajo.
+		mvc.perform(get("/api/v1/grupos-stock/stock-bajo").param("umbral", "5")
+						.header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.id == '" + grupo + "')]").exists());
+
+		// Entrada de 10 unidades -> 12 disponibles.
+		mvc.perform(post("/api/v1/grupos-stock/{grupoId}/entrada", grupo).header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON).content("{\"cantidad\":10}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.disponibles").value(12));
+
+		// Ya no está bajo el umbral 5.
+		mvc.perform(get("/api/v1/grupos-stock/stock-bajo").param("umbral", "5")
+						.header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.id == '" + grupo + "')]").doesNotExist());
+	}
+
+	@Test
 	void sin_token_devuelve_401() throws Exception {
 		mvc.perform(get("/api/v1/prendas/{prendaId}/grupos-stock", UUID.randomUUID()))
 				.andExpect(status().isUnauthorized());

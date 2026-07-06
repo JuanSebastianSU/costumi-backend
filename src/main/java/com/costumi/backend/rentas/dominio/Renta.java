@@ -24,10 +24,11 @@ public class Renta {
 	private final BigDecimal deposito;
 	private final BigDecimal importe;
 	private EstadoRenta estado;
+	private final String claveIdempotencia;
 
 	private Renta(UUID id, UUID empresaId, UUID sucursalId, UUID clienteId, UUID prendaId, LocalDate fechaRetiro,
 			LocalDate fechaDevolucion, BigDecimal precioPorDia, BigDecimal deposito, BigDecimal importe,
-			EstadoRenta estado) {
+			EstadoRenta estado, String claveIdempotencia) {
 		this.id = Objects.requireNonNull(id, "id");
 		this.empresaId = Objects.requireNonNull(empresaId, "empresaId");
 		this.sucursalId = Objects.requireNonNull(sucursalId, "sucursalId");
@@ -39,10 +40,18 @@ public class Renta {
 		this.deposito = deposito;
 		this.importe = importe;
 		this.estado = Objects.requireNonNull(estado, "estado");
+		this.claveIdempotencia = (claveIdempotencia == null || claveIdempotencia.isBlank()) ? null
+				: claveIdempotencia.trim();
 	}
 
 	public static Renta crear(UUID empresaId, UUID sucursalId, UUID clienteId, UUID prendaId, LocalDate fechaRetiro,
 			LocalDate fechaDevolucion, BigDecimal precioPorDia, BigDecimal deposito) {
+		return crear(empresaId, sucursalId, clienteId, prendaId, fechaRetiro, fechaDevolucion, precioPorDia, deposito,
+				null);
+	}
+
+	public static Renta crear(UUID empresaId, UUID sucursalId, UUID clienteId, UUID prendaId, LocalDate fechaRetiro,
+			LocalDate fechaDevolucion, BigDecimal precioPorDia, BigDecimal deposito, String claveIdempotencia) {
 		if (fechaDevolucion.isBefore(fechaRetiro)) {
 			throw new IllegalArgumentException("La fecha de devolución no puede ser anterior a la de retiro");
 		}
@@ -55,14 +64,18 @@ public class Renta {
 		}
 		BigDecimal importe = precioPorDia.multiply(BigDecimal.valueOf(dias(fechaRetiro, fechaDevolucion)));
 		return new Renta(UUID.randomUUID(), empresaId, sucursalId, clienteId, prendaId, fechaRetiro, fechaDevolucion,
-				precioPorDia, dep, importe, EstadoRenta.RESERVADA);
+				precioPorDia, dep, importe, EstadoRenta.RESERVADA, claveIdempotencia);
 	}
 
 	public static Renta rehidratar(UUID id, UUID empresaId, UUID sucursalId, UUID clienteId, UUID prendaId,
 			LocalDate fechaRetiro, LocalDate fechaDevolucion, BigDecimal precioPorDia, BigDecimal deposito,
-			BigDecimal importe, EstadoRenta estado) {
+			BigDecimal importe, EstadoRenta estado, String claveIdempotencia) {
 		return new Renta(id, empresaId, sucursalId, clienteId, prendaId, fechaRetiro, fechaDevolucion, precioPorDia,
-				deposito, importe, estado);
+				deposito, importe, estado, claveIdempotencia);
+	}
+
+	public String claveIdempotencia() {
+		return claveIdempotencia;
 	}
 
 	/** Días del periodo, mínimo 1. */

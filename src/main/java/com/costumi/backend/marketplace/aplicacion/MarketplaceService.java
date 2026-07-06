@@ -22,4 +22,10 @@ class MarketplaceService implements DescubrirEmpresas {
 	public List<EmpresaEnVitrina> activas() {
 		return marketplace.empresasActivas();
 	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<EmpresaEnVitrina> buscar(String texto) {
+		return marketplace.buscarEmpresas(texto);
+	}
 }

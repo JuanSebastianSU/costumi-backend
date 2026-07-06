@@ -52,6 +52,17 @@ public class Carrito {
 		lineas.add(LineaDeCarrito.de(prendaId, cantidad));
 	}
 
+	/** Confirma el carrito al hacer checkout (RF-16): pasa a CONFIRMADO. Debe estar pendiente y no vacío. */
+	public void confirmar() {
+		if (estado != EstadoCarrito.PENDIENTE) {
+			throw new IllegalStateException("El carrito ya no está pendiente");
+		}
+		if (lineas.isEmpty()) {
+			throw new IllegalArgumentException("El carrito está vacío");
+		}
+		this.estado = EstadoCarrito.CONFIRMADO;
+	}
+
 	public List<LineaDeCarrito> lineas() {
 		return List.copyOf(lineas);
 	}

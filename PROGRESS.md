@@ -18,8 +18,20 @@
   `ContextoDeTenant` en un aspecto sobre los repositorios (OSIV off); (b) **validación cross-ref por tenant**
   (categoría de la prenda; prenda fija, categoría y valores del pool del disfraz) vía las APIs públicas
   `ConsultaDeTaxonomia`/`ConsultaDeInventario`; (c) **tests que prueban que no se lee ni escribe cruzando tenant**.
-  **Esperando el OK de Juan a la PR #9 antes de arrancar la Tanda 2.** (Rama `chore/scaffolding-modulith`; a `main`
-  solo lo que Juan mergea.)
+  Después Juan pidió cerrar también el `find()` por PK → hecho por construcción (`findFirstById` filtrado) +
+  regla ArchUnit anti-`findById`. **§5.4 APROBADO y mergeado por Juan (PR #8/#9/#10).**
+- **RUN Tanda 2 → Tanda 3 en PR #11 (verde, 226 tests). Hecho:**
+  **P2 (ciclo operativo, COMPLETO):** renta disponibilidad por fechas + advisory lock (RF-3.2/0.4); venta baja de
+  stock atómica (RF-4.4); devolución que cierra el ciclo — inventario + multa auto + renta→DEVUELTA + **domain event**
+  `DevolucionRegistrada` (RF-5, §5.5). **P3 (núcleo COMPLETO):** Prenda costo/depósito (RF-2.10); Pagos reembolsos +
+  saldo neto (RF-6.9); Caja/Turno con corte por método y cuadre (RF-6.3/6.10); Reportes ganancia = ingreso−costo (RF-9);
+  Auditoría por eventos (RF-0.5). **P4/P5 (avanzado):** reabastecimiento + stock bajo (RF-10); notificación por evento
+  (RF-11.1); config-switch de multas real (RF-12.4/6.6); marketplace búsqueda por texto (RF-18.1); carrito checkout→venta
+  (RF-16); renta idempotente (RF-17.6); ArchUnit anti-`findById`.
+- **FALTA para cerrar Tanda 3 — mayormente bloqueado por infra/decisión externa:** media/fotos a **S3** (RF-2.9,
+  bucket/credenciales); envío **real** WhatsApp/FCM (RF-11.4/18.11, API keys); **pasarela de pago** (RF-6.11, decisión);
+  refresh token (RF-1.1). Enriquecimientos: empleados/permisos (RF-8/1.5), clientes historial (RF-7.2), transferencias
+  entre sucursales (RF-10), export PDF/CSV (RF-9.2), checkout de RENTA (fechas por línea), depósito-retención/mixto (RF-6).
 - **Tanda 1 (ya en `main`, PR #8 mergeada por Juan; antes PR #7 con los 14 módulos de §7). Contenido de la Tanda 1:**
   (1) **§5.4 base** — `ContextoDeTenant`; (2) **motor de variantes real** — `GrupoDeStock` = combinación real de
   valores de etiqueta; (3) **Prenda↔etiquetas (Capa 2)**; (4) **tipo↔categoría (RF-2.7.2)** impuesto; (5) **Disfraz
@@ -170,6 +182,105 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-05 (au)** — **Tanda 3/P4 · Carrito: checkout → venta (RF-16).** `POST /api/v1/carritos/checkout`
+  toma el carrito de VENTA pendiente, resuelve el precio de cada línea (`ConsultaDeInventario.precioVenta`), crea
+  la venta vía nuevo puerto público `ventas.RegistroDeVentas` (descuenta stock) y **confirma** el carrito
+  (`Carrito.confirmar`). Aristas `pedidos → ventas` y `pedidos → inventario`. Test: checkout crea la venta (2×90=180)
+  y confirma el carrito. **226 verdes.** _Nota:_ el checkout de RENTA (necesita fechas por línea) queda pendiente.
+- **2026-07-05 (at)** — **Tanda 3/P5 · Renta idempotente al confirmar (RF-17.6, offline/outbox).** `Renta` acepta
+  `claveIdempotencia` (**V24**, índice único parcial por empresa+clave). `RentaService`: si la clave ya existe,
+  devuelve la renta existente (no duplica por reintento/offline). Tests: misma clave dos veces → una sola renta.
+  **225 verdes.**
+- **2026-07-05 (as)** — **Tanda 3/P4 · Config-switch que de verdad controla: multas on/off (RF-12.4/6.6).** Nuevo
+  puerto público `configuracion.ConsultaDeConfiguracion.multasActivas`. El `DisparadorDeMultas` (notificaciones)
+  lo respeta: con el módulo de multas **apagado** no se notifica la multa. Arista `notificaciones → configuracion`.
+  Test: multas off → devolución con multa 30 NO genera notificación. **224 verdes.**
+- **2026-07-05 (ar)** — **Tanda 2/P3 · Auditoría dirigida por eventos (RF-0.5/15.5).** Nuevo módulo `auditoria`:
+  `RegistroDeAuditoria` (inmutable) + `AuditoriaDeEventos` (@EventListener) que registra a partir de los domain
+  events (§5.5): `EmpresaAprobada`→EMPRESA_APROBADA, `DevolucionRegistrada`→DEVOLUCION_REGISTRADA. A medida que
+  más operaciones publiquen eventos se añaden aquí sin tocar esos módulos. Persistencia **V23** (`@Filter`),
+  `GET /api/v1/auditoria` (DUENO/ENCARGADO, acotado al tenant). Test: aprobar empresa deja el registro. **223 verdes.**
+- **2026-07-05 (aq)** — **Tanda 2/P3 · Pagos: reembolsos + saldo neto por operación (RF-6.9).** `Pago` gana
+  `TipoPago` (COBRO/REEMBOLSO, **V22**) y `montoNeto()` (cobro suma, reembolso resta). Nuevo `GET /api/v1/pagos/
+  saldo?conceptoId=` → saldo neto (cobros − reembolsos) de la renta/venta. Tests dominio + integración (cobro 100 −
+  reembolso 30 = 70). **221 verdes.** _Pendiente RF-6:_ depósito como retención separada, pago mixto+vuelto, impuestos.
+- **2026-07-05 (ap)** — **Tanda 3/P4 · Marketplace: búsqueda por texto (RF-18.1).** `GET /api/v1/marketplace/
+  empresas?buscar=texto` (público) filtra empresas ACTIVAS por nombre (read model JdbcClient, like insensible a
+  mayúsculas). Test: búsqueda devuelve solo la coincidente. **219 verdes.** _Pendiente RF-18/14:_ búsqueda por
+  categoría/cercanía, enlace/QR por empresa/sucursal, selección de sucursal.
+- **2026-07-05 (ao)** — **Tanda 3/P4 · Notificaciones: disparador por evento (RF-11.1, §5.5).** Se cierra el
+  loop de domain events: `notificaciones` **escucha** `DevolucionRegistrada` (`DisparadorDeMultas`,
+  `@EventListener` síncrono) y, si hay **multa** (>0) y cliente, **envía una notificación** al cliente
+  (EnviarNotificacion, canal EMAIL). El evento se enriqueció con `clienteId` (nuevo `ConsultaDeRentas.clienteDeRenta`).
+  Arista `notificaciones → devoluciones` (evento). Test: devolución con multa 30 → aparece notificación EMAIL.
+  **218 verdes.** _Demuestra la arquitectura §5.5 punta a punta (devolución→evento→notificación)._
+- **2026-07-05 (an)** — **Tanda 3/P4 · Reabastecimiento: entrada de stock + alerta de stock bajo (RF-10).**
+  `GrupoDeStock.reabastecer(cantidad)` (entrada de mercancía) con test. `POST /api/v1/grupos-stock/{id}/entrada`
+  (DUENO/ENCARGADO/BODEGA) y `GET /api/v1/grupos-stock/stock-bajo?umbral=N` (grupos con disponibles < umbral).
+  Query `listarBajoUmbral`. Tests dominio + integración (entrada sube stock; stock-bajo aparece/desaparece).
+  **217 verdes.** _Pendiente RF-10:_ Proveedor, transferencias entre sucursales, ajustes con motivo+auditoría.
+- **2026-07-05 (am)** — **Tanda 2/P3 · Reportes: ganancia = ingreso − costo (RF-9).** Read model
+  `ResumenDeGanancia` (JdbcClient): **ingresos** = suma de pagos; **costo de ventas** = Σ(línea.cantidad ×
+  prenda.costo_adquisicion) por join `linea_de_venta`×`prenda`; **ganancia** = ingresos − costo. Endpoint
+  `GET /api/v1/reportes/ganancia` (DUENO/ENCARGADO). Test integración (venta con costo → ganancia correcta).
+  **215 verdes.** _Pendiente RF-9:_ más cortes (utilización, vencidas, por empleado, desglose por etiqueta, export).
+- **2026-07-05 (al)** — **Tanda 2/P3 · Caja/Turno/MovimientoDeCaja + corte y cuadre (RF-6.3/6.10, rigor dinero).**
+  Nuevo módulo `caja`. `Turno` (agregado): se **abre** con fondo inicial (efectivo), acumula **movimientos**
+  (ingreso/egreso por método EFECTIVO/TARJETA/TRANSFERENCIA), y se **cierra** con el efectivo contado. Dominio con
+  **corte por método** (`totalPorMetodo`, el efectivo incluye el fondo) y **cuadre** (`diferenciaDeEfectivo` =
+  contado − esperado), todo en `BigDecimal`. Estados ABIERTO/CERRADO (no se mueve/cierra un turno cerrado →
+  `TurnoNoAbierto` 409). Persistencia agregado (turno + movimientos hijo) **V21**, con `@Filter` y `findFirstById`.
+  `POST /api/v1/caja/turnos`, `.../{id}/movimientos`, `.../{id}/cerrar`, `GET` (DUENO/ENCARGADO/MOSTRADOR/ATENCION).
+  Tests dominio (corte/cuadre, turno cerrado) + integración (flujo completo, 409, 404 cross-tenant). **214 verdes.**
+- **2026-07-05 (ak)** — **Tanda 2/P3 · Prenda: costo de adquisición + depósito sugerido (RF-2.10).** `Prenda`
+  gana `costoAdquisicion` y `depositoSugerido` (opcionales, no negativos), migración **V20**, en dominio/entidad/
+  DTOs. Es la base del **margen** para los reportes (ganancia = ingreso − costo). Tests dominio + integración.
+  **206 verdes.**
+- **2026-07-05 (aj)** — **Tanda 2 · Devolución: multa automática + renta→DEVUELTA + domain event (P2, RF-5.1/5.2, §5.5).**
+  `Devolucion.multa()` = exceso de (daños+retraso) sobre el depósito (0 si el depósito cubre), con tests y
+  expuesta en el response. Al registrar la devolución: se **cierra la renta** (`ConsultaDeRentas.marcarDevuelta`,
+  exige ACTIVA → si no, revierte) y se **publica `DevolucionRegistrada`** (empresa, devolución, renta, multa) como
+  **primer domain event del ciclo operativo** (§5.5), listo para que Caja/Notificaciones lo consuman. Test:
+  la renta queda DEVUELTA, multa 0 cuando el depósito cubre. **203 verdes.** _Pendiente RF-5:_ devolución
+  **parcial** (RF-5.5) y un consumidor del evento (registrar la multa como saldo del cliente / notificar).
+- **2026-07-05 (ai)** — **Tanda 2 · Devolución actualiza el inventario según el checklist (P2, RF-5.4/5.6).** Al
+  registrar una devolución: (1) valida que la **renta sea del tenant** vía nuevo puerto público
+  `rentas.ConsultaDeRentas.prendaDeRenta` (400 si no existe/ajena); (2) agrega el checklist por estado y
+  **mueve unidades de disponible → dañadas/en-limpieza/perdidas** vía `AjusteDeInventario.procesarRetornoDeRenta`
+  (las que vuelven BIEN quedan disponibles); (3) liquida el depósito como ya hacía. Aristas nuevas
+  `devoluciones → rentas` y `devoluciones → inventario`. Manejador de errores de devoluciones nuevo. Test:
+  devolución con pieza DAÑADA deja el grupo en disponibles 0 / dañadas 1; renta inexistente → 400. **202 verdes.**
+  _Pendiente RF-5 (para próximas rebanadas):_ **multa automática** (RF-5.2), transición de la renta a DEVUELTA
+  al registrar (checklist "conectado" completo) y **domain events** (devolución→multa), devolución parcial (RF-5.5).
+- **2026-07-05 (ah)** — **Tanda 2 · Venta: baja de stock al confirmar (P2 CRÍTICO, RF-4.4).** La venta nace
+  CONFIRMADA → al registrarla se **descuenta el stock**. `GrupoDeStock.darDeBaja(cantidad)` (las unidades salen
+  del inventario) con tests. Nuevo puerto público de **escritura** `inventario.AjusteDeInventario.descontarDisponibles`
+  (reparte la baja entre los grupos de la prenda; `StockInsuficiente` público → 409) + impl acotada al tenant.
+  `VentaService`: valida que cada prenda de línea exista en el tenant (400) y descuenta su cantidad; si no alcanza,
+  `StockInsuficiente` **revierte toda la venta** (atómico en la tx). Manejador de errores de ventas nuevo
+  (IllegalArgument→400, StockInsuficiente→409). Arista nueva `ventas → inventario`. Tests: baja efectiva (5−2=3),
+  vender de más → 409, prenda inexistente → 400 (+ dominio de `darDeBaja`). **201 verdes.** _Pendiente RF-4:_
+  comprobante, devoluciones/cambios de venta, modo asistido.
+- **2026-07-05 (ag)** — **Tanda 2 · Renta: disponibilidad por fechas SIN traslapes + concurrencia (P2 CRÍTICO, RF-3.2/0.4).**
+  Value object de dominio **`Periodo`** (retiro/devolución) con `seSolapaCon` (extremos **inclusivos**) + `dias()`,
+  con tests. Al crear una renta: (1) cross-ref — la prenda debe existir en el tenant (400 si no);
+  (2) **advisory lock por prenda** (`pg_advisory_xact_lock`, se libera al commit) para **serializar reservas
+  concurrentes** y evitar doble asignación; (3) se cuentan las rentas **vigentes** (RESERVADA/ACTIVA) que se
+  **traslapan** (`RentaRepository.contarSolapadas`) y se comparan con las **unidades disponibles** de la prenda
+  (`ConsultaDeInventario.unidadesDisponibles`); si ocupadas ≥ disponibles → **409** (`SinDisponibilidad`). Arista
+  nueva `rentas → inventario` (puerto público). Tests: traslape → 409, fechas disjuntas → 201, prenda inexistente
+  → 400 (+ dominio de `Periodo`). **196 verdes.** _Decisiones:_ (a) traslape **inclusivo** en extremos (no se
+  asume rotación el mismo día); (b) disponibilidad = suma de `disponibles` de los grupos de la prenda (a nivel
+  prenda; el detalle por variante/unidad concreta queda para el armado multi-artículo). _Pendiente RF-3:_
+  multi-artículo/armado por partes, extensión/renovación, cobro al retiro + contrato, asistido, vencidas como proceso.
+- **2026-07-05 (af)** — **§5.4 APROBADO por Juan (checkpoint Tanda 1 cerrado). LUZ VERDE: correr Tanda 2 → Tanda 3
+  de largo, SIN checkpoint intermedio; revisión final completa al terminar la Tanda 3 (esa reemplaza los
+  checkpoints).** Condiciones firmes de Juan: tests de dominio por CADA feature (no desactivar ninguno); **rigor
+  extra** en disponibilidad de renta por fechas (traslapes/concurrencia) y en dinero/caja (idempotencia, BigDecimal,
+  depósito-retención, cuadre); **1 commit por feature**; OpenAPI crece con cada endpoint; PROGRESS al día; no
+  inventar (ambiguo → PROGRESS). Añadido su "cheap insurance": **regla ArchUnit** que prohíbe `findById` en los
+  adaptadores (excepto Empresa/Configuración) para que el hueco de tenant no se reabra sin fallar el build.
+  PR #8/#9 (y #10 del find-por-PK) listos para mergear a `main`.
 - **2026-07-05 (ae)** — **§5.4 · `find()` por PK forzado por construcción — 3er pedido de Juan.** El `@Filter` no
   cubre `findById` (em.find); el hueco se tapaba con `.filter(empresaId)` manual por servicio (RentaRepositoryAdapter
   iba sin guard). Cerrado en los adaptadores: `buscarPorId` pasa de `findById` (em.find) a **`findFirstById`**

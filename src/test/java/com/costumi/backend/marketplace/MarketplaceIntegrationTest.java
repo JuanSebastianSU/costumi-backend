@@ -64,4 +64,22 @@ class MarketplaceIntegrationTest {
 				.andExpect(jsonPath("$[?(@.nombre == '" + activa + "')]").exists())
 				.andExpect(jsonPath("$[?(@.nombre == '" + pendiente + "')]").doesNotExist());
 	}
+
+	@Test
+	void la_vitrina_se_puede_buscar_por_texto() throws Exception {
+		String superAdmin = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, null, Rol.SUPERADMIN);
+		String marca = "Disfraces" + UUID.randomUUID().toString().substring(0, 8);
+		UUID coincide = crearEmpresa(marca + " Centro");
+		UUID otra = crearEmpresa("Trajes " + UUID.randomUUID());
+		for (UUID e : new UUID[] { coincide, otra }) {
+			mvc.perform(post("/api/v1/empresas/{id}/aprobar", e).header("Authorization", "Bearer " + superAdmin))
+					.andExpect(status().isOk());
+		}
+
+		// Búsqueda por texto (RF-18.1): solo la que coincide en el nombre.
+		mvc.perform(get("/api/v1/marketplace/empresas").param("buscar", marca))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.nombre == '" + marca + " Centro')]").exists())
+				.andExpect(jsonPath("$.length()").value(1));
+	}
 }

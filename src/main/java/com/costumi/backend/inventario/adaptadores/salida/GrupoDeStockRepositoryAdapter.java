@@ -38,6 +38,12 @@ class GrupoDeStockRepositoryAdapter implements GrupoDeStockRepository {
 		return jpa.findByPrendaId(prendaId).stream().map(GrupoDeStockRepositoryAdapter::aDominio).toList();
 	}
 
+	@Override
+	public List<GrupoDeStock> listarBajoUmbral(UUID empresaId, int umbral) {
+		return jpa.findByEmpresaIdAndDisponiblesLessThan(empresaId, umbral).stream()
+				.map(GrupoDeStockRepositoryAdapter::aDominio).toList();
+	}
+
 	private static GrupoDeStockJpaEntity aEntidad(GrupoDeStock g) {
 		Set<ValorDeVarianteEmbeddable> combinacion = g.combinacion().valores().entrySet().stream()
 				.map(e -> new ValorDeVarianteEmbeddable(e.getKey(), e.getValue()))

@@ -8,7 +8,7 @@ import java.util.UUID;
 
 /** DTO de salida de la Devolución con su liquidación y checklist. */
 public record DevolucionResponse(UUID id, UUID rentaId, BigDecimal deposito, BigDecimal cargoPorDanos,
-		BigDecimal cargoPorRetraso, BigDecimal remanente, List<PiezaResponse> piezas) {
+		BigDecimal cargoPorRetraso, BigDecimal remanente, BigDecimal multa, List<PiezaResponse> piezas) {
 
 	public record PiezaResponse(String descripcion, boolean llego, String estado) {
 	}
@@ -18,6 +18,6 @@ public record DevolucionResponse(UUID id, UUID rentaId, BigDecimal deposito, Big
 				.map(p -> new PiezaResponse(p.descripcion(), p.llego(), p.estado().name()))
 				.toList();
 		return new DevolucionResponse(d.id(), d.rentaId(), d.deposito(), d.cargoPorDanos(), d.cargoPorRetraso(),
-				d.remanente(), piezas);
+				d.remanente(), d.multa(), piezas);
 	}
 }

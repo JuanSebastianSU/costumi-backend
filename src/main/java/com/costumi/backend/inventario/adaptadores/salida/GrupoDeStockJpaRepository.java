@@ -10,6 +10,8 @@ interface GrupoDeStockJpaRepository extends JpaRepository<GrupoDeStockJpaEntity,
 
 	List<GrupoDeStockJpaEntity> findByPrendaId(UUID prendaId);
 
+	List<GrupoDeStockJpaEntity> findByEmpresaIdAndDisponiblesLessThan(UUID empresaId, int umbral);
+
 	/** Carga por PK como QUERY (no em.find) para que el @Filter multi-tenant la acote (§5.4). */
 	Optional<GrupoDeStockJpaEntity> findFirstById(UUID id);
 }

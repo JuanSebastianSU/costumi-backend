@@ -44,13 +44,14 @@ class PrendaRepositoryAdapter implements PrendaRepository {
 				.map(e -> new EtiquetaDePrendaEmbeddable(e.getKey(), e.getValue()))
 				.collect(Collectors.toCollection(LinkedHashSet::new));
 		return new PrendaJpaEntity(p.id(), p.empresaId(), p.categoriaId(), p.nombre(), p.tipoArticulo(),
-				p.precioRenta(), p.precioVenta(), etiquetas, p.archivada());
+				p.precioRenta(), p.precioVenta(), p.costoAdquisicion(), p.depositoSugerido(), etiquetas, p.archivada());
 	}
 
 	private static Prenda aDominio(PrendaJpaEntity e) {
 		Map<UUID, UUID> valores = new LinkedHashMap<>();
 		e.getEtiquetas().forEach(v -> valores.put(v.getTipoEtiquetaId(), v.getValorEtiquetaId()));
 		return Prenda.rehidratar(e.getId(), e.getEmpresaId(), e.getCategoriaId(), e.getNombre(), e.getTipoArticulo(),
-				e.getPrecioRenta(), e.getPrecioVenta(), EtiquetasDePrenda.de(valores), e.isArchivada());
+				e.getPrecioRenta(), e.getPrecioVenta(), e.getCostoAdquisicion(), e.getDepositoSugerido(),
+				EtiquetasDePrenda.de(valores), e.isArchivada());
 	}
 }

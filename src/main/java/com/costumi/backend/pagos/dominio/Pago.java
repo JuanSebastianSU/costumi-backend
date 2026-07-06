@@ -18,19 +18,22 @@ public class Pago {
 	private final TipoConcepto tipoConcepto;
 	private final UUID conceptoId;
 	private final BigDecimal monto;
+	private final TipoPago tipoPago;
 	private final MetodoPago metodo;
 	private final String referencia;
 	private final Instant fecha;
 	private final String claveIdempotencia;
 
 	private Pago(UUID id, UUID empresaId, UUID sucursalId, UUID empleadoId, TipoConcepto tipoConcepto, UUID conceptoId,
-			BigDecimal monto, MetodoPago metodo, String referencia, Instant fecha, String claveIdempotencia) {
+			BigDecimal monto, TipoPago tipoPago, MetodoPago metodo, String referencia, Instant fecha,
+			String claveIdempotencia) {
 		this.id = Objects.requireNonNull(id, "id");
 		this.empresaId = Objects.requireNonNull(empresaId, "empresaId");
 		this.sucursalId = Objects.requireNonNull(sucursalId, "sucursalId");
 		this.empleadoId = Objects.requireNonNull(empleadoId, "empleadoId");
 		this.tipoConcepto = Objects.requireNonNull(tipoConcepto, "tipoConcepto");
 		this.conceptoId = Objects.requireNonNull(conceptoId, "conceptoId");
+		this.tipoPago = Objects.requireNonNull(tipoPago, "tipoPago");
 		this.metodo = Objects.requireNonNull(metodo, "metodo");
 		if (monto == null || monto.signum() <= 0) {
 			throw new IllegalArgumentException("El monto del pago debe ser mayor a 0");
@@ -43,16 +46,26 @@ public class Pago {
 	}
 
 	public static Pago registrar(UUID empresaId, UUID sucursalId, UUID empleadoId, TipoConcepto tipoConcepto,
-			UUID conceptoId, BigDecimal monto, MetodoPago metodo, String referencia, String claveIdempotencia) {
-		return new Pago(UUID.randomUUID(), empresaId, sucursalId, empleadoId, tipoConcepto, conceptoId, monto, metodo,
-				referencia, Instant.now(), claveIdempotencia);
+			UUID conceptoId, BigDecimal monto, TipoPago tipoPago, MetodoPago metodo, String referencia,
+			String claveIdempotencia) {
+		return new Pago(UUID.randomUUID(), empresaId, sucursalId, empleadoId, tipoConcepto, conceptoId, monto,
+				tipoPago == null ? TipoPago.COBRO : tipoPago, metodo, referencia, Instant.now(), claveIdempotencia);
 	}
 
 	public static Pago rehidratar(UUID id, UUID empresaId, UUID sucursalId, UUID empleadoId, TipoConcepto tipoConcepto,
-			UUID conceptoId, BigDecimal monto, MetodoPago metodo, String referencia, Instant fecha,
+			UUID conceptoId, BigDecimal monto, TipoPago tipoPago, MetodoPago metodo, String referencia, Instant fecha,
 			String claveIdempotencia) {
-		return new Pago(id, empresaId, sucursalId, empleadoId, tipoConcepto, conceptoId, monto, metodo, referencia,
-				fecha, claveIdempotencia);
+		return new Pago(id, empresaId, sucursalId, empleadoId, tipoConcepto, conceptoId, monto, tipoPago, metodo,
+				referencia, fecha, claveIdempotencia);
+	}
+
+	/** Monto neto: el cobro suma, el reembolso resta (para el saldo de la operación, RF-6.9). */
+	public BigDecimal montoNeto() {
+		return tipoPago == TipoPago.REEMBOLSO ? monto.negate() : monto;
+	}
+
+	public TipoPago tipoPago() {
+		return tipoPago;
 	}
 
 	public UUID id() {

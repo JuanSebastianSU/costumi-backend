@@ -1,6 +1,8 @@
 package com.costumi.backend.inventario;
 
+import java.math.BigDecimal;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -16,6 +18,12 @@ public interface ConsultaDeInventario {
 
 	/** ¿La prenda (de la empresa) tiene al menos una unidad disponible en algún grupo de stock? */
 	boolean prendaTieneStockDisponible(UUID empresaId, UUID prendaId);
+
+	/** Unidades disponibles totales de la prenda (suma de disponibles de sus grupos de stock). */
+	int unidadesDisponibles(UUID empresaId, UUID prendaId);
+
+	/** Precio de venta de la prenda (de la empresa), si la prenda existe y lo tiene (RF-16 checkout). */
+	Optional<BigDecimal> precioVenta(UUID empresaId, UUID prendaId);
 
 	/**
 	 * ¿Hay al menos una prenda disponible en el pool? El pool son las prendas de la {@code categoria}

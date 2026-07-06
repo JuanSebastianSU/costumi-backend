@@ -49,6 +49,23 @@ class ConsultaDeInventarioService implements ConsultaDeInventario {
 				.anyMatch(prenda -> tieneStock(prenda.id()));
 	}
 
+	@Override
+	@Transactional(readOnly = true)
+	public int unidadesDisponibles(UUID empresaId, UUID prendaId) {
+		if (!prendaExiste(empresaId, prendaId)) {
+			return 0;
+		}
+		return grupos.listarPorPrenda(prendaId).stream().mapToInt(grupo -> grupo.disponibles()).sum();
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public java.util.Optional<java.math.BigDecimal> precioVenta(UUID empresaId, UUID prendaId) {
+		return prendas.buscarPorId(prendaId)
+				.filter(prenda -> prenda.empresaId().equals(empresaId))
+				.map(com.costumi.backend.inventario.dominio.Prenda::precioVenta);
+	}
+
 	private boolean tieneStock(UUID prendaId) {
 		return grupos.listarPorPrenda(prendaId).stream().anyMatch(grupo -> grupo.disponibles() > 0);
 	}

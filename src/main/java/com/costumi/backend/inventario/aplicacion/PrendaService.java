@@ -32,7 +32,8 @@ class PrendaService implements CrearPrenda, ConsultarPrendas {
 		}
 		EtiquetasDePrenda etiquetas = validarEtiquetas(comando.empresaId(), comando.categoriaId(), comando.etiquetas());
 		return prendas.guardar(Prenda.crear(comando.empresaId(), comando.categoriaId(), comando.nombre(),
-				comando.tipoArticulo(), comando.precioRenta(), comando.precioVenta(), etiquetas));
+				comando.tipoArticulo(), comando.precioRenta(), comando.precioVenta(), etiquetas,
+				comando.costoAdquisicion(), comando.depositoSugerido()));
 	}
 
 	@Override
