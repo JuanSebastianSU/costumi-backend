@@ -147,6 +147,24 @@ class RentaIntegrationTest {
 	}
 
 	@Test
+	void la_clave_de_idempotencia_no_duplica_la_renta() throws Exception {
+		Ctx c = montar(1);
+		String body = "{\"sucursalId\":\"" + c.sucursal() + "\",\"clienteId\":\"" + c.cliente() + "\",\"prendaId\":\""
+				+ c.prenda() + "\",\"fechaRetiro\":\"2026-09-01\",\"fechaDevolucion\":\"2026-09-03\","
+				+ "\"precioPorDia\":20.00,\"deposito\":0,\"claveIdempotencia\":\"K-" + UUID.randomUUID() + "\"}";
+
+		mvc.perform(post("/api/v1/rentas").header("Authorization", "Bearer " + c.dueno())
+						.contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isCreated());
+		mvc.perform(post("/api/v1/rentas").header("Authorization", "Bearer " + c.dueno())
+						.contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isCreated());
+
+		mvc.perform(get("/api/v1/rentas").param("clienteId", c.cliente().toString())
+						.header("Authorization", "Bearer " + c.dueno()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(1)); // no se duplicó (RF-17.6)
+	}
+
+	@Test
 	void sin_token_devuelve_401() throws Exception {
 		mvc.perform(get("/api/v1/rentas")).andExpect(status().isUnauthorized());
 	}

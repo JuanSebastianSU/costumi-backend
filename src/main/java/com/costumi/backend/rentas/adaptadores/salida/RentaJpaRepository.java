@@ -17,6 +17,8 @@ interface RentaJpaRepository extends JpaRepository<RentaJpaEntity, UUID> {
 
 	List<RentaJpaEntity> findByEmpresaIdAndClienteId(UUID empresaId, UUID clienteId);
 
+	Optional<RentaJpaEntity> findByEmpresaIdAndClaveIdempotencia(UUID empresaId, String claveIdempotencia);
+
 	/** Carga por PK como QUERY (no em.find) para que el @Filter multi-tenant la acote (§5.4). */
 	Optional<RentaJpaEntity> findFirstById(UUID id);
 

@@ -27,6 +27,12 @@ class RentaService implements CrearRenta, ConsultarRentas, GestionarRenta, Consu
 	@Override
 	@Transactional
 	public Renta ejecutar(CrearRentaComando comando) {
+		if (comando.claveIdempotencia() != null && !comando.claveIdempotencia().isBlank()) {
+			var existente = rentas.buscarPorClave(comando.empresaId(), comando.claveIdempotencia().trim());
+			if (existente.isPresent()) {
+				return existente.get(); // idempotente: no se duplica la renta (RF-17.6)
+			}
+		}
 		if (!inventario.prendaExiste(comando.empresaId(), comando.prendaId())) {
 			throw new IllegalArgumentException("La prenda no existe en esta empresa");
 		}
@@ -40,7 +46,7 @@ class RentaService implements CrearRenta, ConsultarRentas, GestionarRenta, Consu
 		}
 		return rentas.guardar(Renta.crear(comando.empresaId(), comando.sucursalId(), comando.clienteId(),
 				comando.prendaId(), comando.fechaRetiro(), comando.fechaDevolucion(), comando.precioPorDia(),
-				comando.deposito()));
+				comando.deposito(), comando.claveIdempotencia()));
 	}
 
 	@Override

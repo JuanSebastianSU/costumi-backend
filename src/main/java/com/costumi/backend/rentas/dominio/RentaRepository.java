@@ -24,4 +24,7 @@ public interface RentaRepository {
 	 * por concurrencia, RF-0.4): dos reservas simultáneas de la misma prenda no corren a la vez.
 	 */
 	void bloquearReservaDePrenda(UUID prendaId);
+
+	/** Renta con esa clave de idempotencia en la empresa, si existe (RF-17.6). */
+	Optional<Renta> buscarPorClave(UUID empresaId, String claveIdempotencia);
 }

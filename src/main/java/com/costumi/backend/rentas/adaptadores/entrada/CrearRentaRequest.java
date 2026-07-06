@@ -23,5 +23,7 @@ public record CrearRentaRequest(
 		@NotNull(message = "El precio por día es obligatorio")
 		@Positive(message = "El precio por día debe ser mayor a 0") BigDecimal precioPorDia,
 
-		BigDecimal deposito) {
+		BigDecimal deposito,
+
+		String claveIdempotencia) {
 }

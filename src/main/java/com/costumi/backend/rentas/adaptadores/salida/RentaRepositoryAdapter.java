@@ -65,14 +65,20 @@ class RentaRepositoryAdapter implements RentaRepository {
 				.getSingleResult();
 	}
 
+	@Override
+	public Optional<Renta> buscarPorClave(UUID empresaId, String claveIdempotencia) {
+		return jpa.findByEmpresaIdAndClaveIdempotencia(empresaId, claveIdempotencia).map(RentaRepositoryAdapter::aDominio);
+	}
+
 	private static RentaJpaEntity aEntidad(Renta r) {
 		return new RentaJpaEntity(r.id(), r.empresaId(), r.sucursalId(), r.clienteId(), r.prendaId(),
-				r.fechaRetiro(), r.fechaDevolucion(), r.precioPorDia(), r.deposito(), r.importe(), r.estado());
+				r.fechaRetiro(), r.fechaDevolucion(), r.precioPorDia(), r.deposito(), r.importe(), r.estado(),
+				r.claveIdempotencia());
 	}
 
 	private static Renta aDominio(RentaJpaEntity e) {
 		return Renta.rehidratar(e.getId(), e.getEmpresaId(), e.getSucursalId(), e.getClienteId(), e.getPrendaId(),
 				e.getFechaRetiro(), e.getFechaDevolucion(), e.getPrecioPorDia(), e.getDeposito(), e.getImporte(),
-				e.getEstado());
+				e.getEstado(), e.getClaveIdempotencia());
 	}
 }

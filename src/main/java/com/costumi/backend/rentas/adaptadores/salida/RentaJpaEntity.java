@@ -55,13 +55,16 @@ class RentaJpaEntity {
 	@Column(nullable = false, length = 12)
 	private EstadoRenta estado;
 
+	@Column(name = "clave_idempotencia", length = 120)
+	private String claveIdempotencia;
+
 	protected RentaJpaEntity() {
 		// requerido por JPA
 	}
 
 	RentaJpaEntity(UUID id, UUID empresaId, UUID sucursalId, UUID clienteId, UUID prendaId, LocalDate fechaRetiro,
 			LocalDate fechaDevolucion, BigDecimal precioPorDia, BigDecimal deposito, BigDecimal importe,
-			EstadoRenta estado) {
+			EstadoRenta estado, String claveIdempotencia) {
 		this.id = id;
 		this.empresaId = empresaId;
 		this.sucursalId = sucursalId;
@@ -73,6 +76,11 @@ class RentaJpaEntity {
 		this.deposito = deposito;
 		this.importe = importe;
 		this.estado = estado;
+		this.claveIdempotencia = claveIdempotencia;
+	}
+
+	String getClaveIdempotencia() {
+		return claveIdempotencia;
 	}
 
 	UUID getId() {

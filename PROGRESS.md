@@ -175,6 +175,10 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-05 (at)** — **Tanda 3/P5 · Renta idempotente al confirmar (RF-17.6, offline/outbox).** `Renta` acepta
+  `claveIdempotencia` (**V24**, índice único parcial por empresa+clave). `RentaService`: si la clave ya existe,
+  devuelve la renta existente (no duplica por reintento/offline). Tests: misma clave dos veces → una sola renta.
+  **225 verdes.**
 - **2026-07-05 (as)** — **Tanda 3/P4 · Config-switch que de verdad controla: multas on/off (RF-12.4/6.6).** Nuevo
   puerto público `configuracion.ConsultaDeConfiguracion.multasActivas`. El `DisparadorDeMultas` (notificaciones)
   lo respeta: con el módulo de multas **apagado** no se notifica la multa. Arista `notificaciones → configuracion`.
