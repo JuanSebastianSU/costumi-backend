@@ -13,38 +13,41 @@ es código pendiente**, NO solo infra. Estado honesto abajo (no marcar "hecho" l
 > **mergea** la PR (regla: nada entra a `main` sin su revisión). Si en `main` se ve viejo, es porque la PR con el
 > update aún no se ha mergeado — no porque no se actualice. Para verlo al día sin mergear, léelo en la rama de la PR.
 
-### ✅ Hecho y MERGEADO en `main` (PR #6→#12) — el núcleo
+### ✅ Hecho y MERGEADO en `main` (PR #6→#14) — el núcleo + Pagos completo
 Auth JWT + seguridad rol/tenant + bootstrap (RF-1 base, RF-17.4) · **§5.4 aislamiento multi-tenant FORZADO**
 (filtro Hibernate, cross-ref, find-por-PK, ArchUnit) · Catálogo/taxonomía (categorías, etiquetas, tipo↔categoría,
 rename, seed al aprobar) · Inventario (Prenda, GrupoDeStock, variantes) · Disfraz+Slot+disponibilidad derivada ·
 Clientes base (ficha, búsqueda, lista negra) · Carrito (RF-16) + checkout→venta · **Renta** ciclo de estados +
 disponibilidad por fechas + advisory lock + idempotencia · **Devolución** checklist + multa + inventario + evento ·
-**Venta/POS** baja de stock atómica · **Pagos base** (reembolsos/saldo neto + idempotencia) · **Caja/Turno** corte
-y cuadre por método · **Reportes** ganancia = ingreso−costo (parcial) · Configuración switch de multas real ·
-Auditoría y notificación por eventos · Marketplace búsqueda por texto. **Bugs de la revisión final cerrados** (PR #12:
-multa respeta el switch, advisory lock anti-sobreventa, avisos en AFTER_COMMIT).
+**Venta/POS** baja de stock atómica · **Pagos COMPLETO (RF-6)** — reembolsos/saldo, **mixto+vuelto, depósito-retención,
+comprobante, impuesto configurable** (mergeado en PR #13/#14, con la validación del mixto vs. saldo pendiente) ·
+**Caja/Turno** corte y cuadre por método · **Reportes** ganancia = ingreso−costo (parcial) · Configuración switch de
+multas real · Auditoría y notificación por eventos · Marketplace búsqueda por texto. **Bugs de la revisión final
+cerrados** (PR #12: multa respeta el switch, advisory lock anti-sobreventa, avisos en AFTER_COMMIT).
 
 ### 🔵 En revisión (PR abierta, NO mergeada)
-- **PR #13 — Pagos completos (RF-6):** cobro **mixto + vuelto** (6.7), **depósito como retención separada** que no es
-  ingreso + devolución del remanente (6.2/6.8), **comprobante/recibo** que agrega pagos y totales (6.5). 237 verdes.
+- **PR #15 (acumulada) — Reportes (RF-9) + Config (RF-12) + Clientes (RF-7).** 252 tests verde, sobre `main`
+  (que ya tiene la #14). **Lista para el merge único de Juan.** Contenido:
+  - **Reportes reales (RF-9):** rentas vencidas, depósitos activos, ingresos por método (con fecha/sucursal),
+    rankings vendidos/rentados, ventas por empleado, desglose por etiqueta, tablero de inventario (9.3) + resumen
+    (valor/utilización/dañados), export **CSV** (9.2). Falta solo export **PDF** (requiere librería = decisión).
+  - **Config (RF-12):** los switches controlan de verdad (multas, multi-sucursal, conteo-stock); reglas por
+    defecto moneda + recargo (12.2); respaldo/restauración export/import (12.3). Falta `pagoEnLinea` (infra).
+  - **Clientes (RF-7):** historial del cliente (7.2), filtro de pendientes (11.5/11.6).
 
 ### ⬜ PENDIENTE — backlog de cierre (código, NO solo infra). Orden de Juan, mayor→menor:
-1. **Reportes reales (RF-9)** — utilización, más rentados/vendidos, vencidas, por empleado, depósitos activos, valor de
-   inventario, dañados/perdidos, desglose por etiqueta, **export PDF/CSV**, tablero de inventario (9.3). — PENDIENTE
-2. **Config switches de verdad (RF-12)** — que TODOS los interruptores controlen comportamiento; reglas por defecto
-   (12.2, incl. impuestos/moneda); respaldo/restauración (12.3). — PENDIENTE
-3. **Clientes avanzado (RF-7)** — historial (7.2), foto/ID de garantía, indicador de pendientes + filtros (11.5/11.6). — PENDIENTE
-4. **Permisos granulares (RF-1.5) + empleados (RF-8)** — usuario↔1..N sucursales (1.2), turno/actividad. — PENDIENTE
-5. **Reabastecimiento (RF-10)** — transferencias entre sucursales, ajustes con motivo+auditoría. — PENDIENTE (hay stock-bajo básico)
-6. **Huecos de Renta/Devolución** — extensión/renovación (3.6), checkout con fechas, multi-artículo/armado, devolución
+1. **Permisos granulares (RF-1.5) + empleados (RF-8)** — usuario↔1..N sucursales (1.2), turno/actividad. — PENDIENTE
+2. **Reabastecimiento (RF-10)** — ajustes con motivo+auditoría (hacible); **transferencias entre sucursales bloqueado
+   por esquema** (el stock hoy es por empresa/prenda, no por sucursal → cambio de esquema, decisión de Juan). — PENDIENTE
+3. **Huecos de Renta/Devolución** — extensión/renovación (3.6), checkout con fechas, multi-artículo/armado, devolución
    parcial (5.5), modo asistido (3.7/4.6). — PENDIENTE
-7. **Notificaciones** — recordatorio de devolución vencida al cliente y al dueño (11.1). — PENDIENTE
-8. **Plataforma** — refresh token + recuperación de contraseña (1.1); idempotencia/outbox donde falte (17.6). — PENDIENTE
-9. **OpenAPI completo publicado** — crece con cada feature; se publica completo al cierre (puente con el repo Android). — EN CURSO
+4. **Notificaciones** — recordatorio de devolución vencida al cliente y al dueño (11.1). — PENDIENTE
+5. **Plataforma** — refresh token + recuperación de contraseña (1.1); idempotencia/outbox donde falte (17.6). — PENDIENTE
+6. **OpenAPI completo publicado** — ya se autogenera con springdoc en `/v3/api-docs`; crece con cada feature. — EN CURSO
 
 ### 🚫 Bloqueado por decisión/infra (va detrás de config, NO frena el resto)
-- ~~Impuestos (RF-6.5/12.2)~~ — **RESUELTO** (decisión de Juan): tasa única por empresa en `ConfiguracionEmpresa`,
-  precio impuesto-incluido, desglose (base+impuesto) en el comprobante. En la PR #13.
+- ~~Impuestos (RF-6.5/12.2)~~ — **RESUELTO y MERGEADO** (decisión de Juan): tasa única por empresa en
+  `ConfiguracionEmpresa`, precio impuesto-incluido, desglose (base+impuesto) en el comprobante. En `main` (PR #14).
 - **Pasarela de pago (RF-6.11)**, **S3/fotos (RF-2.9)**, **WhatsApp/FCM (RF-11.4/18.11)** — credenciales/decisión externa.
 
 ### Arquitectura fijada (2026-07-06)
@@ -75,14 +78,14 @@ Estado: ✅ hecho y **mergeado en `main`** · 🔵 en **PR abierta** (sin mergea
 | Pedidos / carrito | Hexagonal | 🟨 | Carrito segmentado + checkout→venta. ⬜ Falta checkout de RENTA (fechas por línea) |
 | Rentas | Hexagonal | 🟨 | Crear + estados + disponibilidad por fechas + advisory lock + idempotencia. ⬜ Falta extensión/renovación, multi-artículo, asistido |
 | Ventas / POS | Hexagonal | ✅ | Venta + descuento + total + baja de stock atómica (anti-sobreventa) |
-| Pagos, caja y depósitos | Hexagonal | 🔵 | Base (reembolsos/saldo/idempotencia) mergeado; **mixto+vuelto, depósito-retención, comprobante, impuestos en PR #13** |
+| Pagos, caja y depósitos | Hexagonal | ✅ | Reembolsos/saldo/idempotencia + **mixto+vuelto (cuadra con saldo), depósito-retención, comprobante, impuesto configurable** — mergeado (PR #13/#14) |
 | Caja / turno | Hexagonal | ✅ | Turno + movimientos + corte y cuadre por método |
 | Devoluciones y multas | Hexagonal | 🟨 | Checklist + multa (respeta switch) + inventario + evento. ⬜ Falta devolución parcial (RF-5.5) |
-| Clientes | Simple | 🟨 | Ficha + búsqueda + lista negra. ⬜ Falta historial (RF-7.2), foto/ID, filtros de pendientes (11.5/11.6) |
+| Clientes | Simple | 🔵 | Ficha + búsqueda + lista negra + **historial (7.2)** + **filtro de pendientes (11.5/11.6)** — en PR #15. Falta foto (S3, infra) |
 | Empleados | Simple | ⬜ | RF-8 — sin empezar |
 | Reportes | Simple (lectura) | 🔵 | Ingresos, ganancia, rentas vencidas, depósitos activos, ingresos por método, rankings, ventas por empleado, **desglose por etiqueta**, tablero de inventario (9.3)+resumen, **export CSV (9.2)** — PR #15. ⬜ Solo falta export **PDF** (requiere librería = decisión) |
 | Notificaciones (WhatsApp/FCM) | Simple (adaptador) | 🟨 | Envío por canal (log) + estados + disparador de multas por evento. ⬜ Falta recordatorio de vencidas (RF-11.1); WhatsApp/FCM reales = 🚫 infra |
-| Configuración de empresa | Simple | 🟨 | Interruptores (multas real) + tasa de impuesto (PR #13). ⬜ Falta que TODOS los switches controlen comportamiento + defaults/backup (RF-12.2/3) |
+| Configuración de empresa | Simple | 🔵 | Switches que controlan de verdad (multas, multi-sucursal, conteo-stock) + reglas por defecto (moneda/recargo, 12.2) + respaldo/restauración (12.3) — en PR #15. Falta pagoEnLinea (infra) |
 | Auditoría | Simple | ✅ | Registro por domain events |
 | App cliente (marketplace) | — | 🟨 | Descubrimiento + búsqueda por texto de empresas ACTIVAS. ⬜ Falta catálogo/checkout del cliente |
 
@@ -118,6 +121,12 @@ Estado: ✅ hecho y **mergeado en `main`** · 🔵 en **PR abierta** (sin mergea
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-06 (d)** — **Config (RF-12) + Clientes (RF-7) en la PR #15 acumulada (con Reportes).** **Config:** los
+  switches controlan comportamiento de verdad — `multiSucursal` off ⇒ una sola sucursal (409 la 2ª); `conteoStock`
+  off ⇒ venta no descuenta y renta no chequea disponibilidad (multas ya lo hacía). Reglas por defecto **moneda +
+  recargo por retraso** (12.2, V27). **Respaldo/restauración** export/import (12.3). **Clientes:** historial del
+  cliente (rentas+ventas, read-model, 7.2) + filtro `conPendientes` (11.5/11.6). **252 verdes.** La PR #15 (Reportes +
+  Config + Clientes) queda **lista para el merge único de Juan**; los bloques siguientes irán sobre `main` ya con #15.
 - **2026-07-06 (c)** — **Reportes reales (RF-9), bloque en curso (rama `feat/cierre-reportes-rf9`).** Read-models
   JdbcClient acotados al tenant, filtros opcionales fecha/sucursal: **rentas vencidas** + **depósitos activos**;
   **ingresos netos por método** (cobros−reembolsos, depósitos no); **rankings** más vendidos/rentados; **ventas por
