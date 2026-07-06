@@ -8,5 +8,6 @@ import java.util.UUID;
  * automática (RF-5.2). Otros módulos podrán reaccionar (p. ej. registrar la multa como saldo del
  * cliente o notificarla) sin que Devoluciones los conozca.
  */
-public record DevolucionRegistrada(UUID empresaId, UUID devolucionId, UUID rentaId, BigDecimal multa) {
+public record DevolucionRegistrada(UUID empresaId, UUID devolucionId, UUID rentaId, UUID clienteId,
+		BigDecimal multa) {
 }

@@ -106,6 +106,24 @@ class DevolucionIntegrationTest {
 	}
 
 	@Test
+	void una_devolucion_con_multa_dispara_una_notificacion_al_cliente() throws Exception {
+		UUID renta = rentaDePrueba();
+
+		// Cargos 60+20=80 > depósito 50 -> multa 30 -> se dispara la notificación (RF-11.1, §5.5).
+		mvc.perform(post("/api/v1/devoluciones").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"rentaId\":\"" + renta + "\",\"deposito\":50.00,\"cargoPorDanos\":60.00,"
+								+ "\"cargoPorRetraso\":20.00,\"piezas\":[{\"descripcion\":\"Camisa\",\"llego\":true,"
+								+ "\"estado\":\"DANADA\"}]}"))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.multa").value(30.00));
+
+		mvc.perform(get("/api/v1/notificaciones").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.canal == 'EMAIL')]").exists());
+	}
+
+	@Test
 	void devolver_una_renta_de_otra_empresa_devuelve_400() throws Exception {
 		rentaDePrueba(); // deja this.dueno de la empresa A con una renta
 		String duenoDeA = this.dueno;

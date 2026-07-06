@@ -18,8 +18,13 @@
   `ContextoDeTenant` en un aspecto sobre los repositorios (OSIV off); (b) **validación cross-ref por tenant**
   (categoría de la prenda; prenda fija, categoría y valores del pool del disfraz) vía las APIs públicas
   `ConsultaDeTaxonomia`/`ConsultaDeInventario`; (c) **tests que prueban que no se lee ni escribe cruzando tenant**.
-  **Esperando el OK de Juan a la PR #9 antes de arrancar la Tanda 2.** (Rama `chore/scaffolding-modulith`; a `main`
-  solo lo que Juan mergea.)
+  Después Juan pidió cerrar también el `find()` por PK → hecho por construcción (`findFirstById` filtrado) +
+  regla ArchUnit anti-`findById`. **§5.4 APROBADO y mergeado por Juan (PR #8/#9/#10).**
+- **EN CURSO: run Tanda 2 → Tanda 3 de largo (sin checkpoint intermedio; revisión final al terminar Tanda 3),
+  en PR #11.** Ya cerrado y verde: **P2** (renta disponibilidad por fechas + advisory lock; venta baja de stock
+  atómica; devolución que cierra el ciclo: inventario + multa auto + renta→DEVUELTA + domain event) y buena parte
+  de **P3** (Prenda costo/depósito; Caja/Turno con corte y cuadre; Reportes ganancia; reabastecimiento + stock bajo).
+  **Falta:** pagos completos (parciales/reembolsos/depósito-retención/mixto), auditoría, y el resto de Tanda 3 (P4/P5).
 - **Tanda 1 (ya en `main`, PR #8 mergeada por Juan; antes PR #7 con los 14 módulos de §7). Contenido de la Tanda 1:**
   (1) **§5.4 base** — `ContextoDeTenant`; (2) **motor de variantes real** — `GrupoDeStock` = combinación real de
   valores de etiqueta; (3) **Prenda↔etiquetas (Capa 2)**; (4) **tipo↔categoría (RF-2.7.2)** impuesto; (5) **Disfraz
@@ -170,6 +175,12 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-05 (ao)** — **Tanda 3/P4 · Notificaciones: disparador por evento (RF-11.1, §5.5).** Se cierra el
+  loop de domain events: `notificaciones` **escucha** `DevolucionRegistrada` (`DisparadorDeMultas`,
+  `@EventListener` síncrono) y, si hay **multa** (>0) y cliente, **envía una notificación** al cliente
+  (EnviarNotificacion, canal EMAIL). El evento se enriqueció con `clienteId` (nuevo `ConsultaDeRentas.clienteDeRenta`).
+  Arista `notificaciones → devoluciones` (evento). Test: devolución con multa 30 → aparece notificación EMAIL.
+  **218 verdes.** _Demuestra la arquitectura §5.5 punta a punta (devolución→evento→notificación)._
 - **2026-07-05 (an)** — **Tanda 3/P4 · Reabastecimiento: entrada de stock + alerta de stock bajo (RF-10).**
   `GrupoDeStock.reabastecer(cantidad)` (entrada de mercancía) con test. `POST /api/v1/grupos-stock/{id}/entrada`
   (DUENO/ENCARGADO/BODEGA) y `GET /api/v1/grupos-stock/stock-bajo?umbral=N` (grupos con disponibles < umbral).

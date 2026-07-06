@@ -49,8 +49,9 @@ class DevolucionService implements RegistrarDevolucion, ConsultarDevoluciones {
 
 		// Cierra la renta (RF-5.1) y publica el evento con la multa automática (RF-5.2, §5.5).
 		rentas.marcarDevuelta(comando.empresaId(), comando.rentaId());
+		UUID clienteId = rentas.clienteDeRenta(comando.empresaId(), comando.rentaId()).orElse(null);
 		eventos.publishEvent(new DevolucionRegistrada(comando.empresaId(), devolucion.id(), comando.rentaId(),
-				devolucion.multa()));
+				clienteId, devolucion.multa()));
 		return devolucion;
 	}
 
