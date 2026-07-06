@@ -280,6 +280,35 @@ class PagoIntegrationTest {
 	}
 
 	@Test
+	void el_comprobante_desglosa_el_impuesto_incluido_segun_la_tasa() throws Exception {
+		UUID sucursal = sucursalDePrueba();
+		UUID concepto = UUID.randomUUID();
+
+		// Tasa 19% impuesto-incluido (RF-6.5/12.2).
+		mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/configuracion")
+						.header("Authorization", "Bearer " + dueno).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"conteoStock\":true,\"multasActivo\":true,\"multiSucursal\":false,"
+								+ "\"pagoEnLinea\":false,\"tasaImpuesto\":0.19}"))
+				.andExpect(status().isOk());
+
+		// Cobro de 119 (ya incluye el impuesto).
+		mvc.perform(post("/api/v1/pagos").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + sucursal + "\",\"tipoConcepto\":\"RENTA\",\"conceptoId\":\""
+								+ concepto + "\",\"monto\":119.00,\"metodo\":\"EFECTIVO\"}"))
+				.andExpect(status().isCreated());
+
+		// 119 impuesto-incluido al 19% -> base 100, impuesto 19.
+		mvc.perform(get("/api/v1/pagos/comprobante").param("conceptoId", concepto.toString())
+						.header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.totalCobrado").value(119.00))
+				.andExpect(jsonPath("$.tasaImpuesto").value(0.19))
+				.andExpect(jsonPath("$.baseImponible").value(100.00))
+				.andExpect(jsonPath("$.impuesto").value(19.00));
+	}
+
+	@Test
 	void sin_token_devuelve_401() throws Exception {
 		mvc.perform(get("/api/v1/pagos").param("conceptoId", UUID.randomUUID().toString()))
 				.andExpect(status().isUnauthorized());
