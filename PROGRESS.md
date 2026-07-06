@@ -5,45 +5,54 @@
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
 ## Fase actual
-**Fase 4 — Cierre del backend (handoff `CIERRE_BACKEND.md` de Juan).** Los 14 módulos de §7 tienen su
-1ª rebanada (ancho pero **delgado**). Ahora se cierra el backend en **3 tandas por dependencia**, modo
-"RUN GRANDE" (por tiempo, sin revisión rebanada a rebanada):
-- **Tanda 1 = P0 (núcleo del modelo) + P1 (seguridad/frontera).** ⛔ **CHECKPOINT al terminar: PARAR y pedir
-  revisión a Juan ANTES de construir encima** (si el modelo núcleo o §5.4 quedan mal, todo lo de arriba se rehace).
-- **Tanda 2 = P2+P3** (ciclo operativo + dinero) · **Tanda 3 = P4+P5** (resto).
-- Reglas: **1 commit por feature**, **tests de dominio por cada feature**, **§5.4 temprano**, ambiguo → decisión aquí.
-- **CHECKPOINT: Juan REVISÓ y APROBÓ el P0 y MERGEÓ la Tanda 1 a `main` (PR #8, en `315b3cd`).** Exigió cerrar el
-  **§5.4 aislamiento FORZADO** antes de la Tanda 2 → **HECHO y verde (184 tests, CI) en la nueva PR #9**:
-  (a) **filtro Hibernate `@Filter`** por `empresa_id` en las 19 entidades, activado por sesión desde
-  `ContextoDeTenant` en un aspecto sobre los repositorios (OSIV off); (b) **validación cross-ref por tenant**
-  (categoría de la prenda; prenda fija, categoría y valores del pool del disfraz) vía las APIs públicas
-  `ConsultaDeTaxonomia`/`ConsultaDeInventario`; (c) **tests que prueban que no se lee ni escribe cruzando tenant**.
-  Después Juan pidió cerrar también el `find()` por PK → hecho por construcción (`findFirstById` filtrado) +
-  regla ArchUnit anti-`findById`. **§5.4 APROBADO y mergeado por Juan (PR #8/#9/#10).**
-- **RUN Tanda 2 → Tanda 3 en PR #11 (verde, 226 tests). Hecho:**
-  **P2 (ciclo operativo, COMPLETO):** renta disponibilidad por fechas + advisory lock (RF-3.2/0.4); venta baja de
-  stock atómica (RF-4.4); devolución que cierra el ciclo — inventario + multa auto + renta→DEVUELTA + **domain event**
-  `DevolucionRegistrada` (RF-5, §5.5). **P3 (núcleo COMPLETO):** Prenda costo/depósito (RF-2.10); Pagos reembolsos +
-  saldo neto (RF-6.9); Caja/Turno con corte por método y cuadre (RF-6.3/6.10); Reportes ganancia = ingreso−costo (RF-9);
-  Auditoría por eventos (RF-0.5). **P4/P5 (avanzado):** reabastecimiento + stock bajo (RF-10); notificación por evento
-  (RF-11.1); config-switch de multas real (RF-12.4/6.6); marketplace búsqueda por texto (RF-18.1); carrito checkout→venta
-  (RF-16); renta idempotente (RF-17.6); ArchUnit anti-`findById`.
-- **FALTA para cerrar Tanda 3 — mayormente bloqueado por infra/decisión externa:** media/fotos a **S3** (RF-2.9,
-  bucket/credenciales); envío **real** WhatsApp/FCM (RF-11.4/18.11, API keys); **pasarela de pago** (RF-6.11, decisión);
-  refresh token (RF-1.1). Enriquecimientos: empleados/permisos (RF-8/1.5), clientes historial (RF-7.2), transferencias
-  entre sucursales (RF-10), export PDF/CSV (RF-9.2), checkout de RENTA (fechas por línea), depósito-retención/mixto (RF-6).
-- **Tanda 1 (ya en `main`, PR #8 mergeada por Juan; antes PR #7 con los 14 módulos de §7). Contenido de la Tanda 1:**
-  (1) **§5.4 base** — `ContextoDeTenant`; (2) **motor de variantes real** — `GrupoDeStock` = combinación real de
-  valores de etiqueta; (3) **Prenda↔etiquetas (Capa 2)**; (4) **tipo↔categoría (RF-2.7.2)** impuesto; (5) **Disfraz
-  + Slot (Capa 3) + disponibilidad DERIVADA (RF-2.3/2.4)** — modo unidad-fija/por-partes, ≤8 slots, dos ejes +
-  opcional, pool personalizable, disponibilidad calculada vía puerto de Inventario; (6) **`X-Sucursal-Id`**
-  (RF-17.4); (7) **tooling OpenAPI** (springdoc); (8) **renombrar tipo/valor (RF-2.7.6)** propaga por id;
-  (9) **siembra de básicos al aprobar la empresa (RF-2.7.7)** vía evento `EmpresaAprobada` (§5.5). El "por-slot"
-  RF-2.7.5 quedó cubierto por el `PoolDeSlot`.
-- **Deuda registrada para el endurecimiento §5.4 (Tanda 2+):** filtro Hibernate/RLS por request; validación de
-  cross-refs por id contra el tenant (`Prenda.categoria_id`, `Disfraz.prendaFijaId`, categoría/valores del pool);
-  validar `X-Sucursal-Id` contra la empresa del token en el caso de uso que la consuma.
-- **Siguiente (tras el OK de Juan):** Tanda 2 = P2 (ciclo operativo renta→devolución→venta con domain events) + P3 (dinero/analítica).
+**Fase 5 — Cierre del backend para presentar (backlog de Juan, 2026-07-06).** El **núcleo** del backend está
+hecho y **mergeado en `main`** (PR #6→#12). Encima de eso corre el backlog de cierre de Juan; **la mayor parte
+es código pendiente**, NO solo infra. Estado honesto abajo (no marcar "hecho" lo que no esté verde+mergeado).
+
+> ⚠️ **Dónde vive este PROGRESS:** se actualiza en cada **rama de feature**; en `main` solo aparece cuando Juan
+> **mergea** la PR (regla: nada entra a `main` sin su revisión). Si en `main` se ve viejo, es porque la PR con el
+> update aún no se ha mergeado — no porque no se actualice. Para verlo al día sin mergear, léelo en la rama de la PR.
+
+### ✅ Hecho y MERGEADO en `main` (PR #6→#12) — el núcleo
+Auth JWT + seguridad rol/tenant + bootstrap (RF-1 base, RF-17.4) · **§5.4 aislamiento multi-tenant FORZADO**
+(filtro Hibernate, cross-ref, find-por-PK, ArchUnit) · Catálogo/taxonomía (categorías, etiquetas, tipo↔categoría,
+rename, seed al aprobar) · Inventario (Prenda, GrupoDeStock, variantes) · Disfraz+Slot+disponibilidad derivada ·
+Clientes base (ficha, búsqueda, lista negra) · Carrito (RF-16) + checkout→venta · **Renta** ciclo de estados +
+disponibilidad por fechas + advisory lock + idempotencia · **Devolución** checklist + multa + inventario + evento ·
+**Venta/POS** baja de stock atómica · **Pagos base** (reembolsos/saldo neto + idempotencia) · **Caja/Turno** corte
+y cuadre por método · **Reportes** ganancia = ingreso−costo (parcial) · Configuración switch de multas real ·
+Auditoría y notificación por eventos · Marketplace búsqueda por texto. **Bugs de la revisión final cerrados** (PR #12:
+multa respeta el switch, advisory lock anti-sobreventa, avisos en AFTER_COMMIT).
+
+### 🔵 En revisión (PR abierta, NO mergeada)
+- **PR #13 — Pagos completos (RF-6):** cobro **mixto + vuelto** (6.7), **depósito como retención separada** que no es
+  ingreso + devolución del remanente (6.2/6.8), **comprobante/recibo** que agrega pagos y totales (6.5). 237 verdes.
+
+### ⬜ PENDIENTE — backlog de cierre (código, NO solo infra). Orden de Juan, mayor→menor:
+1. **Reportes reales (RF-9)** — utilización, más rentados/vendidos, vencidas, por empleado, depósitos activos, valor de
+   inventario, dañados/perdidos, desglose por etiqueta, **export PDF/CSV**, tablero de inventario (9.3). — PENDIENTE
+2. **Config switches de verdad (RF-12)** — que TODOS los interruptores controlen comportamiento; reglas por defecto
+   (12.2, incl. impuestos/moneda); respaldo/restauración (12.3). — PENDIENTE
+3. **Clientes avanzado (RF-7)** — historial (7.2), foto/ID de garantía, indicador de pendientes + filtros (11.5/11.6). — PENDIENTE
+4. **Permisos granulares (RF-1.5) + empleados (RF-8)** — usuario↔1..N sucursales (1.2), turno/actividad. — PENDIENTE
+5. **Reabastecimiento (RF-10)** — transferencias entre sucursales, ajustes con motivo+auditoría. — PENDIENTE (hay stock-bajo básico)
+6. **Huecos de Renta/Devolución** — extensión/renovación (3.6), checkout con fechas, multi-artículo/armado, devolución
+   parcial (5.5), modo asistido (3.7/4.6). — PENDIENTE
+7. **Notificaciones** — recordatorio de devolución vencida al cliente y al dueño (11.1). — PENDIENTE
+8. **Plataforma** — refresh token + recuperación de contraseña (1.1); idempotencia/outbox donde falte (17.6). — PENDIENTE
+9. **OpenAPI completo publicado** — crece con cada feature; se publica completo al cierre (puente con el repo Android). — EN CURSO
+
+### 🚫 Bloqueado por decisión/infra (va detrás de config, NO frena el resto)
+- **Impuestos (RF-6.5/12.2)** — el spec no define el modelo (base/tasa/inclusión) → **decisión de Juan** antes de codear.
+- **Pasarela de pago (RF-6.11)**, **S3/fotos (RF-2.9)**, **WhatsApp/FCM (RF-11.4/18.11)** — credenciales/decisión externa.
+
+### Arquitectura fijada (2026-07-06)
+**Repos separados:** este repo `costumi-backend` (Java/Spring) es el único que despliega Railway; la app **Android**
+(Kotlin) vive en **su propio repo**. Se conectan **solo por el contrato OpenAPI**. Nunca se mete código Android aquí.
+
+### Definición de cierre
+Todo lo ⬜ PENDIENTE (menos lo 🚫 bloqueado) verde + **OpenAPI completo publicado**. Con eso, en el repo Android se
+genera el cliente Kotlin y arranca la app. Reglas firmes: tests de dominio por feature, 1 commit por feature, sin inventar.
 
 ## Pendiente de revisión (Juan sin recursos por el momento)
 > Por acuerdo con el responsable, se siguió ejecutando en slices **sin esperar la revisión**.
@@ -182,6 +191,19 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-06** — **Cierre del backend (arranque), bloque #1 Pagos completos (RF-6).** Tras aprobar/mergear
+  la PR #12, Juan dio el backlog de cierre (Pagos, Reportes, Config, Clientes, permisos/empleados, reabastecimiento,
+  huecos renta/dev, recordatorios, plataforma, OpenAPI) y la **regla de repos separados** (backend aquí, Android en su
+  repo aparte, unidos solo por OpenAPI). Rama `feat/cierre-pagos-rf6`, 3 commits, 237 verdes:
+  (1) **cobro mixto + vuelto (RF-6.7)** — `POST /api/v1/pagos/mixto`, dominio `CobroMixto` reparte en porciones por
+  método, calcula vuelto y rechaza efectivo insuficiente; cada porción hereda la idempotencia con sufijo.
+  (2) **depósito como retención separada (RF-6.2/6.8)** — `TipoPago.DEPOSITO`/`DEVOLUCION_DEPOSITO` no cuentan como
+  ingreso (`montoNeto`=0), se rastrean como garantía; `GET /api/v1/pagos/deposito` da retenido/devuelto/activo; V25
+  amplía `tipo_pago` a varchar(20). (3) **comprobante/recibo (RF-6.5)** — `GET /api/v1/pagos/comprobante` agrega
+  pagos y totales. Parciales/saldos y reembolsos ya existían.
+  **DECISIÓN PENDIENTE (no inventar):** modelo de **impuestos configurables** (RF-6.5/12.2) — el spec lista
+  "impuestos" pero no define base/tasa/inclusión; falta que Juan decida. El **render PDF/impresión** del comprobante
+  se hará en el export de Reportes (RF-9.2). **Pasarela (RF-6.11), S3 y WhatsApp/FCM** siguen bloqueados por infra.
 - **2026-07-05 (av)** — **Fixes de la revisión final de Juan (PR #11).** (1) **Multa respeta el switch (RF-6.6):**
   `DevolucionService` consulta `multasActivas` y con el módulo OFF pone el `cargoPorRetraso` en 0 → no se cobra ni
   reduce el remanente (el daño sí se recupera, no es multa). (2) **Sobreventa:** `AjusteDeInventarioService` toma un

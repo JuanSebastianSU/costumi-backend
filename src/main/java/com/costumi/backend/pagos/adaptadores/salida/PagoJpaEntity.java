@@ -45,7 +45,7 @@ class PagoJpaEntity {
 	private BigDecimal monto;
 
 	@Enumerated(EnumType.STRING)
-	@Column(name = "tipo_pago", nullable = false, length = 10)
+	@Column(name = "tipo_pago", nullable = false, length = 20)
 	private com.costumi.backend.pagos.dominio.TipoPago tipoPago;
 
 	@Enumerated(EnumType.STRING)
