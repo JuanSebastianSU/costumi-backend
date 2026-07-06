@@ -43,7 +43,8 @@ multa respeta el switch, advisory lock anti-sobreventa, avisos en AFTER_COMMIT).
 9. **OpenAPI completo publicado** — crece con cada feature; se publica completo al cierre (puente con el repo Android). — EN CURSO
 
 ### 🚫 Bloqueado por decisión/infra (va detrás de config, NO frena el resto)
-- **Impuestos (RF-6.5/12.2)** — el spec no define el modelo (base/tasa/inclusión) → **decisión de Juan** antes de codear.
+- ~~Impuestos (RF-6.5/12.2)~~ — **RESUELTO** (decisión de Juan): tasa única por empresa en `ConfiguracionEmpresa`,
+  precio impuesto-incluido, desglose (base+impuesto) en el comprobante. En la PR #13.
 - **Pasarela de pago (RF-6.11)**, **S3/fotos (RF-2.9)**, **WhatsApp/FCM (RF-11.4/18.11)** — credenciales/decisión externa.
 
 ### Arquitectura fijada (2026-07-06)
@@ -54,106 +55,36 @@ multa respeta el switch, advisory lock anti-sobreventa, avisos en AFTER_COMMIT).
 Todo lo ⬜ PENDIENTE (menos lo 🚫 bloqueado) verde + **OpenAPI completo publicado**. Con eso, en el repo Android se
 genera el cliente Kotlin y arranca la app. Reglas firmes: tests de dominio por feature, 1 commit por feature, sin inventar.
 
-## Pendiente de revisión (Juan sin recursos por el momento)
-> Por acuerdo con el responsable, se siguió ejecutando en slices **sin esperar la revisión**.
-> Lo de abajo está en la rama, **verde en CI**, a la espera de que Juan revise/mergee.
-- **PR #7 — cierre de seguridad de auth** (sobre `main`, que ya tiene auth del PR #6):
-  1. **Fail-fast del secreto JWT** en producción → cierra la deuda bloqueante.
-  2. **Autorización por rol/tenant:** SUPERADMIN para ciclo de vida de Empresa y cola de
-     pendientes; DUENO/ENCARGADO + dueño del tenant para alta de Sucursal → cierra la deuda de endpoints.
-  3. **Bootstrap del SuperAdmin** por seed (auth usable en despliegue nuevo).
-  4. **Catálogo — Categoría (RF-2.8)**: nuevo módulo `catalogo`; alta/listado de categorías
-     **acotadas al tenant del token** (primer uso real del aislamiento multi-tenant; una empresa
-     no ve las de otra). DUENO/ENCARGADO para crear.
-  5. **Catálogo — motor de etiquetas (RF-2.7.1/2.7.2)**: `TipoEtiqueta` (con interruptores
-     ¿define variante? / ¿seleccionable por cliente?) + `ValorEtiqueta`; `POST/GET /api/v1/tipos-etiqueta`
-     y `.../{id}/valores`, acotado al tenant (404 al tocar un tipo de otra empresa).
-  6. **Inventario — Prenda (RF-2.1/2.10)**: nuevo módulo `inventario`; ítem con categoría, tipo
-     (renta/venta/ambos) y precios (con reglas de precio en el dominio). `POST/GET /api/v1/prendas`,
-     acotado al tenant.
-  7. **Inventario — GrupoDeStock (RF-2.2/2.11)**: conteo por estado (disponibles/dañadas/en limpieza/
-     perdidas) y **movimientos entre estados**; `POST/GET /api/v1/prendas/{id}/grupos-stock` y
-     `POST /api/v1/grupos-stock/{id}/mover`, acotado al tenant.
-  8. **Clientes (RF-7)**: nuevo módulo `clientes`; ficha (teléfono/correo/documento/dirección),
-     **búsqueda por texto** y **lista negra** (RF-7.3); `POST/GET /api/v1/clientes` (?buscar=) y
-     `POST /api/v1/clientes/{id}/lista-negra`, acotado al tenant.
-  9. **Carrito (RF-16)**: nuevo módulo `pedidos`; carrito persistente **segmentado por (empresa ×
-     sucursal × cliente × tipo)** con líneas; agregar suma cantidades; renta y venta en carritos
-     separados. `POST /api/v1/carritos/items`, `GET /api/v1/carritos`.
-  10. **Renta (RF-3)**: nuevo módulo `rentas`; crear renta (fechas, **importe = precio × días**, depósito),
-      máquina de estados RESERVADA→ACTIVA→DEVUELTA→CERRADA (+ CANCELADA) y detección de vencidas.
-      `POST /api/v1/rentas`, `GET /api/v1/rentas`, `POST /api/v1/rentas/{id}/{entregar|devolver|cerrar|cancelar}`.
-  11. **Devolución (RF-5)**: nuevo módulo `devoluciones`; **checklist por pieza** (¿llegó? + estado) y
-      **liquidación del depósito** (garantía − daños − recargos = remanente, sin bajar de 0).
-      `POST/GET /api/v1/devoluciones`.
-  12. **Venta/POS (RF-4)**: nuevo módulo `ventas`; venta con líneas **a nombre del empleado del token**,
-      descuento y **total** (subtotal − descuento); cliente opcional. `POST/GET /api/v1/ventas`.
-  13. **Pagos (RF-6)**: nuevo módulo `pagos`; pago ligado a renta/venta, método (efectivo/tarjeta/
-      transferencia) y **clave de idempotencia** (no duplica cobros, RF-17.6). `POST/GET /api/v1/pagos`.
-  14. **Reportes (RF-9)**: nuevo módulo `reportes` (solo lectura); **resumen de ingresos** por renta/venta
-      (JdbcClient sobre los pagos), restringido a DUENO/ENCARGADO. `GET /api/v1/reportes/ingresos`.
-  15. **Configuración (RF-12)**: nuevo módulo `configuracion`; **interruptores de módulos** por empresa
-      (conteo de stock, multas, multi-sucursal, pago en línea), defaults sensatos. `GET/PUT /api/v1/configuracion`.
-  16. **Notificaciones (RF-11)**: nuevo módulo `notificaciones`; envío por canal (WhatsApp/FCM/EMAIL) vía
-      adaptador (log por ahora), estados PENDIENTE→ENVIADA. `POST/GET /api/v1/notificaciones`.
-  17. **Marketplace / App cliente (RF-18.1/RF-15.6)**: nuevo módulo `marketplace` (lectura, público);
-      descubrimiento de empresas **ACTIVAS**. `GET /api/v1/marketplace/empresas`.
-  **135 tests verdes en local. Todo el listado de módulos de §7 tiene su primera rebanada.**
-
-## Próximo paso concreto
-1. ✅ Andamiaje (mergeado a `main`) + check `build` requerido enganchado por Juan.
-2. ✅ Módulo Identidad — rebanada 1: **auto-registro de Empresa** (nace PENDIENTE), `POST /api/v1/empresas` (PR #2).
-3. ✅ Módulo Identidad — rebanada 2: **aprobar / rechazar / suspender / reactivar** Empresa (RF-15.3),
-   endpoints `POST /{id}/{accion}`, errores en Problem Details (404/409) (PR #3).
-4. ✅ Módulo Identidad — rebanada 3: **Sucursal** (1..N por Empresa) con `empresa_id` (RF-15.1);
-   solo una empresa ACTIVA puede abrir sucursales (RF-15.4). `POST /api/v1/empresas/{id}/sucursales` (PR #4).
-5. ✅ RF-15.4 (plazo de resolución): cola `GET /api/v1/empresas/pendientes` (SuperAdmin) con marca
-   de **vencida** y plazo configurable (PR #5). ⬜ Falta la escalada/recordatorio automático (RF-11).
-6. ✅ **Auth por token (RF-17.4/§5.6):** circuito base (login JWT HS256, `/me`, PR #6) + **autorización
-   por rol/tenant** y **bootstrap del SuperAdmin** (PR #7). ⬜ Falta: refresh token, permisos granulares (RF-1.5).
-7. 🟨 **Aislamiento multi-tenant (§5.4):** ✅ chequeo de tenant a nivel de endpoint (Sucursal, PR #7).
-   ⬜ Falta el filtro **forzado** por `empresa_id` en un contexto de request (para todo módulo futuro).
-8. ⬜ Auditoría del SuperAdmin (RF-15.5) — usando el actor del token.
-9. 🟨 **Catálogo y taxonomía (RF-2.7)** — el más delicado. ✅ Categoría + `TipoEtiqueta`/`ValorEtiqueta`
-   con interruptores (PR #7). ⬜ Falta: aplicabilidad tipo↔categoría (RF-2.7.2), ciclo de vida
-   archivar/renombrar por API (RF-2.7.6), y el **GrupoDeStock** (combinación de valores, RF-2.7.3/2.7.4)
-   — este último ya es parte de Inventario (RF-2).
-10. 🟨 **Inventario y disponibilidad (RF-2)** — ✅ Prenda + GrupoDeStock (conteo por estado + movimientos).
-    ⬜ Falta: combinación de valores de etiqueta que define la variante (RF-2.7.3), y disponibilidad
-    derivada del Disfraz por slots (RF-2.4) — esto último ya es el módulo de Disfraz (capa 3).
-11. ✅ **Clientes (RF-7)**: ficha + búsqueda + lista negra (adelantado, es prerequisito del Carrito).
-12. ✅ **Carrito (RF-16)**: persistente y segmentado por (sucursal × cliente × tipo), renta/venta separados.
-13. ✅ **Renta (RF-3)**: crear (fechas/importe/depósito) + máquina de estados + vencidas.
-14. ✅ **Devolución (RF-5)**: checklist por pieza + liquidación del depósito.
-15. ✅ **Venta/POS (RF-4)**: venta con líneas, descuento y total, a nombre del empleado.
-16. ✅ **Pagos (RF-6)**: pago ligado a renta/venta, métodos e idempotencia. ⬜ Falta caja/turno y corte (RF-6.3/6.10).
-17. ✅ **Reportes (RF-9)**: resumen de ingresos por renta/venta (read-model). ⬜ Falta ganancia, filtros y export.
-18. ✅ **Notificaciones (RF-11)** · ✅ **Configuración (RF-12)** · ✅ **Marketplace/App cliente (RF-18.1)**.
-19. 🎉 **Listado de módulos de §7 completo** (una primera rebanada vertical, verde y multi-tenant por módulo).
-    **Siguiente fase — profundizar:** completar cada módulo (ver los "Falta" del Tablero y del registro), y las
-    piezas transversales: aislamiento multi-tenant **forzado** (filtro por contexto, §5.4), **eventos de dominio**
-    (devolución→multa, venta→baja de stock, §5.5), **OpenAPI contract-first** (§5.6) y **offline/outbox** (§5.7).
+## Estado actual → ver el tablero de arriba y el de módulos
+> ⚠️ Las antiguas secciones "Pendiente de revisión" y "Próximo paso concreto" quedaron **obsoletas** y se
+> retiraron por causar confusión: todo lo que antes figuraba "en la rama esperando revisión" **ya está
+> mergeado en `main` (PR #6→#12)**. La **única verdad del estado actual** es el tablero del principio de este
+> archivo (✅ hecho / 🔵 en PR / ⬜ pendiente / 🚫 bloqueado) + el **Tablero de módulos** de abajo. El detalle
+> cronológico (qué se hizo y cuándo, con lo que en su día estaba pendiente) vive en el **Registro de sesiones**.
 
 ## Tablero de módulos
-Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
+Estado: ✅ hecho y **mergeado en `main`** · 🔵 en **PR abierta** (sin mergear) · 🟨 parcial · ⬜ sin empezar
 
-| Módulo | Rigor | Estado | Ref |
+| Módulo | Rigor | Estado | Detalle (mergeado salvo que diga PR) |
 |---|---|---|---|
-| Andamiaje + control anti-erosión (ArchUnit/Modulith/CI) | — | ✅ | §5.3 — mergeado a `main` (PR #1) |
-| Identidad y tenant (Empresa/Sucursal/Usuario/permisos/auth) | Hexagonal | 🟨 | RF-1, RF-15, RF-17.4 — Empresa (PR #2/#3/#5), Sucursal (PR #4), auth+autorización (PR #6/#7). Falta refresh token y permisos granulares |
-| Catálogo y taxonomía (etiquetas, categorías) | Hexagonal | 🟨 | RF-2.7 — Categoría + TipoEtiqueta/ValorEtiqueta (PR #7); falta aplicabilidad tipo↔categoría y GrupoDeStock |
-| Inventario y disponibilidad | Hexagonal | 🟨 | RF-2 — Prenda + GrupoDeStock (PR #7); falta variante por etiquetas y disponibilidad derivada |
-| Pedidos / carrito | Hexagonal | 🟨 | RF-16 — carrito segmentado + líneas (PR #7); falta confirmar/checkout y offline |
-| Rentas | Hexagonal | 🟨 | RF-3 — crear + importe + estados (PR #7); falta disponibilidad por fechas y extensión |
-| Ventas / POS | Hexagonal | 🟨 | RF-4 — venta con líneas + descuento + total (PR #7); falta descuento de stock y comprobante |
-| Pagos, caja y depósitos | Hexagonal | 🟨 | RF-6 — pago ligado + método + idempotencia (PR #7); falta caja/turno y corte |
-| Devoluciones y multas | Hexagonal | 🟨 | RF-5 — checklist + liquidación (PR #7); falta multas auto y actualizar inventario |
-| Clientes | Simple | 🟨 | RF-7 — ficha + búsqueda + lista negra (PR #7); falta historial (RF-7.2) |
-| Empleados | Simple | ⬜ | RF-8 |
-| Reportes | Simple (lectura) | 🟨 | RF-9 — resumen de ingresos (PR #7); falta ganancia, filtros y export |
-| Notificaciones (WhatsApp / FCM) | Simple (adaptador) | 🟨 | RF-11 — envío por canal (log) + estados (PR #7); falta WhatsApp/FCM reales y recordatorios automáticos |
-| Configuración de empresa | Simple | 🟨 | RF-12 — interruptores de módulos (PR #7); falta aplicarlos en cada módulo |
-| App cliente (marketplace) | — | 🟨 | RF-18 — descubrimiento de empresas ACTIVAS (PR #7); falta catálogo/checkout del cliente |
+| Andamiaje + anti-erosión (ArchUnit/Modulith/CI) | — | ✅ | PR #1 |
+| Identidad y tenant (Empresa/Sucursal/Usuario/auth) | Hexagonal | 🟨 | Auth JWT + rol/tenant + bootstrap + §5.4 forzado hechos. ⬜ Falta refresh token + recuperación (RF-1.1) y permisos granulares (RF-1.5) |
+| Catálogo y taxonomía (etiquetas, categorías) | Hexagonal | ✅ | Categoría, TipoEtiqueta/ValorEtiqueta, tipo↔categoría, renombrar, siembra al aprobar |
+| Inventario y disponibilidad | Hexagonal | 🟨 | Prenda, GrupoDeStock, variantes reales, stock-bajo. ⬜ Falta transferencias entre sucursales + ajustes con motivo (RF-10) |
+| Disfraces (capa 3) | Hexagonal | ✅ | Disfraz+Slot+pool + disponibilidad derivada |
+| Pedidos / carrito | Hexagonal | 🟨 | Carrito segmentado + checkout→venta. ⬜ Falta checkout de RENTA (fechas por línea) |
+| Rentas | Hexagonal | 🟨 | Crear + estados + disponibilidad por fechas + advisory lock + idempotencia. ⬜ Falta extensión/renovación, multi-artículo, asistido |
+| Ventas / POS | Hexagonal | ✅ | Venta + descuento + total + baja de stock atómica (anti-sobreventa) |
+| Pagos, caja y depósitos | Hexagonal | 🔵 | Base (reembolsos/saldo/idempotencia) mergeado; **mixto+vuelto, depósito-retención, comprobante, impuestos en PR #13** |
+| Caja / turno | Hexagonal | ✅ | Turno + movimientos + corte y cuadre por método |
+| Devoluciones y multas | Hexagonal | 🟨 | Checklist + multa (respeta switch) + inventario + evento. ⬜ Falta devolución parcial (RF-5.5) |
+| Clientes | Simple | 🟨 | Ficha + búsqueda + lista negra. ⬜ Falta historial (RF-7.2), foto/ID, filtros de pendientes (11.5/11.6) |
+| Empleados | Simple | ⬜ | RF-8 — sin empezar |
+| Reportes | Simple (lectura) | 🟨 | Ingresos + ganancia (ingreso−costo). ⬜ Falta lo real: utilización, rankings, vencidas, por empleado, depósitos, export PDF/CSV, tablero (RF-9) — **siguiente bloque** |
+| Notificaciones (WhatsApp/FCM) | Simple (adaptador) | 🟨 | Envío por canal (log) + estados + disparador de multas por evento. ⬜ Falta recordatorio de vencidas (RF-11.1); WhatsApp/FCM reales = 🚫 infra |
+| Configuración de empresa | Simple | 🟨 | Interruptores (multas real) + tasa de impuesto (PR #13). ⬜ Falta que TODOS los switches controlen comportamiento + defaults/backup (RF-12.2/3) |
+| Auditoría | Simple | ✅ | Registro por domain events |
+| App cliente (marketplace) | — | 🟨 | Descubrimiento + búsqueda por texto de empresas ACTIVAS. ⬜ Falta catálogo/checkout del cliente |
 
 ## Decisiones aceptadas
 - **Plan de cierre (2026-07-04, `CIERRE_BACKEND.md` de Juan):** cerrar el backend en **3 tandas** (T1=P0+P1,
@@ -165,13 +96,10 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
   de `suspender`. Pendiente reflejarlo en `BACKEND_REQUIREMENTS.md` (RF-15.3).
 
 ## Decisiones pendientes (resolver antes de tocar su tema)
-- **Convención de nombres (a confirmar por Juan).** Se usó **lenguaje de dominio en español**
-  también en métodos/puertos (`Empresa`, `EstadoEmpresa`, `registrar`, `aprobar`, `guardar`,
-  `ejecutar`), interpretando el glosario §0 + "lenguaje de dominio en español" de CLAUDE.md.
-  Si Juan prefiere inglés para lo no-dominio (`save`/`findById`/`execute`), se renombra
-  (es mecánico). Decidir antes de crecer el módulo.
-- Pasarela de pago concreta (cuando se active el pago en línea, RF-6.11).
-- UX de descubrimiento del marketplace (búsqueda, cercanía, filtros, reseñas — RF-18).
+- **Pasarela de pago concreta** (cuando se active el pago en línea, RF-6.11) — 🚫 decisión/infra.
+- **UX de descubrimiento del marketplace** (búsqueda, cercanía, filtros, reseñas — RF-18).
+- _(Resueltas y retiradas de esta lista: **impuestos** RF-6.5 → tasa única impuesto-incluido en la PR #13;
+  **convención de nombres** → de facto aceptada, español en dominio, usado sin objeción en 12 PRs.)_
 
 ## Deuda / a sanear
 - ✅ **RESUELTO (PR #7)** — ~~Secreto JWT por defecto bloqueante en producción~~: ahora hay fail-fast
@@ -179,10 +107,9 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
   **setear `COSTUMI_JWT_SECRET` por entorno**.
 - ✅ **RESUELTO (PR #7)** — ~~Endpoints sin control de rol/tenant~~: ciclo de vida de Empresa y cola de
   pendientes exigen SUPERADMIN; alta de Sucursal exige DUENO/ENCARGADO + dueño del tenant.
-- **Referencias cross-módulo por id sin validar el tenant.** `Prenda.categoria_id` (inventario→catalogo)
-  tiene FK a `categoria` (garantiza existencia) pero **no valida por código que la categoría sea del
-  mismo tenant** (falta un puerto/API pública de `catalogo` consumible desde `inventario`, estilo
-  Spring Modulith `@NamedInterface`). Riesgo bajo hoy; cerrar al definir las APIs entre módulos.
+- ✅ **RESUELTO (§5.4, PR #9/#10)** — ~~Referencias cross-módulo por id sin validar el tenant~~: ahora toda
+  referencia (categoría de la prenda; prenda fija/categoría/valores del pool del disfraz) se valida contra el
+  tenant vía las APIs públicas entre módulos, y el `find()` por PK va forzado por el `@Filter` (`findFirstById`).
 
 ## A re-verificar cada sesión (invariantes)
 - ¿ArchUnit y Modulith siguen en verde?
@@ -191,6 +118,14 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-06 (b)** — **Revisión de Juan sobre PR #13 atendida + saneo del PROGRESS.** (1) El **cobro mixto**
+  ahora valida que la suma de porciones = **saldo pendiente** (total del concepto − ya cobrado): cobrar de más o
+  de menos → 400; Pagos consulta el total vía `ConsultaDeVentas.totalDeVenta`/`ConsultaDeRentas.importeDeRenta`.
+  (2) **Impuestos RESUELTOS** (decisión de Juan, opción a): tasa única por empresa en `ConfiguracionEmpresa`,
+  precio **impuesto-incluido**, desglose base+impuesto en el comprobante (V26). (3) **PROGRESS saneado**: se
+  retiraron las secciones obsoletas "Pendiente de revisión" y "Próximo paso concreto" (listaban como pendientes
+  cosas ya mergeadas) y se reescribió el **Tablero de módulos** con el estado real, porque contradecían el tablero
+  de arriba y confundían. **241 verdes.** Todo en PR #13.
 - **2026-07-06** — **Cierre del backend (arranque), bloque #1 Pagos completos (RF-6).** Tras aprobar/mergear
   la PR #12, Juan dio el backlog de cierre (Pagos, Reportes, Config, Clientes, permisos/empleados, reabastecimiento,
   huecos renta/dev, recordatorios, plataforma, OpenAPI) y la **regla de repos separados** (backend aquí, Android en su

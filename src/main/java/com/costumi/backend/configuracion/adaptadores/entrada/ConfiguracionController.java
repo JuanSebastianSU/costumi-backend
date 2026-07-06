@@ -32,8 +32,9 @@ class ConfiguracionController {
 	@PutMapping
 	ConfiguracionResponse actualizar(@RequestBody ConfiguracionRequest request, @AuthenticationPrincipal Jwt jwt) {
 		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		java.math.BigDecimal tasa = request.tasaImpuesto() == null ? java.math.BigDecimal.ZERO : request.tasaImpuesto();
 		return ConfiguracionResponse.desde(gestionarConfiguracion.actualizar(new ActualizarConfiguracionComando(
 				empresaId, request.conteoStock(), request.multasActivo(), request.multiSucursal(),
-				request.pagoEnLinea())));
+				request.pagoEnLinea(), tasa)));
 	}
 }

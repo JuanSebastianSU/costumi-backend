@@ -64,7 +64,8 @@ class ConfiguracionIntegrationTest {
 		mvc.perform(get("/api/v1/configuracion").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.conteoStock").value(true))
-				.andExpect(jsonPath("$.multiSucursal").value(false));
+				.andExpect(jsonPath("$.multiSucursal").value(false))
+				.andExpect(jsonPath("$.tasaImpuesto").value(0)); // impuesto por defecto 0 (RF-6.5)
 
 		mvc.perform(put("/api/v1/configuracion").header("Authorization", "Bearer " + dueno)
 						.contentType(MediaType.APPLICATION_JSON)
@@ -76,6 +77,23 @@ class ConfiguracionIntegrationTest {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.multiSucursal").value(true))
 				.andExpect(jsonPath("$.conteoStock").value(false));
+	}
+
+	@Test
+	void configura_la_tasa_de_impuesto_de_la_empresa() throws Exception {
+		montar();
+		String dueno = tokenRol(Rol.DUENO);
+
+		mvc.perform(put("/api/v1/configuracion").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"conteoStock\":true,\"multasActivo\":true,\"multiSucursal\":false,"
+								+ "\"pagoEnLinea\":false,\"tasaImpuesto\":0.19}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.tasaImpuesto").value(0.19));
+
+		mvc.perform(get("/api/v1/configuracion").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.tasaImpuesto").value(0.19));
 	}
 
 	@Test

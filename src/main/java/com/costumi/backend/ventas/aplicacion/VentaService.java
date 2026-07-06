@@ -2,6 +2,7 @@ package com.costumi.backend.ventas.aplicacion;
 
 import com.costumi.backend.inventario.AjusteDeInventario;
 import com.costumi.backend.inventario.ConsultaDeInventario;
+import com.costumi.backend.ventas.ConsultaDeVentas;
 import com.costumi.backend.ventas.RegistroDeVentas;
 import com.costumi.backend.ventas.dominio.LineaDeVenta;
 import com.costumi.backend.ventas.dominio.Venta;
@@ -11,11 +12,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /** Casos de uso de Ventas, acotados a la empresa (tenant). */
 @Service
-class VentaService implements RegistrarVenta, ConsultarVentas, RegistroDeVentas {
+class VentaService implements RegistrarVenta, ConsultarVentas, RegistroDeVentas, ConsultaDeVentas {
 
 	private final VentaRepository ventas;
 	private final ConsultaDeInventario inventario;
@@ -48,6 +50,14 @@ class VentaService implements RegistrarVenta, ConsultarVentas, RegistroDeVentas 
 	@Transactional(readOnly = true)
 	public List<Venta> deEmpresa(UUID empresaId) {
 		return ventas.listarPorEmpresa(empresaId);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public Optional<BigDecimal> totalDeVenta(UUID empresaId, UUID ventaId) {
+		return ventas.buscarPorId(ventaId)
+				.filter(venta -> venta.empresaId().equals(empresaId))
+				.map(Venta::total);
 	}
 
 	@Override
