@@ -13,4 +13,10 @@ public interface OperacionesReadRepository {
 
 	/** Suma de depósitos retenidos de rentas aún no cerradas/canceladas. {@code sucursalId} nulo = todas. */
 	BigDecimal depositosActivos(UUID empresaId, UUID sucursalId);
+
+	/**
+	 * Ingresos netos por método en un rango de fechas (por {@code pago.fecha}). {@code desde}/{@code hasta}
+	 * y {@code sucursalId} nulos = sin ese límite (RF-6.10/9.1).
+	 */
+	IngresosPorMetodo ingresosPorMetodo(UUID empresaId, LocalDate desde, LocalDate hasta, UUID sucursalId);
 }

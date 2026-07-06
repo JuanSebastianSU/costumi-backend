@@ -3,8 +3,10 @@ package com.costumi.backend.reportes.adaptadores.entrada;
 import com.costumi.backend.reportes.aplicacion.ConsultarGanancia;
 import com.costumi.backend.reportes.aplicacion.ConsultarIngresos;
 import com.costumi.backend.reportes.aplicacion.ConsultarOperaciones;
+import com.costumi.backend.reportes.dominio.IngresosPorMetodo;
 import com.costumi.backend.reportes.dominio.ResumenDeGanancia;
 import com.costumi.backend.reportes.dominio.ResumenDeIngresos;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -65,6 +67,15 @@ class ReporteController {
 			@AuthenticationPrincipal Jwt jwt) {
 		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
 		return new DepositosActivosResponse(consultarOperaciones.depositosActivos(empresaId, sucursalId));
+	}
+
+	@GetMapping("/ingresos-por-metodo")
+	IngresosPorMetodo ingresosPorMetodo(
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+			@RequestParam(required = false) UUID sucursalId, @AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		return consultarOperaciones.ingresosPorMetodo(empresaId, desde, hasta, sucursalId);
 	}
 
 	record DepositosActivosResponse(BigDecimal total) {

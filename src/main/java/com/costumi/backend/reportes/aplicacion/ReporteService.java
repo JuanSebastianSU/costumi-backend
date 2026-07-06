@@ -1,6 +1,7 @@
 package com.costumi.backend.reportes.aplicacion;
 
 import com.costumi.backend.reportes.dominio.GananciaReadRepository;
+import com.costumi.backend.reportes.dominio.IngresosPorMetodo;
 import com.costumi.backend.reportes.dominio.IngresosReadRepository;
 import com.costumi.backend.reportes.dominio.OperacionesReadRepository;
 import com.costumi.backend.reportes.dominio.RentaVencida;
@@ -51,5 +52,11 @@ class ReporteService implements ConsultarIngresos, ConsultarGanancia, ConsultarO
 	@Transactional(readOnly = true)
 	public BigDecimal depositosActivos(UUID empresaId, UUID sucursalId) {
 		return operaciones.depositosActivos(empresaId, sucursalId);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public IngresosPorMetodo ingresosPorMetodo(UUID empresaId, LocalDate desde, LocalDate hasta, UUID sucursalId) {
+		return operaciones.ingresosPorMetodo(empresaId, desde, hasta, sucursalId);
 	}
 }

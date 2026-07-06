@@ -71,6 +71,15 @@ class ReporteIntegrationTest {
 				.andExpect(status().isCreated());
 	}
 
+	private void pago(String token, String tipo, String monto, String metodo, String tipoPago) throws Exception {
+		mvc.perform(post("/api/v1/pagos").header("Authorization", "Bearer " + token)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + sucursal + "\",\"tipoConcepto\":\"" + tipo + "\",\"conceptoId\":\""
+								+ UUID.randomUUID() + "\",\"monto\":" + monto + ",\"metodo\":\"" + metodo
+								+ "\",\"tipoPago\":\"" + tipoPago + "\"}"))
+				.andExpect(status().isCreated());
+	}
+
 	@Test
 	void el_resumen_suma_los_ingresos_por_tipo() throws Exception {
 		montar();
@@ -151,6 +160,31 @@ class ReporteIntegrationTest {
 						.header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.length()").value(0));
+	}
+
+	@Test
+	void reporta_ingresos_netos_por_metodo() throws Exception {
+		montar();
+		String dueno = tokenRol(Rol.DUENO);
+		// Cobros: efectivo 100, tarjeta 50, transferencia 30. Reembolso efectivo 20. Depósito tarjeta 200 (no ingreso).
+		pago(dueno, "VENTA", "100.00", "EFECTIVO", "COBRO");
+		pago(dueno, "VENTA", "50.00", "TARJETA", "COBRO");
+		pago(dueno, "RENTA", "30.00", "TRANSFERENCIA", "COBRO");
+		pago(dueno, "VENTA", "20.00", "EFECTIVO", "REEMBOLSO");
+		pago(dueno, "RENTA", "200.00", "TARJETA", "DEPOSITO");
+
+		mvc.perform(get("/api/v1/reportes/ingresos-por-metodo").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.efectivo").value(80.00)) // 100 − 20 reembolso
+				.andExpect(jsonPath("$.tarjeta").value(50.00)) // el depósito 200 NO es ingreso
+				.andExpect(jsonPath("$.transferencia").value(30.00))
+				.andExpect(jsonPath("$.total").value(160.00));
+
+		// Rango en el futuro -> sin ingresos.
+		mvc.perform(get("/api/v1/reportes/ingresos-por-metodo").param("desde", "2099-01-01")
+						.header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.total").value(0));
 	}
 
 	@Test
