@@ -62,9 +62,13 @@ class DevolucionIntegrationTest {
 				+ "\",\"nombre\":\"Camisa\",\"tipoArticulo\":\"RENTA\",\"precioRenta\":20.00}");
 		this.prenda = prenda;
 		postId("/api/v1/prendas/" + prenda + "/grupos-stock", dueno, "{\"combinacion\":[],\"cantidadInicial\":1}");
-		return postId("/api/v1/rentas", dueno, "{\"sucursalId\":\"" + sucursal + "\",\"clienteId\":\"" + cliente
+		UUID renta = postId("/api/v1/rentas", dueno, "{\"sucursalId\":\"" + sucursal + "\",\"clienteId\":\"" + cliente
 				+ "\",\"prendaId\":\"" + prenda + "\",\"fechaRetiro\":\"2026-08-01\",\"fechaDevolucion\":\"2026-08-04\","
 				+ "\"precioPorDia\":20.00,\"deposito\":100.00}");
+		// La renta debe estar ACTIVA (entregada) para poder devolverse (RF-5.1).
+		mvc.perform(post("/api/v1/rentas/{id}/entregar", renta).header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk());
+		return renta;
 	}
 
 	private String dueno;
@@ -81,6 +85,7 @@ class DevolucionIntegrationTest {
 								+ "\"estado\":\"DANADA\"}]}"))
 				.andExpect(status().isCreated())
 				.andExpect(jsonPath("$.remanente").value(60.00))
+				.andExpect(jsonPath("$.multa").value(0)) // cargos 40 < depósito 100 -> sin multa (RF-5.2)
 				.andExpect(jsonPath("$.piezas.length()").value(1))
 				.andExpect(jsonPath("$.piezas[0].estado").value("DANADA"));
 
@@ -93,6 +98,11 @@ class DevolucionIntegrationTest {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$[0].disponibles").value(0))
 				.andExpect(jsonPath("$[0].danadas").value(1));
+
+		// RF-5.1: la renta quedó DEVUELTA (checklist conectado).
+		mvc.perform(get("/api/v1/rentas").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.id == '" + renta + "' && @.estado == 'DEVUELTA')]").exists());
 	}
 
 	@Test

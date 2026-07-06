@@ -44,6 +44,14 @@ public class Devolucion {
 				List.copyOf(piezas));
 	}
 
+	/**
+	 * Multa automática (RF-5.2): lo que el cliente debe <b>por encima</b> del depósito cuando los cargos
+	 * (daños + retraso) lo superan. Si el depósito los cubre, la multa es 0.
+	 */
+	public BigDecimal multa() {
+		return cargoPorDanos.add(cargoPorRetraso).subtract(deposito).max(BigDecimal.ZERO);
+	}
+
 	public static Devolucion rehidratar(UUID id, UUID empresaId, UUID rentaId, BigDecimal deposito,
 			BigDecimal cargoPorDanos, BigDecimal cargoPorRetraso, BigDecimal remanente, List<PiezaRevisada> piezas) {
 		return new Devolucion(id, empresaId, rentaId, deposito, cargoPorDanos, cargoPorRetraso, remanente, piezas);

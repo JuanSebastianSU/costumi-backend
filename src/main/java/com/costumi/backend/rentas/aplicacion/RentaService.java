@@ -52,6 +52,12 @@ class RentaService implements CrearRenta, ConsultarRentas, GestionarRenta, Consu
 	}
 
 	@Override
+	@Transactional
+	public void marcarDevuelta(UUID empresaId, UUID rentaId) {
+		aplicar(empresaId, rentaId, Renta::devolver);
+	}
+
+	@Override
 	@Transactional(readOnly = true)
 	public List<Renta> buscar(UUID empresaId, UUID clienteId) {
 		return (clienteId == null) ? rentas.listarPorEmpresa(empresaId)

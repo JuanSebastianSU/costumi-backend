@@ -170,6 +170,13 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-05 (aj)** — **Tanda 2 · Devolución: multa automática + renta→DEVUELTA + domain event (P2, RF-5.1/5.2, §5.5).**
+  `Devolucion.multa()` = exceso de (daños+retraso) sobre el depósito (0 si el depósito cubre), con tests y
+  expuesta en el response. Al registrar la devolución: se **cierra la renta** (`ConsultaDeRentas.marcarDevuelta`,
+  exige ACTIVA → si no, revierte) y se **publica `DevolucionRegistrada`** (empresa, devolución, renta, multa) como
+  **primer domain event del ciclo operativo** (§5.5), listo para que Caja/Notificaciones lo consuman. Test:
+  la renta queda DEVUELTA, multa 0 cuando el depósito cubre. **203 verdes.** _Pendiente RF-5:_ devolución
+  **parcial** (RF-5.5) y un consumidor del evento (registrar la multa como saldo del cliente / notificar).
 - **2026-07-05 (ai)** — **Tanda 2 · Devolución actualiza el inventario según el checklist (P2, RF-5.4/5.6).** Al
   registrar una devolución: (1) valida que la **renta sea del tenant** vía nuevo puerto público
   `rentas.ConsultaDeRentas.prendaDeRenta` (400 si no existe/ajena); (2) agrega el checklist por estado y

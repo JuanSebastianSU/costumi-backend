@@ -1,11 +1,13 @@
 package com.costumi.backend.devoluciones.aplicacion;
 
+import com.costumi.backend.devoluciones.DevolucionRegistrada;
 import com.costumi.backend.inventario.AjusteDeInventario;
 import com.costumi.backend.devoluciones.dominio.Devolucion;
 import com.costumi.backend.devoluciones.dominio.DevolucionRepository;
 import com.costumi.backend.devoluciones.dominio.EstadoPieza;
 import com.costumi.backend.devoluciones.dominio.PiezaRevisada;
 import com.costumi.backend.rentas.ConsultaDeRentas;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,11 +21,14 @@ class DevolucionService implements RegistrarDevolucion, ConsultarDevoluciones {
 	private final DevolucionRepository devoluciones;
 	private final ConsultaDeRentas rentas;
 	private final AjusteDeInventario inventario;
+	private final ApplicationEventPublisher eventos;
 
-	DevolucionService(DevolucionRepository devoluciones, ConsultaDeRentas rentas, AjusteDeInventario inventario) {
+	DevolucionService(DevolucionRepository devoluciones, ConsultaDeRentas rentas, AjusteDeInventario inventario,
+			ApplicationEventPublisher eventos) {
 		this.devoluciones = devoluciones;
 		this.rentas = rentas;
 		this.inventario = inventario;
+		this.eventos = eventos;
 	}
 
 	@Override
@@ -39,8 +44,14 @@ class DevolucionService implements RegistrarDevolucion, ConsultarDevoluciones {
 		int perdidas = contar(comando.piezas(), EstadoPieza.PERDIDA);
 		inventario.procesarRetornoDeRenta(comando.empresaId(), prendaId, danadas, enLimpieza, perdidas);
 
-		return devoluciones.guardar(Devolucion.crear(comando.empresaId(), comando.rentaId(), comando.deposito(),
-				comando.cargoPorDanos(), comando.cargoPorRetraso(), comando.piezas()));
+		Devolucion devolucion = devoluciones.guardar(Devolucion.crear(comando.empresaId(), comando.rentaId(),
+				comando.deposito(), comando.cargoPorDanos(), comando.cargoPorRetraso(), comando.piezas()));
+
+		// Cierra la renta (RF-5.1) y publica el evento con la multa automática (RF-5.2, §5.5).
+		rentas.marcarDevuelta(comando.empresaId(), comando.rentaId());
+		eventos.publishEvent(new DevolucionRegistrada(comando.empresaId(), devolucion.id(), comando.rentaId(),
+				devolucion.multa()));
+		return devolucion;
 	}
 
 	@Override
