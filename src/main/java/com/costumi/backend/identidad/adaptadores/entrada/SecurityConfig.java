@@ -79,6 +79,7 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.POST, "/api/v1/caja/turnos", "/api/v1/caja/turnos/*/movimientos",
 								"/api/v1/caja/turnos/*/cerrar").hasAnyRole("DUENO", "ENCARGADO", "MOSTRADOR", "ATENCION")
 						.requestMatchers(HttpMethod.GET, "/api/v1/reportes/**").hasAnyRole("DUENO", "ENCARGADO")
+						.requestMatchers(HttpMethod.GET, "/api/v1/auditoria").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.PUT, "/api/v1/configuracion").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.POST, "/api/v1/notificaciones").hasAnyRole("DUENO", "ENCARGADO", "ATENCION")
 						.anyRequest().authenticated())

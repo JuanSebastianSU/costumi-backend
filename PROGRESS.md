@@ -175,6 +175,11 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-05 (ar)** — **Tanda 2/P3 · Auditoría dirigida por eventos (RF-0.5/15.5).** Nuevo módulo `auditoria`:
+  `RegistroDeAuditoria` (inmutable) + `AuditoriaDeEventos` (@EventListener) que registra a partir de los domain
+  events (§5.5): `EmpresaAprobada`→EMPRESA_APROBADA, `DevolucionRegistrada`→DEVOLUCION_REGISTRADA. A medida que
+  más operaciones publiquen eventos se añaden aquí sin tocar esos módulos. Persistencia **V23** (`@Filter`),
+  `GET /api/v1/auditoria` (DUENO/ENCARGADO, acotado al tenant). Test: aprobar empresa deja el registro. **223 verdes.**
 - **2026-07-05 (aq)** — **Tanda 2/P3 · Pagos: reembolsos + saldo neto por operación (RF-6.9).** `Pago` gana
   `TipoPago` (COBRO/REEMBOLSO, **V22**) y `montoNeto()` (cobro suma, reembolso resta). Nuevo `GET /api/v1/pagos/
   saldo?conceptoId=` → saldo neto (cobros − reembolsos) de la renta/venta. Tests dominio + integración (cobro 100 −
