@@ -69,4 +69,18 @@ class PagoService implements RegistrarPago, ConsultarPagos, RegistrarCobroMixto 
 	public BigDecimal saldoNeto(UUID empresaId, UUID conceptoId) {
 		return pagos.saldoNetoPorConcepto(empresaId, conceptoId);
 	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public EstadoDeposito estadoDeposito(UUID empresaId, UUID conceptoId) {
+		List<Pago> delConcepto = pagos.listarPorConcepto(empresaId, conceptoId);
+		BigDecimal retenido = sumaPorTipo(delConcepto, TipoPago.DEPOSITO);
+		BigDecimal devuelto = sumaPorTipo(delConcepto, TipoPago.DEVOLUCION_DEPOSITO);
+		return new EstadoDeposito(conceptoId, retenido, devuelto, retenido.subtract(devuelto));
+	}
+
+	private static BigDecimal sumaPorTipo(List<Pago> pagos, TipoPago tipo) {
+		return pagos.stream().filter(p -> p.tipoPago() == tipo).map(Pago::monto)
+				.reduce(BigDecimal.ZERO, BigDecimal::add);
+	}
 }

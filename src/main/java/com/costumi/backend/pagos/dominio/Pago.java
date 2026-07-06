@@ -59,9 +59,28 @@ public class Pago {
 				referencia, fecha, claveIdempotencia);
 	}
 
-	/** Monto neto: el cobro suma, el reembolso resta (para el saldo de la operación, RF-6.9). */
+	/**
+	 * Monto neto de <b>ingreso</b> de la operación (RF-6.9): el cobro suma, el reembolso resta. El
+	 * depósito y su devolución son retención, <b>no ingreso</b> (RF-6.2), así que no cuentan aquí.
+	 */
 	public BigDecimal montoNeto() {
-		return tipoPago == TipoPago.REEMBOLSO ? monto.negate() : monto;
+		return switch (tipoPago) {
+			case COBRO -> monto;
+			case REEMBOLSO -> monto.negate();
+			case DEPOSITO, DEVOLUCION_DEPOSITO -> BigDecimal.ZERO;
+		};
+	}
+
+	/**
+	 * Aporte a la <b>retención de garantía</b> (RF-6.2/6.8): el depósito retiene (+), su devolución
+	 * libera (−); los cobros/reembolsos normales no afectan la retención.
+	 */
+	public BigDecimal retencionDeGarantia() {
+		return switch (tipoPago) {
+			case DEPOSITO -> monto;
+			case DEVOLUCION_DEPOSITO -> monto.negate();
+			case COBRO, REEMBOLSO -> BigDecimal.ZERO;
+		};
 	}
 
 	public TipoPago tipoPago() {

@@ -27,6 +27,22 @@ class PagoTest {
 	}
 
 	@Test
+	void el_deposito_no_es_ingreso_pero_si_retencion() {
+		Pago deposito = Pago.registrar(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), TipoConcepto.RENTA,
+				UUID.randomUUID(), new BigDecimal("100.00"), TipoPago.DEPOSITO, MetodoPago.EFECTIVO, null, null);
+		Pago devolucion = Pago.registrar(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), TipoConcepto.RENTA,
+				UUID.randomUUID(), new BigDecimal("70.00"), TipoPago.DEVOLUCION_DEPOSITO, MetodoPago.EFECTIVO, null,
+				null);
+
+		// No suman al ingreso de la operación (RF-6.2)...
+		assertThat(deposito.montoNeto()).isEqualByComparingTo("0");
+		assertThat(devolucion.montoNeto()).isEqualByComparingTo("0");
+		// ...pero sí a la retención de garantía: el depósito retiene (+), su devolución libera (−) (RF-6.8).
+		assertThat(deposito.retencionDeGarantia()).isEqualByComparingTo("100.00");
+		assertThat(devolucion.retencionDeGarantia()).isEqualByComparingTo("-70.00");
+	}
+
+	@Test
 	void registrar_un_pago_valido() {
 		Pago p = pago(new BigDecimal("40.00"));
 

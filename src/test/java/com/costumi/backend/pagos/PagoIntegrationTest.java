@@ -181,6 +181,40 @@ class PagoIntegrationTest {
 	}
 
 	@Test
+	void el_deposito_se_rastrea_como_retencion_aparte_y_no_como_ingreso() throws Exception {
+		UUID sucursal = sucursalDePrueba();
+		UUID concepto = UUID.randomUUID();
+
+		// Se retiene la garantía (100) como movimiento aparte (RF-6.2/6.8).
+		mvc.perform(post("/api/v1/pagos").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + sucursal + "\",\"tipoConcepto\":\"RENTA\",\"conceptoId\":\""
+								+ concepto + "\",\"monto\":100.00,\"tipoPago\":\"DEPOSITO\",\"metodo\":\"TARJETA\"}"))
+				.andExpect(status().isCreated());
+
+		// Se devuelve el remanente (70) al liquidar.
+		mvc.perform(post("/api/v1/pagos").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + sucursal + "\",\"tipoConcepto\":\"RENTA\",\"conceptoId\":\""
+								+ concepto + "\",\"monto\":70.00,\"tipoPago\":\"DEVOLUCION_DEPOSITO\",\"metodo\":\"TARJETA\"}"))
+				.andExpect(status().isCreated());
+
+		// La garantía activa es 100 − 70 = 30.
+		mvc.perform(get("/api/v1/pagos/deposito").param("conceptoId", concepto.toString())
+						.header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.retenido").value(100.00))
+				.andExpect(jsonPath("$.devuelto").value(70.00))
+				.andExpect(jsonPath("$.activo").value(30.00));
+
+		// El depósito NO cuenta como ingreso de la operación: el saldo neto sigue en 0 (RF-6.2).
+		mvc.perform(get("/api/v1/pagos/saldo").param("conceptoId", concepto.toString())
+						.header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.saldoNeto").value(0));
+	}
+
+	@Test
 	void sin_token_devuelve_401() throws Exception {
 		mvc.perform(get("/api/v1/pagos").param("conceptoId", UUID.randomUUID().toString()))
 				.andExpect(status().isUnauthorized());

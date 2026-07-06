@@ -80,6 +80,13 @@ class PagoController {
 		return new SaldoResponse(conceptoId, consultarPagos.saldoNeto(empresaId, conceptoId));
 	}
 
+	@GetMapping("/deposito")
+	com.costumi.backend.pagos.aplicacion.EstadoDeposito deposito(@RequestParam UUID conceptoId,
+			@AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		return consultarPagos.estadoDeposito(empresaId, conceptoId);
+	}
+
 	record SaldoResponse(UUID conceptoId, java.math.BigDecimal saldoNeto) {
 	}
 }
