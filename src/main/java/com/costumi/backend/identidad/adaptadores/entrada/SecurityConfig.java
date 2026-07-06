@@ -82,6 +82,7 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.GET, "/api/v1/auditoria").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.PUT, "/api/v1/configuracion").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.POST, "/api/v1/configuracion/import").hasAnyRole("DUENO", "ENCARGADO")
+						.requestMatchers(HttpMethod.POST, "/api/v1/notificaciones/recordar-vencidas").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.POST, "/api/v1/notificaciones").hasAnyRole("DUENO", "ENCARGADO", "ATENCION")
 						.anyRequest().authenticated())
 				.oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(convertidorDeAutoridades())));

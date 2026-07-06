@@ -3,6 +3,7 @@ package com.costumi.backend.notificaciones.adaptadores.entrada;
 import com.costumi.backend.notificaciones.aplicacion.ConsultarNotificaciones;
 import com.costumi.backend.notificaciones.aplicacion.EnviarNotificacion;
 import com.costumi.backend.notificaciones.aplicacion.EnviarNotificacionComando;
+import com.costumi.backend.notificaciones.aplicacion.RecordarVencidas;
 import com.costumi.backend.notificaciones.dominio.Notificacion;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -26,10 +27,13 @@ class NotificacionController {
 
 	private final EnviarNotificacion enviarNotificacion;
 	private final ConsultarNotificaciones consultarNotificaciones;
+	private final RecordarVencidas recordarVencidas;
 
-	NotificacionController(EnviarNotificacion enviarNotificacion, ConsultarNotificaciones consultarNotificaciones) {
+	NotificacionController(EnviarNotificacion enviarNotificacion, ConsultarNotificaciones consultarNotificaciones,
+			RecordarVencidas recordarVencidas) {
 		this.enviarNotificacion = enviarNotificacion;
 		this.consultarNotificaciones = consultarNotificaciones;
+		this.recordarVencidas = recordarVencidas;
 	}
 
 	@PostMapping
@@ -40,6 +44,15 @@ class NotificacionController {
 				empresaId, request.clienteId(), request.canal(), request.mensaje()));
 		URI location = uriBuilder.path("/api/v1/notificaciones/{id}").buildAndExpand(notificacion.id()).toUri();
 		return ResponseEntity.created(location).body(NotificacionResponse.desde(notificacion));
+	}
+
+	@PostMapping("/recordar-vencidas")
+	RecordatorioResponse recordarVencidas(@AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		return new RecordatorioResponse(recordarVencidas.ejecutar(empresaId));
+	}
+
+	record RecordatorioResponse(int enviadas) {
 	}
 
 	@GetMapping
