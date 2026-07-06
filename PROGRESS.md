@@ -182,6 +182,19 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-06** — **Cierre del backend (arranque), bloque #1 Pagos completos (RF-6).** Tras aprobar/mergear
+  la PR #12, Juan dio el backlog de cierre (Pagos, Reportes, Config, Clientes, permisos/empleados, reabastecimiento,
+  huecos renta/dev, recordatorios, plataforma, OpenAPI) y la **regla de repos separados** (backend aquí, Android en su
+  repo aparte, unidos solo por OpenAPI). Rama `feat/cierre-pagos-rf6`, 3 commits, 237 verdes:
+  (1) **cobro mixto + vuelto (RF-6.7)** — `POST /api/v1/pagos/mixto`, dominio `CobroMixto` reparte en porciones por
+  método, calcula vuelto y rechaza efectivo insuficiente; cada porción hereda la idempotencia con sufijo.
+  (2) **depósito como retención separada (RF-6.2/6.8)** — `TipoPago.DEPOSITO`/`DEVOLUCION_DEPOSITO` no cuentan como
+  ingreso (`montoNeto`=0), se rastrean como garantía; `GET /api/v1/pagos/deposito` da retenido/devuelto/activo; V25
+  amplía `tipo_pago` a varchar(20). (3) **comprobante/recibo (RF-6.5)** — `GET /api/v1/pagos/comprobante` agrega
+  pagos y totales. Parciales/saldos y reembolsos ya existían.
+  **DECISIÓN PENDIENTE (no inventar):** modelo de **impuestos configurables** (RF-6.5/12.2) — el spec lista
+  "impuestos" pero no define base/tasa/inclusión; falta que Juan decida. El **render PDF/impresión** del comprobante
+  se hará en el export de Reportes (RF-9.2). **Pasarela (RF-6.11), S3 y WhatsApp/FCM** siguen bloqueados por infra.
 - **2026-07-05 (av)** — **Fixes de la revisión final de Juan (PR #11).** (1) **Multa respeta el switch (RF-6.6):**
   `DevolucionService` consulta `multasActivas` y con el módulo OFF pone el `cargoPorRetraso` en 0 → no se cobra ni
   reduce el remanente (el daño sí se recupera, no es multa). (2) **Sobreventa:** `AjusteDeInventarioService` toma un
