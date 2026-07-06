@@ -215,6 +215,34 @@ class PagoIntegrationTest {
 	}
 
 	@Test
+	void el_comprobante_agrega_los_pagos_y_los_totales_de_la_operacion() throws Exception {
+		UUID sucursal = sucursalDePrueba();
+		UUID concepto = UUID.randomUUID();
+
+		// Cobro 100, reembolso 30, depósito 50 (RF-6.5: el recibo agrega todo).
+		for (String cuerpo : new String[] {
+				"{\"sucursalId\":\"" + sucursal + "\",\"tipoConcepto\":\"VENTA\",\"conceptoId\":\"" + concepto
+						+ "\",\"monto\":100.00,\"metodo\":\"EFECTIVO\"}",
+				"{\"sucursalId\":\"" + sucursal + "\",\"tipoConcepto\":\"VENTA\",\"conceptoId\":\"" + concepto
+						+ "\",\"monto\":30.00,\"tipoPago\":\"REEMBOLSO\",\"metodo\":\"EFECTIVO\"}",
+				"{\"sucursalId\":\"" + sucursal + "\",\"tipoConcepto\":\"VENTA\",\"conceptoId\":\"" + concepto
+						+ "\",\"monto\":50.00,\"tipoPago\":\"DEPOSITO\",\"metodo\":\"TARJETA\"}" }) {
+			mvc.perform(post("/api/v1/pagos").header("Authorization", "Bearer " + dueno)
+					.contentType(MediaType.APPLICATION_JSON).content(cuerpo)).andExpect(status().isCreated());
+		}
+
+		mvc.perform(get("/api/v1/pagos/comprobante").param("conceptoId", concepto.toString())
+						.header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.conceptoId").value(concepto.toString()))
+				.andExpect(jsonPath("$.pagos.length()").value(3))
+				.andExpect(jsonPath("$.totalCobrado").value(100.00))
+				.andExpect(jsonPath("$.totalReembolsado").value(30.00))
+				.andExpect(jsonPath("$.saldoNeto").value(70.00)) // 100 − 30; el depósito no es ingreso
+				.andExpect(jsonPath("$.deposito.activo").value(50.00));
+	}
+
+	@Test
 	void sin_token_devuelve_401() throws Exception {
 		mvc.perform(get("/api/v1/pagos").param("conceptoId", UUID.randomUUID().toString()))
 				.andExpect(status().isUnauthorized());

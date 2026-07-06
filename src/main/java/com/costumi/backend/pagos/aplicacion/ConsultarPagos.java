@@ -16,4 +16,7 @@ public interface ConsultarPagos {
 
 	/** Estado de la garantía retenida de la operación (retenido/devuelto/activo), RF-6.2/6.8. */
 	EstadoDeposito estadoDeposito(UUID empresaId, UUID conceptoId);
+
+	/** Comprobante/recibo de la operación: detalle de pagos y totales derivados, RF-6.5. */
+	Comprobante comprobante(UUID empresaId, UUID conceptoId);
 }

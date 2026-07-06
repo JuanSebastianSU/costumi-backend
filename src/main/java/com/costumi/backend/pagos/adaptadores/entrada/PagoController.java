@@ -87,6 +87,12 @@ class PagoController {
 		return consultarPagos.estadoDeposito(empresaId, conceptoId);
 	}
 
+	@GetMapping("/comprobante")
+	ComprobanteResponse comprobante(@RequestParam UUID conceptoId, @AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		return ComprobanteResponse.desde(consultarPagos.comprobante(empresaId, conceptoId));
+	}
+
 	record SaldoResponse(UUID conceptoId, java.math.BigDecimal saldoNeto) {
 	}
 }
