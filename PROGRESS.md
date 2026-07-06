@@ -170,6 +170,10 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-05 (ak)** — **Tanda 2/P3 · Prenda: costo de adquisición + depósito sugerido (RF-2.10).** `Prenda`
+  gana `costoAdquisicion` y `depositoSugerido` (opcionales, no negativos), migración **V20**, en dominio/entidad/
+  DTOs. Es la base del **margen** para los reportes (ganancia = ingreso − costo). Tests dominio + integración.
+  **206 verdes.**
 - **2026-07-05 (aj)** — **Tanda 2 · Devolución: multa automática + renta→DEVUELTA + domain event (P2, RF-5.1/5.2, §5.5).**
   `Devolucion.multa()` = exceso de (daños+retraso) sobre el depósito (0 si el depósito cubre), con tests y
   expuesta en el response. Al registrar la devolución: se **cierra la renta** (`ConsultaDeRentas.marcarDevuelta`,

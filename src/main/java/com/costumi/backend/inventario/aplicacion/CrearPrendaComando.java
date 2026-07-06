@@ -11,7 +11,8 @@ import java.util.UUID;
  * son los valores de etiqueta que la clasifican (RF-2.7, Capa 2); vacía/ausente = prenda sin clasificar.
  */
 public record CrearPrendaComando(UUID empresaId, UUID categoriaId, String nombre, TipoArticulo tipoArticulo,
-		BigDecimal precioRenta, BigDecimal precioVenta, List<EtiquetaSeleccionada> etiquetas) {
+		BigDecimal precioRenta, BigDecimal precioVenta, BigDecimal costoAdquisicion, BigDecimal depositoSugerido,
+		List<EtiquetaSeleccionada> etiquetas) {
 
 	public CrearPrendaComando {
 		etiquetas = (etiquetas == null) ? List.of() : List.copyOf(etiquetas);

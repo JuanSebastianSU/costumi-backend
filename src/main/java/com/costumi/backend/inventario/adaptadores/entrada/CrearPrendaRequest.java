@@ -30,6 +30,10 @@ public record CrearPrendaRequest(
 
 		BigDecimal precioVenta,
 
+		BigDecimal costoAdquisicion,
+
+		BigDecimal depositoSugerido,
+
 		@Valid
 		List<EtiquetaSeleccionadaDto> etiquetas) {
 

@@ -73,4 +73,20 @@ class PrendaTest {
 
 		assertThat(prenda.etiquetas().esVacia()).isTrue();
 	}
+
+	@Test
+	void lleva_costo_de_adquisicion_y_deposito_sugerido() {
+		Prenda prenda = Prenda.crear(EMPRESA, CATEGORIA, "Traje", TipoArticulo.RENTA, new BigDecimal("50.00"), null,
+				EtiquetasDePrenda.ninguna(), new BigDecimal("120.00"), new BigDecimal("200.00"));
+
+		assertThat(prenda.costoAdquisicion()).isEqualByComparingTo("120.00");
+		assertThat(prenda.depositoSugerido()).isEqualByComparingTo("200.00");
+	}
+
+	@Test
+	void el_costo_de_adquisicion_no_puede_ser_negativo() {
+		assertThatThrownBy(() -> Prenda.crear(EMPRESA, CATEGORIA, "Traje", TipoArticulo.RENTA, new BigDecimal("50.00"),
+				null, EtiquetasDePrenda.ninguna(), new BigDecimal("-1.00"), null))
+				.isInstanceOf(IllegalArgumentException.class);
+	}
 }

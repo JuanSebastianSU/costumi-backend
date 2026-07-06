@@ -20,11 +20,14 @@ public class Prenda {
 	private final TipoArticulo tipoArticulo;
 	private BigDecimal precioRenta;
 	private BigDecimal precioVenta;
+	private BigDecimal costoAdquisicion;
+	private BigDecimal depositoSugerido;
 	private EtiquetasDePrenda etiquetas;
 	private boolean archivada;
 
 	private Prenda(UUID id, UUID empresaId, UUID categoriaId, String nombre, TipoArticulo tipoArticulo,
-			BigDecimal precioRenta, BigDecimal precioVenta, EtiquetasDePrenda etiquetas, boolean archivada) {
+			BigDecimal precioRenta, BigDecimal precioVenta, BigDecimal costoAdquisicion, BigDecimal depositoSugerido,
+			EtiquetasDePrenda etiquetas, boolean archivada) {
 		this.id = Objects.requireNonNull(id, "id");
 		this.empresaId = Objects.requireNonNull(empresaId, "empresaId");
 		this.categoriaId = Objects.requireNonNull(categoriaId, "categoriaId");
@@ -32,24 +35,35 @@ public class Prenda {
 		this.nombre = exigirNombre(nombre);
 		this.precioRenta = validarPrecio(precioRenta, tipoArticulo.incluyeRenta(), "renta");
 		this.precioVenta = validarPrecio(precioVenta, tipoArticulo.incluyeVenta(), "venta");
+		this.costoAdquisicion = validarNoNegativo(costoAdquisicion, "costo de adquisición");
+		this.depositoSugerido = validarNoNegativo(depositoSugerido, "depósito sugerido");
 		this.etiquetas = Objects.requireNonNull(etiquetas, "etiquetas");
 		this.archivada = archivada;
 	}
 
 	public static Prenda crear(UUID empresaId, UUID categoriaId, String nombre, TipoArticulo tipoArticulo,
 			BigDecimal precioRenta, BigDecimal precioVenta) {
-		return crear(empresaId, categoriaId, nombre, tipoArticulo, precioRenta, precioVenta, EtiquetasDePrenda.ninguna());
+		return crear(empresaId, categoriaId, nombre, tipoArticulo, precioRenta, precioVenta,
+				EtiquetasDePrenda.ninguna(), null, null);
 	}
 
 	public static Prenda crear(UUID empresaId, UUID categoriaId, String nombre, TipoArticulo tipoArticulo,
 			BigDecimal precioRenta, BigDecimal precioVenta, EtiquetasDePrenda etiquetas) {
+		return crear(empresaId, categoriaId, nombre, tipoArticulo, precioRenta, precioVenta, etiquetas, null, null);
+	}
+
+	public static Prenda crear(UUID empresaId, UUID categoriaId, String nombre, TipoArticulo tipoArticulo,
+			BigDecimal precioRenta, BigDecimal precioVenta, EtiquetasDePrenda etiquetas, BigDecimal costoAdquisicion,
+			BigDecimal depositoSugerido) {
 		return new Prenda(UUID.randomUUID(), empresaId, categoriaId, nombre, tipoArticulo, precioRenta, precioVenta,
-				etiquetas, false);
+				costoAdquisicion, depositoSugerido, etiquetas, false);
 	}
 
 	public static Prenda rehidratar(UUID id, UUID empresaId, UUID categoriaId, String nombre, TipoArticulo tipoArticulo,
-			BigDecimal precioRenta, BigDecimal precioVenta, EtiquetasDePrenda etiquetas, boolean archivada) {
-		return new Prenda(id, empresaId, categoriaId, nombre, tipoArticulo, precioRenta, precioVenta, etiquetas, archivada);
+			BigDecimal precioRenta, BigDecimal precioVenta, BigDecimal costoAdquisicion, BigDecimal depositoSugerido,
+			EtiquetasDePrenda etiquetas, boolean archivada) {
+		return new Prenda(id, empresaId, categoriaId, nombre, tipoArticulo, precioRenta, precioVenta, costoAdquisicion,
+				depositoSugerido, etiquetas, archivada);
 	}
 
 	/** Reemplaza las etiquetas de clasificación de la prenda (RF-2.7, Capa 2). */
@@ -83,6 +97,13 @@ public class Prenda {
 		return precio;
 	}
 
+	private static BigDecimal validarNoNegativo(BigDecimal valor, String concepto) {
+		if (valor != null && valor.signum() < 0) {
+			throw new IllegalArgumentException("El " + concepto + " no puede ser negativo");
+		}
+		return valor;
+	}
+
 	public UUID id() {
 		return id;
 	}
@@ -109,6 +130,16 @@ public class Prenda {
 
 	public BigDecimal precioVenta() {
 		return precioVenta;
+	}
+
+	/** Costo de adquisición (RF-2.10): sin costo no hay margen en reportes. Opcional. */
+	public BigDecimal costoAdquisicion() {
+		return costoAdquisicion;
+	}
+
+	/** Depósito/garantía sugerido para la renta (RF-2.10). Opcional. */
+	public BigDecimal depositoSugerido() {
+		return depositoSugerido;
 	}
 
 	public EtiquetasDePrenda etiquetas() {

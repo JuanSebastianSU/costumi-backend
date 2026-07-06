@@ -163,6 +163,21 @@ class PrendaIntegrationTest {
 	}
 
 	@Test
+	void crear_prenda_con_costo_y_deposito_sugerido() throws Exception {
+		UUID empresa = crearEmpresa("Empresa Costo");
+		String dueno = duenoDe(empresa);
+		UUID categoria = crearCategoria(dueno, "Traje");
+
+		mvc.perform(post("/api/v1/prendas").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"categoriaId\":\"" + categoria + "\",\"nombre\":\"Traje\",\"tipoArticulo\":\"RENTA\","
+								+ "\"precioRenta\":50.00,\"costoAdquisicion\":120.00,\"depositoSugerido\":200.00}"))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.costoAdquisicion").value(120.00))
+				.andExpect(jsonPath("$.depositoSugerido").value(200.00));
+	}
+
+	@Test
 	void una_prenda_de_renta_sin_precio_devuelve_400() throws Exception {
 		UUID empresa = crearEmpresa("Empresa Inv2");
 		String dueno = duenoDe(empresa);
