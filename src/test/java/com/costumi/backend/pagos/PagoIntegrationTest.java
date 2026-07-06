@@ -123,6 +123,64 @@ class PagoIntegrationTest {
 	}
 
 	@Test
+	void un_cobro_mixto_genera_un_pago_por_metodo_y_calcula_el_vuelto() throws Exception {
+		UUID sucursal = sucursalDePrueba();
+		UUID concepto = UUID.randomUUID();
+
+		// 60 en efectivo (recibe 100 -> vuelto 40) + 40 con tarjeta = total 100 (RF-6.7).
+		mvc.perform(post("/api/v1/pagos/mixto").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + sucursal + "\",\"tipoConcepto\":\"VENTA\",\"conceptoId\":\""
+								+ concepto + "\",\"efectivoRecibido\":100.00,\"porciones\":["
+								+ "{\"metodo\":\"EFECTIVO\",\"monto\":60.00},"
+								+ "{\"metodo\":\"TARJETA\",\"monto\":40.00,\"referencia\":\"AUTH-9\"}]}"))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.total").value(100.00))
+				.andExpect(jsonPath("$.vuelto").value(40.00))
+				.andExpect(jsonPath("$.pagos.length()").value(2));
+
+		// Quedaron los dos pagos ligados al concepto.
+		mvc.perform(get("/api/v1/pagos").param("conceptoId", concepto.toString())
+						.header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(2));
+	}
+
+	@Test
+	void un_cobro_mixto_con_efectivo_insuficiente_devuelve_400() throws Exception {
+		UUID sucursal = sucursalDePrueba();
+		UUID concepto = UUID.randomUUID();
+
+		// Recibe 50 en efectivo pero la parte en efectivo es 60 -> se rechaza (RF-6.7).
+		mvc.perform(post("/api/v1/pagos/mixto").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + sucursal + "\",\"tipoConcepto\":\"VENTA\",\"conceptoId\":\""
+								+ concepto + "\",\"efectivoRecibido\":50.00,\"porciones\":["
+								+ "{\"metodo\":\"EFECTIVO\",\"monto\":60.00}]}"))
+				.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	void un_cobro_mixto_es_idempotente_por_clave() throws Exception {
+		UUID sucursal = sucursalDePrueba();
+		UUID concepto = UUID.randomUUID();
+		String cuerpo = "{\"sucursalId\":\"" + sucursal + "\",\"tipoConcepto\":\"VENTA\",\"conceptoId\":\"" + concepto
+				+ "\",\"claveIdempotencia\":\"MX-" + concepto + "\",\"porciones\":["
+				+ "{\"metodo\":\"EFECTIVO\",\"monto\":30.00},{\"metodo\":\"TARJETA\",\"monto\":20.00}]}";
+
+		mvc.perform(post("/api/v1/pagos/mixto").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON).content(cuerpo)).andExpect(status().isCreated());
+		mvc.perform(post("/api/v1/pagos/mixto").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON).content(cuerpo)).andExpect(status().isCreated());
+
+		// Aun con dos envíos, siguen siendo 2 pagos (no se duplicó, RF-17.6).
+		mvc.perform(get("/api/v1/pagos").param("conceptoId", concepto.toString())
+						.header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(2));
+	}
+
+	@Test
 	void sin_token_devuelve_401() throws Exception {
 		mvc.perform(get("/api/v1/pagos").param("conceptoId", UUID.randomUUID().toString()))
 				.andExpect(status().isUnauthorized());
