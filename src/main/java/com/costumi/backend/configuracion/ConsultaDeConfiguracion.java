@@ -13,6 +13,9 @@ public interface ConsultaDeConfiguracion {
 	/** ¿El módulo de multas está activo para la empresa? (por defecto sí). */
 	boolean multasActivas(UUID empresaId);
 
+	/** ¿La empresa tiene habilitado multi-sucursal? (por defecto no → una sola sucursal, RF-12.4). */
+	boolean multiSucursal(UUID empresaId);
+
 	/** Tasa de impuesto de la empresa en [0, 1) (por defecto 0); precios impuesto-incluido (RF-6.5/12.2). */
 	BigDecimal tasaImpuesto(UUID empresaId);
 }

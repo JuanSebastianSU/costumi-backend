@@ -40,6 +40,12 @@ class ConfiguracionService implements GestionarConfiguracion, ConsultaDeConfigur
 
 	@Override
 	@Transactional(readOnly = true)
+	public boolean multiSucursal(UUID empresaId) {
+		return deEmpresa(empresaId).multiSucursal();
+	}
+
+	@Override
+	@Transactional(readOnly = true)
 	public java.math.BigDecimal tasaImpuesto(UUID empresaId) {
 		return deEmpresa(empresaId).tasaImpuesto();
 	}
