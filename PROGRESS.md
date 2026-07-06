@@ -175,6 +175,10 @@ Estado: ⬜ sin empezar · 🟨 en curso · ✅ hecho
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-05 (as)** — **Tanda 3/P4 · Config-switch que de verdad controla: multas on/off (RF-12.4/6.6).** Nuevo
+  puerto público `configuracion.ConsultaDeConfiguracion.multasActivas`. El `DisparadorDeMultas` (notificaciones)
+  lo respeta: con el módulo de multas **apagado** no se notifica la multa. Arista `notificaciones → configuracion`.
+  Test: multas off → devolución con multa 30 NO genera notificación. **224 verdes.**
 - **2026-07-05 (ar)** — **Tanda 2/P3 · Auditoría dirigida por eventos (RF-0.5/15.5).** Nuevo módulo `auditoria`:
   `RegistroDeAuditoria` (inmutable) + `AuditoriaDeEventos` (@EventListener) que registra a partir de los domain
   events (§5.5): `EmpresaAprobada`→EMPRESA_APROBADA, `DevolucionRegistrada`→DEVOLUCION_REGISTRADA. A medida que

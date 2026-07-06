@@ -124,6 +124,30 @@ class DevolucionIntegrationTest {
 	}
 
 	@Test
+	void con_el_modulo_de_multas_apagado_no_se_notifica() throws Exception {
+		UUID renta = rentaDePrueba();
+
+		// Apagar el módulo de multas (RF-12.4/6.6).
+		mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/configuracion")
+						.header("Authorization", "Bearer " + dueno).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"conteoStock\":true,\"multasActivo\":false,\"multiSucursal\":false,\"pagoEnLinea\":false}"))
+				.andExpect(status().isOk());
+
+		mvc.perform(post("/api/v1/devoluciones").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"rentaId\":\"" + renta + "\",\"deposito\":50.00,\"cargoPorDanos\":60.00,"
+								+ "\"cargoPorRetraso\":20.00,\"piezas\":[{\"descripcion\":\"Camisa\",\"llego\":true,"
+								+ "\"estado\":\"DANADA\"}]}"))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.multa").value(30.00));
+
+		// Con el switch apagado, no se generó notificación.
+		mvc.perform(get("/api/v1/notificaciones").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.canal == 'EMAIL')]").doesNotExist());
+	}
+
+	@Test
 	void devolver_una_renta_de_otra_empresa_devuelve_400() throws Exception {
 		rentaDePrueba(); // deja this.dueno de la empresa A con una renta
 		String duenoDeA = this.dueno;
