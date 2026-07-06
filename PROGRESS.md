@@ -20,11 +20,18 @@
   `ConsultaDeTaxonomia`/`ConsultaDeInventario`; (c) **tests que prueban que no se lee ni escribe cruzando tenant**.
   Después Juan pidió cerrar también el `find()` por PK → hecho por construcción (`findFirstById` filtrado) +
   regla ArchUnit anti-`findById`. **§5.4 APROBADO y mergeado por Juan (PR #8/#9/#10).**
-- **EN CURSO: run Tanda 2 → Tanda 3 de largo (sin checkpoint intermedio; revisión final al terminar Tanda 3),
-  en PR #11.** Ya cerrado y verde: **P2** (renta disponibilidad por fechas + advisory lock; venta baja de stock
-  atómica; devolución que cierra el ciclo: inventario + multa auto + renta→DEVUELTA + domain event) y buena parte
-  de **P3** (Prenda costo/depósito; Caja/Turno con corte y cuadre; Reportes ganancia; reabastecimiento + stock bajo).
-  **Falta:** pagos completos (parciales/reembolsos/depósito-retención/mixto), auditoría, y el resto de Tanda 3 (P4/P5).
+- **RUN Tanda 2 → Tanda 3 en PR #11 (verde, 226 tests). Hecho:**
+  **P2 (ciclo operativo, COMPLETO):** renta disponibilidad por fechas + advisory lock (RF-3.2/0.4); venta baja de
+  stock atómica (RF-4.4); devolución que cierra el ciclo — inventario + multa auto + renta→DEVUELTA + **domain event**
+  `DevolucionRegistrada` (RF-5, §5.5). **P3 (núcleo COMPLETO):** Prenda costo/depósito (RF-2.10); Pagos reembolsos +
+  saldo neto (RF-6.9); Caja/Turno con corte por método y cuadre (RF-6.3/6.10); Reportes ganancia = ingreso−costo (RF-9);
+  Auditoría por eventos (RF-0.5). **P4/P5 (avanzado):** reabastecimiento + stock bajo (RF-10); notificación por evento
+  (RF-11.1); config-switch de multas real (RF-12.4/6.6); marketplace búsqueda por texto (RF-18.1); carrito checkout→venta
+  (RF-16); renta idempotente (RF-17.6); ArchUnit anti-`findById`.
+- **FALTA para cerrar Tanda 3 — mayormente bloqueado por infra/decisión externa:** media/fotos a **S3** (RF-2.9,
+  bucket/credenciales); envío **real** WhatsApp/FCM (RF-11.4/18.11, API keys); **pasarela de pago** (RF-6.11, decisión);
+  refresh token (RF-1.1). Enriquecimientos: empleados/permisos (RF-8/1.5), clientes historial (RF-7.2), transferencias
+  entre sucursales (RF-10), export PDF/CSV (RF-9.2), checkout de RENTA (fechas por línea), depósito-retención/mixto (RF-6).
 - **Tanda 1 (ya en `main`, PR #8 mergeada por Juan; antes PR #7 con los 14 módulos de §7). Contenido de la Tanda 1:**
   (1) **§5.4 base** — `ContextoDeTenant`; (2) **motor de variantes real** — `GrupoDeStock` = combinación real de
   valores de etiqueta; (3) **Prenda↔etiquetas (Capa 2)**; (4) **tipo↔categoría (RF-2.7.2)** impuesto; (5) **Disfraz
