@@ -1,0 +1,9 @@
+# Se reconstruye dentro del build; no copiar artefactos locales ni ruido.
+target/
+.git/
+.idea/
+.vscode/
+*.log
+build.log
+build.exit
+HELP.md
