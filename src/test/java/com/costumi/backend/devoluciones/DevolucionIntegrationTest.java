@@ -139,9 +139,11 @@ class DevolucionIntegrationTest {
 								+ "\"cargoPorRetraso\":20.00,\"piezas\":[{\"descripcion\":\"Camisa\",\"llego\":true,"
 								+ "\"estado\":\"DANADA\"}]}"))
 				.andExpect(status().isCreated())
-				.andExpect(jsonPath("$.multa").value(30.00));
+				// Multas OFF: el recargo por retraso (20) no se cobra -> multa = 60 daños - 50 depósito = 10.
+				.andExpect(jsonPath("$.cargoPorRetraso").value(0))
+				.andExpect(jsonPath("$.multa").value(10.00));
 
-		// Con el switch apagado, no se generó notificación.
+		// Con el switch apagado, no se generó notificación de multa.
 		mvc.perform(get("/api/v1/notificaciones").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$[?(@.canal == 'EMAIL')]").doesNotExist());

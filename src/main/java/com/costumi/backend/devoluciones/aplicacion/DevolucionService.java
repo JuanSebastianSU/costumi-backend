@@ -1,5 +1,6 @@
 package com.costumi.backend.devoluciones.aplicacion;
 
+import com.costumi.backend.configuracion.ConsultaDeConfiguracion;
 import com.costumi.backend.devoluciones.DevolucionRegistrada;
 import com.costumi.backend.inventario.AjusteDeInventario;
 import com.costumi.backend.devoluciones.dominio.Devolucion;
@@ -11,6 +12,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -21,13 +23,15 @@ class DevolucionService implements RegistrarDevolucion, ConsultarDevoluciones {
 	private final DevolucionRepository devoluciones;
 	private final ConsultaDeRentas rentas;
 	private final AjusteDeInventario inventario;
+	private final ConsultaDeConfiguracion configuracion;
 	private final ApplicationEventPublisher eventos;
 
 	DevolucionService(DevolucionRepository devoluciones, ConsultaDeRentas rentas, AjusteDeInventario inventario,
-			ApplicationEventPublisher eventos) {
+			ConsultaDeConfiguracion configuracion, ApplicationEventPublisher eventos) {
 		this.devoluciones = devoluciones;
 		this.rentas = rentas;
 		this.inventario = inventario;
+		this.configuracion = configuracion;
 		this.eventos = eventos;
 	}
 
@@ -44,8 +48,12 @@ class DevolucionService implements RegistrarDevolucion, ConsultarDevoluciones {
 		int perdidas = contar(comando.piezas(), EstadoPieza.PERDIDA);
 		inventario.procesarRetornoDeRenta(comando.empresaId(), prendaId, danadas, enLimpieza, perdidas);
 
+		// Módulo de multas OFF (RF-6.6/12.4): el recargo por retraso (la multa) no se cobra ni reduce el remanente.
+		BigDecimal cargoPorRetraso = configuracion.multasActivas(comando.empresaId())
+				? comando.cargoPorRetraso()
+				: BigDecimal.ZERO;
 		Devolucion devolucion = devoluciones.guardar(Devolucion.crear(comando.empresaId(), comando.rentaId(),
-				comando.deposito(), comando.cargoPorDanos(), comando.cargoPorRetraso(), comando.piezas()));
+				comando.deposito(), comando.cargoPorDanos(), cargoPorRetraso, comando.piezas()));
 
 		// Cierra la renta (RF-5.1) y publica el evento con la multa automática (RF-5.2, §5.5).
 		rentas.marcarDevuelta(comando.empresaId(), comando.rentaId());
