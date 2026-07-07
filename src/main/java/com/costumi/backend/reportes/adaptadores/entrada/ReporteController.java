@@ -37,15 +37,17 @@ class ReporteController {
 	private final ConsultarOperaciones consultarOperaciones;
 	private final ConsultarRankings consultarRankings;
 	private final ConsultarInventario consultarInventario;
+	private final com.costumi.backend.compartido.GeneradorDePdf pdf;
 
 	ReporteController(ConsultarIngresos consultarIngresos, ConsultarGanancia consultarGanancia,
 			ConsultarOperaciones consultarOperaciones, ConsultarRankings consultarRankings,
-			ConsultarInventario consultarInventario) {
+			ConsultarInventario consultarInventario, com.costumi.backend.compartido.GeneradorDePdf pdf) {
 		this.consultarIngresos = consultarIngresos;
 		this.consultarGanancia = consultarGanancia;
 		this.consultarOperaciones = consultarOperaciones;
 		this.consultarRankings = consultarRankings;
 		this.consultarInventario = consultarInventario;
+		this.pdf = pdf;
 	}
 
 	@GetMapping("/ingresos")
@@ -133,7 +135,7 @@ class ReporteController {
 		return consultarInventario.resumenDeInventario(empresaId);
 	}
 
-	// --- Export CSV (RF-9.2). El export a PDF requiere una librería (decisión pendiente). ---
+	// --- Export CSV y PDF (RF-9.2). ---
 
 	@GetMapping(value = "/export/rentas-vencidas.csv", produces = "text/csv")
 	ResponseEntity<String> exportRentasVencidas(@RequestParam(required = false) UUID sucursalId,
@@ -160,6 +162,44 @@ class ReporteController {
 					.append('\n');
 		}
 		return csvAdjunto("inventario-tablero.csv", csv.toString());
+	}
+
+	@GetMapping(value = "/export/rentas-vencidas.pdf", produces = "application/pdf")
+	ResponseEntity<byte[]> exportRentasVencidasPdf(@RequestParam(required = false) UUID sucursalId,
+			@AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		LocalDate hoy = LocalDate.now();
+		String[] columnas = { "Renta", "Cliente", "Prenda", "Vence", "Días", "Importe", "Depósito" };
+		java.util.List<String[]> filas = new java.util.ArrayList<>();
+		for (var r : consultarOperaciones.rentasVencidas(empresaId, sucursalId)) {
+			RentaVencidaResponse f = RentaVencidaResponse.desde(r, hoy);
+			filas.add(new String[] { texto(f.rentaId()), texto(f.clienteId()), texto(f.prendaId()),
+					texto(f.fechaDevolucion()), texto(f.diasVencida()), texto(f.importe()), texto(f.deposito()) });
+		}
+		return pdfAdjunto("rentas-vencidas.pdf", pdf.tabla("Rentas vencidas", columnas, filas));
+	}
+
+	@GetMapping(value = "/export/inventario-tablero.pdf", produces = "application/pdf")
+	ResponseEntity<byte[]> exportInventarioTableroPdf(@AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		String[] columnas = { "Prenda", "Disponibles", "Dañadas", "En limpieza", "Perdidas" };
+		java.util.List<String[]> filas = new java.util.ArrayList<>();
+		for (GrupoInventario g : consultarInventario.tableroDeInventario(empresaId)) {
+			filas.add(new String[] { g.prendaNombre(), texto(g.disponibles()), texto(g.danadas()),
+					texto(g.enLimpieza()), texto(g.perdidas()) });
+		}
+		return pdfAdjunto("inventario-tablero.pdf", pdf.tabla("Tablero de inventario", columnas, filas));
+	}
+
+	private static String texto(Object valor) {
+		return valor == null ? "" : valor.toString();
+	}
+
+	private static ResponseEntity<byte[]> pdfAdjunto(String archivo, byte[] cuerpo) {
+		return ResponseEntity.ok()
+				.header("Content-Disposition", "attachment; filename=" + archivo)
+				.contentType(org.springframework.http.MediaType.APPLICATION_PDF)
+				.body(cuerpo);
 	}
 
 	private static ResponseEntity<String> csvAdjunto(String archivo, String cuerpo) {

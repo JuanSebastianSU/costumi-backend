@@ -93,6 +93,12 @@ class RentaService implements CrearRenta, ConsultarRentas, GestionarRenta, Consu
 	}
 
 	@Override
+	@Transactional(readOnly = true)
+	public Optional<Renta> buscarPorId(UUID empresaId, UUID rentaId) {
+		return rentas.buscarPorId(rentaId).filter(renta -> renta.empresaId().equals(empresaId));
+	}
+
+	@Override
 	@Transactional
 	public Renta entregar(UUID empresaId, UUID rentaId) {
 		return aplicar(empresaId, rentaId, Renta::entregar);

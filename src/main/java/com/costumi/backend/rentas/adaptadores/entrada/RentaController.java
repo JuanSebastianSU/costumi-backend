@@ -30,11 +30,40 @@ class RentaController {
 	private final CrearRenta crearRenta;
 	private final ConsultarRentas consultarRentas;
 	private final GestionarRenta gestionarRenta;
+	private final com.costumi.backend.compartido.GeneradorDePdf pdf;
 
-	RentaController(CrearRenta crearRenta, ConsultarRentas consultarRentas, GestionarRenta gestionarRenta) {
+	RentaController(CrearRenta crearRenta, ConsultarRentas consultarRentas, GestionarRenta gestionarRenta,
+			com.costumi.backend.compartido.GeneradorDePdf pdf) {
 		this.crearRenta = crearRenta;
 		this.consultarRentas = consultarRentas;
 		this.gestionarRenta = gestionarRenta;
+		this.pdf = pdf;
+	}
+
+	/** Contrato de renta en PDF (RF-3.4). */
+	@GetMapping(value = "/{id}/contrato.pdf", produces = "application/pdf")
+	ResponseEntity<byte[]> contrato(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		RentaResponse r = consultarRentas.buscarPorId(empresaId, id).map(RentaResponse::desde)
+				.orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+						org.springframework.http.HttpStatus.NOT_FOUND, "Renta no encontrada"));
+		java.util.List<String> lineas = java.util.List.of(
+				"Renta: " + r.id(),
+				"Cliente: " + r.clienteId(),
+				"Prenda: " + r.prendaId(),
+				"Fecha de retiro: " + r.fechaRetiro(),
+				"Fecha de devolución: " + r.fechaDevolucion(),
+				"Precio por día: $" + r.precioPorDia(),
+				"Importe: $" + r.importe(),
+				"Depósito: $" + r.deposito(),
+				"Estado: " + r.estado(),
+				" ",
+				"El cliente se compromete a devolver la(s) prenda(s) en la fecha indicada y en buen estado. "
+						+ "El depósito se reintegra al cierre conforme al estado de la devolución.");
+		return ResponseEntity.ok()
+				.header("Content-Disposition", "attachment; filename=contrato-renta.pdf")
+				.contentType(org.springframework.http.MediaType.APPLICATION_PDF)
+				.body(pdf.documento("Contrato de renta", lineas));
 	}
 
 	@PostMapping

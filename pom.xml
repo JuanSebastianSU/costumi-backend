@@ -81,6 +81,14 @@
 			<artifactId>spring-boot-starter-mail</artifactId>
 		</dependency>
 
+		<!-- Generación de PDF (export de reportes RF-9.2, comprobante y contrato de renta RF-3.4).
+		     OpenPDF: LGPL/MPL, sin credenciales. -->
+		<dependency>
+			<groupId>com.github.librepdf</groupId>
+			<artifactId>openpdf</artifactId>
+			<version>1.3.39</version>
+		</dependency>
+
 		<!-- Spring Modulith: modelo de módulos del monolito (límites verificables) -->
 		<dependency>
 			<groupId>org.springframework.modulith</groupId>
