@@ -39,6 +39,12 @@ class GrupoDeStockRepositoryAdapter implements GrupoDeStockRepository {
 	}
 
 	@Override
+	public List<GrupoDeStock> listarPorPrendaYSucursal(UUID prendaId, UUID sucursalId) {
+		return jpa.findByPrendaIdAndSucursalId(prendaId, sucursalId).stream()
+				.map(GrupoDeStockRepositoryAdapter::aDominio).toList();
+	}
+
+	@Override
 	public List<GrupoDeStock> listarBajoUmbral(UUID empresaId, int umbral) {
 		return jpa.findByEmpresaIdAndDisponiblesLessThan(empresaId, umbral).stream()
 				.map(GrupoDeStockRepositoryAdapter::aDominio).toList();
@@ -48,14 +54,15 @@ class GrupoDeStockRepositoryAdapter implements GrupoDeStockRepository {
 		Set<ValorDeVarianteEmbeddable> combinacion = g.combinacion().valores().entrySet().stream()
 				.map(e -> new ValorDeVarianteEmbeddable(e.getKey(), e.getValue()))
 				.collect(Collectors.toCollection(java.util.LinkedHashSet::new));
-		return new GrupoDeStockJpaEntity(g.id(), g.empresaId(), g.prendaId(), combinacion,
+		return new GrupoDeStockJpaEntity(g.id(), g.empresaId(), g.sucursalId(), g.prendaId(), combinacion,
 				g.disponibles(), g.danadas(), g.enLimpieza(), g.perdidas());
 	}
 
 	private static GrupoDeStock aDominio(GrupoDeStockJpaEntity e) {
 		Map<UUID, UUID> valores = new LinkedHashMap<>();
 		e.getCombinacion().forEach(v -> valores.put(v.getTipoEtiquetaId(), v.getValorEtiquetaId()));
-		return GrupoDeStock.rehidratar(e.getId(), e.getEmpresaId(), e.getPrendaId(), CombinacionDeVariante.de(valores),
-				e.getDisponibles(), e.getDanadas(), e.getEnLimpieza(), e.getPerdidas());
+		return GrupoDeStock.rehidratar(e.getId(), e.getEmpresaId(), e.getSucursalId(), e.getPrendaId(),
+				CombinacionDeVariante.de(valores), e.getDisponibles(), e.getDanadas(), e.getEnLimpieza(),
+				e.getPerdidas());
 	}
 }

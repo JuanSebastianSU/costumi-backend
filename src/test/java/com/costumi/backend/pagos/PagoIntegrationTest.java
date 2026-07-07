@@ -69,7 +69,8 @@ class PagoIntegrationTest {
 		UUID categoria = postId("/api/v1/categorias", "{\"nombre\":\"C " + UUID.randomUUID() + "\"}");
 		UUID prenda = postId("/api/v1/prendas", "{\"categoriaId\":\"" + categoria
 				+ "\",\"nombre\":\"P\",\"tipoArticulo\":\"VENTA\",\"precioVenta\":" + precioUnitario + ".00}");
-		postId("/api/v1/prendas/" + prenda + "/grupos-stock", "{\"combinacion\":[],\"cantidadInicial\":50}");
+		postId("/api/v1/prendas/" + prenda + "/grupos-stock",
+				"{\"sucursalId\":\"" + sucursal + "\",\"combinacion\":[],\"cantidadInicial\":50}");
 		return postId("/api/v1/ventas", "{\"sucursalId\":\"" + sucursal + "\",\"lineas\":[{\"prendaId\":\""
 				+ prenda + "\",\"cantidad\":" + cantidad + ",\"precioUnitario\":" + precioUnitario + ".00}]}");
 	}

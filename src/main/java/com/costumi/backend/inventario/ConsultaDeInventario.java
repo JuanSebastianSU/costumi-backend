@@ -19,8 +19,8 @@ public interface ConsultaDeInventario {
 	/** ¿La prenda (de la empresa) tiene al menos una unidad disponible en algún grupo de stock? */
 	boolean prendaTieneStockDisponible(UUID empresaId, UUID prendaId);
 
-	/** Unidades disponibles totales de la prenda (suma de disponibles de sus grupos de stock). */
-	int unidadesDisponibles(UUID empresaId, UUID prendaId);
+	/** Unidades disponibles de la prenda EN una sucursal (suma de disponibles de sus grupos en esa sucursal, RF-18.2). */
+	int unidadesDisponibles(UUID empresaId, UUID sucursalId, UUID prendaId);
 
 	/** Precio de venta de la prenda (de la empresa), si la prenda existe y lo tiene (RF-16 checkout). */
 	Optional<BigDecimal> precioVenta(UUID empresaId, UUID prendaId);

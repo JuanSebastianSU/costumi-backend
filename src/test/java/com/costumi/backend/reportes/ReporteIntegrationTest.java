@@ -111,7 +111,8 @@ class ReporteIntegrationTest {
 		UUID categoria = postId("/api/v1/categorias", dueno, "{\"nombre\":\"Peluca " + UUID.randomUUID() + "\"}");
 		UUID prenda = postId("/api/v1/prendas", dueno, "{\"categoriaId\":\"" + categoria + "\",\"nombre\":\"Peluca\","
 				+ "\"tipoArticulo\":\"VENTA\",\"precioVenta\":50.00,\"costoAdquisicion\":30.00}");
-		postId("/api/v1/prendas/" + prenda + "/grupos-stock", dueno, "{\"combinacion\":[],\"cantidadInicial\":5}");
+		postId("/api/v1/prendas/" + prenda + "/grupos-stock", dueno,
+				"{\"sucursalId\":\"" + sucursal + "\",\"combinacion\":[],\"cantidadInicial\":5}");
 
 		// Vende 2 unidades (costo 2×30 = 60) y registra un pago de venta por 100 (ingreso).
 		mvc.perform(post("/api/v1/ventas").header("Authorization", "Bearer " + dueno)
@@ -136,7 +137,8 @@ class ReporteIntegrationTest {
 		UUID categoria = postId("/api/v1/categorias", dueno, "{\"nombre\":\"Camisa " + UUID.randomUUID() + "\"}");
 		UUID prenda = postId("/api/v1/prendas", dueno, "{\"categoriaId\":\"" + categoria
 				+ "\",\"nombre\":\"Camisa\",\"tipoArticulo\":\"RENTA\",\"precioRenta\":20.00}");
-		postId("/api/v1/prendas/" + prenda + "/grupos-stock", dueno, "{\"combinacion\":[],\"cantidadInicial\":2}");
+		postId("/api/v1/prendas/" + prenda + "/grupos-stock", dueno,
+				"{\"sucursalId\":\"" + sucursal + "\",\"combinacion\":[],\"cantidadInicial\":2}");
 
 		// Renta con fechas de 2020 (ya pasadas) y depósito 100; se entrega -> queda ACTIVA (y vencida).
 		UUID renta = postId("/api/v1/rentas", dueno, "{\"sucursalId\":\"" + sucursal + "\",\"clienteId\":\"" + cliente
@@ -198,10 +200,12 @@ class ReporteIntegrationTest {
 		UUID categoria = postId("/api/v1/categorias", dueno, "{\"nombre\":\"Cat " + UUID.randomUUID() + "\"}");
 		UUID prendaV = postId("/api/v1/prendas", dueno, "{\"categoriaId\":\"" + categoria
 				+ "\",\"nombre\":\"Peluca\",\"tipoArticulo\":\"VENTA\",\"precioVenta\":50.00}");
-		postId("/api/v1/prendas/" + prendaV + "/grupos-stock", dueno, "{\"combinacion\":[],\"cantidadInicial\":10}");
+		postId("/api/v1/prendas/" + prendaV + "/grupos-stock", dueno,
+				"{\"sucursalId\":\"" + sucursal + "\",\"combinacion\":[],\"cantidadInicial\":10}");
 		UUID prendaR = postId("/api/v1/prendas", dueno, "{\"categoriaId\":\"" + categoria
 				+ "\",\"nombre\":\"Traje\",\"tipoArticulo\":\"RENTA\",\"precioRenta\":20.00}");
-		postId("/api/v1/prendas/" + prendaR + "/grupos-stock", dueno, "{\"combinacion\":[],\"cantidadInicial\":5}");
+		postId("/api/v1/prendas/" + prendaR + "/grupos-stock", dueno,
+				"{\"sucursalId\":\"" + sucursal + "\",\"combinacion\":[],\"cantidadInicial\":5}");
 
 		// Vende 3 de la prenda de venta.
 		mvc.perform(post("/api/v1/ventas").header("Authorization", "Bearer " + dueno)
@@ -241,7 +245,8 @@ class ReporteIntegrationTest {
 		UUID categoria = postId("/api/v1/categorias", dueno, "{\"nombre\":\"Cat " + UUID.randomUUID() + "\"}");
 		UUID prenda = postId("/api/v1/prendas", dueno, "{\"categoriaId\":\"" + categoria
 				+ "\",\"nombre\":\"Peluca\",\"tipoArticulo\":\"VENTA\",\"precioVenta\":50.00}");
-		postId("/api/v1/prendas/" + prenda + "/grupos-stock", dueno, "{\"combinacion\":[],\"cantidadInicial\":10}");
+		postId("/api/v1/prendas/" + prenda + "/grupos-stock", dueno,
+				"{\"sucursalId\":\"" + sucursal + "\",\"combinacion\":[],\"cantidadInicial\":10}");
 
 		// RF-9.3: tablero por grupo con el conteo por estado.
 		mvc.perform(get("/api/v1/reportes/inventario/tablero").header("Authorization", "Bearer " + dueno))
@@ -273,7 +278,8 @@ class ReporteIntegrationTest {
 		UUID prenda = postId("/api/v1/prendas", dueno, "{\"categoriaId\":\"" + categoria
 				+ "\",\"nombre\":\"Peluca\",\"tipoArticulo\":\"VENTA\",\"precioVenta\":50.00,\"etiquetas\":[{"
 				+ "\"tipoEtiquetaId\":\"" + tipoColor + "\",\"valorEtiquetaId\":\"" + rojo + "\"}]}");
-		postId("/api/v1/prendas/" + prenda + "/grupos-stock", dueno, "{\"combinacion\":[],\"cantidadInicial\":10}");
+		postId("/api/v1/prendas/" + prenda + "/grupos-stock", dueno,
+				"{\"sucursalId\":\"" + sucursal + "\",\"combinacion\":[],\"cantidadInicial\":10}");
 
 		mvc.perform(post("/api/v1/ventas").header("Authorization", "Bearer " + dueno)
 						.contentType(MediaType.APPLICATION_JSON)
@@ -298,7 +304,8 @@ class ReporteIntegrationTest {
 		UUID categoria = postId("/api/v1/categorias", dueno, "{\"nombre\":\"Cat " + UUID.randomUUID() + "\"}");
 		UUID prenda = postId("/api/v1/prendas", dueno, "{\"categoriaId\":\"" + categoria
 				+ "\",\"nombre\":\"Peluca\",\"tipoArticulo\":\"VENTA\",\"precioVenta\":50.00}");
-		postId("/api/v1/prendas/" + prenda + "/grupos-stock", dueno, "{\"combinacion\":[],\"cantidadInicial\":10}");
+		postId("/api/v1/prendas/" + prenda + "/grupos-stock", dueno,
+				"{\"sucursalId\":\"" + sucursal + "\",\"combinacion\":[],\"cantidadInicial\":10}");
 
 		// RF-9.2: export a CSV, descargable (Content-Disposition adjunto).
 		mvc.perform(get("/api/v1/reportes/export/inventario-tablero.csv").header("Authorization", "Bearer " + dueno))

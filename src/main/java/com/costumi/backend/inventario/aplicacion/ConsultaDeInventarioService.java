@@ -51,11 +51,12 @@ class ConsultaDeInventarioService implements ConsultaDeInventario {
 
 	@Override
 	@Transactional(readOnly = true)
-	public int unidadesDisponibles(UUID empresaId, UUID prendaId) {
+	public int unidadesDisponibles(UUID empresaId, UUID sucursalId, UUID prendaId) {
 		if (!prendaExiste(empresaId, prendaId)) {
 			return 0;
 		}
-		return grupos.listarPorPrenda(prendaId).stream().mapToInt(grupo -> grupo.disponibles()).sum();
+		return grupos.listarPorPrendaYSucursal(prendaId, sucursalId).stream()
+				.mapToInt(grupo -> grupo.disponibles()).sum();
 	}
 
 	@Override

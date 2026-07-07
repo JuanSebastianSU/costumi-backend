@@ -42,7 +42,7 @@ class AjusteDeInventarioService implements AjusteDeInventario {
 
 	@Override
 	@Transactional
-	public void descontarDisponibles(UUID empresaId, UUID prendaId, int cantidad) {
+	public void descontarDisponibles(UUID empresaId, UUID sucursalId, UUID prendaId, int cantidad) {
 		if (cantidad <= 0) {
 			throw new IllegalArgumentException("La cantidad a descontar debe ser mayor a 0");
 		}
@@ -51,7 +51,7 @@ class AjusteDeInventarioService implements AjusteDeInventario {
 		if (!delTenant) {
 			throw new StockInsuficiente(prendaId);
 		}
-		List<GrupoDeStock> deLaPrenda = grupos.listarPorPrenda(prendaId);
+		List<GrupoDeStock> deLaPrenda = grupos.listarPorPrendaYSucursal(prendaId, sucursalId);
 		int totalDisponible = deLaPrenda.stream().mapToInt(GrupoDeStock::disponibles).sum();
 		if (totalDisponible < cantidad) {
 			throw new StockInsuficiente(prendaId);
@@ -72,13 +72,14 @@ class AjusteDeInventarioService implements AjusteDeInventario {
 
 	@Override
 	@Transactional
-	public void procesarRetornoDeRenta(UUID empresaId, UUID prendaId, int danadas, int enLimpieza, int perdidas) {
+	public void procesarRetornoDeRenta(UUID empresaId, UUID sucursalId, UUID prendaId, int danadas, int enLimpieza,
+			int perdidas) {
 		bloquearPrenda(prendaId);
 		boolean delTenant = prendas.buscarPorId(prendaId).filter(p -> p.empresaId().equals(empresaId)).isPresent();
 		if (!delTenant) {
 			throw new StockInsuficiente(prendaId);
 		}
-		List<GrupoDeStock> deLaPrenda = grupos.listarPorPrenda(prendaId);
+		List<GrupoDeStock> deLaPrenda = grupos.listarPorPrendaYSucursal(prendaId, sucursalId);
 		moverDesdeDisponible(deLaPrenda, prendaId, EstadoUnidad.DANADA, danadas);
 		moverDesdeDisponible(deLaPrenda, prendaId, EstadoUnidad.EN_LIMPIEZA, enLimpieza);
 		moverDesdeDisponible(deLaPrenda, prendaId, EstadoUnidad.PERDIDA, perdidas);

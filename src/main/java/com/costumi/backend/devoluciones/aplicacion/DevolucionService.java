@@ -41,12 +41,14 @@ class DevolucionService implements RegistrarDevolucion, ConsultarDevoluciones {
 		// La devolución debe apuntar a una renta del tenant (cross-ref §5.4).
 		UUID prendaId = rentas.prendaDeRenta(comando.empresaId(), comando.rentaId())
 				.orElseThrow(() -> new IllegalArgumentException("La renta no existe en esta empresa"));
+		UUID sucursalId = rentas.sucursalDeRenta(comando.empresaId(), comando.rentaId())
+				.orElseThrow(() -> new IllegalArgumentException("La renta no existe en esta empresa"));
 
 		// Actualiza el inventario según el checklist (RF-5.4/5.6): dañadas/limpieza/perdidas salen de disponible.
 		int danadas = contar(comando.piezas(), EstadoPieza.DANADA);
 		int enLimpieza = contar(comando.piezas(), EstadoPieza.EN_LIMPIEZA);
 		int perdidas = contar(comando.piezas(), EstadoPieza.PERDIDA);
-		inventario.procesarRetornoDeRenta(comando.empresaId(), prendaId, danadas, enLimpieza, perdidas);
+		inventario.procesarRetornoDeRenta(comando.empresaId(), sucursalId, prendaId, danadas, enLimpieza, perdidas);
 
 		// Módulo de multas OFF (RF-6.6/12.4): el recargo por retraso (la multa) no se cobra ni reduce el remanente.
 		BigDecimal cargoPorRetraso = configuracion.multasActivas(comando.empresaId())

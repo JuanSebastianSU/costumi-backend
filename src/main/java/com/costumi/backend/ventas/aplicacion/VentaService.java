@@ -47,7 +47,7 @@ class VentaService implements RegistrarVenta, ConsultarVentas, RegistroDeVentas,
 		if (configuracion.conteoStock(comando.empresaId())) {
 			// Baja de stock al confirmar (RF-4.4): si no alcanza, StockInsuficiente revierte toda la venta.
 			for (LineaDeVenta linea : comando.lineas()) {
-				ajusteDeInventario.descontarDisponibles(comando.empresaId(), linea.prendaId(), linea.cantidad());
+				ajusteDeInventario.descontarDisponibles(comando.empresaId(), comando.sucursalId(), linea.prendaId(), linea.cantidad());
 			}
 		}
 		return ventas.guardar(venta);

@@ -9,6 +9,17 @@
 enchufable, gateada por credencial → `docs/INFRA_PENDIENTE.md`), Grupo B (lógica diferida: renta multi-artículo, checkout
 de renta, disfraz→renta, devolución parcial, stock por sucursal), deuda menor, y barrido final RF-0…18. Rebanada por
 rebanada, cada una su PR con tests + ArchUnit + Modulith en verde; nada se declara "cerrado" sin CI verde.
+- **Rebanada 6 (PR `feat/stock-por-sucursal`) — HECHA (sin credenciales, cierre real; Grupo B):** RF-18.2 stock por
+  sucursal + RF-10.3 transferencia entre sucursales. `GrupoDeStock` gana `sucursalId` (migración **V33**, backfill a la
+  1ª sucursal de cada empresa por nombre). El API pública de Inventario (`ConsultaDeInventario.unidadesDisponibles`,
+  `AjusteDeInventario.descontarDisponibles`/`procesarRetornoDeRenta`) pasa a estar **acotada por sucursal**; rentas,
+  ventas y devoluciones enhebran su `sucursalId` (la renta lo aporta vía `ConsultaDeRentas.sucursalDeRenta`). La clave de
+  variante duplicada es **por (prenda, sucursal)**: la misma variante puede vivir en 2 sucursales como grupos aparte.
+  Nuevo caso de uso `TransferirStock` + `POST /api/v1/grupos-stock/{id}/transferir` (mueve disponibles al grupo de la
+  misma variante en la sucursal destino, creándolo si no existe; audita vía `StockAjustado`). `sucursalId` obligatorio al
+  crear grupo y expuesto en el `GrupoDeStockResponse`. **Dominio + ArchUnit + Modulith + toda la integración tocada en
+  verde localmente con Docker** (inventario, ventas, rentas, devoluciones, reportes, carrito, pagos, clientes,
+  notificaciones, disfraces); confirmación final vía CI.
 - **Rebanada 5 (PR `feat/pasarela-pago`) — código completo, pendiente credencial:** RF-6.11 pago en línea. Puerto
   `PasarelaDePago` + adaptador **MercadoPago gateado** (sin token → 503) + `IntentoDePago` (migración V32).
   `POST /pagos/intento` (exige switch `pagoEnLinea` activo → si no, 409) crea el checkout; `POST /pagos/webhook` (público)
@@ -138,15 +149,15 @@ genera el cliente Kotlin y arranca la app. Reglas firmes: tests de dominio por f
 Estado: ✅ hecho y **mergeado en `main`** · 🔵 en **PR abierta** (sin mergear) · 🟨 parcial · ⬜ sin empezar
 > Nota: los ✅ que dicen *"código completo, pendiente credencial"* (S3, WhatsApp/FCM, y —cuando entre— Pasarela) están
 > **terminados en código y gateados**; solo falta cargar la credencial externa (listado en `docs/INFRA_PENDIENTE.md`).
-> Lo pendiente real de negocio está marcado como **Grupo B** (renta multi-artículo, checkout de renta, stock por
-> sucursal, devolución parcial) y **Grupo C** (deuda menor). Sincronizado con el Registro de sesiones (2026-07-07).
+> Lo pendiente real de negocio está marcado como **Grupo B** (renta multi-artículo, checkout de renta,
+> devolución parcial; **stock por sucursal ya hecho — Rebanada 6**) y **Grupo C** (deuda menor). Sincronizado con el Registro de sesiones (2026-07-07).
 
 | Módulo | Rigor | Estado | Detalle (mergeado salvo que diga PR) |
 |---|---|---|---|
 | Andamiaje + anti-erosión (ArchUnit/Modulith/CI) | — | ✅ | PR #1 |
 | Identidad y tenant (Empresa/Sucursal/Usuario/auth) | Hexagonal | ✅ | Auth JWT + rol/tenant + bootstrap + §5.4 forzado + refresh + alta empleados (RF-8) + **GET /sucursales (#20)** + **marketplace: rol CLIENTE + auto-registro (#22), solicitud de tienda (#23), aprobar→promueve a Dueño+Casa Matriz (#24)** + **recuperación de contraseña (RF-1.1, #26)**. ⬜ Falta solo permisos granulares por-usuario (RF-1.5) — Grupo C |
 | Catálogo y taxonomía (etiquetas, categorías) | Hexagonal | ✅ | Categoría, TipoEtiqueta/ValorEtiqueta, tipo↔categoría, renombrar, siembra al aprobar |
-| Inventario y disponibilidad | Hexagonal | ✅ | Prenda, GrupoDeStock, variantes, stock-bajo + ajuste con motivo auditado (RF-10) + **fotos de prenda en S3 (RF-2.9, #28 — código completo, gateado)**. ⬜ Falta stock/transferencias por sucursal (Rebanada 6, Grupo B) |
+| Inventario y disponibilidad | Hexagonal | ✅ | Prenda, GrupoDeStock, variantes, stock-bajo + ajuste con motivo auditado (RF-10) + **fotos de prenda en S3 (RF-2.9, #28 — código completo, gateado)** + **stock por sucursal (RF-18.2): `GrupoDeStock.sucursalId` (migración V33 con backfill), disponibilidad/baja/retorno acotados a la sucursal, misma variante en 2 sucursales = grupos aparte, y transferencia entre sucursales `POST /grupos-stock/{id}/transferir` (RF-10.3) — Rebanada 6, Grupo B** |
 | Disfraces (capa 3) | Hexagonal | ✅ | Disfraz+Slot+pool + disponibilidad derivada |
 | Pedidos / carrito | Hexagonal | 🟨 | Carrito segmentado + checkout→venta. ⬜ Falta checkout de RENTA con fechas por línea (Rebanada 8, Grupo B) |
 | Rentas | Hexagonal | 🟨 | Crear + estados + disponibilidad + advisory lock + idempotencia + extensión/renovación (RF-3.6) + contrato PDF (#27). ⬜ Falta multi-artículo/armado por partes (Rebanadas 7/9, Grupo B) y devolución parcial |

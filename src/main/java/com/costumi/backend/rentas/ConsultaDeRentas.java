@@ -14,6 +14,9 @@ public interface ConsultaDeRentas {
 	/** Prenda que ampara la renta, si la renta existe y pertenece a la empresa (tenant). */
 	Optional<UUID> prendaDeRenta(UUID empresaId, UUID rentaId);
 
+	/** Sucursal de la renta (para actualizar el stock por sucursal al devolver, RF-18.2). */
+	Optional<UUID> sucursalDeRenta(UUID empresaId, UUID rentaId);
+
 	/** Cliente de la renta, si existe y pertenece a la empresa (para notificar multas, RF-11.1). */
 	Optional<UUID> clienteDeRenta(UUID empresaId, UUID rentaId);
 
