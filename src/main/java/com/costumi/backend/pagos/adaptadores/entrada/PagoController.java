@@ -1,6 +1,8 @@
 package com.costumi.backend.pagos.adaptadores.entrada;
 
+import com.costumi.backend.pagos.aplicacion.ConfirmarPagoEnLinea;
 import com.costumi.backend.pagos.aplicacion.ConsultarPagos;
+import com.costumi.backend.pagos.aplicacion.CrearIntentoDePago;
 import com.costumi.backend.pagos.aplicacion.RegistrarCobroMixto;
 import com.costumi.backend.pagos.aplicacion.RegistrarCobroMixtoComando;
 import com.costumi.backend.pagos.aplicacion.RegistrarPago;
@@ -33,13 +35,35 @@ class PagoController {
 	private final ConsultarPagos consultarPagos;
 	private final RegistrarCobroMixto registrarCobroMixto;
 	private final com.costumi.backend.compartido.GeneradorDePdf pdf;
+	private final CrearIntentoDePago crearIntentoDePago;
+	private final ConfirmarPagoEnLinea confirmarPagoEnLinea;
 
 	PagoController(RegistrarPago registrarPago, ConsultarPagos consultarPagos, RegistrarCobroMixto registrarCobroMixto,
-			com.costumi.backend.compartido.GeneradorDePdf pdf) {
+			com.costumi.backend.compartido.GeneradorDePdf pdf, CrearIntentoDePago crearIntentoDePago,
+			ConfirmarPagoEnLinea confirmarPagoEnLinea) {
 		this.registrarPago = registrarPago;
 		this.consultarPagos = consultarPagos;
 		this.registrarCobroMixto = registrarCobroMixto;
 		this.pdf = pdf;
+		this.crearIntentoDePago = crearIntentoDePago;
+		this.confirmarPagoEnLinea = confirmarPagoEnLinea;
+	}
+
+	/** Inicia un pago en línea (RF-6.11): crea el checkout en la pasarela y devuelve la URL. */
+	@PostMapping("/intento")
+	IntentoDePagoResponse intento(@Valid @RequestBody IntentoDePagoRequest request, @AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empleadoId = UUID.fromString(jwt.getSubject());
+		CrearIntentoDePago.Resultado r = crearIntentoDePago.ejecutar(empresaId, request.sucursalId(), empleadoId,
+				request.tipoConcepto(), request.conceptoId(), request.monto(), request.moneda());
+		return new IntentoDePagoResponse(r.intentoId(), r.urlCheckout());
+	}
+
+	/** Webhook de la pasarela (RF-6.11): confirma el pago y registra el Pago (idempotente). Público. */
+	@PostMapping("/webhook")
+	ResponseEntity<Void> webhook(@Valid @RequestBody WebhookPagoRequest request) {
+		confirmarPagoEnLinea.ejecutar(request.intentoId(), request.idPagoExterno());
+		return ResponseEntity.noContent().build();
 	}
 
 	@PostMapping

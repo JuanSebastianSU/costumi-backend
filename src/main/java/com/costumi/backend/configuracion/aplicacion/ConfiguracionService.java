@@ -56,4 +56,10 @@ class ConfiguracionService implements GestionarConfiguracion, ConsultaDeConfigur
 	public java.math.BigDecimal tasaImpuesto(UUID empresaId) {
 		return deEmpresa(empresaId).tasaImpuesto();
 	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public boolean pagoEnLinea(UUID empresaId) {
+		return deEmpresa(empresaId).pagoEnLinea();
+	}
 }

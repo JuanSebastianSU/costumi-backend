@@ -81,6 +81,8 @@ class SecurityConfig {
 						.hasAnyRole("DUENO", "ENCARGADO", "MOSTRADOR", "ATENCION")
 						.requestMatchers(HttpMethod.POST, "/api/v1/devoluciones").hasAnyRole("DUENO", "ENCARGADO", "MOSTRADOR", "ATENCION")
 						.requestMatchers(HttpMethod.POST, "/api/v1/ventas").hasAnyRole("DUENO", "ENCARGADO", "MOSTRADOR", "ATENCION")
+						.requestMatchers(HttpMethod.POST, "/api/v1/pagos/webhook").permitAll()
+						.requestMatchers(HttpMethod.POST, "/api/v1/pagos/intento").hasAnyRole("DUENO", "ENCARGADO", "MOSTRADOR", "ATENCION")
 						.requestMatchers(HttpMethod.POST, "/api/v1/pagos").hasAnyRole("DUENO", "ENCARGADO", "MOSTRADOR", "ATENCION")
 						.requestMatchers(HttpMethod.POST, "/api/v1/caja/turnos", "/api/v1/caja/turnos/*/movimientos",
 								"/api/v1/caja/turnos/*/cerrar").hasAnyRole("DUENO", "ENCARGADO", "MOSTRADOR", "ATENCION")
