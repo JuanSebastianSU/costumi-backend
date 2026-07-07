@@ -12,7 +12,8 @@ import java.util.UUID;
 
 /** Casos de uso de Clientes: crear, buscar, lista negra e historial, acotados a la empresa (tenant). */
 @Service
-class ClienteService implements CrearCliente, ConsultarClientes, CambiarListaNegra, ConsultarHistorial {
+class ClienteService implements CrearCliente, ConsultarClientes, CambiarListaNegra, ConsultarHistorial,
+		RegistrarDeviceToken {
 
 	private final ClienteRepository clientes;
 	private final HistorialReadRepository historial;
@@ -49,6 +50,16 @@ class ClienteService implements CrearCliente, ConsultarClientes, CambiarListaNeg
 		} else {
 			cliente.quitarDeListaNegra();
 		}
+		return clientes.guardar(cliente);
+	}
+
+	@Override
+	@Transactional
+	public Cliente ejecutar(UUID empresaId, UUID clienteId, String deviceToken) {
+		Cliente cliente = clientes.buscarPorId(clienteId)
+				.filter(c -> c.empresaId().equals(empresaId))
+				.orElseThrow(() -> new ClienteNoEncontrado(clienteId));
+		cliente.registrarDeviceToken(deviceToken);
 		return clientes.guardar(cliente);
 	}
 

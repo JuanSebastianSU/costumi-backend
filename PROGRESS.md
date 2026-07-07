@@ -9,6 +9,11 @@
 enchufable, gateada por credencial → `docs/INFRA_PENDIENTE.md`), Grupo B (lógica diferida: renta multi-artículo, checkout
 de renta, disfraz→renta, devolución parcial, stock por sucursal), deuda menor, y barrido final RF-0…18. Rebanada por
 rebanada, cada una su PR con tests + ArchUnit + Modulith en verde; nada se declara "cerrado" sin CI verde.
+- **Rebanada 4 (PR `feat/canales-notificacion`) — código completo, pendiente credenciales:** RF-11.4 WhatsApp + RF-18.11 FCM.
+  Adaptadores `CanalWhatsApp` (Meta Cloud API) y `CanalFcm` (HTTP) **gateados** + `RouterDeCanales` (@Primary) que despacha
+  por `canal` y cae al log si no hay credencial/contacto. `ContactoDelCliente` (JDBC) resuelve teléfono/device_token.
+  `device_token` agregado al cliente (migración V31) + `PUT /clientes/{id}/device-token`. INFRA_PENDIENTE actualizado.
+  Unit test del router + compila + ArchUnit + Modulith en verde; integración vía CI.
 - **Rebanada 3 (PR `feat/fotos-s3`) — código completo, pendiente credencial AWS:** RF-2.9 fotos de prenda.
   `POST /api/v1/prendas/{id}/foto` (multipart) → sube a S3 y guarda `foto_url` (migración V30; `fotoUrl` en el DTO).
   Puerto `AlmacenDeImagenes` + adaptador S3 **gateado** (sin bucket/región → 503 "no configurado"). Credencial en

@@ -17,6 +17,7 @@ public class Cliente {
 	private String documento;
 	private String direccion;
 	private boolean enListaNegra;
+	private String deviceToken; // token de dispositivo para push FCM (RF-18.11); null si no registró
 
 	private Cliente(UUID id, UUID empresaId, String nombre, String telefono, String email, String documento,
 			String direccion, boolean enListaNegra) {
@@ -36,8 +37,19 @@ public class Cliente {
 	}
 
 	public static Cliente rehidratar(UUID id, UUID empresaId, String nombre, String telefono, String email,
-			String documento, String direccion, boolean enListaNegra) {
-		return new Cliente(id, empresaId, nombre, telefono, email, documento, direccion, enListaNegra);
+			String documento, String direccion, boolean enListaNegra, String deviceToken) {
+		Cliente cliente = new Cliente(id, empresaId, nombre, telefono, email, documento, direccion, enListaNegra);
+		cliente.deviceToken = limpiar(deviceToken);
+		return cliente;
+	}
+
+	/** Registra/actualiza el token de dispositivo para notificaciones push (RF-18.11). */
+	public void registrarDeviceToken(String token) {
+		this.deviceToken = limpiar(token);
+	}
+
+	public String deviceToken() {
+		return deviceToken;
 	}
 
 	public void ponerEnListaNegra() {

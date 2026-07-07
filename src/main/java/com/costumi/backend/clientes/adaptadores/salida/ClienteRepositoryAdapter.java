@@ -40,11 +40,11 @@ class ClienteRepositoryAdapter implements ClienteRepository {
 
 	private static ClienteJpaEntity aEntidad(Cliente c) {
 		return new ClienteJpaEntity(c.id(), c.empresaId(), c.nombre(), c.telefono(), c.email(), c.documento(),
-				c.direccion(), c.enListaNegra());
+				c.direccion(), c.enListaNegra(), c.deviceToken());
 	}
 
 	private static Cliente aDominio(ClienteJpaEntity e) {
 		return Cliente.rehidratar(e.getId(), e.getEmpresaId(), e.getNombre(), e.getTelefono(), e.getEmail(),
-				e.getDocumento(), e.getDireccion(), e.isEnListaNegra());
+				e.getDocumento(), e.getDireccion(), e.isEnListaNegra(), e.getDeviceToken());
 	}
 }
