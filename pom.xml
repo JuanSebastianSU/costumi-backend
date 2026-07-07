@@ -74,6 +74,13 @@
 			<artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
 		</dependency>
 
+		<!-- Email: envío de correos (recuperación de contraseña, RF-1.1). El envío real es opcional:
+		     si no hay SMTP configurado, el adaptador registra el correo en el log (no rompe nada). -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-mail</artifactId>
+		</dependency>
+
 		<!-- Spring Modulith: modelo de módulos del monolito (límites verificables) -->
 		<dependency>
 			<groupId>org.springframework.modulith</groupId>

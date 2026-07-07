@@ -7,6 +7,7 @@ import com.costumi.backend.identidad.aplicacion.EmpresaNoEncontrada;
 import com.costumi.backend.identidad.aplicacion.EmpresaNoOperativa;
 import com.costumi.backend.identidad.aplicacion.LimiteDeSucursales;
 import com.costumi.backend.identidad.aplicacion.RefreshInvalido;
+import com.costumi.backend.identidad.aplicacion.TokenDeRecuperacionInvalido;
 import com.costumi.backend.identidad.dominio.TransicionDeEstadoInvalida;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -56,6 +57,13 @@ class ManejadorDeErrores {
 	ProblemDetail argumentoInvalido(IllegalArgumentException ex) {
 		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
 		problema.setTitle("Solicitud inválida");
+		return problema;
+	}
+
+	@ExceptionHandler(TokenDeRecuperacionInvalido.class)
+	ProblemDetail tokenDeRecuperacionInvalido(TokenDeRecuperacionInvalido ex) {
+		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+		problema.setTitle("Token de recuperación inválido");
 		return problema;
 	}
 
