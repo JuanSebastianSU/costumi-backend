@@ -5,6 +5,19 @@
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
 ## Fase actual
+**Fase 7 — Rediseño marketplace + onboarding de tiendas (decisión de Juan, 2026-07-06).** Nuevo enfoque: **todos entran
+como CLIENTE** (se auto-registran, ven todas las tiendas tipo marketplace); un botón "Registrar mi tienda" manda la
+solicitud (empresa PENDIENTE); el **superadmin la ve en un panel in-app** (sin email por ahora) y la aprueba; al aprobar,
+esa **misma cuenta** se promueve a **Dueño** y se le desbloquea "Mi Local". Aislamiento: el dueño solo ve su empresa
+(multi-tenant ya lo garantiza); el cliente ve todas (marketplace público).
+- **Etapa 1 (PR `feat/registro-cliente`) — HECHA:** nuevo rol `CLIENTE` (usuario sin empresa; `Rol.requiereEmpresa()`
+  generaliza la regla de tenant en `Usuario`), y **auto-registro público** `POST /api/v1/auth/registro` (crea cliente +
+  auto-login). 26 tests verdes (5 nuevos), ArchUnit + Modulith en verde.
+- **Etapas siguientes (pendientes):** (2) solicitud de tienda con más datos (ubicación/contacto) ligada al cliente +
+  notificación in-app al superadmin; (3) aprobar → promover el cliente a Dueño (crea empresa ACTIVA + Casa Matriz +
+  cambia rol) ; (4) marketplace público con catálogo por tienda; (5) apps (registro cliente, ver tiendas, "Registrar mi
+  tienda", panel superadmin, "Mi Local").
+
 **Fase 6 — Integración con las apps Android (2026-07-06).** Conectando las dos apps al backend en Railway.
 - PR #20 `feat/sucursales-listado` (MERGEADO): `GET /api/v1/empresas/{empresaId}/sucursales` (cualquier usuario
   autenticado del tenant) + `BootstrapDemo` crea "Casa Matriz" para la empresa demo. Desbloquea rentas/ventas en las apps.

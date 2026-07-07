@@ -3,6 +3,7 @@ package com.costumi.backend.identidad.adaptadores.entrada;
 import com.costumi.backend.identidad.aplicacion.AutenticarUsuario;
 import com.costumi.backend.identidad.aplicacion.Credenciales;
 import com.costumi.backend.identidad.aplicacion.RefrescarToken;
+import com.costumi.backend.identidad.aplicacion.RegistrarCliente;
 import jakarta.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -19,16 +20,26 @@ class AuthController {
 
 	private final AutenticarUsuario autenticarUsuario;
 	private final RefrescarToken refrescarToken;
+	private final RegistrarCliente registrarCliente;
 
-	AuthController(AutenticarUsuario autenticarUsuario, RefrescarToken refrescarToken) {
+	AuthController(AutenticarUsuario autenticarUsuario, RefrescarToken refrescarToken,
+			RegistrarCliente registrarCliente) {
 		this.autenticarUsuario = autenticarUsuario;
 		this.refrescarToken = refrescarToken;
+		this.registrarCliente = registrarCliente;
 	}
 
 	/** Login: email + contraseña → token de acceso + token de refresco. */
 	@PostMapping("/login")
 	TokenResponse login(@Valid @RequestBody LoginRequest request) {
 		Credenciales credenciales = autenticarUsuario.autenticar(request.email(), request.password());
+		return new TokenResponse(credenciales.accessToken(), credenciales.refreshToken(), "Bearer");
+	}
+
+	/** Auto-registro de un cliente (usuario final): crea la cuenta y devuelve tokens (auto-login). */
+	@PostMapping("/registro")
+	TokenResponse registro(@Valid @RequestBody RegistroRequest request) {
+		Credenciales credenciales = registrarCliente.ejecutar(request.email(), request.password());
 		return new TokenResponse(credenciales.accessToken(), credenciales.refreshToken(), "Bearer");
 	}
 
