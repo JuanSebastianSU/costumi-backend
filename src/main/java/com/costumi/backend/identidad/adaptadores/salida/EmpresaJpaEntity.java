@@ -29,15 +29,28 @@ class EmpresaJpaEntity {
 	@Column(name = "fecha_registro", nullable = false)
 	private Instant fechaRegistro;
 
+	@Column(length = 300)
+	private String ubicacion;
+
+	@Column(length = 200)
+	private String contacto;
+
+	@Column(name = "solicitante_id")
+	private UUID solicitanteId;
+
 	protected EmpresaJpaEntity() {
 		// requerido por JPA
 	}
 
-	EmpresaJpaEntity(UUID id, String nombre, EstadoEmpresa estado, Instant fechaRegistro) {
+	EmpresaJpaEntity(UUID id, String nombre, EstadoEmpresa estado, Instant fechaRegistro,
+			String ubicacion, String contacto, UUID solicitanteId) {
 		this.id = id;
 		this.nombre = nombre;
 		this.estado = estado;
 		this.fechaRegistro = fechaRegistro;
+		this.ubicacion = ubicacion;
+		this.contacto = contacto;
+		this.solicitanteId = solicitanteId;
 	}
 
 	UUID getId() {
@@ -54,5 +67,17 @@ class EmpresaJpaEntity {
 
 	Instant getFechaRegistro() {
 		return fechaRegistro;
+	}
+
+	String getUbicacion() {
+		return ubicacion;
+	}
+
+	String getContacto() {
+		return contacto;
+	}
+
+	UUID getSolicitanteId() {
+		return solicitanteId;
 	}
 }

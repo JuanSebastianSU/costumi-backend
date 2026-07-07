@@ -30,7 +30,8 @@ class ConsultarEmpresasPendientesService implements ConsultarEmpresasPendientes 
 		return empresas.listarPorEstado(EstadoEmpresa.PENDIENTE).stream()
 				.map(empresa -> new EmpresaPendienteVista(
 						empresa.id(), empresa.nombre(), empresa.fechaRegistro(),
-						empresa.solicitudVencida(plazoResolucion, ahora)))
+						empresa.solicitudVencida(plazoResolucion, ahora),
+						empresa.ubicacion(), empresa.contacto(), empresa.solicitanteId()))
 				.toList();
 	}
 }

@@ -13,10 +13,13 @@ esa **misma cuenta** se promueve a **Dueño** y se le desbloquea "Mi Local". Ais
 - **Etapa 1 (PR `feat/registro-cliente`) — HECHA:** nuevo rol `CLIENTE` (usuario sin empresa; `Rol.requiereEmpresa()`
   generaliza la regla de tenant en `Usuario`), y **auto-registro público** `POST /api/v1/auth/registro` (crea cliente +
   auto-login). 26 tests verdes (5 nuevos), ArchUnit + Modulith en verde.
-- **Etapas siguientes (pendientes):** (2) solicitud de tienda con más datos (ubicación/contacto) ligada al cliente +
-  notificación in-app al superadmin; (3) aprobar → promover el cliente a Dueño (crea empresa ACTIVA + Casa Matriz +
-  cambia rol) ; (4) marketplace público con catálogo por tienda; (5) apps (registro cliente, ver tiendas, "Registrar mi
-  tienda", panel superadmin, "Mi Local").
+- **Etapa 2 (PR `feat/solicitud-tienda`) — HECHA (backend):** el registro de empresa (`POST /empresas`) ahora acepta
+  `ubicacion` + `contacto` y, si viene con token de un CLIENTE, guarda su id como `solicitante_id` (migración V28,
+  columnas opcionales). El panel del superadmin (`GET /empresas/pendientes`) expone esos datos + el solicitante, así el
+  superadmin sabe a quién promover a Dueño. La "notificación in-app" ES esa cola de pendientes. 28 tests verdes (2 nuevos).
+- **Etapas siguientes (pendientes):** (3) aprobar → promover el cliente a Dueño (empresa ACTIVA + Casa Matriz + cambia
+  rol del solicitante) ; (4) marketplace público con catálogo por tienda; (5) apps (registro cliente, ver tiendas,
+  "Registrar mi tienda", panel superadmin, "Mi Local").
 
 **Fase 6 — Integración con las apps Android (2026-07-06).** Conectando las dos apps al backend en Railway.
 - PR #20 `feat/sucursales-listado` (MERGEADO): `GET /api/v1/empresas/{empresaId}/sucursales` (cualquier usuario

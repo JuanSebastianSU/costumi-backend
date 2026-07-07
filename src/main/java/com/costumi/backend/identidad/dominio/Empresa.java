@@ -17,22 +17,40 @@ public class Empresa {
 	private String nombre;
 	private EstadoEmpresa estado;
 	private final Instant fechaRegistro;
+	// Datos de la solicitud de tienda (marketplace): opcionales para el auto-registro clásico.
+	private final String ubicacion;
+	private final String contacto;
+	private final UUID solicitanteId; // usuario CLIENTE que pidió abrir su tienda (si aplica)
 
-	private Empresa(UUID id, String nombre, EstadoEmpresa estado, Instant fechaRegistro) {
+	private Empresa(UUID id, String nombre, EstadoEmpresa estado, Instant fechaRegistro,
+			String ubicacion, String contacto, UUID solicitanteId) {
 		this.id = Objects.requireNonNull(id, "id");
 		this.nombre = exigirNombre(nombre);
 		this.estado = Objects.requireNonNull(estado, "estado");
 		this.fechaRegistro = Objects.requireNonNull(fechaRegistro, "fechaRegistro");
+		this.ubicacion = normalizar(ubicacion);
+		this.contacto = normalizar(contacto);
+		this.solicitanteId = solicitanteId;
 	}
 
-	/** Auto-registro (RF-15.2): una empresa nueva nace en estado PENDIENTE. */
+	/** Auto-registro clásico (RF-15.2): una empresa nueva nace en estado PENDIENTE, sin datos de solicitud. */
 	public static Empresa registrar(String nombre) {
-		return new Empresa(UUID.randomUUID(), nombre, EstadoEmpresa.PENDIENTE, Instant.now());
+		return registrar(nombre, null, null, null);
+	}
+
+	/**
+	 * Solicitud de tienda del marketplace: nace PENDIENTE con la ubicación/contacto que cargó el
+	 * cliente y el id del cliente solicitante (para que el SuperAdmin sepa a quién promover a Dueño).
+	 */
+	public static Empresa registrar(String nombre, String ubicacion, String contacto, UUID solicitanteId) {
+		return new Empresa(UUID.randomUUID(), nombre, EstadoEmpresa.PENDIENTE, Instant.now(),
+				ubicacion, contacto, solicitanteId);
 	}
 
 	/** Reconstruye una Empresa desde persistencia (usado por el adaptador de salida). */
-	public static Empresa rehidratar(UUID id, String nombre, EstadoEmpresa estado, Instant fechaRegistro) {
-		return new Empresa(id, nombre, estado, fechaRegistro);
+	public static Empresa rehidratar(UUID id, String nombre, EstadoEmpresa estado, Instant fechaRegistro,
+			String ubicacion, String contacto, UUID solicitanteId) {
+		return new Empresa(id, nombre, estado, fechaRegistro, ubicacion, contacto, solicitanteId);
 	}
 
 	/** Aprueba una empresa PENDIENTE (SuperAdmin, RF-15.3). */
@@ -77,6 +95,11 @@ public class Empresa {
 		return nombre.trim();
 	}
 
+	/** Campos opcionales: se guardan recortados o null si vienen vacíos. */
+	private static String normalizar(String valor) {
+		return (valor == null || valor.isBlank()) ? null : valor.trim();
+	}
+
 	public UUID id() {
 		return id;
 	}
@@ -91,5 +114,20 @@ public class Empresa {
 
 	public Instant fechaRegistro() {
 		return fechaRegistro;
+	}
+
+	/** Ubicación de la tienda que cargó el cliente al solicitarla (puede ser null en el registro clásico). */
+	public String ubicacion() {
+		return ubicacion;
+	}
+
+	/** Datos de contacto de la solicitud (puede ser null). */
+	public String contacto() {
+		return contacto;
+	}
+
+	/** Id del usuario CLIENTE que solicitó abrir la tienda (null si no vino de una solicitud del marketplace). */
+	public UUID solicitanteId() {
+		return solicitanteId;
 	}
 }
