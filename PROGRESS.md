@@ -110,7 +110,9 @@ Todo lo code-doable del backlog de Juan quedó hecho y verde (262 tests):
 ### 🚫 Bloqueado por decisión/infra (va detrás de config, NO frena el resto)
 - ~~Impuestos (RF-6.5/12.2)~~ — **RESUELTO y MERGEADO** (decisión de Juan): tasa única por empresa en
   `ConfiguracionEmpresa`, precio impuesto-incluido, desglose (base+impuesto) en el comprobante. En `main` (PR #14).
-- **Pasarela de pago (RF-6.11)**, **S3/fotos (RF-2.9)**, **WhatsApp/FCM (RF-11.4/18.11)** — credenciales/decisión externa.
+- **S3/fotos (RF-2.9)** y **WhatsApp/FCM (RF-11.4/18.11)** — **CÓDIGO COMPLETO, gateado**, solo pendientes de credencial
+  (ver `docs/INFRA_PENDIENTE.md`). Rebanadas 3 y 4 del cierre (PR #28, #29, mergeadas). **Pasarela de pago (RF-6.11)** —
+  pendiente (Rebanada 5, en curso).
 
 ### Arquitectura fijada (2026-07-06)
 **Repos separados:** este repo `costumi-backend` (Java/Spring) es el único que despliega Railway; la app **Android**
@@ -129,27 +131,31 @@ genera el cliente Kotlin y arranca la app. Reglas firmes: tests de dominio por f
 
 ## Tablero de módulos
 Estado: ✅ hecho y **mergeado en `main`** · 🔵 en **PR abierta** (sin mergear) · 🟨 parcial · ⬜ sin empezar
+> Nota: los ✅ que dicen *"código completo, pendiente credencial"* (S3, WhatsApp/FCM, y —cuando entre— Pasarela) están
+> **terminados en código y gateados**; solo falta cargar la credencial externa (listado en `docs/INFRA_PENDIENTE.md`).
+> Lo pendiente real de negocio está marcado como **Grupo B** (renta multi-artículo, checkout de renta, stock por
+> sucursal, devolución parcial) y **Grupo C** (deuda menor). Sincronizado con el Registro de sesiones (2026-07-07).
 
 | Módulo | Rigor | Estado | Detalle (mergeado salvo que diga PR) |
 |---|---|---|---|
 | Andamiaje + anti-erosión (ArchUnit/Modulith/CI) | — | ✅ | PR #1 |
-| Identidad y tenant (Empresa/Sucursal/Usuario/auth) | Hexagonal | 🔵 | Auth JWT + rol/tenant + bootstrap + §5.4 forzado (mergeado) + **refresh token (RF-1.1)** + **alta de empleados (RF-8)** en PR de cierre. ⬜ Falta recuperación de contraseña (infra) + permisos granulares por-usuario (RF-1.5) |
+| Identidad y tenant (Empresa/Sucursal/Usuario/auth) | Hexagonal | ✅ | Auth JWT + rol/tenant + bootstrap + §5.4 forzado + refresh + alta empleados (RF-8) + **GET /sucursales (#20)** + **marketplace: rol CLIENTE + auto-registro (#22), solicitud de tienda (#23), aprobar→promueve a Dueño+Casa Matriz (#24)** + **recuperación de contraseña (RF-1.1, #26)**. ⬜ Falta solo permisos granulares por-usuario (RF-1.5) — Grupo C |
 | Catálogo y taxonomía (etiquetas, categorías) | Hexagonal | ✅ | Categoría, TipoEtiqueta/ValorEtiqueta, tipo↔categoría, renombrar, siembra al aprobar |
-| Inventario y disponibilidad | Hexagonal | 🔵 | Prenda, GrupoDeStock, variantes, stock-bajo (mergeado) + **ajuste con motivo auditado (RF-10)** en PR de cierre. ⬜ Falta transferencias entre sucursales (requiere stock por sucursal = esquema) |
+| Inventario y disponibilidad | Hexagonal | ✅ | Prenda, GrupoDeStock, variantes, stock-bajo + ajuste con motivo auditado (RF-10) + **fotos de prenda en S3 (RF-2.9, #28 — código completo, gateado)**. ⬜ Falta stock/transferencias por sucursal (Rebanada 6, Grupo B) |
 | Disfraces (capa 3) | Hexagonal | ✅ | Disfraz+Slot+pool + disponibilidad derivada |
-| Pedidos / carrito | Hexagonal | 🟨 | Carrito segmentado + checkout→venta. ⬜ Falta checkout de RENTA (fechas por línea) |
-| Rentas | Hexagonal | 🔵 | Crear + estados + disponibilidad + advisory lock + idempotencia (mergeado) + **extensión/renovación (RF-3.6)** en PR de cierre. ⬜ Falta multi-artículo/armado |
+| Pedidos / carrito | Hexagonal | 🟨 | Carrito segmentado + checkout→venta. ⬜ Falta checkout de RENTA con fechas por línea (Rebanada 8, Grupo B) |
+| Rentas | Hexagonal | 🟨 | Crear + estados + disponibilidad + advisory lock + idempotencia + extensión/renovación (RF-3.6) + contrato PDF (#27). ⬜ Falta multi-artículo/armado por partes (Rebanadas 7/9, Grupo B) y devolución parcial |
 | Ventas / POS | Hexagonal | ✅ | Venta + descuento + total + baja de stock atómica (anti-sobreventa) |
 | Pagos, caja y depósitos | Hexagonal | ✅ | Reembolsos/saldo/idempotencia + **mixto+vuelto (cuadra con saldo), depósito-retención, comprobante, impuesto configurable** — mergeado (PR #13/#14) |
 | Caja / turno | Hexagonal | ✅ | Turno + movimientos + corte y cuadre por método |
-| Devoluciones y multas | Hexagonal | 🟨 | Checklist + multa (respeta switch) + inventario + evento. ⬜ Falta devolución parcial (RF-5.5) |
-| Clientes | Simple | ✅ | Ficha + búsqueda + lista negra + **historial (7.2)** + **filtro de pendientes (11.5/11.6)** — mergeado (PR #15). Falta foto (S3, infra) |
-| Empleados | Simple | 🔵 | **Alta de empleado por la empresa (RF-8)** — correo único, sin SUPERADMIN, login — en PR de cierre. ⬜ Falta usuario↔N sucursales (RF-1.2), turno/actividad |
-| Reportes | Simple (lectura) | ✅ | Ingresos, ganancia, rentas vencidas, depósitos activos, ingresos por método, rankings, ventas por empleado, **desglose por etiqueta**, tablero de inventario (9.3)+resumen, **export CSV (9.2)** — mergeado (PR #15). ⬜ Solo falta export **PDF** (requiere librería = decisión) |
-| Notificaciones (WhatsApp/FCM) | Simple (adaptador) | 🔵 | Envío por canal (log) + estados + disparador de multas + **recordatorio de vencidas (RF-11.1)** en PR de cierre. WhatsApp/FCM reales = 🚫 infra |
+| Devoluciones y multas | Hexagonal | 🟨 | Checklist + multa (respeta switch) + inventario + evento. ⬜ Falta devolución parcial (RF-5.5) — Rebanada 10, Grupo B (depende de renta multi-artículo) |
+| Clientes | Simple | ✅ | Ficha + búsqueda + lista negra + historial (7.2) + filtro de pendientes (11.5/11.6) + **device_token para push (RF-18.11, #29)**. Completo. |
+| Empleados | Simple | ✅ | Alta de empleado por la empresa (RF-8) — correo único, sin SUPERADMIN, login. ⬜ Falta usuario↔N sucursales (RF-1.2), turno/actividad (RF-8.2) — Grupo C |
+| Reportes | Simple (lectura) | ✅ | Ingresos, ganancia, rentas vencidas, depósitos activos, ingresos por método, rankings, ventas por empleado, desglose por etiqueta, tablero de inventario (9.3)+resumen, export CSV **y PDF (RF-9.2, #27)** + comprobante/contrato PDF (RF-3.4). **Completo.** |
+| Notificaciones (WhatsApp/FCM) | Simple (adaptador) | ✅ | Envío por canal + estados + disparador de multas + recordatorio de vencidas (RF-11.1) + **canales WhatsApp/FCM reales gateados + router + device_token (RF-11.4/18.11, #29 — código completo, pendiente credencial)** |
 | Configuración de empresa | Simple | ✅ | Switches que controlan de verdad (multas, multi-sucursal, conteo-stock) + reglas por defecto (moneda/recargo, 12.2) + respaldo/restauración (12.3) — mergeado (PR #15). Falta pagoEnLinea (infra) |
 | Auditoría | Simple | ✅ | Registro por domain events |
-| App cliente (marketplace) | — | 🟨 | Descubrimiento + búsqueda por texto de empresas ACTIVAS. ⬜ Falta catálogo/checkout del cliente |
+| Marketplace (backend) | Simple (lectura) | ✅ | Descubrimiento + búsqueda de empresas ACTIVAS + **catálogo público por tienda (RF-18, #25)**. ⬜ Falta checkout/carrito de RENTA del cliente (Rebanada 8, Grupo B) |
 
 ## Decisiones aceptadas
 - **Plan de cierre (2026-07-04, `CIERRE_BACKEND.md` de Juan):** cerrar el backend en **3 tandas** (T1=P0+P1,
