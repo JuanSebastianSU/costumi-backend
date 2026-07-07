@@ -5,11 +5,12 @@
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
 ## Fase actual
-**Fase 6 — Integración con las apps Android (2026-07-06).** Conectando las dos apps al backend en Railway. Hueco
-detectado y cubierto: las apps necesitan un `sucursalId` para operar rentas/ventas, pero no había forma de obtenerlo.
-PR `feat/sucursales-listado`: agrega `GET /api/v1/empresas/{empresaId}/sucursales` (cualquier usuario autenticado del
-tenant) + `BootstrapDemo` ahora crea una sucursal "Casa Matriz" para la empresa demo. 14 tests verdes (incluye 3 nuevos
-del GET), ArchUnit + Modulith en verde.
+**Fase 6 — Integración con las apps Android (2026-07-06).** Conectando las dos apps al backend en Railway.
+- PR #20 `feat/sucursales-listado` (MERGEADO): `GET /api/v1/empresas/{empresaId}/sucursales` (cualquier usuario
+  autenticado del tenant) + `BootstrapDemo` crea "Casa Matriz" para la empresa demo. Desbloquea rentas/ventas en las apps.
+- PR `feat/seed-cliente-demo`: `BootstrapDemo` ahora también siembra (opcional, idempotente) una cuenta de **MOSTRADOR**
+  en la empresa demo para la app del cliente, leída de `COSTUMI_DEMO_CLIENTE_EMAIL/PASSWORD`. El rol define la
+  experiencia al ingresar (mismo login para dueño y cliente). ArchUnit + Modulith en verde.
 
 **Fase 5 — Cierre del backend (backlog de Juan, 2026-07-06) — COMPLETO en código.** El **núcleo** está mergeado en
 `main` (PR #6→#15); el **backlog de cierre completo** está en la **PR final `feat/cierre-final`** (262 tests verdes),
