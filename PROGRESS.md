@@ -9,6 +9,10 @@
 enchufable, gateada por credencial → `docs/INFRA_PENDIENTE.md`), Grupo B (lógica diferida: renta multi-artículo, checkout
 de renta, disfraz→renta, devolución parcial, stock por sucursal), deuda menor, y barrido final RF-0…18. Rebanada por
 rebanada, cada una su PR con tests + ArchUnit + Modulith en verde; nada se declara "cerrado" sin CI verde.
+- **Rebanada 3 (PR `feat/fotos-s3`) — código completo, pendiente credencial AWS:** RF-2.9 fotos de prenda.
+  `POST /api/v1/prendas/{id}/foto` (multipart) → sube a S3 y guarda `foto_url` (migración V30; `fotoUrl` en el DTO).
+  Puerto `AlmacenDeImagenes` + adaptador S3 **gateado** (sin bucket/región → 503 "no configurado"). Credencial en
+  `docs/INFRA_PENDIENTE.md`. Unit test del gating + compila + ArchUnit + Modulith en verde; integración vía CI.
 - **Rebanada 2 (PR `feat/export-pdf`) — HECHA (sin credenciales, cierre real):** RF-9.2 export de reportes en PDF
   (`/reportes/export/rentas-vencidas.pdf`, `/reportes/export/inventario-tablero.pdf`) + RF-3.4 comprobante de pago
   (`/pagos/comprobante.pdf`) y contrato de renta (`/rentas/{id}/contrato.pdf`). Librería OpenPDF (LGPL/MPL, sin
