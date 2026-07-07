@@ -24,6 +24,7 @@ public class Prenda {
 	private BigDecimal depositoSugerido;
 	private EtiquetasDePrenda etiquetas;
 	private boolean archivada;
+	private String fotoUrl; // URL de la foto (RF-2.9); null si aún no tiene
 
 	private Prenda(UUID id, UUID empresaId, UUID categoriaId, String nombre, TipoArticulo tipoArticulo,
 			BigDecimal precioRenta, BigDecimal precioVenta, BigDecimal costoAdquisicion, BigDecimal depositoSugerido,
@@ -61,9 +62,20 @@ public class Prenda {
 
 	public static Prenda rehidratar(UUID id, UUID empresaId, UUID categoriaId, String nombre, TipoArticulo tipoArticulo,
 			BigDecimal precioRenta, BigDecimal precioVenta, BigDecimal costoAdquisicion, BigDecimal depositoSugerido,
-			EtiquetasDePrenda etiquetas, boolean archivada) {
-		return new Prenda(id, empresaId, categoriaId, nombre, tipoArticulo, precioRenta, precioVenta, costoAdquisicion,
-				depositoSugerido, etiquetas, archivada);
+			EtiquetasDePrenda etiquetas, boolean archivada, String fotoUrl) {
+		Prenda prenda = new Prenda(id, empresaId, categoriaId, nombre, tipoArticulo, precioRenta, precioVenta,
+				costoAdquisicion, depositoSugerido, etiquetas, archivada);
+		prenda.fotoUrl = fotoUrl;
+		return prenda;
+	}
+
+	/** Asigna/actualiza la URL de la foto de la prenda (RF-2.9). */
+	public void asignarFoto(String url) {
+		this.fotoUrl = url;
+	}
+
+	public String fotoUrl() {
+		return fotoUrl;
 	}
 
 	/** Reemplaza las etiquetas de clasificación de la prenda (RF-2.7, Capa 2). */

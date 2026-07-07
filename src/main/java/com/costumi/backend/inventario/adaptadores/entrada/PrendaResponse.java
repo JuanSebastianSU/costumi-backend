@@ -10,13 +10,14 @@ import java.util.UUID;
 /** DTO de salida de la Prenda, con sus valores de etiqueta de clasificación (RF-2.7). */
 public record PrendaResponse(UUID id, UUID empresaId, UUID categoriaId, String nombre, TipoArticulo tipoArticulo,
 		BigDecimal precioRenta, BigDecimal precioVenta, BigDecimal costoAdquisicion, BigDecimal depositoSugerido,
-		List<EtiquetaSeleccionadaDto> etiquetas, boolean archivada) {
+		List<EtiquetaSeleccionadaDto> etiquetas, boolean archivada, String fotoUrl) {
 
 	static PrendaResponse desde(Prenda p) {
 		List<EtiquetaSeleccionadaDto> etiquetas = p.etiquetas().valores().entrySet().stream()
 				.map(e -> new EtiquetaSeleccionadaDto(e.getKey(), e.getValue()))
 				.toList();
 		return new PrendaResponse(p.id(), p.empresaId(), p.categoriaId(), p.nombre(), p.tipoArticulo(),
-				p.precioRenta(), p.precioVenta(), p.costoAdquisicion(), p.depositoSugerido(), etiquetas, p.archivada());
+				p.precioRenta(), p.precioVenta(), p.costoAdquisicion(), p.depositoSugerido(), etiquetas, p.archivada(),
+				p.fotoUrl());
 	}
 }

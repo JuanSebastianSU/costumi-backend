@@ -1,5 +1,6 @@
 package com.costumi.backend.inventario.adaptadores.entrada;
 
+import com.costumi.backend.inventario.aplicacion.AlmacenDeImagenesNoConfigurado;
 import com.costumi.backend.inventario.aplicacion.CombinacionDeVarianteInvalida;
 import com.costumi.backend.inventario.aplicacion.EtiquetaDePrendaInvalida;
 import com.costumi.backend.inventario.aplicacion.GrupoDeStockNoEncontrado;
@@ -29,6 +30,13 @@ class ManejadorDeErroresInventario {
 	ProblemDetail prendaNoEncontrada(PrendaNoEncontrada ex) {
 		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
 		problema.setTitle("Prenda no encontrada");
+		return problema;
+	}
+
+	@ExceptionHandler(AlmacenDeImagenesNoConfigurado.class)
+	ProblemDetail almacenNoConfigurado(AlmacenDeImagenesNoConfigurado ex) {
+		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
+		problema.setTitle("Almacenamiento de imágenes no configurado");
 		return problema;
 	}
 

@@ -61,13 +61,16 @@ class PrendaJpaEntity {
 	@Column(nullable = false)
 	private boolean archivada;
 
+	@Column(name = "foto_url", length = 500)
+	private String fotoUrl;
+
 	protected PrendaJpaEntity() {
 		// requerido por JPA
 	}
 
 	PrendaJpaEntity(UUID id, UUID empresaId, UUID categoriaId, String nombre, TipoArticulo tipoArticulo,
 			BigDecimal precioRenta, BigDecimal precioVenta, BigDecimal costoAdquisicion, BigDecimal depositoSugerido,
-			Set<EtiquetaDePrendaEmbeddable> etiquetas, boolean archivada) {
+			Set<EtiquetaDePrendaEmbeddable> etiquetas, boolean archivada, String fotoUrl) {
 		this.id = id;
 		this.empresaId = empresaId;
 		this.categoriaId = categoriaId;
@@ -79,6 +82,11 @@ class PrendaJpaEntity {
 		this.depositoSugerido = depositoSugerido;
 		this.etiquetas = etiquetas;
 		this.archivada = archivada;
+		this.fotoUrl = fotoUrl;
+	}
+
+	String getFotoUrl() {
+		return fotoUrl;
 	}
 
 	UUID getId() {
