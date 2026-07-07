@@ -40,12 +40,15 @@ class ClienteJpaEntity {
 	@Column(name = "en_lista_negra", nullable = false)
 	private boolean enListaNegra;
 
+	@Column(name = "device_token", length = 300)
+	private String deviceToken;
+
 	protected ClienteJpaEntity() {
 		// requerido por JPA
 	}
 
 	ClienteJpaEntity(UUID id, UUID empresaId, String nombre, String telefono, String email, String documento,
-			String direccion, boolean enListaNegra) {
+			String direccion, boolean enListaNegra, String deviceToken) {
 		this.id = id;
 		this.empresaId = empresaId;
 		this.nombre = nombre;
@@ -54,6 +57,11 @@ class ClienteJpaEntity {
 		this.documento = documento;
 		this.direccion = direccion;
 		this.enListaNegra = enListaNegra;
+		this.deviceToken = deviceToken;
+	}
+
+	String getDeviceToken() {
+		return deviceToken;
 	}
 
 	UUID getId() {

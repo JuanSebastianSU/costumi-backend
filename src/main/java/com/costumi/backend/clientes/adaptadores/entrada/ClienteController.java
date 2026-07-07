@@ -6,6 +6,7 @@ import com.costumi.backend.clientes.aplicacion.ConsultarClientes;
 import com.costumi.backend.clientes.aplicacion.ConsultarHistorial;
 import com.costumi.backend.clientes.aplicacion.CrearCliente;
 import com.costumi.backend.clientes.aplicacion.CrearClienteComando;
+import com.costumi.backend.clientes.aplicacion.RegistrarDeviceToken;
 import com.costumi.backend.clientes.dominio.Cliente;
 import com.costumi.backend.clientes.dominio.HistorialItem;
 import jakarta.validation.Valid;
@@ -15,6 +16,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -34,13 +36,25 @@ class ClienteController {
 	private final ConsultarClientes consultarClientes;
 	private final CambiarListaNegra cambiarListaNegra;
 	private final ConsultarHistorial consultarHistorial;
+	private final RegistrarDeviceToken registrarDeviceToken;
 
 	ClienteController(CrearCliente crearCliente, ConsultarClientes consultarClientes,
-			CambiarListaNegra cambiarListaNegra, ConsultarHistorial consultarHistorial) {
+			CambiarListaNegra cambiarListaNegra, ConsultarHistorial consultarHistorial,
+			RegistrarDeviceToken registrarDeviceToken) {
 		this.crearCliente = crearCliente;
 		this.consultarClientes = consultarClientes;
 		this.cambiarListaNegra = cambiarListaNegra;
 		this.consultarHistorial = consultarHistorial;
+		this.registrarDeviceToken = registrarDeviceToken;
+	}
+
+	/** Registra el token de dispositivo del cliente para push FCM (RF-18.11). */
+	@PutMapping("/{id}/device-token")
+	ResponseEntity<ClienteResponse> registrarDeviceToken(@PathVariable UUID id,
+			@Valid @RequestBody DeviceTokenRequest request, @AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		Cliente cliente = registrarDeviceToken.ejecutar(empresaId, id, request.deviceToken());
+		return ResponseEntity.ok(ClienteResponse.desde(cliente));
 	}
 
 	@PostMapping
