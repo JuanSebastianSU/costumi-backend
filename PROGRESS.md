@@ -9,6 +9,11 @@
 enchufable, gateada por credencial → `docs/INFRA_PENDIENTE.md`), Grupo B (lógica diferida: renta multi-artículo, checkout
 de renta, disfraz→renta, devolución parcial, stock por sucursal), deuda menor, y barrido final RF-0…18. Rebanada por
 rebanada, cada una su PR con tests + ArchUnit + Modulith en verde; nada se declara "cerrado" sin CI verde.
+- **Rebanada 5 (PR `feat/pasarela-pago`) — código completo, pendiente credencial:** RF-6.11 pago en línea. Puerto
+  `PasarelaDePago` + adaptador **MercadoPago gateado** (sin token → 503) + `IntentoDePago` (migración V32).
+  `POST /pagos/intento` (exige switch `pagoEnLinea` activo → si no, 409) crea el checkout; `POST /pagos/webhook` (público)
+  confirma y **registra el Pago reutilizando la idempotencia existente** (clave = id externo). `pagoEnLinea` agregado a
+  `ConsultaDeConfiguracion`. INFRA_PENDIENTE actualizado. Unit test + ArchUnit + Modulith en verde; integración vía CI.
 - **Rebanada 4 (PR `feat/canales-notificacion`) — código completo, pendiente credenciales:** RF-11.4 WhatsApp + RF-18.11 FCM.
   Adaptadores `CanalWhatsApp` (Meta Cloud API) y `CanalFcm` (HTTP) **gateados** + `RouterDeCanales` (@Primary) que despacha
   por `canal` y cae al log si no hay credencial/contacto. `ContactoDelCliente` (JDBC) resuelve teléfono/device_token.
@@ -110,9 +115,9 @@ Todo lo code-doable del backlog de Juan quedó hecho y verde (262 tests):
 ### 🚫 Bloqueado por decisión/infra (va detrás de config, NO frena el resto)
 - ~~Impuestos (RF-6.5/12.2)~~ — **RESUELTO y MERGEADO** (decisión de Juan): tasa única por empresa en
   `ConfiguracionEmpresa`, precio impuesto-incluido, desglose (base+impuesto) en el comprobante. En `main` (PR #14).
-- **S3/fotos (RF-2.9)** y **WhatsApp/FCM (RF-11.4/18.11)** — **CÓDIGO COMPLETO, gateado**, solo pendientes de credencial
-  (ver `docs/INFRA_PENDIENTE.md`). Rebanadas 3 y 4 del cierre (PR #28, #29, mergeadas). **Pasarela de pago (RF-6.11)** —
-  pendiente (Rebanada 5, en curso).
+- **S3/fotos (RF-2.9)**, **WhatsApp/FCM (RF-11.4/18.11)** y **Pasarela (RF-6.11)** — **CÓDIGO COMPLETO, gateado**, solo
+  pendientes de credencial (ver `docs/INFRA_PENDIENTE.md`). Rebanadas 3, 4 y 5 del cierre (PR #28, #29 mergeadas; #31 pasarela).
+  **Recuperar contraseña (RF-1.1)** también (PR #26, credencial SMTP). Con esto el **Grupo A queda cerrado en código.**
 
 ### Arquitectura fijada (2026-07-06)
 **Repos separados:** este repo `costumi-backend` (Java/Spring) es el único que despliega Railway; la app **Android**
@@ -146,7 +151,7 @@ Estado: ✅ hecho y **mergeado en `main`** · 🔵 en **PR abierta** (sin mergea
 | Pedidos / carrito | Hexagonal | 🟨 | Carrito segmentado + checkout→venta. ⬜ Falta checkout de RENTA con fechas por línea (Rebanada 8, Grupo B) |
 | Rentas | Hexagonal | 🟨 | Crear + estados + disponibilidad + advisory lock + idempotencia + extensión/renovación (RF-3.6) + contrato PDF (#27). ⬜ Falta multi-artículo/armado por partes (Rebanadas 7/9, Grupo B) y devolución parcial |
 | Ventas / POS | Hexagonal | ✅ | Venta + descuento + total + baja de stock atómica (anti-sobreventa) |
-| Pagos, caja y depósitos | Hexagonal | ✅ | Reembolsos/saldo/idempotencia + **mixto+vuelto (cuadra con saldo), depósito-retención, comprobante, impuesto configurable** — mergeado (PR #13/#14) |
+| Pagos, caja y depósitos | Hexagonal | ✅ | Reembolsos/saldo/idempotencia + mixto+vuelto, depósito-retención, comprobante (+ PDF #27), impuesto configurable + **pago en línea / pasarela MercadoPago (RF-6.11, #31 — código completo, gateado): /pagos/intento + /pagos/webhook idempotente** |
 | Caja / turno | Hexagonal | ✅ | Turno + movimientos + corte y cuadre por método |
 | Devoluciones y multas | Hexagonal | 🟨 | Checklist + multa (respeta switch) + inventario + evento. ⬜ Falta devolución parcial (RF-5.5) — Rebanada 10, Grupo B (depende de renta multi-artículo) |
 | Clientes | Simple | ✅ | Ficha + búsqueda + lista negra + historial (7.2) + filtro de pendientes (11.5/11.6) + **device_token para push (RF-18.11, #29)**. Completo. |
