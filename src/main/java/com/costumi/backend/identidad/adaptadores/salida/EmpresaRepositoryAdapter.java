@@ -36,10 +36,12 @@ class EmpresaRepositoryAdapter implements EmpresaRepository {
 	}
 
 	private static EmpresaJpaEntity aEntidad(Empresa empresa) {
-		return new EmpresaJpaEntity(empresa.id(), empresa.nombre(), empresa.estado(), empresa.fechaRegistro());
+		return new EmpresaJpaEntity(empresa.id(), empresa.nombre(), empresa.estado(), empresa.fechaRegistro(),
+				empresa.ubicacion(), empresa.contacto(), empresa.solicitanteId());
 	}
 
 	private static Empresa aDominio(EmpresaJpaEntity entidad) {
-		return Empresa.rehidratar(entidad.getId(), entidad.getNombre(), entidad.getEstado(), entidad.getFechaRegistro());
+		return Empresa.rehidratar(entidad.getId(), entidad.getNombre(), entidad.getEstado(), entidad.getFechaRegistro(),
+				entidad.getUbicacion(), entidad.getContacto(), entidad.getSolicitanteId());
 	}
 }

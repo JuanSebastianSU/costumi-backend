@@ -18,7 +18,8 @@ class RegistrarEmpresaService implements RegistrarEmpresa {
 	@Override
 	@Transactional
 	public Empresa ejecutar(RegistrarEmpresaComando comando) {
-		Empresa empresa = Empresa.registrar(comando.nombre());
+		Empresa empresa = Empresa.registrar(
+				comando.nombre(), comando.ubicacion(), comando.contacto(), comando.solicitanteId());
 		return empresas.guardar(empresa);
 	}
 }

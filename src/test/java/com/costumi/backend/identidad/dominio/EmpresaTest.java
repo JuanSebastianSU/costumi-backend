@@ -77,7 +77,7 @@ class EmpresaTest {
 	@Test
 	void una_pendiente_pasado_el_plazo_esta_vencida() {
 		Instant hace3Dias = Instant.now().minus(Duration.ofDays(3));
-		Empresa empresa = Empresa.rehidratar(UUID.randomUUID(), "X", EstadoEmpresa.PENDIENTE, hace3Dias);
+		Empresa empresa = Empresa.rehidratar(UUID.randomUUID(), "X", EstadoEmpresa.PENDIENTE, hace3Dias, null, null, null);
 
 		assertThat(empresa.solicitudVencida(Duration.ofDays(2), Instant.now())).isTrue();
 	}
@@ -85,7 +85,7 @@ class EmpresaTest {
 	@Test
 	void una_empresa_no_pendiente_nunca_esta_vencida() {
 		Instant hace3Dias = Instant.now().minus(Duration.ofDays(3));
-		Empresa empresa = Empresa.rehidratar(UUID.randomUUID(), "X", EstadoEmpresa.ACTIVA, hace3Dias);
+		Empresa empresa = Empresa.rehidratar(UUID.randomUUID(), "X", EstadoEmpresa.ACTIVA, hace3Dias, null, null, null);
 
 		assertThat(empresa.solicitudVencida(Duration.ofDays(2), Instant.now())).isFalse();
 	}

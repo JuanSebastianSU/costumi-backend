@@ -7,6 +7,8 @@ import com.costumi.backend.identidad.aplicacion.RegistrarEmpresaComando;
 import com.costumi.backend.identidad.dominio.Empresa;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -44,11 +46,17 @@ class EmpresaController {
 		return consultarEmpresasPendientes.ejecutar().stream().map(EmpresaPendienteResponse::desde).toList();
 	}
 
-	/** Auto-registro de una Empresa (RF-15.2): nace PENDIENTE, devuelve 201. */
+	/**
+	 * Registro / solicitud de tienda de una Empresa (RF-15.2): nace PENDIENTE, devuelve 201.
+	 * Endpoint público; si viene con token (un CLIENTE del marketplace pidiendo abrir su tienda),
+	 * se guarda su id como solicitante para que el SuperAdmin sepa a quién promover a Dueño al aprobar.
+	 */
 	@PostMapping
 	ResponseEntity<EmpresaResponse> registrar(@Valid @RequestBody RegistrarEmpresaRequest request,
-			UriComponentsBuilder uriBuilder) {
-		Empresa empresa = registrarEmpresa.ejecutar(new RegistrarEmpresaComando(request.nombre()));
+			@AuthenticationPrincipal Jwt jwt, UriComponentsBuilder uriBuilder) {
+		UUID solicitanteId = (jwt == null) ? null : UUID.fromString(jwt.getSubject());
+		Empresa empresa = registrarEmpresa.ejecutar(new RegistrarEmpresaComando(
+				request.nombre(), request.ubicacion(), request.contacto(), solicitanteId));
 		URI location = uriBuilder.path("/api/v1/empresas/{id}").buildAndExpand(empresa.id()).toUri();
 		return ResponseEntity.created(location).body(EmpresaResponse.desde(empresa));
 	}
