@@ -67,10 +67,12 @@ class DisfrazIntegrationTest {
 	}
 
 	private void crearGrupo(String token, UUID prendaId, int cantidad) throws Exception {
+		// La disponibilidad del disfraz es a nivel de empresa (agrega todas las sucursales),
+		// así que aquí la sucursal solo necesita ser un UUID válido para pasar la validación.
 		mvc.perform(post("/api/v1/prendas/{prendaId}/grupos-stock", prendaId)
 						.header("Authorization", "Bearer " + token)
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"combinacion\":[],\"cantidadInicial\":" + cantidad + "}"))
+						.content("{\"sucursalId\":\"" + UUID.randomUUID() + "\",\"combinacion\":[],\"cantidadInicial\":" + cantidad + "}"))
 				.andExpect(status().isCreated());
 	}
 

@@ -17,6 +17,7 @@ public class GrupoDeStock {
 
 	private final UUID id;
 	private final UUID empresaId;
+	private final UUID sucursalId;
 	private final UUID prendaId;
 	private final CombinacionDeVariante combinacion;
 	private int disponibles;
@@ -24,10 +25,11 @@ public class GrupoDeStock {
 	private int enLimpieza;
 	private int perdidas;
 
-	private GrupoDeStock(UUID id, UUID empresaId, UUID prendaId, CombinacionDeVariante combinacion,
+	private GrupoDeStock(UUID id, UUID empresaId, UUID sucursalId, UUID prendaId, CombinacionDeVariante combinacion,
 			int disponibles, int danadas, int enLimpieza, int perdidas) {
 		this.id = Objects.requireNonNull(id, "id");
 		this.empresaId = Objects.requireNonNull(empresaId, "empresaId");
+		this.sucursalId = Objects.requireNonNull(sucursalId, "sucursalId");
 		this.prendaId = Objects.requireNonNull(prendaId, "prendaId");
 		this.combinacion = Objects.requireNonNull(combinacion, "combinacion");
 		this.disponibles = exigirNoNegativo(disponibles);
@@ -36,14 +38,20 @@ public class GrupoDeStock {
 		this.perdidas = exigirNoNegativo(perdidas);
 	}
 
-	public static GrupoDeStock crear(UUID empresaId, UUID prendaId, CombinacionDeVariante combinacion,
+	public static GrupoDeStock crear(UUID empresaId, UUID sucursalId, UUID prendaId, CombinacionDeVariante combinacion,
 			int cantidadInicial) {
-		return new GrupoDeStock(UUID.randomUUID(), empresaId, prendaId, combinacion, cantidadInicial, 0, 0, 0);
+		return new GrupoDeStock(UUID.randomUUID(), empresaId, sucursalId, prendaId, combinacion, cantidadInicial,
+				0, 0, 0);
 	}
 
-	public static GrupoDeStock rehidratar(UUID id, UUID empresaId, UUID prendaId, CombinacionDeVariante combinacion,
-			int disponibles, int danadas, int enLimpieza, int perdidas) {
-		return new GrupoDeStock(id, empresaId, prendaId, combinacion, disponibles, danadas, enLimpieza, perdidas);
+	public static GrupoDeStock rehidratar(UUID id, UUID empresaId, UUID sucursalId, UUID prendaId,
+			CombinacionDeVariante combinacion, int disponibles, int danadas, int enLimpieza, int perdidas) {
+		return new GrupoDeStock(id, empresaId, sucursalId, prendaId, combinacion, disponibles, danadas, enLimpieza,
+				perdidas);
+	}
+
+	public UUID sucursalId() {
+		return sucursalId;
 	}
 
 	/** ¿Este grupo representa la misma variante que {@code otro} (misma combinación de etiquetas)? */

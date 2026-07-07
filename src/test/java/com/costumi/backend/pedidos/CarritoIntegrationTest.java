@@ -118,7 +118,8 @@ class CarritoIntegrationTest {
 	void checkout_de_venta_crea_la_venta_y_confirma_el_carrito() throws Exception {
 		Ctx c = montar();
 		mvc.perform(post("/api/v1/prendas/{id}/grupos-stock", c.prenda()).header("Authorization", "Bearer " + c.dueno())
-						.contentType(MediaType.APPLICATION_JSON).content("{\"combinacion\":[],\"cantidadInicial\":5}"))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + c.sucursal() + "\",\"combinacion\":[],\"cantidadInicial\":5}"))
 				.andExpect(status().isCreated());
 		agregar(c, "VENTA", 2);
 

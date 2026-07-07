@@ -70,7 +70,7 @@ class RentaIntegrationTest {
 		UUID prenda = postId("/api/v1/prendas", dueno, "{\"categoriaId\":\"" + categoria
 				+ "\",\"nombre\":\"Camisa\",\"tipoArticulo\":\"RENTA\",\"precioRenta\":20.00}");
 		postId("/api/v1/prendas/" + prenda + "/grupos-stock", dueno,
-				"{\"combinacion\":[],\"cantidadInicial\":" + stock + "}");
+				"{\"sucursalId\":\"" + sucursal + "\",\"combinacion\":[],\"cantidadInicial\":" + stock + "}");
 		return new Ctx(dueno, sucursal, cliente, prenda);
 	}
 

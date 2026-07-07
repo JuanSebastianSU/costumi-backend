@@ -9,6 +9,7 @@ import com.costumi.backend.inventario.aplicacion.MoverUnidades;
 import com.costumi.backend.inventario.aplicacion.MoverUnidadesComando;
 import com.costumi.backend.inventario.aplicacion.ReabastecerGrupo;
 import com.costumi.backend.inventario.aplicacion.SeleccionVariante;
+import com.costumi.backend.inventario.aplicacion.TransferirStock;
 import com.costumi.backend.inventario.dominio.GrupoDeStock;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -36,16 +37,18 @@ class GrupoDeStockController {
 	private final ReabastecerGrupo reabastecerGrupo;
 	private final ConsultarStockBajo consultarStockBajo;
 	private final AjustarStock ajustarStock;
+	private final TransferirStock transferirStock;
 
 	GrupoDeStockController(CrearGrupoDeStock crearGrupoDeStock, ConsultarGruposDeStock consultarGruposDeStock,
 			MoverUnidades moverUnidades, ReabastecerGrupo reabastecerGrupo, ConsultarStockBajo consultarStockBajo,
-			AjustarStock ajustarStock) {
+			AjustarStock ajustarStock, TransferirStock transferirStock) {
 		this.crearGrupoDeStock = crearGrupoDeStock;
 		this.consultarGruposDeStock = consultarGruposDeStock;
 		this.moverUnidades = moverUnidades;
 		this.reabastecerGrupo = reabastecerGrupo;
 		this.consultarStockBajo = consultarStockBajo;
 		this.ajustarStock = ajustarStock;
+		this.transferirStock = transferirStock;
 	}
 
 	@PostMapping("/api/v1/prendas/{prendaId}/grupos-stock")
@@ -57,7 +60,7 @@ class GrupoDeStockController {
 				.map(s -> new SeleccionVariante(s.tipoEtiquetaId(), s.valorEtiquetaId()))
 				.toList();
 		GrupoDeStock grupo = crearGrupoDeStock.ejecutar(new CrearGrupoDeStockComando(
-				empresaId, prendaId, combinacion, request.cantidadInicial()));
+				empresaId, request.sucursalId(), prendaId, combinacion, request.cantidadInicial()));
 		URI location = uriBuilder.path("/api/v1/grupos-stock/{id}").buildAndExpand(grupo.id()).toUri();
 		return ResponseEntity.created(location).body(GrupoDeStockResponse.desde(grupo));
 	}
@@ -86,6 +89,15 @@ class GrupoDeStockController {
 			@AuthenticationPrincipal Jwt jwt) {
 		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
 		return GrupoDeStockResponse.desde(reabastecerGrupo.ejecutar(empresaId, grupoId, request.cantidad()));
+	}
+
+	@PostMapping("/api/v1/grupos-stock/{grupoId}/transferir")
+	GrupoDeStockResponse transferir(@PathVariable UUID grupoId, @Valid @RequestBody TransferirStockRequest request,
+			@AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		GrupoDeStock origen = transferirStock.ejecutar(new TransferirStock.TransferirStockComando(
+				empresaId, grupoId, request.sucursalDestinoId(), request.cantidad()));
+		return GrupoDeStockResponse.desde(origen);
 	}
 
 	@PostMapping("/api/v1/grupos-stock/{grupoId}/ajuste")

@@ -43,7 +43,7 @@ class RentaService implements CrearRenta, ConsultarRentas, GestionarRenta, Consu
 		if (configuracion.conteoStock(comando.empresaId())) {
 			// Serializa las reservas de esta prenda (evita doble asignación) antes de contar disponibilidad.
 			rentas.bloquearReservaDePrenda(comando.prendaId());
-			int disponibles = inventario.unidadesDisponibles(comando.empresaId(), comando.prendaId());
+			int disponibles = inventario.unidadesDisponibles(comando.empresaId(), comando.sucursalId(), comando.prendaId());
 			long ocupadas = rentas.contarSolapadas(comando.empresaId(), comando.prendaId(),
 					comando.fechaRetiro(), comando.fechaDevolucion());
 			if (ocupadas >= disponibles) {
@@ -61,6 +61,14 @@ class RentaService implements CrearRenta, ConsultarRentas, GestionarRenta, Consu
 		return rentas.buscarPorId(rentaId)
 				.filter(renta -> renta.empresaId().equals(empresaId))
 				.map(Renta::prendaId);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public Optional<UUID> sucursalDeRenta(UUID empresaId, UUID rentaId) {
+		return rentas.buscarPorId(rentaId)
+				.filter(renta -> renta.empresaId().equals(empresaId))
+				.map(Renta::sucursalId);
 	}
 
 	@Override

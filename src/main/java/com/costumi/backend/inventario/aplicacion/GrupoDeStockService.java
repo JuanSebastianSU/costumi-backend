@@ -19,7 +19,7 @@ import java.util.UUID;
 /** Casos de uso de Grupos de stock (variantes), acotados a la empresa (tenant). */
 @Service
 class GrupoDeStockService implements CrearGrupoDeStock, ConsultarGruposDeStock, MoverUnidades, ReabastecerGrupo,
-		ConsultarStockBajo, AjustarStock {
+		ConsultarStockBajo, AjustarStock, TransferirStock {
 
 	private final PrendaRepository prendas;
 	private final GrupoDeStockRepository grupos;
@@ -40,9 +40,9 @@ class GrupoDeStockService implements CrearGrupoDeStock, ConsultarGruposDeStock, 
 		Prenda prenda = exigirPrendaDelTenant(comando.empresaId(), comando.prendaId());
 		CombinacionDeVariante combinacion = validarCombinacion(comando.empresaId(), prenda.categoriaId(),
 				comando.combinacion());
-		exigirVarianteNoDuplicada(comando.prendaId(), combinacion);
+		exigirVarianteNoDuplicada(comando.prendaId(), comando.sucursalId(), combinacion);
 		return grupos.guardar(GrupoDeStock.crear(
-				comando.empresaId(), comando.prendaId(), combinacion, comando.cantidadInicial()));
+				comando.empresaId(), comando.sucursalId(), comando.prendaId(), combinacion, comando.cantidadInicial()));
 	}
 
 	@Override
@@ -92,6 +92,32 @@ class GrupoDeStockService implements CrearGrupoDeStock, ConsultarGruposDeStock, 
 		return guardado;
 	}
 
+	@Override
+	@Transactional
+	public GrupoDeStock ejecutar(TransferirStockComando comando) {
+		GrupoDeStock origen = grupos.buscarPorId(comando.grupoOrigenId())
+				.filter(g -> g.empresaId().equals(comando.empresaId()))
+				.orElseThrow(() -> new GrupoDeStockNoEncontrado(comando.grupoOrigenId()));
+		if (comando.sucursalDestinoId() == null || comando.sucursalDestinoId().equals(origen.sucursalId())) {
+			throw new IllegalArgumentException("La sucursal de destino debe ser distinta a la de origen");
+		}
+		// Destino = mismo grupo (prenda + variante) en la sucursal de destino; si no existe, se crea vacío.
+		GrupoDeStock destino = grupos.listarPorPrendaYSucursal(origen.prendaId(), comando.sucursalDestinoId()).stream()
+				.filter(origen::mismaVariante)
+				.findFirst()
+				.orElseGet(() -> GrupoDeStock.crear(comando.empresaId(), comando.sucursalDestinoId(), origen.prendaId(),
+						origen.combinacion(), 0));
+		// Las unidades salen del origen y entran al destino (el dominio valida la disponibilidad).
+		origen.darDeBaja(comando.cantidad());
+		destino.reabastecer(comando.cantidad());
+		GrupoDeStock origenGuardado = grupos.guardar(origen);
+		GrupoDeStock destinoGuardado = grupos.guardar(destino);
+		// Traza del movimiento (RF-10/RF-0.5): Auditoría reacciona al evento (§5.5).
+		eventos.publishEvent(new StockAjustado(comando.empresaId(), origen.prendaId(), destinoGuardado.id(),
+				"DISPONIBLE", comando.cantidad(), "transferencia entre sucursales"));
+		return origenGuardado;
+	}
+
 	/**
 	 * Convierte las selecciones en una {@link CombinacionDeVariante} <b>real</b>: cada dimensión debe
 	 * ser un tipo que define variante en la empresa y cada valor debe pertenecer a ese tipo; una
@@ -121,8 +147,9 @@ class GrupoDeStockService implements CrearGrupoDeStock, ConsultarGruposDeStock, 
 		return CombinacionDeVariante.de(mapa);
 	}
 
-	private void exigirVarianteNoDuplicada(UUID prendaId, CombinacionDeVariante combinacion) {
-		boolean yaExiste = grupos.listarPorPrenda(prendaId).stream()
+	private void exigirVarianteNoDuplicada(UUID prendaId, UUID sucursalId, CombinacionDeVariante combinacion) {
+		// La misma variante puede existir en distintas sucursales; el duplicado se controla por sucursal.
+		boolean yaExiste = grupos.listarPorPrendaYSucursal(prendaId, sucursalId).stream()
 				.anyMatch(grupo -> grupo.combinacion().equals(combinacion));
 		if (yaExiste) {
 			throw new VarianteDuplicada();

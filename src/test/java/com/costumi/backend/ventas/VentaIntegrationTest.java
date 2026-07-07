@@ -63,7 +63,7 @@ class VentaIntegrationTest {
 		UUID prenda = postId("/api/v1/prendas", dueno, "{\"categoriaId\":\"" + categoria
 				+ "\",\"nombre\":\"Peluca\",\"tipoArticulo\":\"VENTA\",\"precioVenta\":50.00}");
 		postId("/api/v1/prendas/" + prenda + "/grupos-stock", dueno,
-				"{\"combinacion\":[],\"cantidadInicial\":5}");
+				"{\"sucursalId\":\"" + sucursal + "\",\"combinacion\":[],\"cantidadInicial\":5}");
 		return new UUID[] { sucursal, prenda };
 	}
 

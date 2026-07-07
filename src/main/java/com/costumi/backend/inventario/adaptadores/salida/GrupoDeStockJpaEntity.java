@@ -28,6 +28,9 @@ class GrupoDeStockJpaEntity {
 	@Column(name = "empresa_id", nullable = false)
 	private UUID empresaId;
 
+	@Column(name = "sucursal_id", nullable = false)
+	private UUID sucursalId;
+
 	@Column(name = "prenda_id", nullable = false)
 	private UUID prendaId;
 
@@ -51,10 +54,11 @@ class GrupoDeStockJpaEntity {
 		// requerido por JPA
 	}
 
-	GrupoDeStockJpaEntity(UUID id, UUID empresaId, UUID prendaId, Set<ValorDeVarianteEmbeddable> combinacion,
-			int disponibles, int danadas, int enLimpieza, int perdidas) {
+	GrupoDeStockJpaEntity(UUID id, UUID empresaId, UUID sucursalId, UUID prendaId,
+			Set<ValorDeVarianteEmbeddable> combinacion, int disponibles, int danadas, int enLimpieza, int perdidas) {
 		this.id = id;
 		this.empresaId = empresaId;
+		this.sucursalId = sucursalId;
 		this.prendaId = prendaId;
 		this.combinacion = combinacion;
 		this.disponibles = disponibles;
@@ -69,6 +73,10 @@ class GrupoDeStockJpaEntity {
 
 	UUID getEmpresaId() {
 		return empresaId;
+	}
+
+	UUID getSucursalId() {
+		return sucursalId;
 	}
 
 	UUID getPrendaId() {

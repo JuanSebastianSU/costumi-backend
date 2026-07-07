@@ -8,8 +8,8 @@ import java.util.UUID;
  * La {@code combinacion} es la lista de selecciones de valor de etiqueta que define la variante
  * (RF-2.7.3); vacía significa la variante única de una prenda sin dimensiones.
  */
-public record CrearGrupoDeStockComando(UUID empresaId, UUID prendaId, List<SeleccionVariante> combinacion,
-		int cantidadInicial) {
+public record CrearGrupoDeStockComando(UUID empresaId, UUID sucursalId, UUID prendaId,
+		List<SeleccionVariante> combinacion, int cantidadInicial) {
 
 	public CrearGrupoDeStockComando {
 		combinacion = (combinacion == null) ? List.of() : List.copyOf(combinacion);
