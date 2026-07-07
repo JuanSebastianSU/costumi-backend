@@ -2,6 +2,7 @@ package com.costumi.backend.marketplace.adaptadores.salida;
 
 import com.costumi.backend.marketplace.dominio.EmpresaEnVitrina;
 import com.costumi.backend.marketplace.dominio.MarketplaceReadRepository;
+import com.costumi.backend.marketplace.dominio.PrendaEnVitrina;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
@@ -17,6 +18,13 @@ class MarketplaceJdbcAdapter implements MarketplaceReadRepository {
 
 	private static final String BUSCAR_EMPRESAS = "select id, nombre from empresa "
 			+ "where estado = 'ACTIVA' and lower(nombre) like lower('%' || :texto || '%') order by nombre";
+
+	// Catálogo público: prendas no archivadas de una empresa, solo si la empresa está ACTIVA.
+	private static final String CATALOGO = "select p.id, p.nombre, p.tipo_articulo, p.precio_renta, "
+			+ "p.precio_venta, c.nombre as categoria "
+			+ "from prenda p join categoria c on c.id = p.categoria_id join empresa e on e.id = p.empresa_id "
+			+ "where p.empresa_id = :empresaId and p.archivada = false and e.estado = 'ACTIVA' "
+			+ "order by p.nombre";
 
 	private final JdbcClient jdbc;
 
@@ -37,7 +45,22 @@ class MarketplaceJdbcAdapter implements MarketplaceReadRepository {
 		return jdbc.sql(BUSCAR_EMPRESAS).param("texto", texto.trim()).query(MarketplaceJdbcAdapter::mapear).list();
 	}
 
+	@Override
+	public List<PrendaEnVitrina> catalogoDe(UUID empresaId) {
+		return jdbc.sql(CATALOGO).param("empresaId", empresaId).query(MarketplaceJdbcAdapter::mapearPrenda).list();
+	}
+
 	private static EmpresaEnVitrina mapear(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
 		return EmpresaEnVitrina.de(rs.getObject("id", UUID.class), rs.getString("nombre"));
+	}
+
+	private static PrendaEnVitrina mapearPrenda(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
+		return new PrendaEnVitrina(
+				rs.getObject("id", UUID.class),
+				rs.getString("nombre"),
+				rs.getString("tipo_articulo"),
+				rs.getBigDecimal("precio_renta"),
+				rs.getBigDecimal("precio_venta"),
+				rs.getString("categoria"));
 	}
 }
