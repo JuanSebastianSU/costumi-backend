@@ -28,6 +28,9 @@ class AltaDeEmpleadoService implements AltaDeEmpleado {
 		if (comando.rol() == Rol.SUPERADMIN) {
 			throw new IllegalArgumentException("No se puede crear un SUPERADMIN como empleado de una empresa");
 		}
+		if (comando.rol() == Rol.CLIENTE) {
+			throw new IllegalArgumentException("El CLIENTE es un usuario del marketplace, no un empleado de la empresa");
+		}
 		if (comando.password() == null || comando.password().length() < 8) {
 			throw new IllegalArgumentException("La contraseña del empleado debe tener al menos 8 caracteres");
 		}

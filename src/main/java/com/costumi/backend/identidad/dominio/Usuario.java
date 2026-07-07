@@ -35,10 +35,10 @@ public class Usuario {
 	}
 
 	private static UUID validarTenant(UUID empresaId, Rol rol) {
-		if (rol.esDePlataforma() && empresaId != null) {
-			throw new IllegalArgumentException("El SuperAdmin no pertenece a ninguna empresa");
+		if (!rol.requiereEmpresa() && empresaId != null) {
+			throw new IllegalArgumentException("El rol " + rol + " no pertenece a ninguna empresa");
 		}
-		if (!rol.esDePlataforma() && empresaId == null) {
+		if (rol.requiereEmpresa() && empresaId == null) {
 			throw new IllegalArgumentException("El usuario debe pertenecer a una empresa");
 		}
 		return empresaId;
