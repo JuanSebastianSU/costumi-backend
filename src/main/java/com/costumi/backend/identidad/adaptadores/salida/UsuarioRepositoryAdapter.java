@@ -5,6 +5,7 @@ import com.costumi.backend.identidad.dominio.UsuarioRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
+import java.util.UUID;
 
 /** Adaptador de salida: implementa el puerto {@link UsuarioRepository} con JPA. */
 @Repository
@@ -24,6 +25,11 @@ class UsuarioRepositoryAdapter implements UsuarioRepository {
 	@Override
 	public Optional<Usuario> buscarPorEmail(String email) {
 		return jpa.findByEmail(email).map(UsuarioRepositoryAdapter::aDominio);
+	}
+
+	@Override
+	public Optional<Usuario> buscarPorId(UUID id) {
+		return jpa.findFirstById(id).map(UsuarioRepositoryAdapter::aDominio);
 	}
 
 	private static UsuarioJpaEntity aEntidad(Usuario u) {

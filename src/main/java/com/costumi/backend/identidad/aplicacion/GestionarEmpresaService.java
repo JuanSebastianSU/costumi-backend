@@ -3,6 +3,9 @@ package com.costumi.backend.identidad.aplicacion;
 import com.costumi.backend.identidad.EmpresaAprobada;
 import com.costumi.backend.identidad.dominio.Empresa;
 import com.costumi.backend.identidad.dominio.EmpresaRepository;
+import com.costumi.backend.identidad.dominio.Sucursal;
+import com.costumi.backend.identidad.dominio.SucursalRepository;
+import com.costumi.backend.identidad.dominio.UsuarioRepository;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,19 +18,41 @@ import java.util.function.Consumer;
 class GestionarEmpresaService implements GestionarEmpresa {
 
 	private final EmpresaRepository empresas;
+	private final SucursalRepository sucursales;
+	private final UsuarioRepository usuarios;
 	private final ApplicationEventPublisher eventos;
 
-	GestionarEmpresaService(EmpresaRepository empresas, ApplicationEventPublisher eventos) {
+	GestionarEmpresaService(EmpresaRepository empresas, SucursalRepository sucursales, UsuarioRepository usuarios,
+			ApplicationEventPublisher eventos) {
 		this.empresas = empresas;
+		this.sucursales = sucursales;
+		this.usuarios = usuarios;
 		this.eventos = eventos;
 	}
 
+	/**
+	 * Aprueba la empresa y, si vino de una solicitud del marketplace (tiene solicitante), la deja lista
+	 * para operar: crea su sucursal "Casa Matriz" y <b>promueve al cliente solicitante a DUEÑO</b> de la
+	 * empresa (misma cuenta). Así, al re-loguearse, el cliente ve su nueva tienda ("Mi Local").
+	 */
 	@Override
 	@Transactional
 	public Empresa aprobar(UUID id) {
 		Empresa empresa = aplicar(id, Empresa::aprobar);
+		provisionarSiVieneDeSolicitud(empresa);
 		eventos.publishEvent(new EmpresaAprobada(empresa.id()));
 		return empresa;
+	}
+
+	private void provisionarSiVieneDeSolicitud(Empresa empresa) {
+		UUID solicitanteId = empresa.solicitanteId();
+		if (solicitanteId == null) {
+			return; // registro clásico sin cliente: no se provisiona nada (comportamiento previo)
+		}
+		sucursales.guardar(Sucursal.crear(empresa.id(), "Casa Matriz", empresa.ubicacion()));
+		usuarios.buscarPorId(solicitanteId)
+				.filter(u -> u.rol().esCliente())
+				.ifPresent(cliente -> usuarios.guardar(cliente.promoverADueno(empresa.id())));
 	}
 
 	@Override
