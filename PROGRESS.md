@@ -9,7 +9,12 @@
 enchufable, gateada por credencial → `docs/INFRA_PENDIENTE.md`), Grupo B (lógica diferida: renta multi-artículo, checkout
 de renta, disfraz→renta, devolución parcial, stock por sucursal), deuda menor, y barrido final RF-0…18. Rebanada por
 rebanada, cada una su PR con tests + ArchUnit + Modulith en verde; nada se declara "cerrado" sin CI verde.
-- **Rebanada 1 (PR `feat/recuperar-contrasena`) — código completo:** RF-1.1 recuperar contraseña. `POST /auth/olvide`
+- **Rebanada 2 (PR `feat/export-pdf`) — HECHA (sin credenciales, cierre real):** RF-9.2 export de reportes en PDF
+  (`/reportes/export/rentas-vencidas.pdf`, `/reportes/export/inventario-tablero.pdf`) + RF-3.4 comprobante de pago
+  (`/pagos/comprobante.pdf`) y contrato de renta (`/rentas/{id}/contrato.pdf`). Librería OpenPDF (LGPL/MPL, sin
+  credenciales); utilidad compartida `GeneradorDePdf`. Test unitario del generador + integración del endpoint. Compila,
+  ArchUnit + Modulith + unit en verde local; integración vía CI.
+- **Rebanada 1 (PR `feat/recuperar-contrasena`) — HECHA (código completo, pendiente credencial SMTP; CI verde, PR #26 mergeado):** RF-1.1 recuperar contraseña. `POST /auth/olvide`
   (204, no revela) + `POST /auth/restablecer`; token de un solo uso hasheado (SHA-256) con vencimiento (tabla
   `token_recuperacion`, migración V29); puerto `EnviadorDeEmail` + adaptador SMTP **gateado** (sin SMTP → log). Compila,
   ArchUnit + Modulith + dominio en verde local; **integración pendiente de CI** (Docker local intermitente). Credencial

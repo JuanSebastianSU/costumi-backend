@@ -32,11 +32,14 @@ class PagoController {
 	private final RegistrarPago registrarPago;
 	private final ConsultarPagos consultarPagos;
 	private final RegistrarCobroMixto registrarCobroMixto;
+	private final com.costumi.backend.compartido.GeneradorDePdf pdf;
 
-	PagoController(RegistrarPago registrarPago, ConsultarPagos consultarPagos, RegistrarCobroMixto registrarCobroMixto) {
+	PagoController(RegistrarPago registrarPago, ConsultarPagos consultarPagos, RegistrarCobroMixto registrarCobroMixto,
+			com.costumi.backend.compartido.GeneradorDePdf pdf) {
 		this.registrarPago = registrarPago;
 		this.consultarPagos = consultarPagos;
 		this.registrarCobroMixto = registrarCobroMixto;
+		this.pdf = pdf;
 	}
 
 	@PostMapping
@@ -91,6 +94,31 @@ class PagoController {
 	ComprobanteResponse comprobante(@RequestParam UUID conceptoId, @AuthenticationPrincipal Jwt jwt) {
 		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
 		return ComprobanteResponse.desde(consultarPagos.comprobante(empresaId, conceptoId));
+	}
+
+	/** Comprobante/recibo de pago en PDF (RF-3.4). */
+	@GetMapping(value = "/comprobante.pdf", produces = "application/pdf")
+	ResponseEntity<byte[]> comprobantePdf(@RequestParam UUID conceptoId, @AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		ComprobanteResponse c = ComprobanteResponse.desde(consultarPagos.comprobante(empresaId, conceptoId));
+		java.util.List<String> lineas = new java.util.ArrayList<>();
+		lineas.add("Concepto: " + c.conceptoId());
+		lineas.add("Total cobrado: $" + c.totalCobrado());
+		lineas.add("Total reembolsado: $" + c.totalReembolsado());
+		lineas.add("Saldo neto: $" + c.saldoNeto());
+		if (c.impuesto() != null) {
+			lineas.add("Base imponible: $" + c.baseImponible());
+			lineas.add("Impuesto: $" + c.impuesto());
+		}
+		lineas.add(" ");
+		lineas.add("Detalle de pagos:");
+		for (PagoResponse p : c.pagos()) {
+			lineas.add(" - " + p.metodo() + " / " + p.tipoPago() + ": $" + p.monto());
+		}
+		return ResponseEntity.ok()
+				.header("Content-Disposition", "attachment; filename=comprobante.pdf")
+				.contentType(org.springframework.http.MediaType.APPLICATION_PDF)
+				.body(pdf.documento("Comprobante de pago", lineas));
 	}
 
 	record SaldoResponse(UUID conceptoId, java.math.BigDecimal saldoNeto) {
