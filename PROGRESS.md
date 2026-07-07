@@ -5,6 +5,17 @@
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
 ## Fase actual
+**Fase 8 — Cierre TOTAL del backend (work order de Juan, 2026-07-07).** Se cierra todo lo pendiente: Grupo A (infra
+enchufable, gateada por credencial → `docs/INFRA_PENDIENTE.md`), Grupo B (lógica diferida: renta multi-artículo, checkout
+de renta, disfraz→renta, devolución parcial, stock por sucursal), deuda menor, y barrido final RF-0…18. Rebanada por
+rebanada, cada una su PR con tests + ArchUnit + Modulith en verde; nada se declara "cerrado" sin CI verde.
+- **Rebanada 1 (PR `feat/recuperar-contrasena`) — código completo:** RF-1.1 recuperar contraseña. `POST /auth/olvide`
+  (204, no revela) + `POST /auth/restablecer`; token de un solo uso hasheado (SHA-256) con vencimiento (tabla
+  `token_recuperacion`, migración V29); puerto `EnviadorDeEmail` + adaptador SMTP **gateado** (sin SMTP → log). Compila,
+  ArchUnit + Modulith + dominio en verde local; **integración pendiente de CI** (Docker local intermitente). Credencial
+  SMTP listada en `docs/INFRA_PENDIENTE.md`.
+
+
 **Fase 7 — Rediseño marketplace + onboarding de tiendas (decisión de Juan, 2026-07-06).** Nuevo enfoque: **todos entran
 como CLIENTE** (se auto-registran, ven todas las tiendas tipo marketplace); un botón "Registrar mi tienda" manda la
 solicitud (empresa PENDIENTE); el **superadmin la ve en un panel in-app** (sin email por ahora) y la aprueba; al aprobar,

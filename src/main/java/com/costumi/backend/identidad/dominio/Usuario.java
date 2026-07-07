@@ -45,6 +45,11 @@ public class Usuario {
 		return new Usuario(id, empresaId, email, passwordHash, Rol.DUENO);
 	}
 
+	/** Cambia la contraseña (recibe el hash ya cifrado). Misma cuenta: solo cambia el hash. */
+	public Usuario cambiarContrasena(String nuevoPasswordHash) {
+		return new Usuario(id, empresaId, email, nuevoPasswordHash, rol);
+	}
+
 	private static UUID validarTenant(UUID empresaId, Rol rol) {
 		if (!rol.requiereEmpresa() && empresaId != null) {
 			throw new IllegalArgumentException("El rol " + rol + " no pertenece a ninguna empresa");
