@@ -8,4 +8,7 @@ import java.util.UUID;
 interface UsuarioJpaRepository extends JpaRepository<UsuarioJpaEntity, UUID> {
 
 	Optional<UsuarioJpaEntity> findByEmail(String email);
+
+	/** Carga por PK vía query derivada (respeta el filtro multi-tenant §5.4), no el findById de em.find. */
+	Optional<UsuarioJpaEntity> findFirstById(UUID id);
 }

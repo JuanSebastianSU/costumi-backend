@@ -17,9 +17,12 @@ esa **misma cuenta** se promueve a **Dueño** y se le desbloquea "Mi Local". Ais
   `ubicacion` + `contacto` y, si viene con token de un CLIENTE, guarda su id como `solicitante_id` (migración V28,
   columnas opcionales). El panel del superadmin (`GET /empresas/pendientes`) expone esos datos + el solicitante, así el
   superadmin sabe a quién promover a Dueño. La "notificación in-app" ES esa cola de pendientes. 28 tests verdes (2 nuevos).
-- **Etapas siguientes (pendientes):** (3) aprobar → promover el cliente a Dueño (empresa ACTIVA + Casa Matriz + cambia
-  rol del solicitante) ; (4) marketplace público con catálogo por tienda; (5) apps (registro cliente, ver tiendas,
-  "Registrar mi tienda", panel superadmin, "Mi Local").
+- **Etapa 3 (PR `feat/aprobar-promueve-dueno`) — HECHA:** al aprobar una solicitud de tienda, si tiene solicitante se
+  crea la sucursal "Casa Matriz" (con la ubicación cargada) y el **cliente solicitante se promueve a DUEÑO** de la empresa
+  (misma cuenta: `Usuario.promoverADueno`). Al re-loguearse ya es DUEÑO de su empresa. El registro clásico sin solicitante
+  se comporta igual que antes. `buscarPorId` usa `findFirstById` (respeta el filtro tenant §5.4). Tests verdes (2 nuevos).
+- **Etapas siguientes (pendientes):** (4) marketplace público con catálogo por tienda; (5) apps (registro cliente, ver
+  tiendas, "Registrar mi tienda", panel superadmin, "Mi Local").
 
 **Fase 6 — Integración con las apps Android (2026-07-06).** Conectando las dos apps al backend en Railway.
 - PR #20 `feat/sucursales-listado` (MERGEADO): `GET /api/v1/empresas/{empresaId}/sucursales` (cualquier usuario

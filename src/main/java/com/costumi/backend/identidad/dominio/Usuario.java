@@ -34,6 +34,17 @@ public class Usuario {
 		return new Usuario(id, empresaId, email, passwordHash, rol);
 	}
 
+	/**
+	 * Promueve un CLIENTE a DUEÑO de la empresa recién aprobada por el SuperAdmin (marketplace).
+	 * Es la <b>misma cuenta</b> (mismo id/email/contraseña); solo cambia el rol y se le asigna la empresa.
+	 */
+	public Usuario promoverADueno(UUID empresaId) {
+		if (!rol.esCliente()) {
+			throw new IllegalStateException("Solo un CLIENTE puede promoverse a DUEÑO");
+		}
+		return new Usuario(id, empresaId, email, passwordHash, Rol.DUENO);
+	}
+
 	private static UUID validarTenant(UUID empresaId, Rol rol) {
 		if (!rol.requiereEmpresa() && empresaId != null) {
 			throw new IllegalArgumentException("El rol " + rol + " no pertenece a ninguna empresa");
