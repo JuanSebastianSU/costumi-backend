@@ -21,8 +21,12 @@ esa **misma cuenta** se promueve a **Dueño** y se le desbloquea "Mi Local". Ais
   crea la sucursal "Casa Matriz" (con la ubicación cargada) y el **cliente solicitante se promueve a DUEÑO** de la empresa
   (misma cuenta: `Usuario.promoverADueno`). Al re-loguearse ya es DUEÑO de su empresa. El registro clásico sin solicitante
   se comporta igual que antes. `buscarPorId` usa `findFirstById` (respeta el filtro tenant §5.4). Tests verdes (2 nuevos).
-- **Etapas siguientes (pendientes):** (4) marketplace público con catálogo por tienda; (5) apps (registro cliente, ver
-  tiendas, "Registrar mi tienda", panel superadmin, "Mi Local").
+- **Etapa 4 (PR `feat/marketplace-catalogo`) — HECHA:** `GET /api/v1/marketplace/empresas/{empresaId}/catalogo`
+  (público) devuelve las prendas no archivadas de una tienda ACTIVA (nombre, tipo, precios, categoría) vía el adaptador
+  JDBC del marketplace (cruza tenants a propósito, solo lectura pública). El cliente ve todas las tiendas + su catálogo.
+  Tests verdes (2 nuevos, incluye el flujo completo cliente→tienda→dueño→prenda→catálogo público).
+- **Etapa 5 (pendiente):** apps — registro cliente, ver tiendas + catálogo, "Registrar mi tienda", panel superadmin,
+  "Mi Local". Requiere re-sincronizar el cliente Kotlin regenerado (ajustando los métodos renumerados).
 
 **Fase 6 — Integración con las apps Android (2026-07-06).** Conectando las dos apps al backend en Railway.
 - PR #20 `feat/sucursales-listado` (MERGEADO): `GET /api/v1/empresas/{empresaId}/sucursales` (cualquier usuario

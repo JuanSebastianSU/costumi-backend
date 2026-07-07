@@ -1,6 +1,7 @@
 package com.costumi.backend.marketplace.dominio;
 
 import java.util.List;
+import java.util.UUID;
 
 /** Puerto de salida: modelo de lectura del marketplace. Cruza tenants (solo empresas ACTIVAS). */
 public interface MarketplaceReadRepository {
@@ -9,4 +10,7 @@ public interface MarketplaceReadRepository {
 
 	/** Empresas ACTIVAS cuyo nombre contiene el texto (RF-18.1). Texto vacío = todas. */
 	List<EmpresaEnVitrina> buscarEmpresas(String texto);
+
+	/** Catálogo público (prendas no archivadas) de una empresa ACTIVA. Vacío si no está activa. */
+	List<PrendaEnVitrina> catalogoDe(UUID empresaId);
 }
