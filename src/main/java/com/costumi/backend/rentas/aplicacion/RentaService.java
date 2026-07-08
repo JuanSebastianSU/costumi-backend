@@ -96,6 +96,17 @@ class RentaService implements CrearRenta, ConsultarRentas, GestionarRenta, Consu
 
 	@Override
 	@Transactional(readOnly = true)
+	public List<LineaDeRentaVista> lineasDeRenta(UUID empresaId, UUID rentaId) {
+		return rentas.buscarPorId(rentaId)
+				.filter(renta -> renta.empresaId().equals(empresaId))
+				.map(renta -> renta.lineas().stream()
+						.map(linea -> new LineaDeRentaVista(linea.prendaId(), linea.cantidad()))
+						.toList())
+				.orElseGet(List::of);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
 	public Optional<UUID> sucursalDeRenta(UUID empresaId, UUID rentaId) {
 		return rentas.buscarPorId(rentaId)
 				.filter(renta -> renta.empresaId().equals(empresaId))

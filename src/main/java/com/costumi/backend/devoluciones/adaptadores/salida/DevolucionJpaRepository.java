@@ -10,6 +10,8 @@ interface DevolucionJpaRepository extends JpaRepository<DevolucionJpaEntity, UUI
 
 	List<DevolucionJpaEntity> findByEmpresaId(UUID empresaId);
 
+	List<DevolucionJpaEntity> findByEmpresaIdAndRentaId(UUID empresaId, UUID rentaId);
+
 	/** Carga por PK como QUERY (no em.find) para que el @Filter multi-tenant la acote (§5.4). */
 	Optional<DevolucionJpaEntity> findFirstById(UUID id);
 }

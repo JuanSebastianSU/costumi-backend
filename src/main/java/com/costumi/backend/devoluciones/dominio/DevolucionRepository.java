@@ -12,4 +12,7 @@ public interface DevolucionRepository {
 	Optional<Devolucion> buscarPorId(UUID id);
 
 	List<Devolucion> listarPorEmpresa(UUID empresaId);
+
+	/** Devoluciones registradas contra una renta (para acumular lo ya devuelto y detectar la total, RF-5.5). */
+	List<Devolucion> listarPorRenta(UUID empresaId, UUID rentaId);
 }

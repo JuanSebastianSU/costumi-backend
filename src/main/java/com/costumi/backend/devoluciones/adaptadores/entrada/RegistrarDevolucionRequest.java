@@ -22,8 +22,10 @@ public record RegistrarDevolucionRequest(
 
 		@Valid List<PiezaRequest> piezas) {
 
-	/** Un ítem del checklist. */
+	/** Un ítem del checklist: una unidad de una prenda de la renta, con su número/QR y su estado. */
 	public record PiezaRequest(
+
+			@NotNull(message = "La prenda de la pieza es obligatoria") UUID prendaId,
 
 			@NotBlank(message = "La descripción de la pieza es obligatoria") String descripcion,
 
