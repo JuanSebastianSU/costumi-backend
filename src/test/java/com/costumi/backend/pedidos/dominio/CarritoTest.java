@@ -2,6 +2,7 @@ package com.costumi.backend.pedidos.dominio;
 
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -10,7 +11,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /** Pruebas de dominio del Carrito: puras, sin BD ni Spring. */
 class CarritoTest {
 
+	/** Carrito de VENTA (sus líneas no llevan fechas): base de las pruebas genéricas de agregado. */
 	private static Carrito nuevo() {
+		return Carrito.crear(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), TipoPedido.VENTA);
+	}
+
+	private static Carrito nuevoDeRenta() {
 		return Carrito.crear(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), TipoPedido.RENTA);
 	}
 
@@ -50,5 +56,27 @@ class CarritoTest {
 
 		assertThatThrownBy(() -> carrito.agregarItem(UUID.randomUUID(), 0))
 				.isInstanceOf(IllegalArgumentException.class);
+	}
+
+	@Test
+	void un_articulo_de_renta_requiere_fechas() {
+		Carrito carrito = nuevoDeRenta();
+
+		assertThatThrownBy(() -> carrito.agregarItem(UUID.randomUUID(), 1, null, null))
+				.isInstanceOf(IllegalArgumentException.class);
+	}
+
+	@Test
+	void en_renta_la_misma_prenda_con_distinto_periodo_son_lineas_distintas() {
+		Carrito carrito = nuevoDeRenta();
+		UUID prenda = UUID.randomUUID();
+
+		carrito.agregarItem(prenda, 1, LocalDate.parse("2026-08-01"), LocalDate.parse("2026-08-04"));
+		carrito.agregarItem(prenda, 2, LocalDate.parse("2026-08-01"), LocalDate.parse("2026-08-04")); // mismo periodo -> suma
+		carrito.agregarItem(prenda, 1, LocalDate.parse("2026-09-01"), LocalDate.parse("2026-09-03")); // otro periodo -> nueva línea
+
+		assertThat(carrito.lineas()).hasSize(2);
+		assertThat(carrito.lineas().get(0).cantidad()).isEqualTo(3);
+		assertThat(carrito.lineas().get(1).cantidad()).isEqualTo(1);
 	}
 }
