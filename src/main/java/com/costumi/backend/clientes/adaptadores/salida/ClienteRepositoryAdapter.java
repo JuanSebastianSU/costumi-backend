@@ -43,6 +43,11 @@ class ClienteRepositoryAdapter implements ClienteRepository {
 		return jpa.findByEmpresaIdAndUsuarioId(empresaId, usuarioId).map(ClienteRepositoryAdapter::aDominio);
 	}
 
+	@Override
+	public List<Cliente> buscarPorUsuario(UUID usuarioId) {
+		return jpa.findByUsuarioId(usuarioId).stream().map(ClienteRepositoryAdapter::aDominio).toList();
+	}
+
 	private static ClienteJpaEntity aEntidad(Cliente c) {
 		return new ClienteJpaEntity(c.id(), c.empresaId(), c.nombre(), c.telefono(), c.email(), c.documento(),
 				c.direccion(), c.enListaNegra(), c.deviceToken(), c.usuarioId());

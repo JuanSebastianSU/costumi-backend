@@ -25,4 +25,6 @@ interface ClienteJpaRepository extends JpaRepository<ClienteJpaEntity, UUID> {
 	Optional<ClienteJpaEntity> findFirstById(UUID id);
 
 	Optional<ClienteJpaEntity> findByEmpresaIdAndUsuarioId(UUID empresaId, UUID usuarioId);
+
+	List<ClienteJpaEntity> findByUsuarioId(UUID usuarioId);
 }
