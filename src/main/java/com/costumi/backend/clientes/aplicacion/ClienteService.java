@@ -1,5 +1,6 @@
 package com.costumi.backend.clientes.aplicacion;
 
+import com.costumi.backend.clientes.ResolucionDeClientes;
 import com.costumi.backend.clientes.dominio.Cliente;
 import com.costumi.backend.clientes.dominio.ClienteRepository;
 import com.costumi.backend.clientes.dominio.HistorialItem;
@@ -13,7 +14,7 @@ import java.util.UUID;
 /** Casos de uso de Clientes: crear, buscar, lista negra e historial, acotados a la empresa (tenant). */
 @Service
 class ClienteService implements CrearCliente, ConsultarClientes, CambiarListaNegra, ConsultarHistorial,
-		RegistrarDeviceToken {
+		RegistrarDeviceToken, ResolucionDeClientes {
 
 	private final ClienteRepository clientes;
 	private final HistorialReadRepository historial;
@@ -73,5 +74,13 @@ class ClienteService implements CrearCliente, ConsultarClientes, CambiarListaNeg
 	@Transactional(readOnly = true)
 	public List<UUID> clientesConPendientes(UUID empresaId) {
 		return historial.clientesConPendientes(empresaId);
+	}
+
+	@Override
+	@Transactional
+	public UUID fichaDeUsuario(UUID empresaId, UUID usuarioId, String email) {
+		return clientes.buscarPorEmpresaYUsuario(empresaId, usuarioId)
+				.map(Cliente::id)
+				.orElseGet(() -> clientes.guardar(Cliente.deUsuario(empresaId, usuarioId, email)).id());
 	}
 }

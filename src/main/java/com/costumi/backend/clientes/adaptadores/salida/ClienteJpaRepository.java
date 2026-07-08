@@ -23,4 +23,6 @@ interface ClienteJpaRepository extends JpaRepository<ClienteJpaEntity, UUID> {
 
 	/** Carga por PK como QUERY (no em.find) para que el @Filter multi-tenant la acote (§5.4). */
 	Optional<ClienteJpaEntity> findFirstById(UUID id);
+
+	Optional<ClienteJpaEntity> findByEmpresaIdAndUsuarioId(UUID empresaId, UUID usuarioId);
 }

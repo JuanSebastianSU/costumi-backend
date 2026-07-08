@@ -15,4 +15,7 @@ public interface ClienteRepository {
 
 	/** Búsqueda por texto en nombre/documento/teléfono dentro de la empresa (RF-7.3). */
 	List<Cliente> buscarPorEmpresaYTexto(UUID empresaId, String texto);
+
+	/** Ficha de un usuario del marketplace en la empresa, si existe (RF-14.4). */
+	Optional<Cliente> buscarPorEmpresaYUsuario(UUID empresaId, UUID usuarioId);
 }

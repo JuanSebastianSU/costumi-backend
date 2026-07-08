@@ -38,13 +38,18 @@ class ClienteRepositoryAdapter implements ClienteRepository {
 		return jpa.buscar(empresaId, texto).stream().map(ClienteRepositoryAdapter::aDominio).toList();
 	}
 
+	@Override
+	public Optional<Cliente> buscarPorEmpresaYUsuario(UUID empresaId, UUID usuarioId) {
+		return jpa.findByEmpresaIdAndUsuarioId(empresaId, usuarioId).map(ClienteRepositoryAdapter::aDominio);
+	}
+
 	private static ClienteJpaEntity aEntidad(Cliente c) {
 		return new ClienteJpaEntity(c.id(), c.empresaId(), c.nombre(), c.telefono(), c.email(), c.documento(),
-				c.direccion(), c.enListaNegra(), c.deviceToken());
+				c.direccion(), c.enListaNegra(), c.deviceToken(), c.usuarioId());
 	}
 
 	private static Cliente aDominio(ClienteJpaEntity e) {
 		return Cliente.rehidratar(e.getId(), e.getEmpresaId(), e.getNombre(), e.getTelefono(), e.getEmail(),
-				e.getDocumento(), e.getDireccion(), e.isEnListaNegra(), e.getDeviceToken());
+				e.getDocumento(), e.getDireccion(), e.isEnListaNegra(), e.getDeviceToken(), e.getUsuarioId());
 	}
 }
