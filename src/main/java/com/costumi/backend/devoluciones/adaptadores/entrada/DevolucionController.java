@@ -41,8 +41,11 @@ class DevolucionController {
 				: request.piezas().stream()
 						.map(p -> PiezaRevisada.de(p.prendaId(), p.descripcion(), p.llego(), p.estado()))
 						.toList();
+		java.time.LocalDate fechaReal = request.fechaDevolucionReal() != null ? request.fechaDevolucionReal()
+				: java.time.LocalDate.now();
 		Devolucion devolucion = registrarDevolucion.ejecutar(new RegistrarDevolucionComando(empresaId,
-				request.rentaId(), request.deposito(), request.cargoPorDanos(), request.cargoPorRetraso(), piezas));
+				request.rentaId(), request.deposito(), request.cargoPorDanos(), request.cargoPorRetraso(),
+				fechaReal, piezas));
 		URI location = uriBuilder.path("/api/v1/devoluciones/{id}").buildAndExpand(devolucion.id()).toUri();
 		return ResponseEntity.created(location).body(DevolucionResponse.desde(devolucion));
 	}

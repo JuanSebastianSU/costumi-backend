@@ -75,6 +75,32 @@ class DevolucionIntegrationTest {
 	private String dueno;
 	private UUID prenda;
 
+	/** Igual que rentaDePrueba pero con fechas pasadas (pactada 2020-01-05) para probar el retraso. */
+	private UUID rentaVencida() throws Exception {
+		String res = mvc.perform(post("/api/v1/empresas").contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"DevV " + UUID.randomUUID() + "\"}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		UUID empresa = UUID.fromString(json.readTree(res).get("id").asText());
+		String superAdmin = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, null, Rol.SUPERADMIN);
+		mvc.perform(post("/api/v1/empresas/{id}/aprobar", empresa).header("Authorization", "Bearer " + superAdmin))
+				.andExpect(status().isOk());
+		this.dueno = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.DUENO);
+		UUID sucursal = postId("/api/v1/empresas/" + empresa + "/sucursales", dueno, "{\"nombre\":\"Centro\"}");
+		UUID cliente = postId("/api/v1/clientes", dueno, "{\"nombre\":\"Cliente\"}");
+		UUID categoria = postId("/api/v1/categorias", dueno, "{\"nombre\":\"Camisa " + UUID.randomUUID() + "\"}");
+		UUID prendaId = postId("/api/v1/prendas", dueno, "{\"categoriaId\":\"" + categoria
+				+ "\",\"nombre\":\"Camisa\",\"tipoArticulo\":\"RENTA\",\"precioRenta\":20.00}");
+		this.prenda = prendaId;
+		postId("/api/v1/prendas/" + prendaId + "/grupos-stock", dueno,
+				"{\"sucursalId\":\"" + sucursal + "\",\"combinacion\":[],\"cantidadInicial\":1}");
+		UUID renta = postId("/api/v1/rentas", dueno, "{\"sucursalId\":\"" + sucursal + "\",\"clienteId\":\"" + cliente
+				+ "\",\"prendaId\":\"" + prendaId + "\",\"fechaRetiro\":\"2020-01-01\",\"fechaDevolucion\":\"2020-01-05\","
+				+ "\"precioPorDia\":20.00,\"deposito\":100.00}");
+		mvc.perform(post("/api/v1/rentas/{id}/entregar", renta).header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk());
+		return renta;
+	}
+
 	@Test
 	void registrar_devolucion_liquida_deposito_guarda_checklist_y_actualiza_inventario() throws Exception {
 		UUID renta = rentaDePrueba();
@@ -140,14 +166,40 @@ class DevolucionIntegrationTest {
 								+ "\"cargoPorRetraso\":20.00,\"piezas\":[{\"prendaId\":\"" + prenda + "\",\"descripcion\":\"Camisa\",\"llego\":true,"
 								+ "\"estado\":\"DANADA\"}]}"))
 				.andExpect(status().isCreated())
-				// Multas OFF: el recargo por retraso (20) no se cobra -> multa = 60 daños - 50 depósito = 10.
+				// Multas OFF (RF-6.6): NO se genera ningún cargo -> ni daños ni retraso -> multa 0 y
+				// remanente = depósito completo.
+				.andExpect(jsonPath("$.cargoPorDanos").value(0))
 				.andExpect(jsonPath("$.cargoPorRetraso").value(0))
-				.andExpect(jsonPath("$.multa").value(10.00));
+				.andExpect(jsonPath("$.multa").value(0))
+				.andExpect(jsonPath("$.remanente").value(50.00));
 
 		// Con el switch apagado, no se generó notificación de multa.
 		mvc.perform(get("/api/v1/notificaciones").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$[?(@.canal == 'EMAIL')]").doesNotExist());
+	}
+
+	@Test
+	void el_recargo_por_retraso_se_deriva_del_recargo_configurado_por_dia() throws Exception {
+		// Renta vencida: pactada 2020-01-05, entregada de verdad 5 días tarde (2020-01-10).
+		UUID renta = rentaVencida();
+
+		// Configura el recargo por día en 10 (RF-12.2).
+		mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/configuracion")
+						.header("Authorization", "Bearer " + dueno).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"conteoStock\":true,\"multasActivo\":true,\"multiSucursal\":false,\"pagoEnLinea\":false,"
+								+ "\"recargoPorRetrasoPorDia\":10.00}"))
+				.andExpect(status().isOk());
+
+		// Sin pasar cargoPorRetraso: se deriva = 10/día × 5 días = 50. Depósito 100, sin daños -> remanente 50.
+		mvc.perform(post("/api/v1/devoluciones").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"rentaId\":\"" + renta + "\",\"deposito\":100.00,\"cargoPorDanos\":0,"
+								+ "\"fechaDevolucionReal\":\"2020-01-10\",\"piezas\":[{\"prendaId\":\"" + prenda
+								+ "\",\"descripcion\":\"Camisa\",\"llego\":true,\"estado\":\"BIEN\"}]}"))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.cargoPorRetraso").value(50.00))
+				.andExpect(jsonPath("$.remanente").value(50.00));
 	}
 
 	@Test

@@ -31,6 +31,9 @@ public interface ConsultaDeRentas {
 	/** Importe a cobrar de la renta (RF-3.3), si existe y pertenece a la empresa. Para el saldo (RF-6.1). */
 	Optional<BigDecimal> importeDeRenta(UUID empresaId, UUID rentaId);
 
+	/** Fecha de devolución pactada de la renta, si existe y es de la empresa (para el recargo por retraso, RF-5.2). */
+	Optional<java.time.LocalDate> fechaDevolucionDeRenta(UUID empresaId, UUID rentaId);
+
 	/**
 	 * Marca la renta como DEVUELTA al registrarse su devolución (RF-5.1, "checklist conectado"). Exige
 	 * que la renta esté ACTIVA; si no, falla la transición (la devolución completa se revierte).
