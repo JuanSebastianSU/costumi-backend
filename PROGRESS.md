@@ -9,6 +9,15 @@
 enchufable, gateada por credencial → `docs/INFRA_PENDIENTE.md`), Grupo B (lógica diferida: renta multi-artículo, checkout
 de renta, disfraz→renta, devolución parcial, stock por sucursal), deuda menor, y barrido final RF-0…18. Rebanada por
 rebanada, cada una su PR con tests + ArchUnit + Modulith en verde; nada se declara "cerrado" sin CI verde.
+- **Rebanada 11 (PR `feat/grupo-c-deuda-menor`) — HECHA (sin credenciales, cierre real; Grupo C):** deuda menor de auth/empleados.
+  **RF-1.5 permisos granulares por empleado:** plantilla de permisos por rol (`PlantillaDeRol`) + overrides por empleado
+  (`permiso_empleado`, migración **V37**); un `InterceptorDePermisos` mapea cada request a (sección, acción) y responde
+  **403 solo si el dueño desactivó explícitamente esa casilla** (deny-override → sin overrides, el comportamiento es idéntico
+  y todos los tests siguen verdes; la línea base por rol la mantiene `SecurityConfig`); editor `GET/PUT /empleados/{id}/permisos`.
+  **RF-1.2/8.1 usuario↔N sucursales:** tabla `usuario_sucursal` (**V38**) + `PUT/GET /empleados/{id}/sucursales` (valida
+  empleado y sucursales del tenant). **RF-8.2 registro de actividad:** `GET /empleados/{id}/actividad` (nº de ventas y monto
+  confirmados del empleado, vía el puerto público `ConsultaDeVentas.actividadDeEmpleado`; los turnos/cortes viven en Caja).
+  Suite completa en verde (306 tests) con tests de revocar→403/reactivar→201, asignación de 2 sucursales y actividad 0.
 - **Rebanada 10 (PR `feat/devolucion-parcial`) — HECHA (sin credenciales, cierre real; Grupo B):** RF-5.5/5.6 devolución
   parcial. Cada `PiezaRevisada` se liga a su **prenda/artículo** (`prenda_id` en `pieza_revisada`, migración **V36**,
   backfill desde la prenda principal), así el daño/pérdida se atribuye al grupo de stock correcto (RF-5.6) — el retorno de
@@ -156,8 +165,8 @@ Todo lo code-doable del backlog de Juan quedó hecho y verde (262 tests):
 5. **Plataforma (RF-1.1)** — refresh token (`POST /auth/refresh`, rotación).
 6. **OpenAPI** — el contrato en `/v3/api-docs` publica TODOS los endpoints (test que lo verifica).
 
-**Deuda menor pendiente (no bloquea el cierre):** permisos granulares por-usuario (RF-1.5) y usuario↔N sucursales
-(RF-1.2) — hoy el rol da los permisos por perfil; **devolución parcial** (RF-5.5) — necesita renta multi-artículo.
+**Deuda menor — CERRADA (Rebanada 11):** permisos granulares por empleado (RF-1.5), usuario↔N sucursales (RF-1.2/8.1) y
+registro de actividad (RF-8.2). La devolución parcial (RF-5.5) se cerró en la Rebanada 10.
 
 ### 🚫 Bloqueado por decisión/infra (va detrás de config, NO frena el resto)
 - ~~Impuestos (RF-6.5/12.2)~~ — **RESUELTO y MERGEADO** (decisión de Juan): tasa única por empresa en
@@ -191,7 +200,7 @@ Estado: ✅ hecho y **mergeado en `main`** · 🔵 en **PR abierta** (sin mergea
 | Módulo | Rigor | Estado | Detalle (mergeado salvo que diga PR) |
 |---|---|---|---|
 | Andamiaje + anti-erosión (ArchUnit/Modulith/CI) | — | ✅ | PR #1 |
-| Identidad y tenant (Empresa/Sucursal/Usuario/auth) | Hexagonal | ✅ | Auth JWT + rol/tenant + bootstrap + §5.4 forzado + refresh + alta empleados (RF-8) + **GET /sucursales (#20)** + **marketplace: rol CLIENTE + auto-registro (#22), solicitud de tienda (#23), aprobar→promueve a Dueño+Casa Matriz (#24)** + **recuperación de contraseña (RF-1.1, #26)**. ⬜ Falta solo permisos granulares por-usuario (RF-1.5) — Grupo C |
+| Identidad y tenant (Empresa/Sucursal/Usuario/auth) | Hexagonal | ✅ | Auth JWT + rol/tenant + bootstrap + §5.4 forzado + refresh + alta empleados (RF-8) + **GET /sucursales (#20)** + **marketplace: rol CLIENTE + auto-registro (#22), solicitud de tienda (#23), aprobar→promueve a Dueño+Casa Matriz (#24)** + **recuperación de contraseña (RF-1.1, #26)** + **permisos granulares por empleado (RF-1.5): interceptor de deny-override sobre la plantilla del rol + editor `GET/PUT /empleados/{id}/permisos` (#11)** + **usuario↔N sucursales (RF-1.2/8.1): `PUT/GET /empleados/{id}/sucursales` (#11)** + **registro de actividad de ventas del empleado (RF-8.2): `GET /empleados/{id}/actividad` (#11)**. |
 | Catálogo y taxonomía (etiquetas, categorías) | Hexagonal | ✅ | Categoría, TipoEtiqueta/ValorEtiqueta, tipo↔categoría, renombrar, siembra al aprobar |
 | Inventario y disponibilidad | Hexagonal | ✅ | Prenda, GrupoDeStock, variantes, stock-bajo + ajuste con motivo auditado (RF-10) + **fotos de prenda en S3 (RF-2.9, #28 — código completo, gateado)** + **stock por sucursal (RF-18.2): `GrupoDeStock.sucursalId` (migración V33 con backfill), disponibilidad/baja/retorno acotados a la sucursal, misma variante en 2 sucursales = grupos aparte, y transferencia entre sucursales `POST /grupos-stock/{id}/transferir` (RF-10.3) — Rebanada 6, Grupo B** |
 | Disfraces (capa 3) | Hexagonal | ✅ | Disfraz+Slot+pool + disponibilidad derivada + **rentar disfraz (RF-2.3/3.1): resuelve slots (fijo→su prenda; personalizable→prenda elegida validada contra el pool con `ConsultaDeInventario.prendaEnPool`) → renta multi-artículo vía `RegistroDeRentas`, `POST /disfraces/{id}/rentar` — Rebanada 9** |
