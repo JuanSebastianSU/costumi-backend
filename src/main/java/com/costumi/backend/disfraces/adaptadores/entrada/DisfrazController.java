@@ -6,6 +6,8 @@ import com.costumi.backend.disfraces.aplicacion.ConsultarDisponibilidadDeDisfraz
 import com.costumi.backend.disfraces.aplicacion.CrearDisfraz;
 import com.costumi.backend.disfraces.aplicacion.CrearDisfrazComando;
 import com.costumi.backend.disfraces.aplicacion.PoolComando;
+import com.costumi.backend.disfraces.aplicacion.RentarDisfraz;
+import com.costumi.backend.disfraces.aplicacion.RentarDisfrazComando;
 import com.costumi.backend.disfraces.aplicacion.SlotComando;
 import com.costumi.backend.disfraces.dominio.Disfraz;
 import jakarta.validation.Valid;
@@ -34,13 +36,16 @@ class DisfrazController {
 	private final CrearDisfraz crearDisfraz;
 	private final ConsultarDisfraces consultarDisfraces;
 	private final ConsultarDisponibilidadDeDisfraz consultarDisponibilidad;
+	private final RentarDisfraz rentarDisfraz;
 	private final ContextoDeTenant tenant;
 
 	DisfrazController(CrearDisfraz crearDisfraz, ConsultarDisfraces consultarDisfraces,
-			ConsultarDisponibilidadDeDisfraz consultarDisponibilidad, ContextoDeTenant tenant) {
+			ConsultarDisponibilidadDeDisfraz consultarDisponibilidad, RentarDisfraz rentarDisfraz,
+			ContextoDeTenant tenant) {
 		this.crearDisfraz = crearDisfraz;
 		this.consultarDisfraces = consultarDisfraces;
 		this.consultarDisponibilidad = consultarDisponibilidad;
+		this.rentarDisfraz = rentarDisfraz;
 		this.tenant = tenant;
 	}
 
@@ -66,6 +71,22 @@ class DisfrazController {
 	DisponibilidadResponse disponibilidad(@PathVariable UUID disfrazId) {
 		boolean disponible = consultarDisponibilidad.estaDisponible(tenant.empresaIdRequerida(), disfrazId);
 		return new DisponibilidadResponse(disfrazId, disponible);
+	}
+
+	/** Rentar un disfraz (RF-2.3/3.1): lo resuelve a sus prendas y crea la renta. */
+	@PostMapping("/{disfrazId}/rentar")
+	RentarDisfrazResponse rentar(@PathVariable UUID disfrazId, @Valid @RequestBody RentarDisfrazRequest request) {
+		UUID empresaId = tenant.empresaIdRequerida();
+		List<RentarDisfrazComando.SeleccionDeSlot> selecciones = (request.selecciones() == null ? List.<RentarDisfrazRequest.SeleccionSlotDto>of() : request.selecciones())
+				.stream()
+				.map(s -> new RentarDisfrazComando.SeleccionDeSlot(s.orden(), s.prendaId()))
+				.toList();
+		UUID rentaId = rentarDisfraz.ejecutar(new RentarDisfrazComando(empresaId, disfrazId, request.sucursalId(),
+				request.clienteId(), request.fechaRetiro(), request.fechaDevolucion(), selecciones));
+		return new RentarDisfrazResponse(rentaId);
+	}
+
+	record RentarDisfrazResponse(UUID rentaId) {
 	}
 
 	private static SlotComando aSlotComando(SlotDto s) {

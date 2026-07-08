@@ -8,9 +8,13 @@ import com.costumi.backend.disfraces.dominio.PoolDeSlot;
 import com.costumi.backend.disfraces.dominio.Slot;
 import com.costumi.backend.catalogo.ConsultaDeTaxonomia;
 import com.costumi.backend.inventario.ConsultaDeInventario;
+import com.costumi.backend.rentas.RegistroDeRentas;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -18,16 +22,19 @@ import java.util.UUID;
 
 /** Casos de uso de Disfraces (Capa 3), acotados a la empresa (tenant). */
 @Service
-class DisfrazService implements CrearDisfraz, ConsultarDisfraces, ConsultarDisponibilidadDeDisfraz {
+class DisfrazService implements CrearDisfraz, ConsultarDisfraces, ConsultarDisponibilidadDeDisfraz, RentarDisfraz {
 
 	private final DisfrazRepository disfraces;
 	private final ConsultaDeInventario inventario;
 	private final ConsultaDeTaxonomia taxonomia;
+	private final RegistroDeRentas rentas;
 
-	DisfrazService(DisfrazRepository disfraces, ConsultaDeInventario inventario, ConsultaDeTaxonomia taxonomia) {
+	DisfrazService(DisfrazRepository disfraces, ConsultaDeInventario inventario, ConsultaDeTaxonomia taxonomia,
+			RegistroDeRentas rentas) {
 		this.disfraces = disfraces;
 		this.inventario = inventario;
 		this.taxonomia = taxonomia;
+		this.rentas = rentas;
 	}
 
 	@Override
@@ -87,6 +94,62 @@ class DisfrazService implements CrearDisfraz, ConsultarDisfraces, ConsultarDispo
 				.filter(d -> d.empresaId().equals(empresaId))
 				.orElseThrow(() -> new DisfrazNoEncontrado(disfrazId));
 		return disfraz.estaDisponible(consultaDeStockPara(empresaId));
+	}
+
+	@Override
+	@Transactional
+	public UUID ejecutar(RentarDisfrazComando comando) {
+		UUID empresaId = comando.empresaId();
+		Disfraz disfraz = disfraces.buscarPorId(comando.disfrazId())
+				.filter(d -> d.empresaId().equals(empresaId))
+				.orElseThrow(() -> new DisfrazNoEncontrado(comando.disfrazId()));
+		Map<Integer, UUID> seleccionPorOrden = new HashMap<>();
+		if (comando.selecciones() != null) {
+			for (RentarDisfrazComando.SeleccionDeSlot seleccion : comando.selecciones()) {
+				seleccionPorOrden.put(seleccion.orden(), seleccion.prendaId());
+			}
+		}
+		List<RegistroDeRentas.ItemDeRenta> items = new ArrayList<>();
+		switch (disfraz.modo()) {
+			case UNIDAD_FIJA -> items.add(itemDeRenta(empresaId, disfraz.prendaFijaId()));
+			case POR_PARTES -> {
+				for (Slot slot : disfraz.slots()) {
+					boolean elegido = seleccionPorOrden.containsKey(slot.orden());
+					// Los slots opcionales solo entran si el cliente los eligió; los obligatorios siempre.
+					if (!slot.esObligatorio() && !elegido) {
+						continue;
+					}
+					items.add(itemDeRenta(empresaId, resolverPrenda(empresaId, slot, seleccionPorOrden.get(slot.orden()))));
+				}
+			}
+		}
+		if (items.isEmpty()) {
+			throw new IllegalArgumentException("El disfraz no resolvió ningún artículo para rentar");
+		}
+		return rentas.registrar(empresaId, comando.sucursalId(), comando.clienteId(), comando.fechaRetiro(),
+				comando.fechaDevolucion(), null, items);
+	}
+
+	/** Prenda concreta de un slot: la fija, o la elegida por el cliente validada contra el pool (RF-2.3). */
+	private UUID resolverPrenda(UUID empresaId, Slot slot, UUID prendaElegida) {
+		if (slot.ejePrenda() == EjeDePrenda.FIJA) {
+			return slot.prendaFijaId();
+		}
+		if (prendaElegida == null) {
+			throw new IllegalArgumentException("Falta elegir la prenda del slot '" + slot.nombre() + "'");
+		}
+		PoolDeSlot pool = slot.pool();
+		if (!inventario.prendaEnPool(empresaId, prendaElegida, pool.categoriaId(), pool.etiquetasPermitidas())) {
+			throw new IllegalArgumentException(
+					"La prenda elegida no pertenece al pool del slot '" + slot.nombre() + "'");
+		}
+		return prendaElegida;
+	}
+
+	private RegistroDeRentas.ItemDeRenta itemDeRenta(UUID empresaId, UUID prendaId) {
+		BigDecimal precio = inventario.precioRenta(empresaId, prendaId)
+				.orElseThrow(() -> new IllegalArgumentException("La prenda del disfraz no tiene precio de renta"));
+		return new RegistroDeRentas.ItemDeRenta(prendaId, 1, precio);
 	}
 
 	/** Puente del puerto de Inventario al puerto de dominio del Disfraz, fijado al tenant. */

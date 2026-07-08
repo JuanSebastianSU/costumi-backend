@@ -18,6 +18,7 @@ import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -129,6 +130,87 @@ class DisfrazIntegrationTest {
 		UUID disfraz = UUID.fromString(json.readTree(body).get("id").asText());
 
 		org.assertj.core.api.Assertions.assertThat(disponible(dueno, disfraz)).isTrue();
+	}
+
+	private record CtxRenta(String dueno, UUID sucursal, UUID cliente) {
+	}
+
+	/** Empresa aprobada, con sucursal y cliente, y con el conteo de stock apagado (foco en la resolución). */
+	private CtxRenta montarRenta(String nombre) throws Exception {
+		UUID empresa = crearEmpresa(nombre + " " + UUID.randomUUID());
+		String superAdmin = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, null, Rol.SUPERADMIN);
+		mvc.perform(post("/api/v1/empresas/{id}/aprobar", empresa).header("Authorization", "Bearer " + superAdmin))
+				.andExpect(status().isOk());
+		String dueno = duenoDe(empresa);
+		String suc = mvc.perform(post("/api/v1/empresas/" + empresa + "/sucursales")
+						.header("Authorization", "Bearer " + dueno).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Centro\"}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		UUID sucursal = UUID.fromString(json.readTree(suc).get("id").asText());
+		String cli = mvc.perform(post("/api/v1/clientes").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON).content("{\"nombre\":\"Cliente\"}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		UUID cliente = UUID.fromString(json.readTree(cli).get("id").asText());
+		// El foco de esta prueba es la resolución del disfraz a prendas, no la disponibilidad por fechas.
+		mvc.perform(put("/api/v1/configuracion").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"conteoStock\":false,\"multasActivo\":true,\"multiSucursal\":false,\"pagoEnLinea\":false}"))
+				.andExpect(status().isOk());
+		return new CtxRenta(dueno, sucursal, cliente);
+	}
+
+	private UUID crearDisfrazFijaMasPersonalizable(String dueno, UUID prendaFija, UUID categoriaPool) throws Exception {
+		String body = mvc.perform(post("/api/v1/disfraces").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Conjunto\",\"modo\":\"POR_PARTES\",\"slots\":["
+								+ "{\"orden\":1,\"nombre\":\"Base\",\"ejeTalla\":\"LIBRE\",\"ejePrenda\":\"FIJA\","
+								+ "\"prendaFijaId\":\"" + prendaFija + "\",\"opcional\":false},"
+								+ "{\"orden\":2,\"nombre\":\"Accesorio\",\"ejeTalla\":\"LIBRE\",\"ejePrenda\":\"PERSONALIZABLE\","
+								+ "\"pool\":{\"categoriaId\":\"" + categoriaPool + "\",\"etiquetasPermitidas\":[]},"
+								+ "\"opcional\":false}]}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		return UUID.fromString(json.readTree(body).get("id").asText());
+	}
+
+	@Test
+	void rentar_disfraz_resuelve_slots_fijo_y_personalizable_a_una_renta() throws Exception {
+		CtxRenta c = montarRenta("Rentar Disfraz");
+		UUID categoria = crearCategoria(c.dueno(), "Cat " + UUID.randomUUID());
+		UUID prendaBase = crearPrenda(c.dueno(), categoria);      // slot fijo
+		UUID prendaAccesorio = crearPrenda(c.dueno(), categoria); // elegible del pool (misma categoría)
+		UUID disfraz = crearDisfrazFijaMasPersonalizable(c.dueno(), prendaBase, categoria);
+
+		mvc.perform(post("/api/v1/disfraces/{id}/rentar", disfraz)
+						.header("Authorization", "Bearer " + c.dueno()).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + c.sucursal() + "\",\"clienteId\":\"" + c.cliente() + "\","
+								+ "\"fechaRetiro\":\"2026-08-01\",\"fechaDevolucion\":\"2026-08-04\",\"selecciones\":["
+								+ "{\"orden\":2,\"prendaId\":\"" + prendaAccesorio + "\"}]}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.rentaId").exists());
+
+		// La renta tiene 2 líneas (base fija + accesorio elegido).
+		mvc.perform(get("/api/v1/rentas").param("clienteId", c.cliente().toString())
+						.header("Authorization", "Bearer " + c.dueno()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(1))
+				.andExpect(jsonPath("$[0].lineas.length()").value(2));
+	}
+
+	@Test
+	void rentar_disfraz_con_prenda_fuera_del_pool_devuelve_400() throws Exception {
+		CtxRenta c = montarRenta("Pool Invalido");
+		UUID categoriaPool = crearCategoria(c.dueno(), "Pool " + UUID.randomUUID());
+		UUID otraCategoria = crearCategoria(c.dueno(), "Otra " + UUID.randomUUID());
+		UUID prendaBase = crearPrenda(c.dueno(), categoriaPool);
+		UUID prendaFuera = crearPrenda(c.dueno(), otraCategoria); // NO pertenece al pool (otra categoría)
+		UUID disfraz = crearDisfrazFijaMasPersonalizable(c.dueno(), prendaBase, categoriaPool);
+
+		mvc.perform(post("/api/v1/disfraces/{id}/rentar", disfraz)
+						.header("Authorization", "Bearer " + c.dueno()).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + c.sucursal() + "\",\"clienteId\":\"" + c.cliente() + "\","
+								+ "\"fechaRetiro\":\"2026-08-01\",\"fechaDevolucion\":\"2026-08-04\",\"selecciones\":["
+								+ "{\"orden\":2,\"prendaId\":\"" + prendaFuera + "\"}]}"))
+				.andExpect(status().isBadRequest());
 	}
 
 	@Test
