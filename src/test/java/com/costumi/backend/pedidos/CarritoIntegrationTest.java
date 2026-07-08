@@ -39,7 +39,7 @@ class CarritoIntegrationTest {
 	@Autowired
 	PasswordEncoder passwordEncoder;
 
-	private record Ctx(String dueno, UUID sucursal, UUID cliente, UUID prenda) {
+	private record Ctx(UUID empresa, String dueno, UUID sucursal, UUID cliente, UUID prenda) {
 	}
 
 	private UUID postId(String path, String token, String body) throws Exception {
@@ -65,7 +65,7 @@ class CarritoIntegrationTest {
 		UUID categoria = postId("/api/v1/categorias", dueno, "{\"nombre\":\"Camisa " + UUID.randomUUID() + "\"}");
 		UUID prenda = postId("/api/v1/prendas", dueno, "{\"categoriaId\":\"" + categoria
 				+ "\",\"nombre\":\"Camisa\",\"tipoArticulo\":\"AMBOS\",\"precioRenta\":30.00,\"precioVenta\":90.00}");
-		return new Ctx(dueno, sucursal, cliente, prenda);
+		return new Ctx(empresa, dueno, sucursal, cliente, prenda);
 	}
 
 	private void agregar(Ctx c, String tipo, int cantidad) throws Exception {
@@ -191,6 +191,27 @@ class CarritoIntegrationTest {
 								+ "\",\"tipo\":\"RENTA\",\"prendaId\":\"" + c.prenda() + "\",\"cantidad\":" + cantidad
 								+ ",\"fechaRetiro\":\"" + retiro + "\",\"fechaDevolucion\":\"" + devolucion + "\"}"))
 				.andExpect(status().isOk());
+	}
+
+	@Test
+	void cliente_del_marketplace_arma_su_carrito_y_hace_checkout() throws Exception {
+		Ctx c = montar();
+		// Usuario CLIENTE del marketplace (sin empresa): compra para sí mismo (RF-18.5).
+		String cliente = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, null, Rol.CLIENTE);
+
+		// Agrega al carrito de la tienda: manda empresaId (la tienda) y NO clienteId (se usa su propio id).
+		mvc.perform(post("/api/v1/carritos/items").header("Authorization", "Bearer " + cliente)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + c.sucursal() + "\",\"empresaId\":\"" + c.empresa()
+								+ "\",\"tipo\":\"VENTA\",\"prendaId\":\"" + c.prenda() + "\",\"cantidad\":1}"))
+				.andExpect(status().isOk());
+
+		// Checkout del propio cliente → crea la venta.
+		mvc.perform(post("/api/v1/carritos/checkout").header("Authorization", "Bearer " + cliente)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + c.sucursal() + "\",\"empresaId\":\"" + c.empresa() + "\"}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.ventaId").exists());
 	}
 
 	@Test
