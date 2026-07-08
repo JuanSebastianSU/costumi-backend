@@ -8,4 +8,10 @@ import java.util.UUID;
 public interface AvisosDeVencidasReadRepository {
 
 	List<RentaVencidaAviso> vencidas(UUID empresaId, LocalDate hoy);
+
+	/**
+	 * Empresas que tienen al menos una renta ACTIVA vencida a esta fecha (RF-3.5/11.1). Consulta a nivel
+	 * plataforma (sin filtro por tenant) para que el job programado sepa a qué empresas recordar.
+	 */
+	List<UUID> empresasConVencidas(LocalDate hoy);
 }

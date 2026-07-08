@@ -19,6 +19,12 @@ class AvisosDeVencidasJdbcAdapter implements AvisosDeVencidasReadRepository {
 			where empresa_id = :empresaId and estado = 'ACTIVA' and fecha_devolucion < :hoy
 			""";
 
+	private static final String EMPRESAS_CON_VENCIDAS = """
+			select distinct empresa_id
+			from renta
+			where estado = 'ACTIVA' and fecha_devolucion < :hoy
+			""";
+
 	private final JdbcClient jdbc;
 
 	AvisosDeVencidasJdbcAdapter(JdbcClient jdbc) {
@@ -29,5 +35,10 @@ class AvisosDeVencidasJdbcAdapter implements AvisosDeVencidasReadRepository {
 	public List<RentaVencidaAviso> vencidas(UUID empresaId, LocalDate hoy) {
 		return jdbc.sql(VENCIDAS).param("empresaId", empresaId).param("hoy", hoy)
 				.query(RentaVencidaAviso.class).list();
+	}
+
+	@Override
+	public List<UUID> empresasConVencidas(LocalDate hoy) {
+		return jdbc.sql(EMPRESAS_CON_VENCIDAS).param("hoy", hoy).query(UUID.class).list();
 	}
 }
