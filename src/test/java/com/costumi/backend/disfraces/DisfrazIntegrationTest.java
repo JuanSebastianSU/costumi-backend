@@ -216,6 +216,28 @@ class DisfrazIntegrationTest {
 	}
 
 	@Test
+	void marketplace_expone_los_disfraces_de_la_tienda_al_cliente() throws Exception {
+		CtxRenta c = montarRenta("Vitrina Disfraces");
+		UUID categoria = crearCategoria(c.dueno(), "Cat " + UUID.randomUUID());
+		UUID prendaBase = crearPrenda(c.dueno(), categoria);
+		UUID disfraz = crearDisfrazFijaMasPersonalizable(c.dueno(), prendaBase, categoria);
+
+		// Público (sin token): el cliente lista los disfraces de la tienda.
+		mvc.perform(get("/api/v1/marketplace/empresas/{e}/disfraces", c.empresa()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(1))
+				.andExpect(jsonPath("$[0].id").value(disfraz.toString()));
+
+		// Detalle: estructura completa (2 slots: fijo + personalizable) + disponibilidad derivada.
+		mvc.perform(get("/api/v1/marketplace/empresas/{e}/disfraces/{d}", c.empresa(), disfraz))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.disfraz.modo").value("POR_PARTES"))
+				.andExpect(jsonPath("$.disfraz.slots.length()").value(2))
+				.andExpect(jsonPath("$.disfraz.slots[1].pool.categoriaId").value(categoria.toString()))
+				.andExpect(jsonPath("$.disponible").exists());
+	}
+
+	@Test
 	void rentar_disfraz_con_prenda_fuera_del_pool_devuelve_400() throws Exception {
 		CtxRenta c = montarRenta("Pool Invalido");
 		UUID categoriaPool = crearCategoria(c.dueno(), "Pool " + UUID.randomUUID());
