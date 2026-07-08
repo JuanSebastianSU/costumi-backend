@@ -9,6 +9,14 @@
 enchufable, gateada por credencial → `docs/INFRA_PENDIENTE.md`), Grupo B (lógica diferida: renta multi-artículo, checkout
 de renta, disfraz→renta, devolución parcial, stock por sucursal), deuda menor, y barrido final RF-0…18. Rebanada por
 rebanada, cada una su PR con tests + ArchUnit + Modulith en verde; nada se declara "cerrado" sin CI verde.
+- **Rebanada 9 (PR `feat/disfraz-renta`) — HECHA (sin credenciales, cierre real; Grupo B):** RF-2.3/3.1 rentar un disfraz
+  armado por partes. Nuevo caso de uso **`RentarDisfraz`**: resuelve el disfraz a sus prendas concretas — unidad fija = su
+  prenda; por partes = la prenda fija de cada slot obligatorio + la elegida por el cliente en los personalizables
+  (validada contra el pool con el nuevo **`ConsultaDeInventario.prendaEnPool`**), respetando los slots opcionales — y crea
+  una **renta multi-artículo** vía **`RegistroDeRentas`** (Rebanada 8). `POST /disfraces/{id}/rentar`. Dominio + ArchUnit +
+  Modulith (disfraces→rentas/inventario por API pública) + integración (2 tests nuevos: resolución fijo+personalizable →
+  renta de 2 líneas, y 400 si la prenda elegida no pertenece al pool) en verde local (suite completa, 301 tests). _Depende
+  de Rebanadas 7 y 8._
 - **Rebanada 8 (PR `feat/checkout-renta`) — HECHA (sin credenciales, cierre real; Grupo B):** RF-16.4/18.6-7 checkout de
   RENTA por carrito con **fechas por línea**. La `LineaDeCarrito` gana su periodo (retiro/devolución, columnas en
   `linea_de_carrito`, migración **V35**; nulas en venta); al agregar a un carrito de RENTA las fechas son obligatorias y
@@ -178,7 +186,7 @@ Estado: ✅ hecho y **mergeado en `main`** · 🔵 en **PR abierta** (sin mergea
 | Identidad y tenant (Empresa/Sucursal/Usuario/auth) | Hexagonal | ✅ | Auth JWT + rol/tenant + bootstrap + §5.4 forzado + refresh + alta empleados (RF-8) + **GET /sucursales (#20)** + **marketplace: rol CLIENTE + auto-registro (#22), solicitud de tienda (#23), aprobar→promueve a Dueño+Casa Matriz (#24)** + **recuperación de contraseña (RF-1.1, #26)**. ⬜ Falta solo permisos granulares por-usuario (RF-1.5) — Grupo C |
 | Catálogo y taxonomía (etiquetas, categorías) | Hexagonal | ✅ | Categoría, TipoEtiqueta/ValorEtiqueta, tipo↔categoría, renombrar, siembra al aprobar |
 | Inventario y disponibilidad | Hexagonal | ✅ | Prenda, GrupoDeStock, variantes, stock-bajo + ajuste con motivo auditado (RF-10) + **fotos de prenda en S3 (RF-2.9, #28 — código completo, gateado)** + **stock por sucursal (RF-18.2): `GrupoDeStock.sucursalId` (migración V33 con backfill), disponibilidad/baja/retorno acotados a la sucursal, misma variante en 2 sucursales = grupos aparte, y transferencia entre sucursales `POST /grupos-stock/{id}/transferir` (RF-10.3) — Rebanada 6, Grupo B** |
-| Disfraces (capa 3) | Hexagonal | ✅ | Disfraz+Slot+pool + disponibilidad derivada |
+| Disfraces (capa 3) | Hexagonal | ✅ | Disfraz+Slot+pool + disponibilidad derivada + **rentar disfraz (RF-2.3/3.1): resuelve slots (fijo→su prenda; personalizable→prenda elegida validada contra el pool con `ConsultaDeInventario.prendaEnPool`) → renta multi-artículo vía `RegistroDeRentas`, `POST /disfraces/{id}/rentar` — Rebanada 9** |
 | Pedidos / carrito | Hexagonal | ✅ | Carrito segmentado + checkout→venta + **checkout→renta con fechas por línea (RF-16.4/18.6-7): línea de carrito con periodo (V35), agrupa por (retiro,devolución) → una renta multi-artículo por periodo vía `RegistroDeRentas`, `POST /carritos/checkout-renta` — Rebanada 8**. |
 | Rentas | Hexagonal | 🟨 | Crear + estados + disponibilidad + advisory lock + idempotencia + extensión/renovación (RF-3.6) + contrato PDF (#27) + **multi-artículo (RF-3.1/16.2): renta con N líneas (`renta_linea`, V34), importe = Σ precio×cantidad×días, disponibilidad por línea, request compatible (1 artículo o `lineas[]`) — Rebanada 7**. ⬜ Falta armado por partes (Rebanada 9) y devolución parcial (Rebanada 10) |
 | Ventas / POS | Hexagonal | ✅ | Venta + descuento + total + baja de stock atómica (anti-sobreventa) |

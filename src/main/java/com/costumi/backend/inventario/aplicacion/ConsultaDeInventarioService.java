@@ -51,6 +51,17 @@ class ConsultaDeInventarioService implements ConsultaDeInventario {
 
 	@Override
 	@Transactional(readOnly = true)
+	public boolean prendaEnPool(UUID empresaId, UUID prendaId, UUID categoriaId,
+			Map<UUID, Set<UUID>> etiquetasPermitidas) {
+		return prendas.buscarPorId(prendaId)
+				.filter(prenda -> prenda.empresaId().equals(empresaId))
+				.filter(prenda -> prenda.categoriaId().equals(categoriaId))
+				.filter(prenda -> cumpleEtiquetas(prenda, etiquetasPermitidas))
+				.isPresent();
+	}
+
+	@Override
+	@Transactional(readOnly = true)
 	public int unidadesDisponibles(UUID empresaId, UUID sucursalId, UUID prendaId) {
 		if (!prendaExiste(empresaId, prendaId)) {
 			return 0;

@@ -34,4 +34,11 @@ public interface ConsultaDeInventario {
 	 * vacío = cualquier prenda de la categoría) y que tienen unidades disponibles.
 	 */
 	boolean poolTieneStockDisponible(UUID empresaId, UUID categoriaId, Map<UUID, Set<UUID>> etiquetasPermitidas);
+
+	/**
+	 * ¿La prenda (de la empresa) pertenece al pool? Es decir, es de la {@code categoria} y sus etiquetas
+	 * satisfacen los valores permitidos por dimensión ({@code etiquetasPermitidas} vacío = cualquier
+	 * prenda de la categoría). Sirve para validar la elección del cliente en un slot personalizable (RF-2.3).
+	 */
+	boolean prendaEnPool(UUID empresaId, UUID prendaId, UUID categoriaId, Map<UUID, Set<UUID>> etiquetasPermitidas);
 }
