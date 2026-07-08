@@ -67,6 +67,14 @@ class ConsultaDeInventarioService implements ConsultaDeInventario {
 				.map(com.costumi.backend.inventario.dominio.Prenda::precioVenta);
 	}
 
+	@Override
+	@Transactional(readOnly = true)
+	public java.util.Optional<java.math.BigDecimal> precioRenta(UUID empresaId, UUID prendaId) {
+		return prendas.buscarPorId(prendaId)
+				.filter(prenda -> prenda.empresaId().equals(empresaId))
+				.map(com.costumi.backend.inventario.dominio.Prenda::precioRenta);
+	}
+
 	private boolean tieneStock(UUID prendaId) {
 		return grupos.listarPorPrenda(prendaId).stream().anyMatch(grupo -> grupo.disponibles() > 0);
 	}

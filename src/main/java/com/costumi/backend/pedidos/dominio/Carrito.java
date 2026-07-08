@@ -41,15 +41,31 @@ public class Carrito {
 		return new Carrito(id, empresaId, sucursalId, clienteId, tipo, estado, lineas);
 	}
 
-	/** Agrega una prenda; si ya está en el carrito, suma a su cantidad. */
+	/** Agrega una prenda de VENTA (sin fechas); si ya está en el carrito, suma a su cantidad. */
 	public void agregarItem(UUID prendaId, int cantidad) {
+		agregarItem(prendaId, cantidad, null, null);
+	}
+
+	/**
+	 * Agrega una prenda con su periodo (RF-18.6). En un carrito de RENTA las fechas son obligatorias; en
+	 * uno de VENTA deben ser nulas. Si ya existe una línea con la misma prenda <b>y</b> el mismo periodo,
+	 * suma a su cantidad; distinto periodo = otra línea (se rentará en otra renta al hacer checkout).
+	 */
+	public void agregarItem(UUID prendaId, int cantidad, java.time.LocalDate fechaRetiro,
+			java.time.LocalDate fechaDevolucion) {
+		if (tipo == TipoPedido.RENTA && (fechaRetiro == null || fechaDevolucion == null)) {
+			throw new IllegalArgumentException("Un artículo de renta requiere fechas de retiro y devolución");
+		}
+		if (tipo == TipoPedido.VENTA && (fechaRetiro != null || fechaDevolucion != null)) {
+			throw new IllegalArgumentException("Un artículo de venta no lleva fechas");
+		}
 		for (LineaDeCarrito linea : lineas) {
-			if (linea.prendaId().equals(prendaId)) {
+			if (linea.mismaClave(prendaId, fechaRetiro, fechaDevolucion)) {
 				linea.incrementar(cantidad);
 				return;
 			}
 		}
-		lineas.add(LineaDeCarrito.de(prendaId, cantidad));
+		lineas.add(LineaDeCarrito.de(prendaId, cantidad, fechaRetiro, fechaDevolucion));
 	}
 
 	/** Confirma el carrito al hacer checkout (RF-16): pasa a CONFIRMADO. Debe estar pendiente y no vacío. */
