@@ -112,6 +112,32 @@ class VentaIntegrationTest {
 	}
 
 	@Test
+	void devolver_una_venta_reingresa_el_stock_y_la_marca_devuelta() throws Exception {
+		UUID[] ctx = montar();
+		UUID sucursal = ctx[0];
+		UUID prenda = ctx[1];
+
+		// Vender 2 (stock 5 -> 3).
+		String res = mvc.perform(post("/api/v1/ventas").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + sucursal + "\",\"lineas\":[{\"prendaId\":\"" + prenda
+								+ "\",\"cantidad\":2,\"precioUnitario\":50.00}]}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		UUID ventaId = UUID.fromString(json.readTree(res).get("id").asText());
+		org.assertj.core.api.Assertions.assertThat(disponiblesDe(prenda)).isEqualTo(3);
+
+		// RF-4.5: devolver la venta la marca DEVUELTA y reingresa el stock (3 -> 5).
+		mvc.perform(post("/api/v1/ventas/{id}/devolver", ventaId).header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.estado").value("DEVUELTA"));
+		org.assertj.core.api.Assertions.assertThat(disponiblesDe(prenda)).isEqualTo(5);
+
+		// Una venta ya devuelta no se puede devolver otra vez -> 409.
+		mvc.perform(post("/api/v1/ventas/{id}/devolver", ventaId).header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isConflict());
+	}
+
+	@Test
 	void con_conteo_de_stock_apagado_la_venta_no_controla_inventario() throws Exception {
 		UUID[] ctx = montar();
 		UUID sucursal = ctx[0];

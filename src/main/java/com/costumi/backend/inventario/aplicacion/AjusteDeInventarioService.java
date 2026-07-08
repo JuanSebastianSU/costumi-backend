@@ -72,6 +72,26 @@ class AjusteDeInventarioService implements AjusteDeInventario {
 
 	@Override
 	@Transactional
+	public void reingresarDisponibles(UUID empresaId, UUID sucursalId, UUID prendaId, int cantidad) {
+		if (cantidad <= 0) {
+			throw new IllegalArgumentException("La cantidad a reingresar debe ser mayor a 0");
+		}
+		bloquearPrenda(prendaId);
+		boolean delTenant = prendas.buscarPorId(prendaId).filter(p -> p.empresaId().equals(empresaId)).isPresent();
+		if (!delTenant) {
+			throw new StockInsuficiente(prendaId);
+		}
+		List<GrupoDeStock> deLaPrenda = grupos.listarPorPrendaYSucursal(prendaId, sucursalId);
+		if (deLaPrenda.isEmpty()) {
+			throw new StockInsuficiente(prendaId); // no hay grupo en la sucursal donde reingresar
+		}
+		GrupoDeStock grupo = deLaPrenda.get(0);
+		grupo.reabastecer(cantidad);
+		grupos.guardar(grupo);
+	}
+
+	@Override
+	@Transactional
 	public void procesarRetornoDeRenta(UUID empresaId, UUID sucursalId, UUID prendaId, int danadas, int enLimpieza,
 			int perdidas) {
 		bloquearPrenda(prendaId);

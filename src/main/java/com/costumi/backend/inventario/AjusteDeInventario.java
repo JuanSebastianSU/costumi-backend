@@ -15,6 +15,13 @@ public interface AjusteDeInventario {
 	void descontarDisponibles(UUID empresaId, UUID sucursalId, UUID prendaId, int cantidad);
 
 	/**
+	 * Reingresa {@code cantidad} unidades disponibles de la prenda a su stock en la sucursal (p. ej. al
+	 * devolver una venta, RF-4.5). Lanza {@link StockInsuficiente} si la prenda no tiene grupo de stock
+	 * en esa sucursal donde reingresarlas.
+	 */
+	void reingresarDisponibles(UUID empresaId, UUID sucursalId, UUID prendaId, int cantidad);
+
+	/**
 	 * Procesa el retorno de una renta según el checklist de la devolución (RF-5.4/5.6): mueve unidades
 	 * de <b>disponible</b> a dañadas / en limpieza / perdidas. Las piezas que vuelven bien quedan
 	 * disponibles (no se mueven). Lanza {@link StockInsuficiente} si no hay disponibles suficientes.

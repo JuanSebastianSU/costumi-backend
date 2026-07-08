@@ -57,6 +57,17 @@ public class Venta {
 		return new Venta(id, empresaId, sucursalId, empleadoId, clienteId, descuento, total, estado, lineas);
 	}
 
+	/**
+	 * Devuelve la venta (RF-4.5): pasa de CONFIRMADA a DEVUELTA. Solo una venta confirmada puede
+	 * devolverse; el reintegro del dinero y el reingreso de stock los coordina el caso de uso.
+	 */
+	public void devolver() {
+		if (estado != EstadoVenta.CONFIRMADA) {
+			throw new VentaNoDevolvible(id);
+		}
+		this.estado = EstadoVenta.DEVUELTA;
+	}
+
 	public List<LineaDeVenta> lineas() {
 		return List.copyOf(lineas);
 	}
