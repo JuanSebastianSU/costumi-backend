@@ -1,6 +1,8 @@
 package com.costumi.backend.ventas.adaptadores.entrada;
 
 import com.costumi.backend.inventario.StockInsuficiente;
+import com.costumi.backend.ventas.aplicacion.VentaNoEncontrada;
+import com.costumi.backend.ventas.dominio.VentaNoDevolvible;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -21,6 +23,20 @@ class ManejadorDeErroresVentas {
 	ProblemDetail stockInsuficiente(StockInsuficiente ex) {
 		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
 		problema.setTitle("Stock insuficiente");
+		return problema;
+	}
+
+	@ExceptionHandler(VentaNoEncontrada.class)
+	ProblemDetail ventaNoEncontrada(VentaNoEncontrada ex) {
+		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+		problema.setTitle("Venta no encontrada");
+		return problema;
+	}
+
+	@ExceptionHandler(VentaNoDevolvible.class)
+	ProblemDetail ventaNoDevolvible(VentaNoDevolvible ex) {
+		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+		problema.setTitle("Venta no devolvible");
 		return problema;
 	}
 }

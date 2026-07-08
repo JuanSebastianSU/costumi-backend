@@ -1,6 +1,7 @@
 package com.costumi.backend.ventas.adaptadores.entrada;
 
 import com.costumi.backend.ventas.aplicacion.ConsultarVentas;
+import com.costumi.backend.ventas.aplicacion.DevolverVenta;
 import com.costumi.backend.ventas.aplicacion.RegistrarVenta;
 import com.costumi.backend.ventas.aplicacion.RegistrarVentaComando;
 import com.costumi.backend.ventas.dominio.LineaDeVenta;
@@ -10,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -27,10 +29,19 @@ class VentaController {
 
 	private final RegistrarVenta registrarVenta;
 	private final ConsultarVentas consultarVentas;
+	private final DevolverVenta devolverVenta;
 
-	VentaController(RegistrarVenta registrarVenta, ConsultarVentas consultarVentas) {
+	VentaController(RegistrarVenta registrarVenta, ConsultarVentas consultarVentas, DevolverVenta devolverVenta) {
 		this.registrarVenta = registrarVenta;
 		this.consultarVentas = consultarVentas;
+		this.devolverVenta = devolverVenta;
+	}
+
+	/** Devolución de una venta (RF-4.5): la marca DEVUELTA y reingresa el stock. */
+	@PostMapping("/{id}/devolver")
+	VentaResponse devolver(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		return VentaResponse.desde(devolverVenta.devolver(empresaId, id));
 	}
 
 	@PostMapping

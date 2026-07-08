@@ -18,7 +18,7 @@ import java.util.UUID;
 
 /** Casos de uso de Ventas, acotados a la empresa (tenant). */
 @Service
-class VentaService implements RegistrarVenta, ConsultarVentas, RegistroDeVentas, ConsultaDeVentas {
+class VentaService implements RegistrarVenta, ConsultarVentas, RegistroDeVentas, ConsultaDeVentas, DevolverVenta {
 
 	private final VentaRepository ventas;
 	private final ConsultaDeInventario inventario;
@@ -57,6 +57,23 @@ class VentaService implements RegistrarVenta, ConsultarVentas, RegistroDeVentas,
 	@Transactional(readOnly = true)
 	public List<Venta> deEmpresa(UUID empresaId) {
 		return ventas.listarPorEmpresa(empresaId);
+	}
+
+	@Override
+	@Transactional
+	public Venta devolver(UUID empresaId, UUID ventaId) {
+		Venta venta = ventas.buscarPorId(ventaId)
+				.filter(v -> v.empresaId().equals(empresaId))
+				.orElseThrow(() -> new VentaNoEncontrada(ventaId));
+		venta.devolver(); // CONFIRMADA -> DEVUELTA (valida el estado, RF-4.5)
+		// Reingresa el stock vendido (si la empresa cuenta stock, igual que al confirmar la venta).
+		if (configuracion.conteoStock(empresaId)) {
+			for (LineaDeVenta linea : venta.lineas()) {
+				ajusteDeInventario.reingresarDisponibles(empresaId, venta.sucursalId(), linea.prendaId(),
+						linea.cantidad());
+			}
+		}
+		return ventas.guardar(venta);
 	}
 
 	@Override
