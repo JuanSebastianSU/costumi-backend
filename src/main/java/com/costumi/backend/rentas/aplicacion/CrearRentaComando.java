@@ -10,5 +10,6 @@ import java.util.UUID;
  * líneas (multi-artículo); las fechas de retiro/devolución y el depósito son de la renta completa.
  */
 public record CrearRentaComando(UUID empresaId, UUID sucursalId, UUID clienteId, List<LineaDeRentaComando> lineas,
-		LocalDate fechaRetiro, LocalDate fechaDevolucion, BigDecimal deposito, String claveIdempotencia) {
+		LocalDate fechaRetiro, LocalDate fechaDevolucion, BigDecimal deposito, String claveIdempotencia,
+		UUID empleadoId) {
 }

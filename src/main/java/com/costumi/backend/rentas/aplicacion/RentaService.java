@@ -71,18 +71,20 @@ class RentaService implements CrearRenta, ConsultarRentas, GestionarRenta, Consu
 				.map(l -> RentaLinea.de(l.prendaId(), l.cantidad(), l.precioPorDia()))
 				.toList();
 		return rentas.guardar(Renta.crear(comando.empresaId(), comando.sucursalId(), comando.clienteId(), lineas,
-				comando.fechaRetiro(), comando.fechaDevolucion(), comando.deposito(), comando.claveIdempotencia()));
+				comando.fechaRetiro(), comando.fechaDevolucion(), comando.deposito(), comando.claveIdempotencia(),
+				comando.empleadoId()));
 	}
 
 	@Override
 	@Transactional
 	public UUID registrar(UUID empresaId, UUID sucursalId, UUID clienteId, java.time.LocalDate fechaRetiro,
-			java.time.LocalDate fechaDevolucion, java.math.BigDecimal deposito, List<ItemDeRenta> items) {
+			java.time.LocalDate fechaDevolucion, java.math.BigDecimal deposito, List<ItemDeRenta> items,
+			UUID empleadoId) {
 		List<LineaDeRentaComando> lineas = items.stream()
 				.map(i -> new LineaDeRentaComando(i.prendaId(), i.cantidad(), i.precioPorDia()))
 				.toList();
 		Renta renta = ejecutar(new CrearRentaComando(empresaId, sucursalId, clienteId, lineas, fechaRetiro,
-				fechaDevolucion, deposito, null));
+				fechaDevolucion, deposito, null, empleadoId));
 		return renta.id();
 	}
 

@@ -76,9 +76,10 @@ class RentaController {
 	ResponseEntity<RentaResponse> crear(@Valid @RequestBody CrearRentaRequest request,
 			@AuthenticationPrincipal Jwt jwt, UriComponentsBuilder uriBuilder) {
 		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empleadoId = UUID.fromString(jwt.getSubject());
 		Renta renta = crearRenta.ejecutar(new CrearRentaComando(empresaId, request.sucursalId(), request.clienteId(),
 				lineasDe(request), request.fechaRetiro(), request.fechaDevolucion(), request.deposito(),
-				request.claveIdempotencia()));
+				request.claveIdempotencia(), empleadoId));
 		URI location = uriBuilder.path("/api/v1/rentas/{id}").buildAndExpand(renta.id()).toUri();
 		return ResponseEntity.created(location).body(RentaResponse.desde(renta));
 	}

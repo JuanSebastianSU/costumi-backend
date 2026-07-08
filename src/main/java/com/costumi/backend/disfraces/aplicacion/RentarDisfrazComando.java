@@ -9,7 +9,7 @@ import java.util.UUID;
  * opcionales que el cliente decide incluir), qué prenda elige por número de orden del slot.
  */
 public record RentarDisfrazComando(UUID empresaId, UUID disfrazId, UUID sucursalId, UUID clienteId,
-		LocalDate fechaRetiro, LocalDate fechaDevolucion, List<SeleccionDeSlot> selecciones) {
+		LocalDate fechaRetiro, LocalDate fechaDevolucion, List<SeleccionDeSlot> selecciones, UUID empleadoId) {
 
 	/** Elección del cliente para un slot: su número de orden y la prenda elegida (para personalizables). */
 	public record SeleccionDeSlot(int orden, UUID prendaId) {

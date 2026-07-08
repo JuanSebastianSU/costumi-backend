@@ -82,7 +82,8 @@ class DisfrazController {
 				.map(s -> new RentarDisfrazComando.SeleccionDeSlot(s.orden(), s.prendaId()))
 				.toList();
 		UUID rentaId = rentarDisfraz.ejecutar(new RentarDisfrazComando(empresaId, disfrazId, request.sucursalId(),
-				request.clienteId(), request.fechaRetiro(), request.fechaDevolucion(), selecciones));
+				request.clienteId(), request.fechaRetiro(), request.fechaDevolucion(), selecciones,
+				tenant.usuarioId().orElse(null)));
 		return new RentarDisfrazResponse(rentaId);
 	}
 

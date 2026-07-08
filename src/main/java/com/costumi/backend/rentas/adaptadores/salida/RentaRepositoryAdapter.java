@@ -87,7 +87,7 @@ class RentaRepositoryAdapter implements RentaRepository {
 	private static RentaJpaEntity aEntidad(Renta r) {
 		return new RentaJpaEntity(r.id(), r.empresaId(), r.sucursalId(), r.clienteId(), r.prendaId(),
 				r.fechaRetiro(), r.fechaDevolucion(), r.precioPorDia(), r.deposito(), r.importe(), r.estado(),
-				r.claveIdempotencia());
+				r.claveIdempotencia(), r.empleadoId());
 	}
 
 	private Renta aDominio(RentaJpaEntity e) {
@@ -98,8 +98,8 @@ class RentaRepositoryAdapter implements RentaRepository {
 			// Resiliencia ante filas previas a la migración: reconstruye la línea del artículo principal.
 			lineas = List.of(RentaLinea.de(e.getPrendaId(), 1, e.getPrecioPorDia()));
 		}
-		return Renta.rehidratar(e.getId(), e.getEmpresaId(), e.getSucursalId(), e.getClienteId(), lineas,
-				e.getFechaRetiro(), e.getFechaDevolucion(), e.getDeposito(), e.getImporte(), e.getEstado(),
+		return Renta.rehidratar(e.getId(), e.getEmpresaId(), e.getSucursalId(), e.getClienteId(), e.getEmpleadoId(),
+				lineas, e.getFechaRetiro(), e.getFechaDevolucion(), e.getDeposito(), e.getImporte(), e.getEstado(),
 				e.getClaveIdempotencia());
 	}
 }
