@@ -19,6 +19,9 @@ public record RegistrarVentaRequest(
 
 		BigDecimal descuento,
 
+		/** Opcional (RF-17.6): clave para no duplicar la venta ante reintentos/offline. */
+		String claveIdempotencia,
+
 		@NotEmpty(message = "La venta debe tener al menos una línea")
 		@Valid List<LineaVentaRequest> lineas) {
 

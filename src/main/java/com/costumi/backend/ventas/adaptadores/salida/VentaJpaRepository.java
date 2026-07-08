@@ -12,4 +12,7 @@ interface VentaJpaRepository extends JpaRepository<VentaJpaEntity, UUID> {
 
 	/** Carga por PK como QUERY (no em.find) para que el @Filter multi-tenant la acote (§5.4). */
 	Optional<VentaJpaEntity> findFirstById(UUID id);
+
+	/** Venta con esa clave de idempotencia en la empresa, si existe (RF-17.6). */
+	Optional<VentaJpaEntity> findByEmpresaIdAndClaveIdempotencia(UUID empresaId, String claveIdempotencia);
 }

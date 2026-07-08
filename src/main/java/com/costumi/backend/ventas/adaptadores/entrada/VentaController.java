@@ -53,7 +53,7 @@ class VentaController {
 				.map(l -> LineaDeVenta.de(l.prendaId(), l.cantidad(), l.precioUnitario()))
 				.toList();
 		Venta venta = registrarVenta.ejecutar(new RegistrarVentaComando(empresaId, request.sucursalId(),
-				empleadoId, request.clienteId(), request.descuento(), lineas));
+				empleadoId, request.clienteId(), request.descuento(), lineas, request.claveIdempotencia()));
 		URI location = uriBuilder.path("/api/v1/ventas/{id}").buildAndExpand(venta.id()).toUri();
 		return ResponseEntity.created(location).body(VentaResponse.desde(venta));
 	}

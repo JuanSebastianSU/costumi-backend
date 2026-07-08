@@ -24,7 +24,7 @@ class VentaRepositoryAdapter implements VentaRepository {
 	@Override
 	public Venta guardar(Venta venta) {
 		cabeceras.save(new VentaJpaEntity(venta.id(), venta.empresaId(), venta.sucursalId(), venta.empleadoId(),
-				venta.clienteId(), venta.descuento(), venta.total(), venta.estado()));
+				venta.clienteId(), venta.descuento(), venta.total(), venta.estado(), venta.claveIdempotencia()));
 		for (LineaDeVenta linea : venta.lineas()) {
 			lineas.save(new LineaDeVentaJpaEntity(UUID.randomUUID(), venta.id(), venta.empresaId(),
 					linea.prendaId(), linea.cantidad(), linea.precioUnitario()));
@@ -42,12 +42,17 @@ class VentaRepositoryAdapter implements VentaRepository {
 		return cabeceras.findByEmpresaId(empresaId).stream().map(this::aDominio).toList();
 	}
 
+	@Override
+	public Optional<Venta> buscarPorClave(UUID empresaId, String claveIdempotencia) {
+		return cabeceras.findByEmpresaIdAndClaveIdempotencia(empresaId, claveIdempotencia).map(this::aDominio);
+	}
+
 	private Venta aDominio(VentaJpaEntity cabecera) {
 		List<LineaDeVenta> lineasDominio = lineas.findByVentaId(cabecera.getId()).stream()
 				.map(l -> LineaDeVenta.de(l.getPrendaId(), l.getCantidad(), l.getPrecioUnitario()))
 				.toList();
 		return Venta.rehidratar(cabecera.getId(), cabecera.getEmpresaId(), cabecera.getSucursalId(),
 				cabecera.getEmpleadoId(), cabecera.getClienteId(), cabecera.getDescuento(), cabecera.getTotal(),
-				cabecera.getEstado(), lineasDominio);
+				cabecera.getEstado(), lineasDominio, cabecera.getClaveIdempotencia());
 	}
 }

@@ -12,4 +12,7 @@ public interface VentaRepository {
 	Optional<Venta> buscarPorId(UUID id);
 
 	List<Venta> listarPorEmpresa(UUID empresaId);
+
+	/** Venta con esa clave de idempotencia en la empresa, si existe (RF-17.6). */
+	Optional<Venta> buscarPorClave(UUID empresaId, String claveIdempotencia);
 }

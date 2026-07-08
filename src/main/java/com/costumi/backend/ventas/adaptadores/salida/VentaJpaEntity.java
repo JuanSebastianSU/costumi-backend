@@ -45,12 +45,15 @@ class VentaJpaEntity {
 	@Column(nullable = false, length = 12)
 	private EstadoVenta estado;
 
+	@Column(name = "clave_idempotencia", length = 120)
+	private String claveIdempotencia;
+
 	protected VentaJpaEntity() {
 		// requerido por JPA
 	}
 
 	VentaJpaEntity(UUID id, UUID empresaId, UUID sucursalId, UUID empleadoId, UUID clienteId, BigDecimal descuento,
-			BigDecimal total, EstadoVenta estado) {
+			BigDecimal total, EstadoVenta estado, String claveIdempotencia) {
 		this.id = id;
 		this.empresaId = empresaId;
 		this.sucursalId = sucursalId;
@@ -59,6 +62,7 @@ class VentaJpaEntity {
 		this.descuento = descuento;
 		this.total = total;
 		this.estado = estado;
+		this.claveIdempotencia = claveIdempotencia;
 	}
 
 	UUID getId() {
@@ -91,5 +95,9 @@ class VentaJpaEntity {
 
 	EstadoVenta getEstado() {
 		return estado;
+	}
+
+	String getClaveIdempotencia() {
+		return claveIdempotencia;
 	}
 }

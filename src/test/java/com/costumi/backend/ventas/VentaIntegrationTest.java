@@ -193,6 +193,28 @@ class VentaIntegrationTest {
 	}
 
 	@Test
+	void la_clave_de_idempotencia_no_duplica_la_venta() throws Exception {
+		UUID[] ctx = montar();
+		UUID sucursal = ctx[0];
+		UUID prenda = ctx[1];
+		String body = "{\"sucursalId\":\"" + sucursal + "\",\"claveIdempotencia\":\"K-" + UUID.randomUUID()
+				+ "\",\"lineas\":[{\"prendaId\":\"" + prenda + "\",\"cantidad\":1,\"precioUnitario\":50.00}]}";
+
+		// El mismo POST dos veces (reintento/offline) no debe crear dos ventas (RF-17.6).
+		mvc.perform(post("/api/v1/ventas").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isCreated());
+		mvc.perform(post("/api/v1/ventas").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isCreated());
+
+		mvc.perform(get("/api/v1/ventas").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(1)); // no se duplicó
+
+		// Y el stock se descontó una sola vez (5 - 1 = 4), no dos.
+		org.assertj.core.api.Assertions.assertThat(disponiblesDe(prenda)).isEqualTo(4);
+	}
+
+	@Test
 	void sin_token_devuelve_401() throws Exception {
 		mvc.perform(get("/api/v1/ventas")).andExpect(status().isUnauthorized());
 	}
