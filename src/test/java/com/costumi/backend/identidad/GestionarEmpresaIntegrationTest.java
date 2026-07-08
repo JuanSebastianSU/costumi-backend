@@ -16,6 +16,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.UUID;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -72,6 +73,23 @@ class GestionarEmpresaIntegrationTest {
 		mvc.perform(post("/api/v1/empresas/{id}/suspender", id).header("Authorization", "Bearer " + token))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.estado").value("SUSPENDIDA"));
+	}
+
+	@Test
+	void suspender_deja_traza_en_auditoria() throws Exception {
+		String token = superAdmin();
+		UUID id = registrarEmpresa("Auditada SA " + UUID.randomUUID());
+		mvc.perform(post("/api/v1/empresas/{id}/aprobar", id).header("Authorization", "Bearer " + token))
+				.andExpect(status().isOk());
+		String dueno = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, id, Rol.DUENO);
+
+		mvc.perform(post("/api/v1/empresas/{id}/suspender", id).header("Authorization", "Bearer " + token))
+				.andExpect(status().isOk());
+
+		// RF-15.5: la suspensión del SuperAdmin queda auditada (antes solo se auditaba la aprobación).
+		mvc.perform(get("/api/v1/auditoria").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.accion == 'EMPRESA_SUSPENDIDA')]").exists());
 	}
 
 	@Test

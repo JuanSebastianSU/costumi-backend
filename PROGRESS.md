@@ -221,7 +221,7 @@ Estado: ✅ hecho y **mergeado en `main`** · 🔵 en **PR abierta** (sin mergea
 | Reportes | Simple (lectura) | ✅ | Ingresos, ganancia, rentas vencidas, depósitos activos, ingresos por método, rankings, ventas por empleado, desglose por etiqueta, tablero de inventario (9.3)+resumen, export CSV **y PDF (RF-9.2, #27)** + comprobante/contrato PDF (RF-3.4). **Completo.** |
 | Notificaciones (WhatsApp/FCM) | Simple (adaptador) | ✅ | Envío por canal + estados + disparador de multas + recordatorio de vencidas (RF-11.1) + **canales WhatsApp/FCM reales gateados + router + device_token (RF-11.4/18.11, #29 — código completo, pendiente credencial)** |
 | Configuración de empresa | Simple | ✅ | Switches que controlan de verdad (multas, multi-sucursal, conteo-stock) + reglas por defecto (moneda/recargo, 12.2) + respaldo/restauración (12.3) — mergeado (PR #15). Falta pagoEnLinea (infra) |
-| Auditoría | Simple | ✅ | Registro por domain events |
+| Auditoría | Simple | ✅ | Registro por domain events. Auditadas: venta, pago, caja, stock ajustado, devolución, y **todo el ciclo de empresa del SuperAdmin — aprobar + suspender/rechazar/reactivar (RF-15.5, fix post-barrido)** |
 | Marketplace (backend) | Simple (lectura) | ✅ | Descubrimiento + búsqueda de empresas ACTIVAS + **catálogo público por tienda (RF-18, #25)** + **checkout de RENTA del cliente por carrito (Rebanada 8)**. |
 
 ## Decisiones aceptadas
