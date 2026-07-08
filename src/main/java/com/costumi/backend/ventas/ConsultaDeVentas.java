@@ -10,6 +10,13 @@ import java.util.UUID;
  */
 public interface ConsultaDeVentas {
 
+	/** Actividad de ventas de un empleado (RF-8.2/1.4): cuántas ventas confirmó y por qué monto. */
+	record ActividadDeEmpleado(long ventas, BigDecimal totalVendido) {
+	}
+
 	/** Total a cobrar de la venta (subtotal − descuento, RF-4.3), si existe y pertenece a la empresa. */
 	Optional<BigDecimal> totalDeVenta(UUID empresaId, UUID ventaId);
+
+	/** Resumen de la actividad de ventas confirmadas del empleado en la empresa (RF-8.2). */
+	ActividadDeEmpleado actividadDeEmpleado(UUID empresaId, UUID empleadoId);
 }

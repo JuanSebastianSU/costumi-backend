@@ -68,6 +68,17 @@ class VentaService implements RegistrarVenta, ConsultarVentas, RegistroDeVentas,
 	}
 
 	@Override
+	@Transactional(readOnly = true)
+	public ActividadDeEmpleado actividadDeEmpleado(UUID empresaId, UUID empleadoId) {
+		List<Venta> deEmpleado = ventas.listarPorEmpresa(empresaId).stream()
+				.filter(venta -> empleadoId.equals(venta.empleadoId())
+						&& venta.estado() == com.costumi.backend.ventas.dominio.EstadoVenta.CONFIRMADA)
+				.toList();
+		BigDecimal total = deEmpleado.stream().map(Venta::total).reduce(BigDecimal.ZERO, BigDecimal::add);
+		return new ActividadDeEmpleado(deEmpleado.size(), total);
+	}
+
+	@Override
 	@Transactional
 	public UUID registrar(UUID empresaId, UUID sucursalId, UUID empleadoId, UUID clienteId, List<ItemDeVenta> items) {
 		List<LineaDeVenta> lineas = items.stream()
