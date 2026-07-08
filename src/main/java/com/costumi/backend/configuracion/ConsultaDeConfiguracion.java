@@ -22,6 +22,9 @@ public interface ConsultaDeConfiguracion {
 	/** Tasa de impuesto de la empresa en [0, 1) (por defecto 0); precios impuesto-incluido (RF-6.5/12.2). */
 	BigDecimal tasaImpuesto(UUID empresaId);
 
+	/** Recargo por día de retraso configurado (RF-12.2); base para calcular la multa por retraso (RF-5.2). */
+	BigDecimal recargoPorRetrasoPorDia(UUID empresaId);
+
 	/** ¿La empresa acepta pago en línea (pasarela)? (por defecto no, RF-6.11/12.4). */
 	boolean pagoEnLinea(UUID empresaId);
 }

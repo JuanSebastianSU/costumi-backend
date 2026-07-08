@@ -13,6 +13,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -97,12 +99,19 @@ class DevolucionService implements RegistrarDevolucion, ConsultarDevoluciones {
 			}
 		}
 
-		// Módulo de multas OFF (RF-6.6/12.4): el recargo por retraso (la multa) no se cobra ni reduce el remanente.
-		BigDecimal cargoPorRetraso = configuracion.multasActivas(empresaId)
-				? comando.cargoPorRetraso()
-				: BigDecimal.ZERO;
+		// Módulo de multas (RF-6.6/12.4): apagado ⇒ la devolución NO genera cargos (ni daños ni retraso);
+		// encendido ⇒ se cobran los daños indicados y el recargo por retraso (RF-5.2).
+		BigDecimal cargoPorDanos;
+		BigDecimal cargoPorRetraso;
+		if (configuracion.multasActivas(empresaId)) {
+			cargoPorDanos = comando.cargoPorDanos() == null ? BigDecimal.ZERO : comando.cargoPorDanos();
+			cargoPorRetraso = recargoPorRetraso(comando, empresaId, rentaId);
+		} else {
+			cargoPorDanos = BigDecimal.ZERO;
+			cargoPorRetraso = BigDecimal.ZERO;
+		}
 		Devolucion devolucion = devoluciones.guardar(Devolucion.crear(empresaId, rentaId,
-				comando.deposito(), comando.cargoPorDanos(), cargoPorRetraso, comando.piezas()));
+				comando.deposito(), cargoPorDanos, cargoPorRetraso, comando.piezas()));
 
 		// Cierra la renta (RF-5.1) SOLO cuando se han devuelto todas las unidades; si no, es parcial (RF-5.5)
 		// y la renta sigue ACTIVA para admitir más devoluciones.
@@ -121,6 +130,23 @@ class DevolucionService implements RegistrarDevolucion, ConsultarDevoluciones {
 	@Transactional(readOnly = true)
 	public List<Devolucion> deEmpresa(UUID empresaId) {
 		return devoluciones.listarPorEmpresa(empresaId);
+	}
+
+	/**
+	 * Recargo por retraso (RF-5.2): si el comando trae un valor, es un override manual; si no, se deriva
+	 * del recargo configurado por día (RF-12.2) por los días de atraso (fecha real − fecha pactada, ≥ 0).
+	 */
+	private BigDecimal recargoPorRetraso(RegistrarDevolucionComando comando, UUID empresaId, UUID rentaId) {
+		if (comando.cargoPorRetraso() != null) {
+			return comando.cargoPorRetraso();
+		}
+		LocalDate pactada = rentas.fechaDevolucionDeRenta(empresaId, rentaId).orElse(null);
+		LocalDate real = comando.fechaDevolucionReal();
+		if (pactada == null || real == null) {
+			return BigDecimal.ZERO;
+		}
+		long diasAtraso = Math.max(0, ChronoUnit.DAYS.between(pactada, real));
+		return configuracion.recargoPorRetrasoPorDia(empresaId).multiply(BigDecimal.valueOf(diasAtraso));
 	}
 
 	private static int contar(List<PiezaRevisada> piezas, UUID prendaId, EstadoPieza estado) {

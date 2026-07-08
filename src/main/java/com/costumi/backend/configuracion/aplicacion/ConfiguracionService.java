@@ -59,6 +59,12 @@ class ConfiguracionService implements GestionarConfiguracion, ConsultaDeConfigur
 
 	@Override
 	@Transactional(readOnly = true)
+	public java.math.BigDecimal recargoPorRetrasoPorDia(UUID empresaId) {
+		return deEmpresa(empresaId).recargoPorRetrasoPorDia();
+	}
+
+	@Override
+	@Transactional(readOnly = true)
 	public boolean pagoEnLinea(UUID empresaId) {
 		return deEmpresa(empresaId).pagoEnLinea();
 	}

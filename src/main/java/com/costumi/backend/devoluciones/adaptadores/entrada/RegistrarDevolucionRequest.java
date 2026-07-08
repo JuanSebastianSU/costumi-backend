@@ -6,10 +6,15 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
-/** DTO de entrada para registrar una Devolución con su checklist de piezas. */
+/**
+ * DTO de entrada para registrar una Devolución con su checklist de piezas. {@code cargoPorRetraso} es
+ * opcional: si se omite, se deriva del recargo configurado por día × días de atraso (RF-12.2/5.2),
+ * usando {@code fechaDevolucionReal} (por defecto, hoy).
+ */
 public record RegistrarDevolucionRequest(
 
 		@NotNull(message = "La renta es obligatoria") UUID rentaId,
@@ -19,6 +24,8 @@ public record RegistrarDevolucionRequest(
 		BigDecimal cargoPorDanos,
 
 		BigDecimal cargoPorRetraso,
+
+		LocalDate fechaDevolucionReal,
 
 		@Valid List<PiezaRequest> piezas) {
 

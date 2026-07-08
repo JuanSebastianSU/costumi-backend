@@ -130,6 +130,14 @@ class RentaService implements CrearRenta, ConsultarRentas, GestionarRenta, Consu
 	}
 
 	@Override
+	@Transactional(readOnly = true)
+	public Optional<java.time.LocalDate> fechaDevolucionDeRenta(UUID empresaId, UUID rentaId) {
+		return rentas.buscarPorId(rentaId)
+				.filter(renta -> renta.empresaId().equals(empresaId))
+				.map(Renta::fechaDevolucion);
+	}
+
+	@Override
 	@Transactional
 	public void marcarDevuelta(UUID empresaId, UUID rentaId) {
 		aplicar(empresaId, rentaId, Renta::devolver);

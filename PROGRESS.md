@@ -9,6 +9,10 @@
 enchufable, gateada por credencial → `docs/INFRA_PENDIENTE.md`), Grupo B (lógica diferida: renta multi-artículo, checkout
 de renta, disfraz→renta, devolución parcial, stock por sucursal), deuda menor, y barrido final RF-0…18. Rebanada por
 rebanada, cada una su PR con tests + ArchUnit + Modulith en verde; nada se declara "cerrado" sin CI verde.
+
+**Correcciones post-barrido RF-0…18 (2026-07-08).** Tras cerrar Grupos A/B/C, un barrido RF contra el código (4 auditores en paralelo) encontró 6 inconsistencias reales; se cierran una por una:
+- **Fix 1 (PR `fix/multa-correcta`, RF-6.6/5.2 + RF-12.2):** con el módulo de multas **apagado** la devolución ya **no genera ningún cargo** (antes solo anulaba el recargo por retraso, seguía cobrando daños). Y el **recargo por retraso se deriva** del `recargoPorRetrasoPorDia` configurado × días de atraso (antes se guardaba pero nunca se usaba; lo pasaba el caller a mano — ahora es opcional/override). Nuevos puertos `ConsultaDeConfiguracion.recargoPorRetrasoPorDia` y `ConsultaDeRentas.fechaDevolucionDeRenta`. Suite completa verde (307).
+
 - **Rebanada 11 (PR `feat/grupo-c-deuda-menor`) — HECHA (sin credenciales, cierre real; Grupo C):** deuda menor de auth/empleados.
   **RF-1.5 permisos granulares por empleado:** plantilla de permisos por rol (`PlantillaDeRol`) + overrides por empleado
   (`permiso_empleado`, migración **V37**); un `InterceptorDePermisos` mapea cada request a (sección, acción) y responde
