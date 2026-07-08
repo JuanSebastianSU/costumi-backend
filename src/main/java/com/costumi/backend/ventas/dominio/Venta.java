@@ -21,9 +21,10 @@ public class Venta {
 	private final BigDecimal total;
 	private EstadoVenta estado;
 	private final List<LineaDeVenta> lineas;
+	private final String claveIdempotencia;
 
 	private Venta(UUID id, UUID empresaId, UUID sucursalId, UUID empleadoId, UUID clienteId, BigDecimal descuento,
-			BigDecimal total, EstadoVenta estado, List<LineaDeVenta> lineas) {
+			BigDecimal total, EstadoVenta estado, List<LineaDeVenta> lineas, String claveIdempotencia) {
 		this.id = Objects.requireNonNull(id, "id");
 		this.empresaId = Objects.requireNonNull(empresaId, "empresaId");
 		this.sucursalId = Objects.requireNonNull(sucursalId, "sucursalId");
@@ -33,10 +34,11 @@ public class Venta {
 		this.total = total;
 		this.estado = Objects.requireNonNull(estado, "estado");
 		this.lineas = new ArrayList<>(lineas);
+		this.claveIdempotencia = claveIdempotencia;
 	}
 
 	public static Venta crear(UUID empresaId, UUID sucursalId, UUID empleadoId, UUID clienteId, BigDecimal descuento,
-			List<LineaDeVenta> lineas) {
+			List<LineaDeVenta> lineas, String claveIdempotencia) {
 		if (lineas == null || lineas.isEmpty()) {
 			throw new IllegalArgumentException("La venta debe tener al menos una línea");
 		}
@@ -49,12 +51,14 @@ public class Venta {
 			throw new IllegalArgumentException("El descuento no puede exceder el subtotal");
 		}
 		return new Venta(UUID.randomUUID(), empresaId, sucursalId, empleadoId, clienteId, dscto,
-				subtotal.subtract(dscto), EstadoVenta.CONFIRMADA, List.copyOf(lineas));
+				subtotal.subtract(dscto), EstadoVenta.CONFIRMADA, List.copyOf(lineas), claveIdempotencia);
 	}
 
 	public static Venta rehidratar(UUID id, UUID empresaId, UUID sucursalId, UUID empleadoId, UUID clienteId,
-			BigDecimal descuento, BigDecimal total, EstadoVenta estado, List<LineaDeVenta> lineas) {
-		return new Venta(id, empresaId, sucursalId, empleadoId, clienteId, descuento, total, estado, lineas);
+			BigDecimal descuento, BigDecimal total, EstadoVenta estado, List<LineaDeVenta> lineas,
+			String claveIdempotencia) {
+		return new Venta(id, empresaId, sucursalId, empleadoId, clienteId, descuento, total, estado, lineas,
+				claveIdempotencia);
 	}
 
 	/**
@@ -102,5 +106,10 @@ public class Venta {
 
 	public EstadoVenta estado() {
 		return estado;
+	}
+
+	/** Clave de idempotencia (RF-17.6); null si la venta no vino con una. */
+	public String claveIdempotencia() {
+		return claveIdempotencia;
 	}
 }

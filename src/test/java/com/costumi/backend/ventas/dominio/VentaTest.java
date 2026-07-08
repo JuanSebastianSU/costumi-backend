@@ -13,7 +13,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class VentaTest {
 
 	private static Venta ventaCon(BigDecimal descuento, LineaDeVenta... lineas) {
-		return Venta.crear(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), null, descuento, List.of(lineas));
+		return Venta.crear(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), null, descuento, List.of(lineas),
+				null);
 	}
 
 	@Test

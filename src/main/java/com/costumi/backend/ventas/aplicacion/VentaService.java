@@ -36,13 +36,22 @@ class VentaService implements RegistrarVenta, ConsultarVentas, RegistroDeVentas,
 	@Override
 	@Transactional
 	public Venta ejecutar(RegistrarVentaComando comando) {
+		// Idempotencia (RF-17.6, offline/outbox): si la venta ya se registró con esta clave, no se duplica.
+		if (comando.claveIdempotencia() != null && !comando.claveIdempotencia().isBlank()) {
+			Optional<Venta> existente = ventas.buscarPorClave(comando.empresaId(), comando.claveIdempotencia().trim());
+			if (existente.isPresent()) {
+				return existente.get();
+			}
+		}
 		for (LineaDeVenta linea : comando.lineas()) {
 			if (!inventario.prendaExiste(comando.empresaId(), linea.prendaId())) {
 				throw new IllegalArgumentException("La prenda no existe en esta empresa");
 			}
 		}
+		String clave = (comando.claveIdempotencia() != null && !comando.claveIdempotencia().isBlank())
+				? comando.claveIdempotencia().trim() : null;
 		Venta venta = Venta.crear(comando.empresaId(), comando.sucursalId(), comando.empleadoId(),
-				comando.clienteId(), comando.descuento(), comando.lineas());
+				comando.clienteId(), comando.descuento(), comando.lineas(), clave);
 		// RF-12.4: solo se descuenta stock si la empresa cuenta stock; si no, la venta no toca inventario.
 		if (configuracion.conteoStock(comando.empresaId())) {
 			// Baja de stock al confirmar (RF-4.4): si no alcanza, StockInsuficiente revierte toda la venta.
@@ -102,7 +111,7 @@ class VentaService implements RegistrarVenta, ConsultarVentas, RegistroDeVentas,
 				.map(i -> LineaDeVenta.de(i.prendaId(), i.cantidad(), i.precioUnitario()))
 				.toList();
 		Venta venta = ejecutar(new RegistrarVentaComando(empresaId, sucursalId, empleadoId, clienteId,
-				BigDecimal.ZERO, lineas));
+				BigDecimal.ZERO, lineas, null));
 		return venta.id();
 	}
 }
