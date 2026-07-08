@@ -4,6 +4,7 @@ import com.costumi.backend.TestcontainersConfiguration;
 import com.costumi.backend.identidad.AuthTestHelper;
 import com.costumi.backend.identidad.dominio.Rol;
 import com.costumi.backend.identidad.dominio.UsuarioRepository;
+import com.costumi.backend.notificaciones.aplicacion.RecordarVencidas;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +39,9 @@ class NotificacionIntegrationTest {
 
 	@Autowired
 	PasswordEncoder passwordEncoder;
+
+	@Autowired
+	RecordarVencidas recordarVencidas;
 
 	@Test
 	void enviar_una_notificacion_la_deja_enviada() throws Exception {
@@ -101,6 +105,34 @@ class NotificacionIntegrationTest {
 		mvc.perform(get("/api/v1/notificaciones").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$[?(@.canal == 'EMAIL')]").exists());
+	}
+
+	@Test
+	void empresas_con_vencidas_lista_la_empresa_con_renta_vencida() throws Exception {
+		// RF-3.5: es lo que usa el job programado para saber a qué empresas recordar (sin token).
+		String res = mvc.perform(post("/api/v1/empresas").contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Sched " + UUID.randomUUID() + "\"}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		UUID empresa = UUID.fromString(json.readTree(res).get("id").asText());
+		String superAdmin = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, null, Rol.SUPERADMIN);
+		mvc.perform(post("/api/v1/empresas/{id}/aprobar", empresa).header("Authorization", "Bearer " + superAdmin))
+				.andExpect(status().isOk());
+		String dueno = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.DUENO);
+		UUID sucursal = postId("/api/v1/empresas/" + empresa + "/sucursales", dueno, "{\"nombre\":\"Centro\"}");
+		UUID cliente = postId("/api/v1/clientes", dueno, "{\"nombre\":\"Cliente\"}");
+		UUID categoria = postId("/api/v1/categorias", dueno, "{\"nombre\":\"Cat " + UUID.randomUUID() + "\"}");
+		UUID prenda = postId("/api/v1/prendas", dueno, "{\"categoriaId\":\"" + categoria
+				+ "\",\"nombre\":\"Traje\",\"tipoArticulo\":\"RENTA\",\"precioRenta\":20.00}");
+		postId("/api/v1/prendas/" + prenda + "/grupos-stock", dueno,
+				"{\"sucursalId\":\"" + sucursal + "\",\"combinacion\":[],\"cantidadInicial\":2}");
+		UUID renta = postId("/api/v1/rentas", dueno, "{\"sucursalId\":\"" + sucursal + "\",\"clienteId\":\"" + cliente
+				+ "\",\"prendaId\":\"" + prenda + "\",\"fechaRetiro\":\"2020-01-01\",\"fechaDevolucion\":\"2020-01-05\","
+				+ "\"precioPorDia\":20.00,\"deposito\":100.00}");
+		mvc.perform(post("/api/v1/rentas/{id}/entregar", renta).header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk());
+
+		// La empresa con renta vencida aparece en la lista que recorre el scheduler.
+		org.assertj.core.api.Assertions.assertThat(recordarVencidas.empresasConVencidas()).contains(empresa);
 	}
 
 	@Test

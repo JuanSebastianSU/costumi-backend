@@ -48,6 +48,12 @@ class NotificacionService implements EnviarNotificacion, ConsultarNotificaciones
 	}
 
 	@Override
+	@Transactional(readOnly = true)
+	public List<UUID> empresasConVencidas() {
+		return vencidas.empresasConVencidas(LocalDate.now());
+	}
+
+	@Override
 	@Transactional
 	public int ejecutar(UUID empresaId) {
 		int enviadas = 0;
