@@ -69,10 +69,15 @@ class CarritoIntegrationTest {
 	}
 
 	private void agregar(Ctx c, String tipo, int cantidad) throws Exception {
+		// En RENTA cada artículo lleva su periodo (RF-18.6); aquí se usa uno fijo para todo el helper.
+		String fechas = "RENTA".equals(tipo)
+				? ",\"fechaRetiro\":\"2026-08-01\",\"fechaDevolucion\":\"2026-08-04\""
+				: "";
 		mvc.perform(post("/api/v1/carritos/items").header("Authorization", "Bearer " + c.dueno())
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"sucursalId\":\"" + c.sucursal() + "\",\"clienteId\":\"" + c.cliente()
-								+ "\",\"tipo\":\"" + tipo + "\",\"prendaId\":\"" + c.prenda() + "\",\"cantidad\":" + cantidad + "}"))
+								+ "\",\"tipo\":\"" + tipo + "\",\"prendaId\":\"" + c.prenda() + "\",\"cantidad\":" + cantidad
+								+ fechas + "}"))
 				.andExpect(status().isOk());
 	}
 
@@ -134,6 +139,49 @@ class CarritoIntegrationTest {
 		mvc.perform(get("/api/v1/ventas").header("Authorization", "Bearer " + c.dueno()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$[?(@.total == 180.00)]").exists());
+	}
+
+	@Test
+	void checkout_de_renta_crea_una_renta_por_periodo_y_confirma_el_carrito() throws Exception {
+		Ctx c = montar();
+		mvc.perform(post("/api/v1/prendas/{id}/grupos-stock", c.prenda()).header("Authorization", "Bearer " + c.dueno())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + c.sucursal() + "\",\"combinacion\":[],\"cantidadInicial\":5}"))
+				.andExpect(status().isCreated());
+
+		// Dos artículos: uno con periodo A (x2) y otro con periodo B (x1) -> dos rentas.
+		agregarRenta(c, 2, "2026-08-01", "2026-08-04");
+		agregarRenta(c, 1, "2026-09-01", "2026-09-03");
+
+		String res = mvc.perform(post("/api/v1/carritos/checkout-renta").header("Authorization", "Bearer " + c.dueno())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + c.sucursal() + "\",\"clienteId\":\"" + c.cliente() + "\"}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.rentaIds.length()").value(2))
+				.andReturn().getResponse().getContentAsString();
+		org.assertj.core.api.Assertions.assertThat(json.readTree(res).get("rentaIds").get(0).asText()).isNotBlank();
+
+		// Se crearon dos rentas para el cliente.
+		mvc.perform(get("/api/v1/rentas").param("clienteId", c.cliente().toString())
+						.header("Authorization", "Bearer " + c.dueno()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(2));
+
+		// El carrito de renta quedó confirmado (ya no hay pendiente) -> 404 al pedirlo.
+		mvc.perform(get("/api/v1/carritos").header("Authorization", "Bearer " + c.dueno())
+						.param("sucursalId", c.sucursal().toString())
+						.param("clienteId", c.cliente().toString())
+						.param("tipo", "RENTA"))
+				.andExpect(status().isNotFound());
+	}
+
+	private void agregarRenta(Ctx c, int cantidad, String retiro, String devolucion) throws Exception {
+		mvc.perform(post("/api/v1/carritos/items").header("Authorization", "Bearer " + c.dueno())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + c.sucursal() + "\",\"clienteId\":\"" + c.cliente()
+								+ "\",\"tipo\":\"RENTA\",\"prendaId\":\"" + c.prenda() + "\",\"cantidad\":" + cantidad
+								+ ",\"fechaRetiro\":\"" + retiro + "\",\"fechaDevolucion\":\"" + devolucion + "\"}"))
+				.andExpect(status().isOk());
 	}
 
 	@Test

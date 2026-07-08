@@ -30,7 +30,7 @@ class CarritoRepositoryAdapter implements CarritoRepository {
 		lineas.deleteByCarritoId(carrito.id());
 		for (LineaDeCarrito linea : carrito.lineas()) {
 			lineas.save(new LineaDeCarritoJpaEntity(UUID.randomUUID(), carrito.id(), carrito.empresaId(),
-					linea.prendaId(), linea.cantidad()));
+					linea.prendaId(), linea.cantidad(), linea.fechaRetiro(), linea.fechaDevolucion()));
 		}
 		return carrito;
 	}
@@ -50,7 +50,8 @@ class CarritoRepositoryAdapter implements CarritoRepository {
 
 	private Carrito aDominio(CarritoJpaEntity cabecera) {
 		List<LineaDeCarrito> lineasDominio = lineas.findByCarritoId(cabecera.getId()).stream()
-				.map(l -> LineaDeCarrito.de(l.getPrendaId(), l.getCantidad()))
+				.map(l -> LineaDeCarrito.de(l.getPrendaId(), l.getCantidad(), l.getFechaRetiro(),
+						l.getFechaDevolucion()))
 				.toList();
 		return Carrito.rehidratar(cabecera.getId(), cabecera.getEmpresaId(), cabecera.getSucursalId(),
 				cabecera.getClienteId(), cabecera.getTipo(), cabecera.getEstado(), lineasDominio);

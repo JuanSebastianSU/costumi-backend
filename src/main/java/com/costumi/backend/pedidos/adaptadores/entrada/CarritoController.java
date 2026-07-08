@@ -4,6 +4,7 @@ import com.costumi.backend.pedidos.aplicacion.AgregarItemAlCarrito;
 import com.costumi.backend.pedidos.aplicacion.AgregarItemAlCarritoComando;
 import com.costumi.backend.pedidos.aplicacion.ConsultarCarrito;
 import com.costumi.backend.pedidos.aplicacion.HacerCheckout;
+import com.costumi.backend.pedidos.aplicacion.HacerCheckoutDeRenta;
 import com.costumi.backend.pedidos.dominio.Carrito;
 import com.costumi.backend.pedidos.dominio.TipoPedido;
 import jakarta.validation.Valid;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -30,12 +32,14 @@ class CarritoController {
 	private final AgregarItemAlCarrito agregarItemAlCarrito;
 	private final ConsultarCarrito consultarCarrito;
 	private final HacerCheckout hacerCheckout;
+	private final HacerCheckoutDeRenta hacerCheckoutDeRenta;
 
 	CarritoController(AgregarItemAlCarrito agregarItemAlCarrito, ConsultarCarrito consultarCarrito,
-			HacerCheckout hacerCheckout) {
+			HacerCheckout hacerCheckout, HacerCheckoutDeRenta hacerCheckoutDeRenta) {
 		this.agregarItemAlCarrito = agregarItemAlCarrito;
 		this.consultarCarrito = consultarCarrito;
 		this.hacerCheckout = hacerCheckout;
+		this.hacerCheckoutDeRenta = hacerCheckoutDeRenta;
 	}
 
 	@PostMapping("/items")
@@ -43,7 +47,7 @@ class CarritoController {
 		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
 		Carrito carrito = agregarItemAlCarrito.ejecutar(new AgregarItemAlCarritoComando(
 				empresaId, request.sucursalId(), request.clienteId(), request.tipo(),
-				request.prendaId(), request.cantidad()));
+				request.prendaId(), request.cantidad(), request.fechaRetiro(), request.fechaDevolucion()));
 		return CarritoResponse.desde(carrito);
 	}
 
@@ -62,10 +66,22 @@ class CarritoController {
 		return new CheckoutResponse(ventaId);
 	}
 
+	@PostMapping("/checkout-renta")
+	CheckoutRentaResponse checkoutRenta(@Valid @RequestBody CheckoutRequest request,
+			@AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		List<UUID> rentaIds = hacerCheckoutDeRenta.ejecutar(empresaId, request.sucursalId(), request.clienteId());
+		return new CheckoutRentaResponse(rentaIds);
+	}
+
 	/** Checkout del carrito de VENTA (segmentado por sucursal × cliente). */
 	record CheckoutRequest(@NotNull UUID sucursalId, @NotNull UUID clienteId) {
 	}
 
 	record CheckoutResponse(UUID ventaId) {
+	}
+
+	/** Resultado del checkout de RENTA: una renta por cada periodo del carrito (RF-18.6). */
+	record CheckoutRentaResponse(List<UUID> rentaIds) {
 	}
 }

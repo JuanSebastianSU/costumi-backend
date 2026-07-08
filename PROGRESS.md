@@ -9,6 +9,15 @@
 enchufable, gateada por credencial → `docs/INFRA_PENDIENTE.md`), Grupo B (lógica diferida: renta multi-artículo, checkout
 de renta, disfraz→renta, devolución parcial, stock por sucursal), deuda menor, y barrido final RF-0…18. Rebanada por
 rebanada, cada una su PR con tests + ArchUnit + Modulith en verde; nada se declara "cerrado" sin CI verde.
+- **Rebanada 8 (PR `feat/checkout-renta`) — HECHA (sin credenciales, cierre real; Grupo B):** RF-16.4/18.6-7 checkout de
+  RENTA por carrito con **fechas por línea**. La `LineaDeCarrito` gana su periodo (retiro/devolución, columnas en
+  `linea_de_carrito`, migración **V35**; nulas en venta); al agregar a un carrito de RENTA las fechas son obligatorias y
+  la clave de agrupación es (prenda, periodo). Nuevo puerto público **`RegistroDeRentas`** (espejo de `RegistroDeVentas`)
+  que Rentas implementa. El checkout de renta **agrupa las líneas por periodo** y crea **una renta multi-artículo por
+  periodo distinto** (`POST /carritos/checkout-renta` → lista de renta ids), confirmando el carrito; el precio sale de
+  `ConsultaDeInventario.precioRenta` (nuevo). El depósito/garantía se gestiona en el pago (RF-6.2/6.8). Dominio +
+  ArchUnit + Modulith (pedidos→rentas por API pública) + carrito integración (con test nuevo de 2 periodos → 2 rentas) en
+  verde local; CI confirma. _Depende de la Rebanada 7._
 - **Rebanada 7 (PR `feat/renta-multi-articulo`) — HECHA (sin credenciales, cierre real; Grupo B):** RF-3.1/16.2 renta
   multi-artículo. La `Renta` pasa de una prenda a **N líneas** (`RentaLinea`: prenda, cantidad, precio/día); tabla
   **`renta_linea`** (migración **V34**, backfill 1 línea por renta con id = id de la renta). El importe es
@@ -170,7 +179,7 @@ Estado: ✅ hecho y **mergeado en `main`** · 🔵 en **PR abierta** (sin mergea
 | Catálogo y taxonomía (etiquetas, categorías) | Hexagonal | ✅ | Categoría, TipoEtiqueta/ValorEtiqueta, tipo↔categoría, renombrar, siembra al aprobar |
 | Inventario y disponibilidad | Hexagonal | ✅ | Prenda, GrupoDeStock, variantes, stock-bajo + ajuste con motivo auditado (RF-10) + **fotos de prenda en S3 (RF-2.9, #28 — código completo, gateado)** + **stock por sucursal (RF-18.2): `GrupoDeStock.sucursalId` (migración V33 con backfill), disponibilidad/baja/retorno acotados a la sucursal, misma variante en 2 sucursales = grupos aparte, y transferencia entre sucursales `POST /grupos-stock/{id}/transferir` (RF-10.3) — Rebanada 6, Grupo B** |
 | Disfraces (capa 3) | Hexagonal | ✅ | Disfraz+Slot+pool + disponibilidad derivada |
-| Pedidos / carrito | Hexagonal | 🟨 | Carrito segmentado + checkout→venta. ⬜ Falta checkout de RENTA con fechas por línea (Rebanada 8, Grupo B) |
+| Pedidos / carrito | Hexagonal | ✅ | Carrito segmentado + checkout→venta + **checkout→renta con fechas por línea (RF-16.4/18.6-7): línea de carrito con periodo (V35), agrupa por (retiro,devolución) → una renta multi-artículo por periodo vía `RegistroDeRentas`, `POST /carritos/checkout-renta` — Rebanada 8**. |
 | Rentas | Hexagonal | 🟨 | Crear + estados + disponibilidad + advisory lock + idempotencia + extensión/renovación (RF-3.6) + contrato PDF (#27) + **multi-artículo (RF-3.1/16.2): renta con N líneas (`renta_linea`, V34), importe = Σ precio×cantidad×días, disponibilidad por línea, request compatible (1 artículo o `lineas[]`) — Rebanada 7**. ⬜ Falta armado por partes (Rebanada 9) y devolución parcial (Rebanada 10) |
 | Ventas / POS | Hexagonal | ✅ | Venta + descuento + total + baja de stock atómica (anti-sobreventa) |
 | Pagos, caja y depósitos | Hexagonal | ✅ | Reembolsos/saldo/idempotencia + mixto+vuelto, depósito-retención, comprobante (+ PDF #27), impuesto configurable + **pago en línea / pasarela MercadoPago (RF-6.11, #31 — código completo, gateado): /pagos/intento + /pagos/webhook idempotente** |
@@ -182,7 +191,7 @@ Estado: ✅ hecho y **mergeado en `main`** · 🔵 en **PR abierta** (sin mergea
 | Notificaciones (WhatsApp/FCM) | Simple (adaptador) | ✅ | Envío por canal + estados + disparador de multas + recordatorio de vencidas (RF-11.1) + **canales WhatsApp/FCM reales gateados + router + device_token (RF-11.4/18.11, #29 — código completo, pendiente credencial)** |
 | Configuración de empresa | Simple | ✅ | Switches que controlan de verdad (multas, multi-sucursal, conteo-stock) + reglas por defecto (moneda/recargo, 12.2) + respaldo/restauración (12.3) — mergeado (PR #15). Falta pagoEnLinea (infra) |
 | Auditoría | Simple | ✅ | Registro por domain events |
-| Marketplace (backend) | Simple (lectura) | ✅ | Descubrimiento + búsqueda de empresas ACTIVAS + **catálogo público por tienda (RF-18, #25)**. ⬜ Falta checkout/carrito de RENTA del cliente (Rebanada 8, Grupo B) |
+| Marketplace (backend) | Simple (lectura) | ✅ | Descubrimiento + búsqueda de empresas ACTIVAS + **catálogo público por tienda (RF-18, #25)** + **checkout de RENTA del cliente por carrito (Rebanada 8)**. |
 
 ## Decisiones aceptadas
 - **Plan de cierre (2026-07-04, `CIERRE_BACKEND.md` de Juan):** cerrar el backend en **3 tandas** (T1=P0+P1,

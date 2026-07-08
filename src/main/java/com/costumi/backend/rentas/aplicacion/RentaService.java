@@ -3,6 +3,7 @@ package com.costumi.backend.rentas.aplicacion;
 import com.costumi.backend.configuracion.ConsultaDeConfiguracion;
 import com.costumi.backend.inventario.ConsultaDeInventario;
 import com.costumi.backend.rentas.ConsultaDeRentas;
+import com.costumi.backend.rentas.RegistroDeRentas;
 import com.costumi.backend.rentas.dominio.Renta;
 import com.costumi.backend.rentas.dominio.RentaLinea;
 import com.costumi.backend.rentas.dominio.RentaRepository;
@@ -18,7 +19,7 @@ import java.util.function.Consumer;
 
 /** Casos de uso de Rentas: crear, listar y transiciones de estado, acotados a la empresa (tenant). */
 @Service
-class RentaService implements CrearRenta, ConsultarRentas, GestionarRenta, ConsultaDeRentas {
+class RentaService implements CrearRenta, ConsultarRentas, GestionarRenta, ConsultaDeRentas, RegistroDeRentas {
 
 	private final RentaRepository rentas;
 	private final ConsultaDeInventario inventario;
@@ -71,6 +72,18 @@ class RentaService implements CrearRenta, ConsultarRentas, GestionarRenta, Consu
 				.toList();
 		return rentas.guardar(Renta.crear(comando.empresaId(), comando.sucursalId(), comando.clienteId(), lineas,
 				comando.fechaRetiro(), comando.fechaDevolucion(), comando.deposito(), comando.claveIdempotencia()));
+	}
+
+	@Override
+	@Transactional
+	public UUID registrar(UUID empresaId, UUID sucursalId, UUID clienteId, java.time.LocalDate fechaRetiro,
+			java.time.LocalDate fechaDevolucion, java.math.BigDecimal deposito, List<ItemDeRenta> items) {
+		List<LineaDeRentaComando> lineas = items.stream()
+				.map(i -> new LineaDeRentaComando(i.prendaId(), i.cantidad(), i.precioPorDia()))
+				.toList();
+		Renta renta = ejecutar(new CrearRentaComando(empresaId, sucursalId, clienteId, lineas, fechaRetiro,
+				fechaDevolucion, deposito, null));
+		return renta.id();
 	}
 
 	@Override
