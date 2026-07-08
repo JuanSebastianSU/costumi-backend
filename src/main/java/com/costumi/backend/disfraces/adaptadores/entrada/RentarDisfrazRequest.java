@@ -17,7 +17,11 @@ public record RentarDisfrazRequest(
 
 		@NotNull(message = "La sucursal es obligatoria") UUID sucursalId,
 
-		@NotNull(message = "El cliente es obligatorio") UUID clienteId,
+		/** Tienda a la que se renta. Requerido para el rol CLIENTE; el personal la toma del token. */
+		UUID empresaId,
+
+		/** Ficha de cliente (modo asistido del personal). El CLIENTE usa su propia ficha (por token). */
+		UUID clienteId,
 
 		@NotNull(message = "La fecha de retiro es obligatoria") LocalDate fechaRetiro,
 
