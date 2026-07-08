@@ -43,12 +43,15 @@ class ClienteJpaEntity {
 	@Column(name = "device_token", length = 300)
 	private String deviceToken;
 
+	@Column(name = "usuario_id")
+	private UUID usuarioId;
+
 	protected ClienteJpaEntity() {
 		// requerido por JPA
 	}
 
 	ClienteJpaEntity(UUID id, UUID empresaId, String nombre, String telefono, String email, String documento,
-			String direccion, boolean enListaNegra, String deviceToken) {
+			String direccion, boolean enListaNegra, String deviceToken, UUID usuarioId) {
 		this.id = id;
 		this.empresaId = empresaId;
 		this.nombre = nombre;
@@ -58,6 +61,11 @@ class ClienteJpaEntity {
 		this.direccion = direccion;
 		this.enListaNegra = enListaNegra;
 		this.deviceToken = deviceToken;
+		this.usuarioId = usuarioId;
+	}
+
+	UUID getUsuarioId() {
+		return usuarioId;
 	}
 
 	String getDeviceToken() {

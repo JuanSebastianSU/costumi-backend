@@ -1,5 +1,6 @@
 package com.costumi.backend.pedidos.adaptadores.entrada;
 
+import com.costumi.backend.clientes.ResolucionDeClientes;
 import com.costumi.backend.pedidos.aplicacion.AgregarItemAlCarrito;
 import com.costumi.backend.pedidos.aplicacion.AgregarItemAlCarritoComando;
 import com.costumi.backend.pedidos.aplicacion.ConsultarCarrito;
@@ -9,6 +10,7 @@ import com.costumi.backend.pedidos.dominio.Carrito;
 import com.costumi.backend.pedidos.dominio.TipoPedido;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,13 +19,20 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.UUID;
 
 /**
- * Carrito / pedido pendiente (RF-16). Modo asistido: el empleado indica el cliente. El tenant
- * (empresa) sale del token; la segmentación por (sucursal × cliente × tipo) la hace el dominio.
+ * Carrito / pedido pendiente (RF-16). Sirve a dos actores:
+ * <ul>
+ *   <li><b>Personal de la empresa (modo asistido, RF-16.7):</b> la {@code empresa} sale del token y
+ *       el {@code cliente} (ficha) viene en el request.</li>
+ *   <li><b>CLIENTE del marketplace (RF-18.5):</b> la {@code empresa} es la tienda que compra (viene
+ *       en el request) y el {@code cliente} es su propia ficha en esa tienda — resuelta/creada a
+ *       partir de su usuario (RF-14.4). Un cliente nunca opera el carrito de otro.</li>
+ * </ul>
  */
 @RestController
 @RequestMapping("/api/v1/carritos")
@@ -33,49 +42,81 @@ class CarritoController {
 	private final ConsultarCarrito consultarCarrito;
 	private final HacerCheckout hacerCheckout;
 	private final HacerCheckoutDeRenta hacerCheckoutDeRenta;
+	private final ResolucionDeClientes resolucionDeClientes;
 
 	CarritoController(AgregarItemAlCarrito agregarItemAlCarrito, ConsultarCarrito consultarCarrito,
-			HacerCheckout hacerCheckout, HacerCheckoutDeRenta hacerCheckoutDeRenta) {
+			HacerCheckout hacerCheckout, HacerCheckoutDeRenta hacerCheckoutDeRenta,
+			ResolucionDeClientes resolucionDeClientes) {
 		this.agregarItemAlCarrito = agregarItemAlCarrito;
 		this.consultarCarrito = consultarCarrito;
 		this.hacerCheckout = hacerCheckout;
 		this.hacerCheckoutDeRenta = hacerCheckoutDeRenta;
+		this.resolucionDeClientes = resolucionDeClientes;
 	}
 
 	@PostMapping("/items")
 	CarritoResponse agregarItem(@Valid @RequestBody AgregarItemRequest request, @AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		Actor actor = resolver(jwt, request.empresaId(), request.clienteId());
 		Carrito carrito = agregarItemAlCarrito.ejecutar(new AgregarItemAlCarritoComando(
-				empresaId, request.sucursalId(), request.clienteId(), request.tipo(),
+				actor.empresaId(), request.sucursalId(), actor.clienteId(), request.tipo(),
 				request.prendaId(), request.cantidad(), request.fechaRetiro(), request.fechaDevolucion()));
 		return CarritoResponse.desde(carrito);
 	}
 
 	@GetMapping
-	CarritoResponse pendiente(@RequestParam UUID sucursalId, @RequestParam UUID clienteId,
-			@RequestParam TipoPedido tipo, @AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
-		return CarritoResponse.desde(consultarCarrito.pendiente(empresaId, sucursalId, clienteId, tipo));
+	CarritoResponse pendiente(@RequestParam UUID sucursalId, @RequestParam(required = false) UUID empresaId,
+			@RequestParam(required = false) UUID clienteId, @RequestParam TipoPedido tipo,
+			@AuthenticationPrincipal Jwt jwt) {
+		Actor actor = resolver(jwt, empresaId, clienteId);
+		return CarritoResponse.desde(consultarCarrito.pendiente(actor.empresaId(), sucursalId, actor.clienteId(), tipo));
 	}
 
 	@PostMapping("/checkout")
 	CheckoutResponse checkout(@Valid @RequestBody CheckoutRequest request, @AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
-		UUID empleadoId = UUID.fromString(jwt.getSubject());
-		UUID ventaId = hacerCheckout.ejecutar(empresaId, request.sucursalId(), request.clienteId(), empleadoId);
+		Actor actor = resolver(jwt, request.empresaId(), request.clienteId());
+		UUID actorId = UUID.fromString(jwt.getSubject()); // quién confirma (RF-1.4)
+		UUID ventaId = hacerCheckout.ejecutar(actor.empresaId(), request.sucursalId(), actor.clienteId(), actorId);
 		return new CheckoutResponse(ventaId);
 	}
 
 	@PostMapping("/checkout-renta")
 	CheckoutRentaResponse checkoutRenta(@Valid @RequestBody CheckoutRequest request,
 			@AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
-		List<UUID> rentaIds = hacerCheckoutDeRenta.ejecutar(empresaId, request.sucursalId(), request.clienteId());
+		Actor actor = resolver(jwt, request.empresaId(), request.clienteId());
+		List<UUID> rentaIds = hacerCheckoutDeRenta.ejecutar(actor.empresaId(), request.sucursalId(), actor.clienteId());
 		return new CheckoutRentaResponse(rentaIds);
 	}
 
-	/** Checkout del carrito de VENTA (segmentado por sucursal × cliente). */
-	record CheckoutRequest(@NotNull UUID sucursalId, @NotNull UUID clienteId) {
+	/**
+	 * Resuelve (empresa, cliente) según el actor:
+	 * - Personal (token con {@code empresa_id}): empresa del token; cliente del request (obligatorio).
+	 * - CLIENTE (sin {@code empresa_id}): empresa del request; cliente = su ficha en esa empresa
+	 *   (resuelta/creada a partir de su usuario del token).
+	 */
+	private Actor resolver(Jwt jwt, UUID empresaIdReq, UUID clienteIdReq) {
+		String empresaClaim = jwt.getClaimAsString("empresa_id");
+		if (empresaClaim != null) {
+			if (clienteIdReq == null) {
+				throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El cliente es obligatorio");
+			}
+			return new Actor(UUID.fromString(empresaClaim), clienteIdReq);
+		}
+		if (empresaIdReq == null) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La empresa (tienda) es obligatoria");
+		}
+		UUID usuarioId = UUID.fromString(jwt.getSubject());
+		UUID clienteId = resolucionDeClientes.fichaDeUsuario(empresaIdReq, usuarioId, jwt.getClaimAsString("email"));
+		return new Actor(empresaIdReq, clienteId);
+	}
+
+	private record Actor(UUID empresaId, UUID clienteId) {
+	}
+
+	/**
+	 * Checkout del carrito. {@code empresaId}/{@code clienteId} se resuelven por rol (ver {@code resolver}):
+	 * el personal manda {@code clienteId}; el CLIENTE manda {@code empresaId} (la tienda).
+	 */
+	record CheckoutRequest(@NotNull UUID sucursalId, UUID empresaId, UUID clienteId) {
 	}
 
 	record CheckoutResponse(UUID ventaId) {

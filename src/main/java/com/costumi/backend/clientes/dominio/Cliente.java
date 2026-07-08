@@ -18,9 +18,11 @@ public class Cliente {
 	private String direccion;
 	private boolean enListaNegra;
 	private String deviceToken; // token de dispositivo para push FCM (RF-18.11); null si no registró
+	/** Usuario del marketplace dueño de esta ficha (RF-14.4); null en fichas creadas por el personal. */
+	private final UUID usuarioId;
 
 	private Cliente(UUID id, UUID empresaId, String nombre, String telefono, String email, String documento,
-			String direccion, boolean enListaNegra) {
+			String direccion, boolean enListaNegra, UUID usuarioId) {
 		this.id = Objects.requireNonNull(id, "id");
 		this.empresaId = Objects.requireNonNull(empresaId, "empresaId");
 		this.nombre = exigirNombre(nombre);
@@ -29,16 +31,27 @@ public class Cliente {
 		this.documento = limpiar(documento);
 		this.direccion = limpiar(direccion);
 		this.enListaNegra = enListaNegra;
+		this.usuarioId = usuarioId;
 	}
 
 	public static Cliente crear(UUID empresaId, String nombre, String telefono, String email, String documento,
 			String direccion) {
-		return new Cliente(UUID.randomUUID(), empresaId, nombre, telefono, email, documento, direccion, false);
+		return new Cliente(UUID.randomUUID(), empresaId, nombre, telefono, email, documento, direccion, false, null);
+	}
+
+	/**
+	 * Crea la ficha de cliente de un usuario del marketplace en una empresa (RF-14.4/18.5): la
+	 * proyección por-tienda de una cuenta que vive a nivel plataforma.
+	 */
+	public static Cliente deUsuario(UUID empresaId, UUID usuarioId, String email) {
+		String nombre = (email == null || email.isBlank()) ? "Cliente" : email.trim();
+		return new Cliente(UUID.randomUUID(), empresaId, nombre, null, email, null, null, false, usuarioId);
 	}
 
 	public static Cliente rehidratar(UUID id, UUID empresaId, String nombre, String telefono, String email,
-			String documento, String direccion, boolean enListaNegra, String deviceToken) {
-		Cliente cliente = new Cliente(id, empresaId, nombre, telefono, email, documento, direccion, enListaNegra);
+			String documento, String direccion, boolean enListaNegra, String deviceToken, UUID usuarioId) {
+		Cliente cliente = new Cliente(id, empresaId, nombre, telefono, email, documento, direccion, enListaNegra,
+				usuarioId);
 		cliente.deviceToken = limpiar(deviceToken);
 		return cliente;
 	}
@@ -101,5 +114,10 @@ public class Cliente {
 
 	public boolean enListaNegra() {
 		return enListaNegra;
+	}
+
+	/** Usuario del marketplace dueño de la ficha (null si la creó el personal). */
+	public UUID usuarioId() {
+		return usuarioId;
 	}
 }
