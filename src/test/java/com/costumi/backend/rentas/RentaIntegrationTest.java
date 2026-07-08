@@ -105,6 +105,17 @@ class RentaIntegrationTest {
 	}
 
 	@Test
+	void la_renta_registra_el_empleado_que_la_creo() throws Exception {
+		Ctx c = montar();
+
+		// RF-1.4: la renta queda asociada al usuario logueado que la creó.
+		mvc.perform(post("/api/v1/rentas").header("Authorization", "Bearer " + c.dueno())
+						.contentType(MediaType.APPLICATION_JSON).content(rentaBody(c, "2026-08-01", "2026-08-04")))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.empleadoId").exists());
+	}
+
+	@Test
 	void crear_calcula_importe_y_recorre_el_ciclo() throws Exception {
 		Ctx c = montar();
 		UUID renta = crearRenta(c);

@@ -11,6 +11,7 @@ de renta, disfraz→renta, devolución parcial, stock por sucursal), deuda menor
 rebanada, cada una su PR con tests + ArchUnit + Modulith en verde; nada se declara "cerrado" sin CI verde.
 
 **Correcciones post-barrido RF-0…18 (2026-07-08).** Tras cerrar Grupos A/B/C, un barrido RF contra el código (4 auditores en paralelo) encontró 6 inconsistencias reales; se cierran una por una:
+- **Fix 2 (PR `fix/renta-empleado`, RF-1.4):** la **Renta ahora registra el usuario que la creó** (`empleadoId`, columna `empleado_id` V39, nullable — empleado en asistido o cliente en autoservicio). Se enhebra desde el JWT en `/rentas` (asistido) y en los checkouts de renta (carrito vía `ContextoDeTenant`, disfraz→renta). `RegistroDeRentas.registrar` gana el parámetro. Antes solo Venta/Pago/Turno guardaban el usuario. Suite completa verde (308).
 - **Fix 1 (PR `fix/multa-correcta`, RF-6.6/5.2 + RF-12.2):** con el módulo de multas **apagado** la devolución ya **no genera ningún cargo** (antes solo anulaba el recargo por retraso, seguía cobrando daños). Y el **recargo por retraso se deriva** del `recargoPorRetrasoPorDia` configurado × días de atraso (antes se guardaba pero nunca se usaba; lo pasaba el caller a mano — ahora es opcional/override). Nuevos puertos `ConsultaDeConfiguracion.recargoPorRetrasoPorDia` y `ConsultaDeRentas.fechaDevolucionDeRenta`. Suite completa verde (307).
 
 - **Rebanada 11 (PR `feat/grupo-c-deuda-menor`) — HECHA (sin credenciales, cierre real; Grupo C):** deuda menor de auth/empleados.

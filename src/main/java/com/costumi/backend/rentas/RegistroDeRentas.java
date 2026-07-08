@@ -21,5 +21,5 @@ public interface RegistroDeRentas {
 	 * El depósito puede ser nulo (0).
 	 */
 	UUID registrar(UUID empresaId, UUID sucursalId, UUID clienteId, LocalDate fechaRetiro,
-			LocalDate fechaDevolucion, BigDecimal deposito, List<ItemDeRenta> items);
+			LocalDate fechaDevolucion, BigDecimal deposito, List<ItemDeRenta> items, UUID empleadoId);
 }

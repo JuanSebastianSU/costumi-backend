@@ -1,5 +1,6 @@
 package com.costumi.backend.pedidos.aplicacion;
 
+import com.costumi.backend.compartido.ContextoDeTenant;
 import com.costumi.backend.inventario.ConsultaDeInventario;
 import com.costumi.backend.pedidos.dominio.Carrito;
 import com.costumi.backend.pedidos.dominio.CarritoRepository;
@@ -26,13 +27,15 @@ class CarritoService implements AgregarItemAlCarrito, ConsultarCarrito, HacerChe
 	private final ConsultaDeInventario inventario;
 	private final RegistroDeVentas ventas;
 	private final RegistroDeRentas rentas;
+	private final ContextoDeTenant contexto;
 
 	CarritoService(CarritoRepository carritos, ConsultaDeInventario inventario, RegistroDeVentas ventas,
-			RegistroDeRentas rentas) {
+			RegistroDeRentas rentas, ContextoDeTenant contexto) {
 		this.carritos = carritos;
 		this.inventario = inventario;
 		this.ventas = ventas;
 		this.rentas = rentas;
+		this.contexto = contexto;
 	}
 
 	@Override
@@ -71,6 +74,7 @@ class CarritoService implements AgregarItemAlCarrito, ConsultarCarrito, HacerChe
 	@Override
 	@Transactional
 	public List<UUID> ejecutar(UUID empresaId, UUID sucursalId, UUID clienteId) {
+		UUID usuarioId = contexto.usuarioId().orElse(null); // quién confirma el pedido (RF-1.4)
 		Carrito carrito = carritos.buscarPendiente(empresaId, sucursalId, clienteId, TipoPedido.RENTA)
 				.orElseThrow(CarritoNoEncontrado::new);
 		// Agrupa las líneas por periodo (retiro/devolución): una renta multi-artículo por periodo distinto.
@@ -88,7 +92,7 @@ class CarritoService implements AgregarItemAlCarrito, ConsultarCarrito, HacerChe
 					.toList();
 			// El depósito/garantía se gestiona en el pago (RF-6.2/6.8); la renta se crea sin depósito.
 			rentaIds.add(rentas.registrar(empresaId, sucursalId, clienteId, periodo.retiro(), periodo.devolucion(),
-					null, items));
+					null, items, usuarioId));
 		}
 		carrito.confirmar();
 		carritos.guardar(carrito);

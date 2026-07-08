@@ -127,7 +127,7 @@ class DisfrazService implements CrearDisfraz, ConsultarDisfraces, ConsultarDispo
 			throw new IllegalArgumentException("El disfraz no resolvió ningún artículo para rentar");
 		}
 		return rentas.registrar(empresaId, comando.sucursalId(), comando.clienteId(), comando.fechaRetiro(),
-				comando.fechaDevolucion(), null, items);
+				comando.fechaDevolucion(), null, items, comando.empleadoId());
 	}
 
 	/** Prenda concreta de un slot: la fija, o la elegida por el cliente validada contra el pool (RF-2.3). */
