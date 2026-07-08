@@ -39,7 +39,7 @@ class DevolucionController {
 		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
 		List<PiezaRevisada> piezas = (request.piezas() == null) ? List.of()
 				: request.piezas().stream()
-						.map(p -> PiezaRevisada.de(p.descripcion(), p.llego(), p.estado()))
+						.map(p -> PiezaRevisada.de(p.prendaId(), p.descripcion(), p.llego(), p.estado()))
 						.toList();
 		Devolucion devolucion = registrarDevolucion.ejecutar(new RegistrarDevolucionComando(empresaId,
 				request.rentaId(), request.deposito(), request.cargoPorDanos(), request.cargoPorRetraso(), piezas));

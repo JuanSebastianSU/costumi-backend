@@ -9,6 +9,14 @@
 enchufable, gateada por credencial → `docs/INFRA_PENDIENTE.md`), Grupo B (lógica diferida: renta multi-artículo, checkout
 de renta, disfraz→renta, devolución parcial, stock por sucursal), deuda menor, y barrido final RF-0…18. Rebanada por
 rebanada, cada una su PR con tests + ArchUnit + Modulith en verde; nada se declara "cerrado" sin CI verde.
+- **Rebanada 10 (PR `feat/devolucion-parcial`) — HECHA (sin credenciales, cierre real; Grupo B):** RF-5.5/5.6 devolución
+  parcial. Cada `PiezaRevisada` se liga a su **prenda/artículo** (`prenda_id` en `pieza_revisada`, migración **V36**,
+  backfill desde la prenda principal), así el daño/pérdida se atribuye al grupo de stock correcto (RF-5.6) — el retorno de
+  inventario ahora es **por artículo**. La devolución puede ser **parcial**: la renta solo pasa a **DEVUELTA** cuando la
+  suma de piezas revisadas en todas sus devoluciones cubre todas las unidades rentadas; si no, sigue **ACTIVA** y admite
+  más devoluciones. Valida que no se devuelvan más unidades de las rentadas por artículo. Nuevo `ConsultaDeRentas.lineasDeRenta`
+  y `DevolucionRepository.listarPorRenta`. Suite completa en verde (303 tests) con 2 tests nuevos (parcial→ACTIVA→DEVUELTA;
+  400 al exceder). _Depende de la Rebanada 7._
 - **Rebanada 9 (PR `feat/disfraz-renta`) — HECHA (sin credenciales, cierre real; Grupo B):** RF-2.3/3.1 rentar un disfraz
   armado por partes. Nuevo caso de uso **`RentarDisfraz`**: resuelve el disfraz a sus prendas concretas — unidad fija = su
   prenda; por partes = la prenda fija de cada slot obligatorio + la elegida por el cliente en los personalizables
@@ -192,7 +200,7 @@ Estado: ✅ hecho y **mergeado en `main`** · 🔵 en **PR abierta** (sin mergea
 | Ventas / POS | Hexagonal | ✅ | Venta + descuento + total + baja de stock atómica (anti-sobreventa) |
 | Pagos, caja y depósitos | Hexagonal | ✅ | Reembolsos/saldo/idempotencia + mixto+vuelto, depósito-retención, comprobante (+ PDF #27), impuesto configurable + **pago en línea / pasarela MercadoPago (RF-6.11, #31 — código completo, gateado): /pagos/intento + /pagos/webhook idempotente** |
 | Caja / turno | Hexagonal | ✅ | Turno + movimientos + corte y cuadre por método |
-| Devoluciones y multas | Hexagonal | 🟨 | Checklist + multa (respeta switch) + inventario + evento. ⬜ Falta devolución parcial (RF-5.5) — Rebanada 10, Grupo B (depende de renta multi-artículo) |
+| Devoluciones y multas | Hexagonal | ✅ | Checklist + multa (respeta switch) + inventario + evento + **devolución parcial (RF-5.5/5.6): cada pieza se liga a su prenda/artículo (V36), daño por artículo, y la renta solo pasa a DEVUELTA cuando se devolvieron todas las unidades (parcial ⇒ sigue ACTIVA); valida no exceder lo rentado — Rebanada 10** |
 | Clientes | Simple | ✅ | Ficha + búsqueda + lista negra + historial (7.2) + filtro de pendientes (11.5/11.6) + **device_token para push (RF-18.11, #29)**. Completo. |
 | Empleados | Simple | ✅ | Alta de empleado por la empresa (RF-8) — correo único, sin SUPERADMIN, login. ⬜ Falta usuario↔N sucursales (RF-1.2), turno/actividad (RF-8.2) — Grupo C |
 | Reportes | Simple (lectura) | ✅ | Ingresos, ganancia, rentas vencidas, depósitos activos, ingresos por método, rankings, ventas por empleado, desglose por etiqueta, tablero de inventario (9.3)+resumen, export CSV **y PDF (RF-9.2, #27)** + comprobante/contrato PDF (RF-3.4). **Completo.** |

@@ -1,6 +1,7 @@
 package com.costumi.backend.rentas;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -11,8 +12,15 @@ import java.util.UUID;
  */
 public interface ConsultaDeRentas {
 
-	/** Prenda que ampara la renta, si la renta existe y pertenece a la empresa (tenant). */
+	/** Una línea de la renta vista desde fuera: la prenda y su cantidad. */
+	record LineaDeRentaVista(UUID prendaId, int cantidad) {
+	}
+
+	/** Prenda que ampara la renta (artículo principal), si la renta existe y pertenece a la empresa (tenant). */
 	Optional<UUID> prendaDeRenta(UUID empresaId, UUID rentaId);
+
+	/** Líneas (artículos) de la renta con su cantidad; vacío si no existe o no es de la empresa (RF-5.5). */
+	List<LineaDeRentaVista> lineasDeRenta(UUID empresaId, UUID rentaId);
 
 	/** Sucursal de la renta (para actualizar el stock por sucursal al devolver, RF-18.2). */
 	Optional<UUID> sucursalDeRenta(UUID empresaId, UUID rentaId);

@@ -82,7 +82,7 @@ class DevolucionIntegrationTest {
 		mvc.perform(post("/api/v1/devoluciones").header("Authorization", "Bearer " + dueno)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"rentaId\":\"" + renta + "\",\"deposito\":100.00,\"cargoPorDanos\":30.00,"
-								+ "\"cargoPorRetraso\":10.00,\"piezas\":[{\"descripcion\":\"Camisa\",\"llego\":true,"
+								+ "\"cargoPorRetraso\":10.00,\"piezas\":[{\"prendaId\":\"" + prenda + "\",\"descripcion\":\"Camisa\",\"llego\":true,"
 								+ "\"estado\":\"DANADA\"}]}"))
 				.andExpect(status().isCreated())
 				.andExpect(jsonPath("$.remanente").value(60.00))
@@ -114,7 +114,7 @@ class DevolucionIntegrationTest {
 		mvc.perform(post("/api/v1/devoluciones").header("Authorization", "Bearer " + dueno)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"rentaId\":\"" + renta + "\",\"deposito\":50.00,\"cargoPorDanos\":60.00,"
-								+ "\"cargoPorRetraso\":20.00,\"piezas\":[{\"descripcion\":\"Camisa\",\"llego\":true,"
+								+ "\"cargoPorRetraso\":20.00,\"piezas\":[{\"prendaId\":\"" + prenda + "\",\"descripcion\":\"Camisa\",\"llego\":true,"
 								+ "\"estado\":\"DANADA\"}]}"))
 				.andExpect(status().isCreated())
 				.andExpect(jsonPath("$.multa").value(30.00));
@@ -137,7 +137,7 @@ class DevolucionIntegrationTest {
 		mvc.perform(post("/api/v1/devoluciones").header("Authorization", "Bearer " + dueno)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"rentaId\":\"" + renta + "\",\"deposito\":50.00,\"cargoPorDanos\":60.00,"
-								+ "\"cargoPorRetraso\":20.00,\"piezas\":[{\"descripcion\":\"Camisa\",\"llego\":true,"
+								+ "\"cargoPorRetraso\":20.00,\"piezas\":[{\"prendaId\":\"" + prenda + "\",\"descripcion\":\"Camisa\",\"llego\":true,"
 								+ "\"estado\":\"DANADA\"}]}"))
 				.andExpect(status().isCreated())
 				// Multas OFF: el recargo por retraso (20) no se cobra -> multa = 60 daños - 50 depósito = 10.
@@ -158,7 +158,76 @@ class DevolucionIntegrationTest {
 		mvc.perform(post("/api/v1/devoluciones").header("Authorization", "Bearer " + duenoDeA)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"rentaId\":\"" + UUID.randomUUID() + "\",\"deposito\":100.00,\"cargoPorDanos\":0,"
-								+ "\"cargoPorRetraso\":0,\"piezas\":[{\"descripcion\":\"X\",\"llego\":true,\"estado\":\"BIEN\"}]}"))
+								+ "\"cargoPorRetraso\":0,\"piezas\":[{\"prendaId\":\"" + UUID.randomUUID()
+						+ "\",\"descripcion\":\"X\",\"llego\":true,\"estado\":\"BIEN\"}]}"))
+				.andExpect(status().isBadRequest());
+	}
+
+	/** Renta de 2 unidades de una prenda (línea con cantidad 2), entregada y lista para devolverse. */
+	private UUID rentaDeDosUnidades() throws Exception {
+		String res = mvc.perform(post("/api/v1/empresas").contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"DevP " + UUID.randomUUID() + "\"}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		UUID empresa = UUID.fromString(json.readTree(res).get("id").asText());
+		String superAdmin = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, null, Rol.SUPERADMIN);
+		mvc.perform(post("/api/v1/empresas/{id}/aprobar", empresa).header("Authorization", "Bearer " + superAdmin))
+				.andExpect(status().isOk());
+		this.dueno = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.DUENO);
+		UUID sucursal = postId("/api/v1/empresas/" + empresa + "/sucursales", dueno, "{\"nombre\":\"Centro\"}");
+		UUID cliente = postId("/api/v1/clientes", dueno, "{\"nombre\":\"Cliente\"}");
+		UUID categoria = postId("/api/v1/categorias", dueno, "{\"nombre\":\"Camisa " + UUID.randomUUID() + "\"}");
+		UUID prenda = postId("/api/v1/prendas", dueno, "{\"categoriaId\":\"" + categoria
+				+ "\",\"nombre\":\"Camisa\",\"tipoArticulo\":\"RENTA\",\"precioRenta\":20.00}");
+		this.prenda = prenda;
+		postId("/api/v1/prendas/" + prenda + "/grupos-stock", dueno,
+				"{\"sucursalId\":\"" + sucursal + "\",\"combinacion\":[],\"cantidadInicial\":2}");
+		UUID renta = postId("/api/v1/rentas", dueno, "{\"sucursalId\":\"" + sucursal + "\",\"clienteId\":\"" + cliente
+				+ "\",\"fechaRetiro\":\"2026-08-01\",\"fechaDevolucion\":\"2026-08-04\",\"deposito\":100.00,"
+				+ "\"lineas\":[{\"prendaId\":\"" + prenda + "\",\"cantidad\":2,\"precioPorDia\":20.00}]}");
+		mvc.perform(post("/api/v1/rentas/{id}/entregar", renta).header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk());
+		return renta;
+	}
+
+	@Test
+	void devolucion_parcial_deja_la_renta_activa_hasta_devolver_todo() throws Exception {
+		UUID renta = rentaDeDosUnidades();
+
+		// 1ª devolución: solo 1 de las 2 unidades (BIEN). La renta sigue ACTIVA (RF-5.5).
+		mvc.perform(post("/api/v1/devoluciones").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"rentaId\":\"" + renta + "\",\"deposito\":100.00,\"cargoPorDanos\":0,"
+								+ "\"cargoPorRetraso\":0,\"piezas\":[{\"prendaId\":\"" + prenda
+								+ "\",\"descripcion\":\"Unidad 1\",\"llego\":true,\"estado\":\"BIEN\"}]}"))
+				.andExpect(status().isCreated());
+		mvc.perform(get("/api/v1/rentas").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.id == '" + renta + "' && @.estado == 'ACTIVA')]").exists());
+
+		// 2ª devolución: la unidad restante. Ahora sí queda DEVUELTA.
+		mvc.perform(post("/api/v1/devoluciones").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"rentaId\":\"" + renta + "\",\"deposito\":100.00,\"cargoPorDanos\":0,"
+								+ "\"cargoPorRetraso\":0,\"piezas\":[{\"prendaId\":\"" + prenda
+								+ "\",\"descripcion\":\"Unidad 2\",\"llego\":true,\"estado\":\"BIEN\"}]}"))
+				.andExpect(status().isCreated());
+		mvc.perform(get("/api/v1/rentas").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.id == '" + renta + "' && @.estado == 'DEVUELTA')]").exists());
+	}
+
+	@Test
+	void devolver_mas_unidades_de_las_rentadas_devuelve_400() throws Exception {
+		UUID renta = rentaDeDosUnidades();
+
+		// Se intentan revisar 3 piezas de una prenda que solo tiene 2 unidades rentadas -> 400 (RF-5.5).
+		mvc.perform(post("/api/v1/devoluciones").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"rentaId\":\"" + renta + "\",\"deposito\":100.00,\"cargoPorDanos\":0,"
+								+ "\"cargoPorRetraso\":0,\"piezas\":["
+								+ "{\"prendaId\":\"" + prenda + "\",\"descripcion\":\"1\",\"llego\":true,\"estado\":\"BIEN\"},"
+								+ "{\"prendaId\":\"" + prenda + "\",\"descripcion\":\"2\",\"llego\":true,\"estado\":\"BIEN\"},"
+								+ "{\"prendaId\":\"" + prenda + "\",\"descripcion\":\"3\",\"llego\":true,\"estado\":\"BIEN\"}]}"))
 				.andExpect(status().isBadRequest());
 	}
 
