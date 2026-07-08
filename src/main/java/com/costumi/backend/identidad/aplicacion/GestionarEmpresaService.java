@@ -1,6 +1,7 @@
 package com.costumi.backend.identidad.aplicacion;
 
 import com.costumi.backend.identidad.EmpresaAprobada;
+import com.costumi.backend.identidad.EmpresaGestionada;
 import com.costumi.backend.identidad.dominio.Empresa;
 import com.costumi.backend.identidad.dominio.EmpresaRepository;
 import com.costumi.backend.identidad.dominio.Sucursal;
@@ -58,19 +59,26 @@ class GestionarEmpresaService implements GestionarEmpresa {
 	@Override
 	@Transactional
 	public Empresa rechazar(UUID id) {
-		return aplicar(id, Empresa::rechazar);
+		return aplicarYAuditar(id, Empresa::rechazar, "RECHAZADA");
 	}
 
 	@Override
 	@Transactional
 	public Empresa suspender(UUID id) {
-		return aplicar(id, Empresa::suspender);
+		return aplicarYAuditar(id, Empresa::suspender, "SUSPENDIDA");
 	}
 
 	@Override
 	@Transactional
 	public Empresa reactivar(UUID id) {
-		return aplicar(id, Empresa::reactivar);
+		return aplicarYAuditar(id, Empresa::reactivar, "REACTIVADA");
+	}
+
+	/** Aplica la transición y publica el evento para que Auditoría deje traza de la acción (RF-15.5). */
+	private Empresa aplicarYAuditar(UUID id, Consumer<Empresa> accion, String nombreAccion) {
+		Empresa empresa = aplicar(id, accion);
+		eventos.publishEvent(new EmpresaGestionada(empresa.id(), nombreAccion));
+		return empresa;
 	}
 
 	private Empresa aplicar(UUID id, Consumer<Empresa> accion) {
