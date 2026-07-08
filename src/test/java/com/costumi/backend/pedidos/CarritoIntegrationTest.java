@@ -139,6 +139,15 @@ class CarritoIntegrationTest {
 		mvc.perform(get("/api/v1/ventas").header("Authorization", "Bearer " + c.dueno()))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$[?(@.total == 180.00)]").exists());
+
+		// RF-17.6: un segundo checkout del mismo carrito (ya confirmado) no crea otra venta -> 404.
+		mvc.perform(post("/api/v1/carritos/checkout").header("Authorization", "Bearer " + c.dueno())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + c.sucursal() + "\",\"clienteId\":\"" + c.cliente() + "\"}"))
+				.andExpect(status().isNotFound());
+		mvc.perform(get("/api/v1/ventas").header("Authorization", "Bearer " + c.dueno()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(1)); // sigue habiendo una sola venta
 	}
 
 	@Test
