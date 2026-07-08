@@ -9,6 +9,17 @@
 enchufable, gateada por credencial → `docs/INFRA_PENDIENTE.md`), Grupo B (lógica diferida: renta multi-artículo, checkout
 de renta, disfraz→renta, devolución parcial, stock por sucursal), deuda menor, y barrido final RF-0…18. Rebanada por
 rebanada, cada una su PR con tests + ArchUnit + Modulith en verde; nada se declara "cerrado" sin CI verde.
+- **Rebanada 7 (PR `feat/renta-multi-articulo`) — HECHA (sin credenciales, cierre real; Grupo B):** RF-3.1/16.2 renta
+  multi-artículo. La `Renta` pasa de una prenda a **N líneas** (`RentaLinea`: prenda, cantidad, precio/día); tabla
+  **`renta_linea`** (migración **V34**, backfill 1 línea por renta con id = id de la renta). El importe es
+  **Σ (precio×cantidad) × días**. La disponibilidad (RF-3.2) se controla **por prenda** sumando cantidades solapadas
+  (`sumarCantidadSolapada` sobre `renta_linea`, antes contaba rentas). El request acepta la **forma compatible**
+  (`prendaId`+`precioPorDia`, 1 artículo) **o** `lineas[]`; el response expone `lineas` y conserva el artículo
+  principal (`prendaId`/`precioPorDia` = 1ª línea) para vistas de una prenda. La cabecera `renta` mantiene el artículo
+  principal denormalizado, así **Devoluciones, rentas-vencidas y contrato PDF no cambian**; el reporte **más-rentados**
+  ahora cuenta unidades por línea. _Devolución multi-artículo (por pieza/QR) = Rebanada 10._ Dominio + ArchUnit +
+  Modulith + integración tocada en verde local (rentas —con 2 tests nuevos—, devoluciones, reportes, clientes,
+  notificaciones, pagos, carrito); confirmación vía CI.
 - **Rebanada 6 (PR `feat/stock-por-sucursal`) — HECHA (sin credenciales, cierre real; Grupo B):** RF-18.2 stock por
   sucursal + RF-10.3 transferencia entre sucursales. `GrupoDeStock` gana `sucursalId` (migración **V33**, backfill a la
   1ª sucursal de cada empresa por nombre). El API pública de Inventario (`ConsultaDeInventario.unidadesDisponibles`,
@@ -160,7 +171,7 @@ Estado: ✅ hecho y **mergeado en `main`** · 🔵 en **PR abierta** (sin mergea
 | Inventario y disponibilidad | Hexagonal | ✅ | Prenda, GrupoDeStock, variantes, stock-bajo + ajuste con motivo auditado (RF-10) + **fotos de prenda en S3 (RF-2.9, #28 — código completo, gateado)** + **stock por sucursal (RF-18.2): `GrupoDeStock.sucursalId` (migración V33 con backfill), disponibilidad/baja/retorno acotados a la sucursal, misma variante en 2 sucursales = grupos aparte, y transferencia entre sucursales `POST /grupos-stock/{id}/transferir` (RF-10.3) — Rebanada 6, Grupo B** |
 | Disfraces (capa 3) | Hexagonal | ✅ | Disfraz+Slot+pool + disponibilidad derivada |
 | Pedidos / carrito | Hexagonal | 🟨 | Carrito segmentado + checkout→venta. ⬜ Falta checkout de RENTA con fechas por línea (Rebanada 8, Grupo B) |
-| Rentas | Hexagonal | 🟨 | Crear + estados + disponibilidad + advisory lock + idempotencia + extensión/renovación (RF-3.6) + contrato PDF (#27). ⬜ Falta multi-artículo/armado por partes (Rebanadas 7/9, Grupo B) y devolución parcial |
+| Rentas | Hexagonal | 🟨 | Crear + estados + disponibilidad + advisory lock + idempotencia + extensión/renovación (RF-3.6) + contrato PDF (#27) + **multi-artículo (RF-3.1/16.2): renta con N líneas (`renta_linea`, V34), importe = Σ precio×cantidad×días, disponibilidad por línea, request compatible (1 artículo o `lineas[]`) — Rebanada 7**. ⬜ Falta armado por partes (Rebanada 9) y devolución parcial (Rebanada 10) |
 | Ventas / POS | Hexagonal | ✅ | Venta + descuento + total + baja de stock atómica (anti-sobreventa) |
 | Pagos, caja y depósitos | Hexagonal | ✅ | Reembolsos/saldo/idempotencia + mixto+vuelto, depósito-retención, comprobante (+ PDF #27), impuesto configurable + **pago en línea / pasarela MercadoPago (RF-6.11, #31 — código completo, gateado): /pagos/intento + /pagos/webhook idempotente** |
 | Caja / turno | Hexagonal | ✅ | Turno + movimientos + corte y cuadre por método |

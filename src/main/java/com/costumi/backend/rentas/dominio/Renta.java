@@ -3,13 +3,15 @@ package com.costumi.backend.rentas.dominio;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
 /**
- * Renta de una prenda (RF-3). Pertenece a una Empresa (tenant) y a una Sucursal; se hace para un
- * Cliente, con fechas de retiro/devolución, importe (precio × periodo, RF-3.3) y depósito.
- * Encapsula la máquina de estados de RF-3.5.
+ * Renta de uno o más artículos (RF-3). Pertenece a una Empresa (tenant) y a una Sucursal; se hace
+ * para un Cliente, con fechas de retiro/devolución, importe (Σ precio×cantidad × periodo, RF-3.3) y
+ * depósito. Lleva una o más {@link RentaLinea} (multi-artículo, RF-3.1/3.6/16.2). Encapsula la
+ * máquina de estados de RF-3.5.
  */
 public class Renta {
 
@@ -17,26 +19,28 @@ public class Renta {
 	private final UUID empresaId;
 	private final UUID sucursalId;
 	private final UUID clienteId;
-	private final UUID prendaId;
+	private final List<RentaLinea> lineas;
 	private final LocalDate fechaRetiro;
 	private LocalDate fechaDevolucion;
-	private final BigDecimal precioPorDia;
 	private final BigDecimal deposito;
 	private BigDecimal importe;
 	private EstadoRenta estado;
 	private final String claveIdempotencia;
 
-	private Renta(UUID id, UUID empresaId, UUID sucursalId, UUID clienteId, UUID prendaId, LocalDate fechaRetiro,
-			LocalDate fechaDevolucion, BigDecimal precioPorDia, BigDecimal deposito, BigDecimal importe,
+	private Renta(UUID id, UUID empresaId, UUID sucursalId, UUID clienteId, List<RentaLinea> lineas,
+			LocalDate fechaRetiro, LocalDate fechaDevolucion, BigDecimal deposito, BigDecimal importe,
 			EstadoRenta estado, String claveIdempotencia) {
 		this.id = Objects.requireNonNull(id, "id");
 		this.empresaId = Objects.requireNonNull(empresaId, "empresaId");
 		this.sucursalId = Objects.requireNonNull(sucursalId, "sucursalId");
 		this.clienteId = Objects.requireNonNull(clienteId, "clienteId");
-		this.prendaId = Objects.requireNonNull(prendaId, "prendaId");
+		Objects.requireNonNull(lineas, "lineas");
+		if (lineas.isEmpty()) {
+			throw new IllegalArgumentException("La renta debe tener al menos un artículo");
+		}
+		this.lineas = List.copyOf(lineas);
 		this.fechaRetiro = Objects.requireNonNull(fechaRetiro, "fechaRetiro");
 		this.fechaDevolucion = Objects.requireNonNull(fechaDevolucion, "fechaDevolucion");
-		this.precioPorDia = precioPorDia;
 		this.deposito = deposito;
 		this.importe = importe;
 		this.estado = Objects.requireNonNull(estado, "estado");
@@ -44,34 +48,53 @@ public class Renta {
 				: claveIdempotencia.trim();
 	}
 
+	/** Conveniencia: renta de un solo artículo (cantidad 1). */
 	public static Renta crear(UUID empresaId, UUID sucursalId, UUID clienteId, UUID prendaId, LocalDate fechaRetiro,
 			LocalDate fechaDevolucion, BigDecimal precioPorDia, BigDecimal deposito) {
 		return crear(empresaId, sucursalId, clienteId, prendaId, fechaRetiro, fechaDevolucion, precioPorDia, deposito,
 				null);
 	}
 
+	/** Conveniencia: renta de un solo artículo (cantidad 1) con clave de idempotencia. */
 	public static Renta crear(UUID empresaId, UUID sucursalId, UUID clienteId, UUID prendaId, LocalDate fechaRetiro,
 			LocalDate fechaDevolucion, BigDecimal precioPorDia, BigDecimal deposito, String claveIdempotencia) {
+		if (precioPorDia == null || precioPorDia.signum() <= 0) {
+			throw new IllegalArgumentException("El precio por día debe ser mayor a 0");
+		}
+		return crear(empresaId, sucursalId, clienteId, List.of(RentaLinea.de(prendaId, 1, precioPorDia)), fechaRetiro,
+				fechaDevolucion, deposito, claveIdempotencia);
+	}
+
+	/** Crea una renta multi-artículo: el importe es Σ (precio×cantidad) de cada línea, por el periodo. */
+	public static Renta crear(UUID empresaId, UUID sucursalId, UUID clienteId, List<RentaLinea> lineas,
+			LocalDate fechaRetiro, LocalDate fechaDevolucion, BigDecimal deposito, String claveIdempotencia) {
 		if (fechaDevolucion.isBefore(fechaRetiro)) {
 			throw new IllegalArgumentException("La fecha de devolución no puede ser anterior a la de retiro");
 		}
-		if (precioPorDia == null || precioPorDia.signum() <= 0) {
-			throw new IllegalArgumentException("El precio por día debe ser mayor a 0");
+		if (lineas == null || lineas.isEmpty()) {
+			throw new IllegalArgumentException("La renta debe tener al menos un artículo");
 		}
 		BigDecimal dep = (deposito == null) ? BigDecimal.ZERO : deposito;
 		if (dep.signum() < 0) {
 			throw new IllegalArgumentException("El depósito no puede ser negativo");
 		}
-		BigDecimal importe = precioPorDia.multiply(BigDecimal.valueOf(dias(fechaRetiro, fechaDevolucion)));
-		return new Renta(UUID.randomUUID(), empresaId, sucursalId, clienteId, prendaId, fechaRetiro, fechaDevolucion,
-				precioPorDia, dep, importe, EstadoRenta.RESERVADA, claveIdempotencia);
+		BigDecimal importe = importeDe(lineas, fechaRetiro, fechaDevolucion);
+		return new Renta(UUID.randomUUID(), empresaId, sucursalId, clienteId, lineas, fechaRetiro, fechaDevolucion,
+				dep, importe, EstadoRenta.RESERVADA, claveIdempotencia);
 	}
 
-	public static Renta rehidratar(UUID id, UUID empresaId, UUID sucursalId, UUID clienteId, UUID prendaId,
-			LocalDate fechaRetiro, LocalDate fechaDevolucion, BigDecimal precioPorDia, BigDecimal deposito,
-			BigDecimal importe, EstadoRenta estado, String claveIdempotencia) {
-		return new Renta(id, empresaId, sucursalId, clienteId, prendaId, fechaRetiro, fechaDevolucion, precioPorDia,
-				deposito, importe, estado, claveIdempotencia);
+	public static Renta rehidratar(UUID id, UUID empresaId, UUID sucursalId, UUID clienteId, List<RentaLinea> lineas,
+			LocalDate fechaRetiro, LocalDate fechaDevolucion, BigDecimal deposito, BigDecimal importe,
+			EstadoRenta estado, String claveIdempotencia) {
+		return new Renta(id, empresaId, sucursalId, clienteId, lineas, fechaRetiro, fechaDevolucion, deposito, importe,
+				estado, claveIdempotencia);
+	}
+
+	private static BigDecimal importeDe(List<RentaLinea> lineas, LocalDate retiro, LocalDate devolucion) {
+		BigDecimal subtotalPorDia = lineas.stream()
+				.map(RentaLinea::subtotalPorDia)
+				.reduce(BigDecimal.ZERO, BigDecimal::add);
+		return subtotalPorDia.multiply(BigDecimal.valueOf(dias(retiro, devolucion)));
 	}
 
 	public String claveIdempotencia() {
@@ -101,7 +124,7 @@ public class Renta {
 
 	/**
 	 * Extiende/renueva la renta a una nueva fecha de devolución posterior (RF-3.6). Solo si está
-	 * RESERVADA o ACTIVA; recalcula el importe = precio × nuevo periodo.
+	 * RESERVADA o ACTIVA; recalcula el importe = Σ precios × nuevo periodo.
 	 */
 	public void extender(LocalDate nuevaFechaDevolucion) {
 		if (estado != EstadoRenta.RESERVADA && estado != EstadoRenta.ACTIVA) {
@@ -111,7 +134,7 @@ public class Renta {
 			throw new IllegalArgumentException("La nueva fecha de devolución debe ser posterior a la actual");
 		}
 		this.fechaDevolucion = nuevaFechaDevolucion;
-		this.importe = precioPorDia.multiply(BigDecimal.valueOf(dias(fechaRetiro, nuevaFechaDevolucion)));
+		this.importe = importeDe(lineas, fechaRetiro, nuevaFechaDevolucion);
 	}
 
 	/** Vencida (RF-3.5): activa y ya pasó la fecha de devolución. */
@@ -142,8 +165,18 @@ public class Renta {
 		return clienteId;
 	}
 
+	public List<RentaLinea> lineas() {
+		return lineas;
+	}
+
+	/** Artículo principal (primera línea): conveniencia para vistas/persistencia de una sola prenda. */
 	public UUID prendaId() {
-		return prendaId;
+		return lineas.get(0).prendaId();
+	}
+
+	/** Precio por día del artículo principal (primera línea). */
+	public BigDecimal precioPorDia() {
+		return lineas.get(0).precioPorDia();
 	}
 
 	public LocalDate fechaRetiro() {
@@ -152,10 +185,6 @@ public class Renta {
 
 	public LocalDate fechaDevolucion() {
 		return fechaDevolucion;
-	}
-
-	public BigDecimal precioPorDia() {
-		return precioPorDia;
 	}
 
 	public BigDecimal deposito() {

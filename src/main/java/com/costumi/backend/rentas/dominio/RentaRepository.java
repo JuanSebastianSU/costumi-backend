@@ -16,8 +16,8 @@ public interface RentaRepository {
 
 	List<Renta> listarPorCliente(UUID empresaId, UUID clienteId);
 
-	/** Cuántas rentas vigentes (reservadas/activas) de la prenda se traslapan con el periodo (RF-3.2). */
-	long contarSolapadas(UUID empresaId, UUID prendaId, LocalDate retiro, LocalDate devolucion);
+	/** Cuántas <b>unidades</b> de la prenda están comprometidas por rentas vigentes que se traslapan con el periodo (RF-3.2). */
+	long cantidadSolapada(UUID empresaId, UUID prendaId, LocalDate retiro, LocalDate devolucion);
 
 	/**
 	 * Serializa las reservas de una misma prenda dentro de la transacción (evita la doble asignación

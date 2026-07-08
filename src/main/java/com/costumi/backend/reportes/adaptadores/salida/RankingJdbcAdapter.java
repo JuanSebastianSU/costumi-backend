@@ -41,13 +41,19 @@ class RankingJdbcAdapter implements RankingReadRepository {
 	@Override
 	public List<ArticuloRanking> masRentados(UUID empresaId, UUID sucursalId, LocalDate desde, LocalDate hasta,
 			int limite) {
-		String sql = "select r.prenda_id, p.nombre, count(*) as unidades, coalesce(sum(r.importe), 0) as monto"
-				+ " from renta r join prenda p on p.id = r.prenda_id"
+		// Multi-artículo (RF-3.1): cuenta las unidades por línea (renta_linea), no las rentas. El monto
+		// es Σ precio×cantidad×días de cada línea (mismo criterio que el importe de la renta).
+		String sql = "select l.prenda_id, p.nombre, sum(l.cantidad) as unidades,"
+				+ " coalesce(sum(l.cantidad * l.precio_por_dia"
+				+ "   * greatest(1, (r.fecha_devolucion - r.fecha_retiro))), 0) as monto"
+				+ " from renta_linea l"
+				+ " join renta r on r.id = l.renta_id"
+				+ " join prenda p on p.id = l.prenda_id"
 				+ " where r.empresa_id = :empresaId"
 				+ (sucursalId == null ? "" : " and r.sucursal_id = :sucursalId")
 				+ (desde == null ? "" : " and r.fecha_retiro >= :desde")
 				+ (hasta == null ? "" : " and r.fecha_retiro <= :hasta")
-				+ " group by r.prenda_id, p.nombre order by unidades desc limit :limite";
+				+ " group by l.prenda_id, p.nombre order by unidades desc limit :limite";
 		JdbcClient.StatementSpec spec = jdbc.sql(sql).param("empresaId", empresaId).param("limite", limite);
 		if (sucursalId != null) {
 			spec = spec.param("sucursalId", sucursalId);

@@ -4,7 +4,10 @@ import com.costumi.backend.rentas.aplicacion.ConsultarRentas;
 import com.costumi.backend.rentas.aplicacion.CrearRenta;
 import com.costumi.backend.rentas.aplicacion.CrearRentaComando;
 import com.costumi.backend.rentas.aplicacion.GestionarRenta;
+import com.costumi.backend.rentas.aplicacion.LineaDeRentaComando;
 import com.costumi.backend.rentas.dominio.Renta;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -47,19 +50,22 @@ class RentaController {
 		RentaResponse r = consultarRentas.buscarPorId(empresaId, id).map(RentaResponse::desde)
 				.orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
 						org.springframework.http.HttpStatus.NOT_FOUND, "Renta no encontrada"));
-		java.util.List<String> lineas = java.util.List.of(
-				"Renta: " + r.id(),
-				"Cliente: " + r.clienteId(),
-				"Prenda: " + r.prendaId(),
-				"Fecha de retiro: " + r.fechaRetiro(),
-				"Fecha de devolución: " + r.fechaDevolucion(),
-				"Precio por día: $" + r.precioPorDia(),
-				"Importe: $" + r.importe(),
-				"Depósito: $" + r.deposito(),
-				"Estado: " + r.estado(),
-				" ",
-				"El cliente se compromete a devolver la(s) prenda(s) en la fecha indicada y en buen estado. "
-						+ "El depósito se reintegra al cierre conforme al estado de la devolución.");
+		java.util.List<String> lineas = new java.util.ArrayList<>();
+		lineas.add("Renta: " + r.id());
+		lineas.add("Cliente: " + r.clienteId());
+		lineas.add("Artículos:");
+		for (LineaRentaResponse linea : r.lineas()) {
+			lineas.add("  - Prenda " + linea.prendaId() + " x" + linea.cantidad() + " ($" + linea.precioPorDia()
+					+ "/día)");
+		}
+		lineas.add("Fecha de retiro: " + r.fechaRetiro());
+		lineas.add("Fecha de devolución: " + r.fechaDevolucion());
+		lineas.add("Importe: $" + r.importe());
+		lineas.add("Depósito: $" + r.deposito());
+		lineas.add("Estado: " + r.estado());
+		lineas.add(" ");
+		lineas.add("El cliente se compromete a devolver la(s) prenda(s) en la fecha indicada y en buen estado. "
+				+ "El depósito se reintegra al cierre conforme al estado de la devolución.");
 		return ResponseEntity.ok()
 				.header("Content-Disposition", "attachment; filename=contrato-renta.pdf")
 				.contentType(org.springframework.http.MediaType.APPLICATION_PDF)
@@ -71,10 +77,27 @@ class RentaController {
 			@AuthenticationPrincipal Jwt jwt, UriComponentsBuilder uriBuilder) {
 		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
 		Renta renta = crearRenta.ejecutar(new CrearRentaComando(empresaId, request.sucursalId(), request.clienteId(),
-				request.prendaId(), request.fechaRetiro(), request.fechaDevolucion(), request.precioPorDia(),
-				request.deposito(), request.claveIdempotencia()));
+				lineasDe(request), request.fechaRetiro(), request.fechaDevolucion(), request.deposito(),
+				request.claveIdempotencia()));
 		URI location = uriBuilder.path("/api/v1/rentas/{id}").buildAndExpand(renta.id()).toUri();
 		return ResponseEntity.created(location).body(RentaResponse.desde(renta));
+	}
+
+	/**
+	 * Normaliza el request a líneas: usa {@code lineas} si viene; si no, la forma de un solo artículo
+	 * ({@code prendaId} + {@code precioPorDia}, cantidad 1). Si no viene ninguna, 400.
+	 */
+	private static List<LineaDeRentaComando> lineasDe(CrearRentaRequest request) {
+		if (request.lineas() != null && !request.lineas().isEmpty()) {
+			return request.lineas().stream()
+					.map(l -> new LineaDeRentaComando(l.prendaId(), l.cantidad(), l.precioPorDia()))
+					.toList();
+		}
+		if (request.prendaId() != null && request.precioPorDia() != null) {
+			return List.of(new LineaDeRentaComando(request.prendaId(), 1, request.precioPorDia()));
+		}
+		throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+				"Indica al menos un artículo: 'lineas' o 'prendaId' + 'precioPorDia'");
 	}
 
 	@GetMapping
