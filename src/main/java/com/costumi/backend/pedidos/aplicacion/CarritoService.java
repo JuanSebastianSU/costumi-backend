@@ -59,6 +59,8 @@ class CarritoService implements AgregarItemAlCarrito, ConsultarCarrito, HacerChe
 	@Override
 	@Transactional
 	public UUID ejecutar(UUID empresaId, UUID sucursalId, UUID clienteId, UUID empleadoId) {
+		// Serializa el checkout para que un doble submit no cree ventas duplicadas (RF-17.6).
+		carritos.bloquearPedido(empresaId, sucursalId, clienteId, TipoPedido.VENTA);
 		Carrito carrito = carritos.buscarPendiente(empresaId, sucursalId, clienteId, TipoPedido.VENTA)
 				.orElseThrow(CarritoNoEncontrado::new);
 		List<RegistroDeVentas.ItemDeVenta> items = carrito.lineas().stream()
@@ -75,6 +77,8 @@ class CarritoService implements AgregarItemAlCarrito, ConsultarCarrito, HacerChe
 	@Transactional
 	public List<UUID> ejecutar(UUID empresaId, UUID sucursalId, UUID clienteId) {
 		UUID usuarioId = contexto.usuarioId().orElse(null); // quién confirma el pedido (RF-1.4)
+		// Serializa el checkout para que un doble submit no cree rentas duplicadas (RF-17.6).
+		carritos.bloquearPedido(empresaId, sucursalId, clienteId, TipoPedido.RENTA);
 		Carrito carrito = carritos.buscarPendiente(empresaId, sucursalId, clienteId, TipoPedido.RENTA)
 				.orElseThrow(CarritoNoEncontrado::new);
 		// Agrupa las líneas por periodo (retiro/devolución): una renta multi-artículo por periodo distinto.

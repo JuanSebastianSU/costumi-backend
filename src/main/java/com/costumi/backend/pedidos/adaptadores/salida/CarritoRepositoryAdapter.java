@@ -5,6 +5,8 @@ import com.costumi.backend.pedidos.dominio.CarritoRepository;
 import com.costumi.backend.pedidos.dominio.EstadoCarrito;
 import com.costumi.backend.pedidos.dominio.LineaDeCarrito;
 import com.costumi.backend.pedidos.dominio.TipoPedido;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -18,9 +20,23 @@ class CarritoRepositoryAdapter implements CarritoRepository {
 	private final CarritoJpaRepository cabeceras;
 	private final LineaDeCarritoJpaRepository lineas;
 
+	@PersistenceContext
+	private EntityManager em;
+
 	CarritoRepositoryAdapter(CarritoJpaRepository cabeceras, LineaDeCarritoJpaRepository lineas) {
 		this.cabeceras = cabeceras;
 		this.lineas = lineas;
+	}
+
+	@Override
+	public void bloquearPedido(UUID empresaId, UUID sucursalId, UUID clienteId, TipoPedido tipo) {
+		// Lock de transacción por pedido (se libera al commit); serializa checkouts concurrentes (RF-17.6).
+		// Se envuelve en count(*) para no mapear el tipo void que devuelve pg_advisory_xact_lock.
+		String clave = empresaId + ":" + sucursalId + ":" + clienteId + ":" + tipo.name();
+		em.createNativeQuery(
+						"select count(*) from (select pg_advisory_xact_lock(hashtext(cast(:clave as text)))) as lock_")
+				.setParameter("clave", clave)
+				.getSingleResult();
 	}
 
 	@Override
