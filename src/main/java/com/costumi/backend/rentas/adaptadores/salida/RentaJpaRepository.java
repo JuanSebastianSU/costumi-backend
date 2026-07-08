@@ -23,16 +23,17 @@ interface RentaJpaRepository extends JpaRepository<RentaJpaEntity, UUID> {
 	Optional<RentaJpaEntity> findFirstById(UUID id);
 
 	/**
-	 * Cuenta las rentas de la prenda cuyo periodo se <b>traslapa</b> (extremos inclusivos) con
-	 * {@code [retiro, devolucion]} y están en un estado que ocupa una unidad (RESERVADA/ACTIVA), RF-3.2.
+	 * Suma las <b>unidades</b> de la prenda comprometidas por rentas cuyo periodo se <b>traslapa</b>
+	 * (extremos inclusivos) con {@code [retiro, devolucion]} y están en un estado que ocupa stock
+	 * (RESERVADA/ACTIVA), RF-3.2. Multi-artículo: cuenta la cantidad de cada línea, no las rentas.
 	 */
 	@Query("""
-			select count(r) from RentaJpaEntity r
-			where r.empresaId = :empresaId and r.prendaId = :prendaId
+			select coalesce(sum(l.cantidad), 0) from RentaLineaJpaEntity l, RentaJpaEntity r
+			where r.id = l.rentaId and r.empresaId = :empresaId and l.prendaId = :prendaId
 			  and r.estado in :estados
 			  and r.fechaRetiro <= :devolucion and :retiro <= r.fechaDevolucion
 			""")
-	long contarSolapadas(@Param("empresaId") UUID empresaId, @Param("prendaId") UUID prendaId,
+	long sumarCantidadSolapada(@Param("empresaId") UUID empresaId, @Param("prendaId") UUID prendaId,
 			@Param("retiro") LocalDate retiro, @Param("devolucion") LocalDate devolucion,
 			@Param("estados") Collection<EstadoRenta> estados);
 }

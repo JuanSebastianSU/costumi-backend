@@ -144,6 +144,50 @@ class RentaIntegrationTest {
 				.andExpect(status().isConflict());
 	}
 
+	/** Crea una segunda prenda de renta con stock en la sucursal del contexto y la devuelve. */
+	private UUID crearPrendaConStock(Ctx c, int stock) throws Exception {
+		UUID categoria = postId("/api/v1/categorias", c.dueno(), "{\"nombre\":\"Cat " + UUID.randomUUID() + "\"}");
+		UUID prenda = postId("/api/v1/prendas", c.dueno(), "{\"categoriaId\":\"" + categoria
+				+ "\",\"nombre\":\"Extra\",\"tipoArticulo\":\"RENTA\",\"precioRenta\":30.00}");
+		postId("/api/v1/prendas/" + prenda + "/grupos-stock", c.dueno(),
+				"{\"sucursalId\":\"" + c.sucursal() + "\",\"combinacion\":[],\"cantidadInicial\":" + stock + "}");
+		return prenda;
+	}
+
+	@Test
+	void crear_renta_multi_articulo_suma_el_importe_de_las_lineas() throws Exception {
+		Ctx c = montar(3); // prenda principal con 3 unidades
+		UUID otra = crearPrendaConStock(c, 2); // segunda prenda con 2 unidades
+
+		// 3 días (08-01..08-04). Línea1: prenda x2 @20 = 40/día; Línea2: otra x1 @30 = 30/día. Total 70/día -> 210.
+		String body = "{\"sucursalId\":\"" + c.sucursal() + "\",\"clienteId\":\"" + c.cliente() + "\","
+				+ "\"fechaRetiro\":\"2026-08-01\",\"fechaDevolucion\":\"2026-08-04\",\"deposito\":50.00,\"lineas\":["
+				+ "{\"prendaId\":\"" + c.prenda() + "\",\"cantidad\":2,\"precioPorDia\":20.00},"
+				+ "{\"prendaId\":\"" + otra + "\",\"cantidad\":1,\"precioPorDia\":30.00}]}";
+
+		mvc.perform(post("/api/v1/rentas").header("Authorization", "Bearer " + c.dueno())
+						.contentType(MediaType.APPLICATION_JSON).content(body))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.importe").value(210.00))
+				.andExpect(jsonPath("$.lineas.length()").value(2))
+				.andExpect(jsonPath("$.prendaId").value(c.prenda().toString())); // artículo principal = 1ª línea
+	}
+
+	@Test
+	void multi_articulo_sin_stock_de_una_linea_devuelve_409() throws Exception {
+		Ctx c = montar(3);
+		UUID otra = crearPrendaConStock(c, 1); // solo 1 unidad de la segunda prenda
+
+		// Se piden 2 de la segunda prenda pero solo hay 1 -> 409 (RF-3.2 por línea).
+		String body = "{\"sucursalId\":\"" + c.sucursal() + "\",\"clienteId\":\"" + c.cliente() + "\","
+				+ "\"fechaRetiro\":\"2026-08-01\",\"fechaDevolucion\":\"2026-08-04\",\"lineas\":["
+				+ "{\"prendaId\":\"" + otra + "\",\"cantidad\":2,\"precioPorDia\":30.00}]}";
+
+		mvc.perform(post("/api/v1/rentas").header("Authorization", "Bearer " + c.dueno())
+						.contentType(MediaType.APPLICATION_JSON).content(body))
+				.andExpect(status().isConflict());
+	}
+
 	@Test
 	void se_puede_rentar_en_fechas_que_no_se_traslapan() throws Exception {
 		Ctx c = montar(1);

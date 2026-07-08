@@ -4,11 +4,14 @@ import com.costumi.backend.configuracion.ConsultaDeConfiguracion;
 import com.costumi.backend.inventario.ConsultaDeInventario;
 import com.costumi.backend.rentas.ConsultaDeRentas;
 import com.costumi.backend.rentas.dominio.Renta;
+import com.costumi.backend.rentas.dominio.RentaLinea;
 import com.costumi.backend.rentas.dominio.RentaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -36,23 +39,38 @@ class RentaService implements CrearRenta, ConsultarRentas, GestionarRenta, Consu
 				return existente.get(); // idempotente: no se duplica la renta (RF-17.6)
 			}
 		}
-		if (!inventario.prendaExiste(comando.empresaId(), comando.prendaId())) {
-			throw new IllegalArgumentException("La prenda no existe en esta empresa");
+		if (comando.lineas() == null || comando.lineas().isEmpty()) {
+			throw new IllegalArgumentException("La renta debe tener al menos un artículo");
+		}
+		// Cantidad total pedida por prenda (una misma prenda puede venir en varias líneas).
+		Map<UUID, Integer> cantidadPorPrenda = new LinkedHashMap<>();
+		for (LineaDeRentaComando linea : comando.lineas()) {
+			cantidadPorPrenda.merge(linea.prendaId(), linea.cantidad(), Integer::sum);
+		}
+		for (UUID prendaId : cantidadPorPrenda.keySet()) {
+			if (!inventario.prendaExiste(comando.empresaId(), prendaId)) {
+				throw new IllegalArgumentException("La prenda no existe en esta empresa");
+			}
 		}
 		// RF-12.4: la disponibilidad por fechas solo se controla si la empresa cuenta stock.
 		if (configuracion.conteoStock(comando.empresaId())) {
-			// Serializa las reservas de esta prenda (evita doble asignación) antes de contar disponibilidad.
-			rentas.bloquearReservaDePrenda(comando.prendaId());
-			int disponibles = inventario.unidadesDisponibles(comando.empresaId(), comando.sucursalId(), comando.prendaId());
-			long ocupadas = rentas.contarSolapadas(comando.empresaId(), comando.prendaId(),
-					comando.fechaRetiro(), comando.fechaDevolucion());
-			if (ocupadas >= disponibles) {
-				throw new SinDisponibilidad();
+			for (Map.Entry<UUID, Integer> pedido : cantidadPorPrenda.entrySet()) {
+				UUID prendaId = pedido.getKey();
+				// Serializa las reservas de esta prenda (evita doble asignación) antes de contar disponibilidad.
+				rentas.bloquearReservaDePrenda(prendaId);
+				int disponibles = inventario.unidadesDisponibles(comando.empresaId(), comando.sucursalId(), prendaId);
+				long ocupadas = rentas.cantidadSolapada(comando.empresaId(), prendaId,
+						comando.fechaRetiro(), comando.fechaDevolucion());
+				if (ocupadas + pedido.getValue() > disponibles) {
+					throw new SinDisponibilidad();
+				}
 			}
 		}
-		return rentas.guardar(Renta.crear(comando.empresaId(), comando.sucursalId(), comando.clienteId(),
-				comando.prendaId(), comando.fechaRetiro(), comando.fechaDevolucion(), comando.precioPorDia(),
-				comando.deposito(), comando.claveIdempotencia()));
+		List<RentaLinea> lineas = comando.lineas().stream()
+				.map(l -> RentaLinea.de(l.prendaId(), l.cantidad(), l.precioPorDia()))
+				.toList();
+		return rentas.guardar(Renta.crear(comando.empresaId(), comando.sucursalId(), comando.clienteId(), lineas,
+				comando.fechaRetiro(), comando.fechaDevolucion(), comando.deposito(), comando.claveIdempotencia()));
 	}
 
 	@Override
