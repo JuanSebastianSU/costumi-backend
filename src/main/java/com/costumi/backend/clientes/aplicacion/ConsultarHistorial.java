@@ -10,6 +10,9 @@ public interface ConsultarHistorial {
 
 	List<HistorialItem> historialDeCliente(UUID empresaId, UUID clienteId);
 
+	/** Historial del usuario del marketplace, uniendo sus fichas en todas las tiendas (RF-14.4/18.9). */
+	List<HistorialItem> historialDeUsuario(UUID usuarioId);
+
 	/** Ids de clientes de la empresa con rentas activas pendientes de devolver. */
 	List<UUID> clientesConPendientes(UUID empresaId);
 }

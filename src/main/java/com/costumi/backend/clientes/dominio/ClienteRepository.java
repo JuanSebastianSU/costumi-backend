@@ -18,4 +18,7 @@ public interface ClienteRepository {
 
 	/** Ficha de un usuario del marketplace en la empresa, si existe (RF-14.4). */
 	Optional<Cliente> buscarPorEmpresaYUsuario(UUID empresaId, UUID usuarioId);
+
+	/** Todas las fichas de un usuario del marketplace (en cualquier empresa), para su historial (RF-14.4). */
+	List<Cliente> buscarPorUsuario(UUID usuarioId);
 }

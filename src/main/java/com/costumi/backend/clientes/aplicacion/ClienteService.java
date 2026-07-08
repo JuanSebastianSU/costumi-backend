@@ -77,6 +77,16 @@ class ClienteService implements CrearCliente, ConsultarClientes, CambiarListaNeg
 	}
 
 	@Override
+	@Transactional(readOnly = true)
+	public List<HistorialItem> historialDeUsuario(UUID usuarioId) {
+		List<HistorialItem> todo = new java.util.ArrayList<>();
+		for (Cliente ficha : clientes.buscarPorUsuario(usuarioId)) {
+			todo.addAll(historial.deCliente(ficha.empresaId(), ficha.id()));
+		}
+		return todo;
+	}
+
+	@Override
 	@Transactional
 	public UUID fichaDeUsuario(UUID empresaId, UUID usuarioId, String email) {
 		return clientes.buscarPorEmpresaYUsuario(empresaId, usuarioId)

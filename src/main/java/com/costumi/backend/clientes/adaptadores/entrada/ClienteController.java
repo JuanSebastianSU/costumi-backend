@@ -91,6 +91,13 @@ class ClienteController {
 		return consultarHistorial.historialDeCliente(empresaId, id);
 	}
 
+	/** "Mis Pedidos" del CLIENTE del marketplace: su historial en todas las tiendas (RF-14.4/18.9). */
+	@GetMapping("/me/historial")
+	List<HistorialItem> miHistorial(@AuthenticationPrincipal Jwt jwt) {
+		UUID usuarioId = UUID.fromString(jwt.getSubject());
+		return consultarHistorial.historialDeUsuario(usuarioId);
+	}
+
 	@PostMapping("/{id}/lista-negra")
 	ClienteResponse cambiarListaNegra(@PathVariable UUID id, @RequestBody CambiarListaNegraRequest request,
 			@AuthenticationPrincipal Jwt jwt) {

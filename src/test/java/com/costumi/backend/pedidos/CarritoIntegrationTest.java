@@ -218,6 +218,11 @@ class CarritoIntegrationTest {
 						.content("{\"sucursalId\":\"" + c.sucursal() + "\",\"empresaId\":\"" + c.empresa() + "\"}"))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.ventaId").exists());
+
+		// "Mis Pedidos": el cliente ve su compra en su historial, en todas las tiendas (RF-18.9).
+		mvc.perform(get("/api/v1/clientes/me/historial").header("Authorization", "Bearer " + cliente))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(1));
 	}
 
 	@Test
