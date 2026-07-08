@@ -132,7 +132,7 @@ class DisfrazIntegrationTest {
 		org.assertj.core.api.Assertions.assertThat(disponible(dueno, disfraz)).isTrue();
 	}
 
-	private record CtxRenta(String dueno, UUID sucursal, UUID cliente) {
+	private record CtxRenta(UUID empresa, String dueno, UUID sucursal, UUID cliente) {
 	}
 
 	/** Empresa aprobada, con sucursal y cliente, y con el conteo de stock apagado (foco en la resolución). */
@@ -156,7 +156,7 @@ class DisfrazIntegrationTest {
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"conteoStock\":false,\"multasActivo\":true,\"multiSucursal\":false,\"pagoEnLinea\":false}"))
 				.andExpect(status().isOk());
-		return new CtxRenta(dueno, sucursal, cliente);
+		return new CtxRenta(empresa, dueno, sucursal, cliente);
 	}
 
 	private UUID crearDisfrazFijaMasPersonalizable(String dueno, UUID prendaFija, UUID categoriaPool) throws Exception {
@@ -194,6 +194,25 @@ class DisfrazIntegrationTest {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.length()").value(1))
 				.andExpect(jsonPath("$[0].lineas.length()").value(2));
+	}
+
+	@Test
+	void cliente_del_marketplace_renta_un_disfraz_personalizable() throws Exception {
+		CtxRenta c = montarRenta("Cliente Renta Disfraz");
+		UUID categoria = crearCategoria(c.dueno(), "Cat " + UUID.randomUUID());
+		UUID prendaBase = crearPrenda(c.dueno(), categoria);        // slot fijo
+		UUID prendaAccesorio = crearPrenda(c.dueno(), categoria);   // elegible del pool
+		UUID disfraz = crearDisfrazFijaMasPersonalizable(c.dueno(), prendaBase, categoria);
+
+		// Un CLIENTE del marketplace renta el disfraz para sí: manda empresaId (la tienda), sin clienteId.
+		String cliente = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, null, Rol.CLIENTE);
+		mvc.perform(post("/api/v1/disfraces/{id}/rentar", disfraz)
+						.header("Authorization", "Bearer " + cliente).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + c.sucursal() + "\",\"empresaId\":\"" + c.empresa() + "\","
+								+ "\"fechaRetiro\":\"2026-08-01\",\"fechaDevolucion\":\"2026-08-04\",\"selecciones\":["
+								+ "{\"orden\":2,\"prendaId\":\"" + prendaAccesorio + "\"}]}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.rentaId").exists());
 	}
 
 	@Test
