@@ -17,21 +17,28 @@ public class Usuario {
 	private final String email;
 	private final String passwordHash;
 	private final Rol rol;
+	private final boolean activo;
 
-	private Usuario(UUID id, UUID empresaId, String email, String passwordHash, Rol rol) {
+	private Usuario(UUID id, UUID empresaId, String email, String passwordHash, Rol rol, boolean activo) {
 		this.id = Objects.requireNonNull(id, "id");
 		this.rol = Objects.requireNonNull(rol, "rol");
 		this.email = exigir(email, "email");
 		this.passwordHash = exigir(passwordHash, "passwordHash");
 		this.empresaId = validarTenant(empresaId, rol);
+		this.activo = activo;
 	}
 
 	public static Usuario crear(UUID empresaId, String email, String passwordHash, Rol rol) {
-		return new Usuario(UUID.randomUUID(), empresaId, email, passwordHash, rol);
+		return new Usuario(UUID.randomUUID(), empresaId, email, passwordHash, rol, true);
 	}
 
 	public static Usuario rehidratar(UUID id, UUID empresaId, String email, String passwordHash, Rol rol) {
-		return new Usuario(id, empresaId, email, passwordHash, rol);
+		return rehidratar(id, empresaId, email, passwordHash, rol, true);
+	}
+
+	public static Usuario rehidratar(UUID id, UUID empresaId, String email, String passwordHash, Rol rol,
+			boolean activo) {
+		return new Usuario(id, empresaId, email, passwordHash, rol, activo);
 	}
 
 	/**
@@ -42,12 +49,22 @@ public class Usuario {
 		if (!rol.esCliente()) {
 			throw new IllegalStateException("Solo un CLIENTE puede promoverse a DUEÑO");
 		}
-		return new Usuario(id, empresaId, email, passwordHash, Rol.DUENO);
+		return new Usuario(id, empresaId, email, passwordHash, Rol.DUENO, activo);
 	}
 
 	/** Cambia la contraseña (recibe el hash ya cifrado). Misma cuenta: solo cambia el hash. */
 	public Usuario cambiarContrasena(String nuevoPasswordHash) {
-		return new Usuario(id, empresaId, email, nuevoPasswordHash, rol);
+		return new Usuario(id, empresaId, email, nuevoPasswordHash, rol, activo);
+	}
+
+	/** Da de baja al usuario: no podrá autenticarse ni renovar sesión (RF-8). Misma cuenta, se conserva. */
+	public Usuario desactivar() {
+		return new Usuario(id, empresaId, email, passwordHash, rol, false);
+	}
+
+	/** Reactiva al usuario dado de baja. */
+	public Usuario activar() {
+		return new Usuario(id, empresaId, email, passwordHash, rol, true);
 	}
 
 	private static UUID validarTenant(UUID empresaId, Rol rol) {
@@ -85,5 +102,9 @@ public class Usuario {
 
 	public Rol rol() {
 		return rol;
+	}
+
+	public boolean activo() {
+		return activo;
 	}
 }

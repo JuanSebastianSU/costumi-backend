@@ -2,7 +2,9 @@ package com.costumi.backend.identidad.adaptadores.entrada;
 
 import com.costumi.backend.identidad.aplicacion.AccesoAlTenantDenegado;
 import com.costumi.backend.identidad.aplicacion.CredencialesInvalidas;
+import com.costumi.backend.identidad.aplicacion.CuentaDesactivada;
 import com.costumi.backend.identidad.aplicacion.EmailYaRegistrado;
+import com.costumi.backend.identidad.aplicacion.EmpleadoNoEncontrado;
 import com.costumi.backend.identidad.aplicacion.EmpresaNoEncontrada;
 import com.costumi.backend.identidad.aplicacion.EmpresaNoOperativa;
 import com.costumi.backend.identidad.aplicacion.LimiteDeSucursales;
@@ -22,6 +24,20 @@ class ManejadorDeErrores {
 	ProblemDetail empresaNoEncontrada(EmpresaNoEncontrada ex) {
 		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
 		problema.setTitle("Empresa no encontrada");
+		return problema;
+	}
+
+	@ExceptionHandler(EmpleadoNoEncontrado.class)
+	ProblemDetail empleadoNoEncontrado(EmpleadoNoEncontrado ex) {
+		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+		problema.setTitle("Empleado no encontrado");
+		return problema;
+	}
+
+	@ExceptionHandler(CuentaDesactivada.class)
+	ProblemDetail cuentaDesactivada(CuentaDesactivada ex) {
+		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
+		problema.setTitle("Cuenta desactivada");
 		return problema;
 	}
 

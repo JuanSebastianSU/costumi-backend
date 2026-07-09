@@ -35,6 +35,10 @@ class AutenticarUsuarioService implements AutenticarUsuario {
 		if (!passwordEncoder.matches(password, usuario.passwordHash())) {
 			throw new CredencialesInvalidas();
 		}
+		// La credencial es correcta, pero una cuenta dada de baja no puede iniciar sesión (RF-8).
+		if (!usuario.activo()) {
+			throw new CuentaDesactivada();
+		}
 		return new Credenciales(emisor.emitir(usuario), emisor.emitirRefresh(usuario));
 	}
 }

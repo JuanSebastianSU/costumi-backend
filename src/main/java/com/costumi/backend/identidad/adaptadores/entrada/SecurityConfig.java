@@ -60,6 +60,8 @@ class SecurityConfig {
 								"/api/v1/empresas/*/suspender", "/api/v1/empresas/*/reactivar").hasRole("SUPERADMIN")
 						.requestMatchers(HttpMethod.POST, "/api/v1/empresas/*/sucursales").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.POST, "/api/v1/empleados").hasAnyRole("DUENO", "ENCARGADO")
+						.requestMatchers(HttpMethod.POST, "/api/v1/empleados/*/desactivar",
+								"/api/v1/empleados/*/activar").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.GET, "/api/v1/empleados/*/permisos").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.PUT, "/api/v1/empleados/*/permisos").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.GET, "/api/v1/empleados/*/sucursales").hasAnyRole("DUENO", "ENCARGADO")
