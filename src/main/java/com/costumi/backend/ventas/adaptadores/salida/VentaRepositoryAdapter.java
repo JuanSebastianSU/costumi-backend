@@ -26,9 +26,11 @@ class VentaRepositoryAdapter implements VentaRepository {
 		cabeceras.save(new VentaJpaEntity(venta.id(), venta.empresaId(), venta.sucursalId(), venta.empleadoId(),
 				venta.clienteId(), venta.descuento(), venta.total(), venta.estado(), venta.claveIdempotencia(),
 				venta.creadaEn()));
+		// Reescribe las líneas (idempotente): al devolver por partes la venta se guarda varias veces.
+		lineas.deleteByVentaId(venta.id());
 		for (LineaDeVenta linea : venta.lineas()) {
 			lineas.save(new LineaDeVentaJpaEntity(UUID.randomUUID(), venta.id(), venta.empresaId(),
-					linea.prendaId(), linea.cantidad(), linea.precioUnitario()));
+					linea.prendaId(), linea.cantidad(), linea.precioUnitario(), linea.cantidadDevuelta()));
 		}
 		return venta;
 	}
@@ -50,7 +52,8 @@ class VentaRepositoryAdapter implements VentaRepository {
 
 	private Venta aDominio(VentaJpaEntity cabecera) {
 		List<LineaDeVenta> lineasDominio = lineas.findByVentaId(cabecera.getId()).stream()
-				.map(l -> LineaDeVenta.de(l.getPrendaId(), l.getCantidad(), l.getPrecioUnitario()))
+				.map(l -> LineaDeVenta.rehidratar(l.getPrendaId(), l.getCantidad(), l.getPrecioUnitario(),
+						l.getCantidadDevuelta()))
 				.toList();
 		return Venta.rehidratar(cabecera.getId(), cabecera.getEmpresaId(), cabecera.getSucursalId(),
 				cabecera.getEmpleadoId(), cabecera.getClienteId(), cabecera.getDescuento(), cabecera.getTotal(),

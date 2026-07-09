@@ -35,18 +35,22 @@ class LineaDeVentaJpaEntity {
 	@Column(name = "precio_unitario", nullable = false, precision = 12, scale = 2)
 	private BigDecimal precioUnitario;
 
+	@Column(name = "cantidad_devuelta", nullable = false)
+	private int cantidadDevuelta;
+
 	protected LineaDeVentaJpaEntity() {
 		// requerido por JPA
 	}
 
 	LineaDeVentaJpaEntity(UUID id, UUID ventaId, UUID empresaId, UUID prendaId, int cantidad,
-			BigDecimal precioUnitario) {
+			BigDecimal precioUnitario, int cantidadDevuelta) {
 		this.id = id;
 		this.ventaId = ventaId;
 		this.empresaId = empresaId;
 		this.prendaId = prendaId;
 		this.cantidad = cantidad;
 		this.precioUnitario = precioUnitario;
+		this.cantidadDevuelta = cantidadDevuelta;
 	}
 
 	UUID getPrendaId() {
@@ -59,5 +63,9 @@ class LineaDeVentaJpaEntity {
 
 	BigDecimal getPrecioUnitario() {
 		return precioUnitario;
+	}
+
+	int getCantidadDevuelta() {
+		return cantidadDevuelta;
 	}
 }

@@ -3,7 +3,9 @@ package com.costumi.backend.ventas.dominio;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -67,14 +69,46 @@ public class Venta {
 	}
 
 	/**
-	 * Devuelve la venta (RF-4.5): pasa de CONFIRMADA a DEVUELTA. Solo una venta confirmada puede
-	 * devolverse; el reintegro del dinero y el reingreso de stock los coordina el caso de uso.
+	 * Devuelve unidades de la venta (RF-4.5). {@code cantidades} = unidades a devolver por prenda;
+	 * {@code null}/vacío = <b>todo lo pendiente</b> (devolución total). Solo se puede devolver lo que
+	 * aún no se devolvió; si no queda nada pendiente, es {@link VentaNoDevolvible}. Actualiza el estado
+	 * (PARCIALMENTE_DEVUELTA o DEVUELTA) y devuelve las unidades efectivamente devueltas por prenda,
+	 * para que el caso de uso reingrese el stock y coordine el reintegro del dinero (REEMBOLSO).
 	 */
-	public void devolver() {
-		if (estado != EstadoVenta.CONFIRMADA) {
+	public Map<UUID, Integer> devolver(Map<UUID, Integer> cantidades) {
+		if (estado == EstadoVenta.DEVUELTA) {
 			throw new VentaNoDevolvible(id);
 		}
-		this.estado = EstadoVenta.DEVUELTA;
+		Map<UUID, Integer> efectivas = (cantidades == null || cantidades.isEmpty()) ? pendientePorPrenda()
+				: new LinkedHashMap<>(cantidades);
+		if (efectivas.isEmpty()) {
+			throw new VentaNoDevolvible(id);
+		}
+		for (Map.Entry<UUID, Integer> entrada : efectivas.entrySet()) {
+			LineaDeVenta linea = lineaDe(entrada.getKey());
+			if (linea == null) {
+				throw new IllegalArgumentException("La prenda a devolver no pertenece a la venta");
+			}
+			linea.devolver(entrada.getValue());
+		}
+		this.estado = lineas.stream().allMatch(LineaDeVenta::estaTotalmenteDevuelta)
+				? EstadoVenta.DEVUELTA : EstadoVenta.PARCIALMENTE_DEVUELTA;
+		return efectivas;
+	}
+
+	/** Unidades aún no devueltas por prenda (solo las que tienen pendiente > 0). */
+	public Map<UUID, Integer> pendientePorPrenda() {
+		Map<UUID, Integer> pendientes = new LinkedHashMap<>();
+		for (LineaDeVenta linea : lineas) {
+			if (linea.pendiente() > 0) {
+				pendientes.merge(linea.prendaId(), linea.pendiente(), Integer::sum);
+			}
+		}
+		return pendientes;
+	}
+
+	private LineaDeVenta lineaDe(UUID prendaId) {
+		return lineas.stream().filter(l -> l.prendaId().equals(prendaId)).findFirst().orElse(null);
 	}
 
 	public List<LineaDeVenta> lineas() {
