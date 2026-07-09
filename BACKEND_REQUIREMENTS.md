@@ -37,8 +37,8 @@ guía define qué debe hacer el sistema y cómo se construye.
 | Categoría | "Parte del cuerpo" (camisa, pantalón…), editable por el dueño. |
 | TipoEtiqueta / ValorEtiqueta | Dimensión (Color) y su valor (Rojo). Taxonomía dinámica. |
 | GrupoDeStock (Variante) | Combinación de valores de etiqueta con cantidad y estado. |
-| Disfraz | Producto que se renta/vende: modo unidad fija o por partes (slots). |
-| Slot / Sección | Una parte de un disfraz (hasta 8), con sus dos ejes. |
+| Disfraz | Producto que se renta/vende: siempre un conjunto de 1..8 partes (slots); opcional precio general. |
+| Slot / Sección | Una parte de un disfraz (1..8): eje de prenda (fija/personalizable) + opcional; la talla es una etiqueta del pool. |
 | Pedido / Carrito | Segmentado por (cliente × sucursal × tipo renta\|venta). |
 
 ---
@@ -99,18 +99,28 @@ que evita que el modelo se sienta inabarcable.
   de la pieza física y las observaciones de daño.
 
 ### Capa 3 — Disfraz (hasta 8 secciones)
-- Un disfraz tiene un **modo**: se renta/vende como **unidad fija** (indivisible, no
-  personalizable) o **por partes**.
-- "Por partes" = una **lista de hasta 8 secciones (slots)**. "Varias superiores",
-  "varias inferiores", "accesorios" son simplemente más slots en la lista.
-- Cada slot lleva los **dos ejes** + opcionalidad:
-  - **Eje de talla**: fija (se escribe) o libre (se ajusta al cliente).
+- Un disfraz es **siempre un conjunto de partes**: una **lista de 1..8 secciones (slots)**.
+  Lo que cambia es **qué partes son personalizables**, no si es "una pieza" u otra cosa:
+  una prenda única = un disfraz con **un solo slot fijo**. _(Decisión 2026-07-08: se
+  elimina el antiguo "modo unidad fija"; todo disfraz es por-partes.)_
+- "Por partes" = la lista de slots. "Varias superiores", "varias inferiores",
+  "accesorios" son simplemente más slots en la lista.
+- Cada slot lleva su **eje de prenda** + opcionalidad:
   - **Eje de prenda**: fija (siempre la misma) o personalizable (el cliente elige
     dentro de un pool filtrado por categoría + etiquetas permitidas).
   - **Opcional**: el cliente puede omitir la sección.
+  - La **talla NO es un eje aparte**: se modela como una **etiqueta** (p. ej. el tipo
+    "Talla") dentro del pool del slot; para fijar una talla se restringe el pool a ese
+    valor. _(Decisión 2026-07-08: se retira el "eje de talla" del slot.)_
 - **Disponibilidad derivada**: la disponibilidad de un disfraz personalizable **no es
   un número propio**; se **calcula**: está disponible si *cada slot obligatorio* tiene
   al menos una prenda disponible en su pool. Los slots opcionales no bloquean.
+- **Edición / archivado (2026-07-08):** el dueño puede **editar** un disfraz (nombre +
+  slots + precio) y **archivarlo/activarlo**; un disfraz archivado no aparece en la
+  vitrina ni se puede rentar, pero se conserva para el historial.
+- **"Ruleta" de opciones (2026-07-08):** por cada slot personalizable el cliente ve las
+  **prendas concretas disponibles** del pool con su **stock, precio y etiquetas**, y puede
+  filtrar por valores de etiqueta (talla/color/modelo).
 
 ### Dónde vive cada decisión del dueño
 | Decisión | Dónde se hace | Frecuencia |
@@ -167,11 +177,16 @@ módulos).
   el nivel: por unidad / por modelo / por combinación de valores de etiqueta
   (p. ej. modelo+color+talla) / por parte del cuerpo (pool compartido). **El esquema
   es dinámico**, definido por las etiquetas (ver RF-2.7).
-- **RF-2.3 — Composición mixta.** Un disfraz por partes = varios slots; cada slot es
-  **fijo** (su stock = el de esa prenda) o **variable** (stock a nivel de pool/variante).
-  Un mismo disfraz puede mezclar slots fijos y variables.
+- **RF-2.3 — Composición por partes.** Todo disfraz es un conjunto de **1..8 slots**;
+  cada slot es **fijo** (su stock = el de esa prenda) o **personalizable** (el cliente
+  elige del pool). Un mismo disfraz puede mezclar slots fijos y personalizables; "una
+  pieza" = un único slot fijo. El dueño puede **editar** y **archivar/activar** el disfraz.
+  _(2026-07-08: se elimina el modo "unidad fija"; la talla es una etiqueta del pool.)_
 - **RF-2.4 — Disponibilidad derivada.** La disponibilidad de un disfraz personalizable
   se **calcula** a partir de sus slots (ver §2, Capa 3). No es un contador plano.
+- **RF-2.4.1 — Ruleta de opciones (2026-07-08).** Por cada slot personalizable el cliente
+  puede listar las **prendas concretas disponibles** del pool (con **stock, precio y
+  etiquetas**) y **filtrar por valores de etiqueta**; los slots fijos muestran su prenda.
 - **RF-2.5 — Conteo opcional.** El local decide si **rastrea y muestra cantidades** o
   solo maneja disponible/no disponible sin números.
 - **RF-2.6 — Identificación flexible.** La pieza se identifica por **QR (opcional)** o
@@ -201,6 +216,12 @@ módulos).
 - **RF-2.9** **Fotos** por artículo/prenda.
 - **RF-2.10** **Precio de renta** (por día/periodo), **precio de venta** y **costo de
   adquisición** (para margen). Depósito/garantía sugerido por artículo.
+  - **RF-2.10.1 — Precio del disfraz dual (2026-07-08).** Por defecto el precio de renta
+    del disfraz es la **suma de sus prendas**. Opcionalmente el dueño fija un **precio
+    general** del disfraz (por día) que **anula** esa suma; es una opción o la otra.
+  - **RF-2.10.2 — Valores de multa por prenda (2026-07-08).** Cada prenda puede llevar su
+    **valor de reposición** (pérdida/no devolución) y su **valor de daño** — base para
+    **sugerir** el cobro en la devolución. El cobro final lo decide el dueño.
 - **RF-2.11** Transiciones de estado automáticas: al rentar → rentada; al devolver
   limpio → disponible; al devolver dañado → reparación/limpieza; al vender →
   vendida / baja de stock.
@@ -227,6 +248,14 @@ módulos).
 - **RF-4.3** Descuentos/promociones y cobro; **comprobante** de venta.
 - **RF-4.4** **Descuento automático de stock** al confirmar.
 - **RF-4.5** **Devoluciones/cambios** de venta con reintegro o nota.
+  - **RF-4.5.1 — Política de reembolso por local (2026-07-08).** Cada local define si
+    **acepta reembolsos** (sí/no) y una **ventana** en días desde la venta (0 = sin
+    límite); la devolución de una venta se **gatea** con esa política (si no aplica, se
+    rechaza).
+  - **RF-4.5.2 — Reembolso total o parcial (2026-07-08).** La devolución puede ser
+    **total** o **parcial** (unidades por prenda): la venta queda *parcialmente devuelta*
+    hasta completar todas sus líneas; se reingresa al stock **solo lo devuelto** y el
+    monto reembolsado es **proporcional** al total.
 - **RF-4.6 — Modo asistido (presencial).** El POS opera desde la pantalla del
   dueño/empleado para clientes presenciales (misma lógica que RF-3.7).
 
@@ -234,10 +263,18 @@ módulos).
 - **RF-5.1** Checklist por pieza: ¿llegó? + estado (bien / dañada / limpieza / perdida).
 - **RF-5.2** Genera **multa/cargo automático** por daño, pérdida o retraso
   (si el módulo de multas está activo — ver RF-6.6).
+  - **RF-5.2.1 — Sugerencia por prenda (2026-07-08).** Ante pieza faltante/dañada se
+    **sugiere** el cobro con el valor de reposición/daño de la prenda (RF-2.10.2).
+  - **RF-5.2.2 — Recargo por retraso configurable (2026-07-08).** El dueño elige si el
+    recargo por retraso es **acumulativo** (monto × días) o **fijo** (monto único).
 - **RF-5.3** **Liquidación del depósito**: garantía − daños − recargos = remanente a
   devolver.
 - **RF-5.4** **Actualiza inventario** (libera unidad o la manda a limpieza/reparación).
 - **RF-5.5** Soporta **devolución parcial**.
+  - **RF-5.5.1 — No cerrar con piezas faltantes (2026-07-08).** Una pieza que **no llegó**
+    o se declara **perdida** deja la renta abierta (**no cierra**) hasta devolverla o
+    marcarla **perdida + cobrada** (reposición); solo las piezas resueltas cuentan para el
+    cierre y mueven inventario.
 - **RF-5.6** El daño/pérdida se registra contra el **grupo de stock + número/QR** de la
   pieza.
 
@@ -368,6 +405,8 @@ La complejidad interna **no se traslada al dueño**. Requerimiento explícito, n
 - **RF-15.3 — Rol SuperAdmin de plataforma** (por encima del Dueño): revisa las
   empresas registradas, las **aprueba**, les **asigna identidad** ("empresa 1") y
   plan/permisos. Estados de la Empresa: **PENDIENTE → ACTIVA → SUSPENDIDA / RECHAZADA**.
+  Se acepta además **reactivar** (SUSPENDIDA → ACTIVA) como complemento de suspender
+  _(decisión 2026-07-04 aprobada por Juan)_.
 - **RF-15.4 — Empresa en estado PENDIENTE.** Mientras no se apruebe, la Empresa **no
   puede hacer nada operativo** (ni configurar, ni operar, ni ser visible a clientes):
   solo espera la resolución. La plataforma se **compromete a responder (aprobar o
