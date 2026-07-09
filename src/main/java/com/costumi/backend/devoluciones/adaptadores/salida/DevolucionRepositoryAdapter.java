@@ -28,7 +28,7 @@ class DevolucionRepositoryAdapter implements DevolucionRepository {
 				devolucion.remanente()));
 		for (PiezaRevisada pieza : devolucion.piezas()) {
 			piezas.save(new PiezaRevisadaJpaEntity(UUID.randomUUID(), devolucion.id(), devolucion.empresaId(),
-					pieza.prendaId(), pieza.descripcion(), pieza.llego(), pieza.estado()));
+					pieza.prendaId(), pieza.descripcion(), pieza.llego(), pieza.estado(), pieza.perdidaCobrada()));
 		}
 		return devolucion;
 	}
@@ -50,7 +50,8 @@ class DevolucionRepositoryAdapter implements DevolucionRepository {
 
 	private Devolucion aDominio(DevolucionJpaEntity cabecera) {
 		List<PiezaRevisada> checklist = piezas.findByDevolucionId(cabecera.getId()).stream()
-				.map(p -> PiezaRevisada.de(p.getPrendaId(), p.getDescripcion(), p.isLlego(), p.getEstado()))
+				.map(p -> PiezaRevisada.de(p.getPrendaId(), p.getDescripcion(), p.isLlego(), p.getEstado(),
+						p.isPerdidaCobrada()))
 				.toList();
 		return Devolucion.rehidratar(cabecera.getId(), cabecera.getEmpresaId(), cabecera.getRentaId(),
 				cabecera.getDeposito(), cabecera.getCargoPorDanos(), cabecera.getCargoPorRetraso(),

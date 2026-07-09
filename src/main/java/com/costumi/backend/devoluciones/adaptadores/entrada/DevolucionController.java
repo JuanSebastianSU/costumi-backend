@@ -39,7 +39,8 @@ class DevolucionController {
 		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
 		List<PiezaRevisada> piezas = (request.piezas() == null) ? List.of()
 				: request.piezas().stream()
-						.map(p -> PiezaRevisada.de(p.prendaId(), p.descripcion(), p.llego(), p.estado()))
+						.map(p -> PiezaRevisada.de(p.prendaId(), p.descripcion(), p.llego(), p.estado(),
+								p.perdidaCobrada()))
 						.toList();
 		java.time.LocalDate fechaReal = request.fechaDevolucionReal() != null ? request.fechaDevolucionReal()
 				: java.time.LocalDate.now();
