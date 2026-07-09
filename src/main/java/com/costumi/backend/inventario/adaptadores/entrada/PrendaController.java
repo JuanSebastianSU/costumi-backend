@@ -63,7 +63,8 @@ class PrendaController {
 				.toList();
 		Prenda prenda = crearPrenda.ejecutar(new CrearPrendaComando(empresaId, request.categoriaId(),
 				request.nombre(), request.tipoArticulo(), request.precioRenta(), request.precioVenta(),
-				request.costoAdquisicion(), request.depositoSugerido(), etiquetas));
+				request.costoAdquisicion(), request.depositoSugerido(), request.valorReposicion(),
+				request.valorDano(), etiquetas));
 		URI location = uriBuilder.path("/api/v1/prendas/{id}").buildAndExpand(prenda.id()).toUri();
 		return ResponseEntity.created(location).body(PrendaResponse.desde(prenda));
 	}

@@ -54,6 +54,12 @@ class PrendaJpaEntity {
 	@Column(name = "deposito_sugerido", precision = 12, scale = 2)
 	private BigDecimal depositoSugerido;
 
+	@Column(name = "valor_reposicion", precision = 12, scale = 2)
+	private BigDecimal valorReposicion;
+
+	@Column(name = "valor_dano", precision = 12, scale = 2)
+	private BigDecimal valorDano;
+
 	@ElementCollection(fetch = FetchType.EAGER)
 	@CollectionTable(name = "prenda_valor_etiqueta", joinColumns = @JoinColumn(name = "prenda_id"))
 	private Set<EtiquetaDePrendaEmbeddable> etiquetas = new LinkedHashSet<>();
@@ -70,7 +76,8 @@ class PrendaJpaEntity {
 
 	PrendaJpaEntity(UUID id, UUID empresaId, UUID categoriaId, String nombre, TipoArticulo tipoArticulo,
 			BigDecimal precioRenta, BigDecimal precioVenta, BigDecimal costoAdquisicion, BigDecimal depositoSugerido,
-			Set<EtiquetaDePrendaEmbeddable> etiquetas, boolean archivada, String fotoUrl) {
+			BigDecimal valorReposicion, BigDecimal valorDano, Set<EtiquetaDePrendaEmbeddable> etiquetas,
+			boolean archivada, String fotoUrl) {
 		this.id = id;
 		this.empresaId = empresaId;
 		this.categoriaId = categoriaId;
@@ -80,9 +87,19 @@ class PrendaJpaEntity {
 		this.precioVenta = precioVenta;
 		this.costoAdquisicion = costoAdquisicion;
 		this.depositoSugerido = depositoSugerido;
+		this.valorReposicion = valorReposicion;
+		this.valorDano = valorDano;
 		this.etiquetas = etiquetas;
 		this.archivada = archivada;
 		this.fotoUrl = fotoUrl;
+	}
+
+	BigDecimal getValorReposicion() {
+		return valorReposicion;
+	}
+
+	BigDecimal getValorDano() {
+		return valorDano;
 	}
 
 	String getFotoUrl() {

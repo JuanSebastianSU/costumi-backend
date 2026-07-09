@@ -22,13 +22,15 @@ public class Prenda {
 	private BigDecimal precioVenta;
 	private BigDecimal costoAdquisicion;
 	private BigDecimal depositoSugerido;
+	private BigDecimal valorReposicion;
+	private BigDecimal valorDano;
 	private EtiquetasDePrenda etiquetas;
 	private boolean archivada;
 	private String fotoUrl; // URL de la foto (RF-2.9); null si aún no tiene
 
 	private Prenda(UUID id, UUID empresaId, UUID categoriaId, String nombre, TipoArticulo tipoArticulo,
 			BigDecimal precioRenta, BigDecimal precioVenta, BigDecimal costoAdquisicion, BigDecimal depositoSugerido,
-			EtiquetasDePrenda etiquetas, boolean archivada) {
+			BigDecimal valorReposicion, BigDecimal valorDano, EtiquetasDePrenda etiquetas, boolean archivada) {
 		this.id = Objects.requireNonNull(id, "id");
 		this.empresaId = Objects.requireNonNull(empresaId, "empresaId");
 		this.categoriaId = Objects.requireNonNull(categoriaId, "categoriaId");
@@ -38,6 +40,8 @@ public class Prenda {
 		this.precioVenta = validarPrecio(precioVenta, tipoArticulo.incluyeVenta(), "venta");
 		this.costoAdquisicion = validarNoNegativo(costoAdquisicion, "costo de adquisición");
 		this.depositoSugerido = validarNoNegativo(depositoSugerido, "depósito sugerido");
+		this.valorReposicion = validarNoNegativo(valorReposicion, "valor de reposición");
+		this.valorDano = validarNoNegativo(valorDano, "valor de daño");
 		this.etiquetas = Objects.requireNonNull(etiquetas, "etiquetas");
 		this.archivada = archivada;
 	}
@@ -45,26 +49,28 @@ public class Prenda {
 	public static Prenda crear(UUID empresaId, UUID categoriaId, String nombre, TipoArticulo tipoArticulo,
 			BigDecimal precioRenta, BigDecimal precioVenta) {
 		return crear(empresaId, categoriaId, nombre, tipoArticulo, precioRenta, precioVenta,
-				EtiquetasDePrenda.ninguna(), null, null);
+				EtiquetasDePrenda.ninguna(), null, null, null, null);
 	}
 
 	public static Prenda crear(UUID empresaId, UUID categoriaId, String nombre, TipoArticulo tipoArticulo,
 			BigDecimal precioRenta, BigDecimal precioVenta, EtiquetasDePrenda etiquetas) {
-		return crear(empresaId, categoriaId, nombre, tipoArticulo, precioRenta, precioVenta, etiquetas, null, null);
+		return crear(empresaId, categoriaId, nombre, tipoArticulo, precioRenta, precioVenta, etiquetas, null, null,
+				null, null);
 	}
 
 	public static Prenda crear(UUID empresaId, UUID categoriaId, String nombre, TipoArticulo tipoArticulo,
 			BigDecimal precioRenta, BigDecimal precioVenta, EtiquetasDePrenda etiquetas, BigDecimal costoAdquisicion,
-			BigDecimal depositoSugerido) {
+			BigDecimal depositoSugerido, BigDecimal valorReposicion, BigDecimal valorDano) {
 		return new Prenda(UUID.randomUUID(), empresaId, categoriaId, nombre, tipoArticulo, precioRenta, precioVenta,
-				costoAdquisicion, depositoSugerido, etiquetas, false);
+				costoAdquisicion, depositoSugerido, valorReposicion, valorDano, etiquetas, false);
 	}
 
 	public static Prenda rehidratar(UUID id, UUID empresaId, UUID categoriaId, String nombre, TipoArticulo tipoArticulo,
 			BigDecimal precioRenta, BigDecimal precioVenta, BigDecimal costoAdquisicion, BigDecimal depositoSugerido,
-			EtiquetasDePrenda etiquetas, boolean archivada, String fotoUrl) {
+			BigDecimal valorReposicion, BigDecimal valorDano, EtiquetasDePrenda etiquetas, boolean archivada,
+			String fotoUrl) {
 		Prenda prenda = new Prenda(id, empresaId, categoriaId, nombre, tipoArticulo, precioRenta, precioVenta,
-				costoAdquisicion, depositoSugerido, etiquetas, archivada);
+				costoAdquisicion, depositoSugerido, valorReposicion, valorDano, etiquetas, archivada);
 		prenda.fotoUrl = fotoUrl;
 		return prenda;
 	}
@@ -152,6 +158,16 @@ public class Prenda {
 	/** Depósito/garantía sugerido para la renta (RF-2.10). Opcional. */
 	public BigDecimal depositoSugerido() {
 		return depositoSugerido;
+	}
+
+	/** Valor a cobrar si la prenda se pierde o no se devuelve (reposición). Opcional (RF-5.2/5.6). */
+	public BigDecimal valorReposicion() {
+		return valorReposicion;
+	}
+
+	/** Valor sugerido a cobrar si la prenda vuelve dañada (RF-5.2/5.6). Opcional. */
+	public BigDecimal valorDano() {
+		return valorDano;
 	}
 
 	public EtiquetasDePrenda etiquetas() {

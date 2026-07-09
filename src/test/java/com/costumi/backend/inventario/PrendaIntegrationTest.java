@@ -98,6 +98,29 @@ class PrendaIntegrationTest {
 	}
 
 	@Test
+	void crear_una_prenda_con_valores_de_multa_por_reposicion_y_dano() throws Exception {
+		UUID empresa = crearEmpresa("Empresa Multas");
+		String dueno = duenoDe(empresa);
+		UUID categoria = crearCategoria(dueno, "Traje");
+
+		String body = mvc.perform(post("/api/v1/prendas")
+						.header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"categoriaId\":\"" + categoria + "\",\"nombre\":\"Traje\",\"tipoArticulo\":\"RENTA\","
+								+ "\"precioRenta\":40.00,\"valorReposicion\":300.00,\"valorDano\":45.00}"))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.valorReposicion").value(300.00))
+				.andExpect(jsonPath("$.valorDano").value(45.00))
+				.andReturn().getResponse().getContentAsString();
+		UUID prenda = UUID.fromString(json.readTree(body).get("id").asText());
+
+		// Persisten (round-trip por GET).
+		mvc.perform(get("/api/v1/prendas").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.id == '" + prenda + "')].valorReposicion").value(300.00));
+	}
+
+	@Test
 	void etiquetar_con_un_tipo_que_no_aplica_a_la_categoria_devuelve_400() throws Exception {
 		UUID empresa = crearEmpresa("Empresa Aplica");
 		String dueno = duenoDe(empresa);

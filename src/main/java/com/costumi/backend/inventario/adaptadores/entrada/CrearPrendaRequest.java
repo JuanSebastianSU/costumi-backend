@@ -34,6 +34,10 @@ public record CrearPrendaRequest(
 
 		BigDecimal depositoSugerido,
 
+		BigDecimal valorReposicion,
+
+		BigDecimal valorDano,
+
 		@Valid
 		List<EtiquetaSeleccionadaDto> etiquetas) {
 
