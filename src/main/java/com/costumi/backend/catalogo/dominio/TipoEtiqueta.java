@@ -78,6 +78,11 @@ public class TipoEtiqueta {
 		this.archivada = true;
 	}
 
+	/** Reactiva un tipo de etiqueta archivado. */
+	public void activar() {
+		this.archivada = false;
+	}
+
 	public void renombrar(String nuevoNombre) {
 		this.nombre = exigirNombre(nuevoNombre);
 	}
