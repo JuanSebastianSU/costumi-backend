@@ -23,12 +23,14 @@ class CategoriaTest {
 	}
 
 	@Test
-	void archivar_no_borra() {
+	void archivar_no_borra_y_activar_la_restituye() {
 		Categoria categoria = Categoria.crear(UUID.randomUUID(), "Sombrero");
 
 		categoria.archivar();
-
 		assertThat(categoria.archivada()).isTrue();
+
+		categoria.activar();
+		assertThat(categoria.archivada()).isFalse();
 	}
 
 	@Test

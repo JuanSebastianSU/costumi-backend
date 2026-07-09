@@ -8,9 +8,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.UUID;
 
-/** Casos de uso de Categorías: crear y listar, siempre acotados a la empresa (tenant). */
+/** Casos de uso de Categorías: crear, listar, renombrar y archivar/activar, acotados a la empresa (tenant). */
 @Service
-class CategoriaService implements CrearCategoria, ConsultarCategorias {
+class CategoriaService implements CrearCategoria, ConsultarCategorias, GestionarCategoria {
 
 	private final CategoriaRepository categorias;
 
@@ -28,5 +28,35 @@ class CategoriaService implements CrearCategoria, ConsultarCategorias {
 	@Transactional(readOnly = true)
 	public List<Categoria> deEmpresa(UUID empresaId) {
 		return categorias.listarPorEmpresa(empresaId);
+	}
+
+	@Override
+	@Transactional
+	public Categoria renombrar(UUID empresaId, UUID categoriaId, String nuevoNombre) {
+		Categoria categoria = exigirDelTenant(empresaId, categoriaId);
+		categoria.renombrar(nuevoNombre);
+		return categorias.guardar(categoria);
+	}
+
+	@Override
+	@Transactional
+	public Categoria archivar(UUID empresaId, UUID categoriaId) {
+		Categoria categoria = exigirDelTenant(empresaId, categoriaId);
+		categoria.archivar();
+		return categorias.guardar(categoria);
+	}
+
+	@Override
+	@Transactional
+	public Categoria activar(UUID empresaId, UUID categoriaId) {
+		Categoria categoria = exigirDelTenant(empresaId, categoriaId);
+		categoria.activar();
+		return categorias.guardar(categoria);
+	}
+
+	private Categoria exigirDelTenant(UUID empresaId, UUID categoriaId) {
+		return categorias.buscarPorId(categoriaId)
+				.filter(c -> c.empresaId().equals(empresaId))
+				.orElseThrow(() -> new CategoriaNoEncontrada(categoriaId));
 	}
 }

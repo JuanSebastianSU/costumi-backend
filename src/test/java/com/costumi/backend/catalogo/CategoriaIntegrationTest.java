@@ -114,6 +114,59 @@ class CategoriaIntegrationTest {
 	}
 
 	@Test
+	void renombrar_una_categoria_propaga_el_nuevo_nombre() throws Exception {
+		UUID empresa = crearEmpresa("Empresa Renombrar");
+		String dueno = duenoDe(empresa);
+		String body = mvc.perform(post("/api/v1/categorias").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON).content("{\"nombre\":\"Panton\"}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		UUID id = UUID.fromString(json.readTree(body).get("id").asText());
+
+		mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+						.patch("/api/v1/categorias/{id}", id).header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON).content("{\"nombre\":\"Pantalón\"}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.nombre").value("Pantalón"));
+	}
+
+	@Test
+	void archivar_una_categoria_no_admite_prendas_nuevas_y_activar_la_restituye() throws Exception {
+		UUID empresa = crearEmpresa("Empresa ArchCat");
+		String dueno = duenoDe(empresa);
+		String body = mvc.perform(post("/api/v1/categorias").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON).content("{\"nombre\":\"Camisa\"}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		UUID cat = UUID.fromString(json.readTree(body).get("id").asText());
+		String prendaJson = "{\"categoriaId\":\"" + cat + "\",\"nombre\":\"Camisa\","
+				+ "\"tipoArticulo\":\"RENTA\",\"precioRenta\":40.00}";
+
+		// Con la categoría activa, se pueden crear prendas en ella.
+		mvc.perform(post("/api/v1/prendas").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON).content(prendaJson))
+				.andExpect(status().isCreated());
+
+		// Archivarla la retira: ya no admite prendas nuevas (categoría no referenciable) -> 400.
+		mvc.perform(post("/api/v1/categorias/{id}/archivar", cat).header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.archivada").value(true));
+		mvc.perform(post("/api/v1/prendas").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON).content(prendaJson))
+				.andExpect(status().isBadRequest());
+		// Sigue en el listado de gestión (con la marca archivada) para poder reactivarla.
+		mvc.perform(get("/api/v1/categorias").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.id == '" + cat + "' && @.archivada == true)]").exists());
+
+		// Reactivarla vuelve a admitir prendas.
+		mvc.perform(post("/api/v1/categorias/{id}/activar", cat).header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.archivada").value(false));
+		mvc.perform(post("/api/v1/prendas").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON).content(prendaJson))
+				.andExpect(status().isCreated());
+	}
+
+	@Test
 	void sin_token_devuelve_401() throws Exception {
 		mvc.perform(get("/api/v1/categorias")).andExpect(status().isUnauthorized());
 	}
