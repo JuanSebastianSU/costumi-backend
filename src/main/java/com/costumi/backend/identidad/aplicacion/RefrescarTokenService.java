@@ -24,6 +24,10 @@ class RefrescarTokenService implements RefrescarToken {
 	public Credenciales ejecutar(String refreshToken) {
 		String email = validador.emailDelRefresh(refreshToken);
 		Usuario usuario = usuarios.buscarPorEmail(email).orElseThrow(RefreshInvalido::new);
+		// Una cuenta dada de baja no puede renovar sesión (RF-8): acota la vida útil del token vigente.
+		if (!usuario.activo()) {
+			throw new CuentaDesactivada();
+		}
 		return new Credenciales(emisor.emitir(usuario), emisor.emitirRefresh(usuario));
 	}
 }

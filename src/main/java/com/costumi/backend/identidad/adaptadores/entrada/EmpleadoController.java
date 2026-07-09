@@ -2,6 +2,7 @@ package com.costumi.backend.identidad.adaptadores.entrada;
 
 import com.costumi.backend.identidad.aplicacion.AltaDeEmpleado;
 import com.costumi.backend.identidad.aplicacion.AsignarSucursales;
+import com.costumi.backend.identidad.aplicacion.GestionarEstadoDeEmpleado;
 import com.costumi.backend.identidad.dominio.Usuario;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -29,10 +30,28 @@ class EmpleadoController {
 
 	private final AltaDeEmpleado altaDeEmpleado;
 	private final AsignarSucursales asignarSucursales;
+	private final GestionarEstadoDeEmpleado gestionarEstadoDeEmpleado;
 
-	EmpleadoController(AltaDeEmpleado altaDeEmpleado, AsignarSucursales asignarSucursales) {
+	EmpleadoController(AltaDeEmpleado altaDeEmpleado, AsignarSucursales asignarSucursales,
+			GestionarEstadoDeEmpleado gestionarEstadoDeEmpleado) {
 		this.altaDeEmpleado = altaDeEmpleado;
 		this.asignarSucursales = asignarSucursales;
+		this.gestionarEstadoDeEmpleado = gestionarEstadoDeEmpleado;
+	}
+
+	/** Da de baja a un empleado (RF-8): no podrá autenticarse ni renovar sesión. DUENO/ENCARGADO. */
+	@PostMapping("/{usuarioId}/desactivar")
+	EmpleadoResponse desactivar(@PathVariable UUID usuarioId, @AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID actorId = UUID.fromString(jwt.getSubject());
+		return EmpleadoResponse.desde(gestionarEstadoDeEmpleado.desactivar(empresaId, actorId, usuarioId));
+	}
+
+	/** Reactiva a un empleado dado de baja. DUENO/ENCARGADO. */
+	@PostMapping("/{usuarioId}/activar")
+	EmpleadoResponse activar(@PathVariable UUID usuarioId, @AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		return EmpleadoResponse.desde(gestionarEstadoDeEmpleado.activar(empresaId, usuarioId));
 	}
 
 	@PostMapping

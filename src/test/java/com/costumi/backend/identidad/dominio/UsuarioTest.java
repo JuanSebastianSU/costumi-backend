@@ -46,4 +46,25 @@ class UsuarioTest {
 		assertThatThrownBy(() -> Usuario.crear(UUID.randomUUID(), "   ", "hash", Rol.DUENO))
 				.isInstanceOf(IllegalArgumentException.class);
 	}
+
+	@Test
+	void un_usuario_nace_activo_y_se_puede_desactivar_y_reactivar() {
+		Usuario usuario = Usuario.crear(UUID.randomUUID(), "emp@empresa.com", "hash", Rol.MOSTRADOR);
+		assertThat(usuario.activo()).isTrue();
+
+		Usuario baja = usuario.desactivar();
+		assertThat(baja.activo()).isFalse();
+		// Misma cuenta (id/email/rol), solo cambia el estado.
+		assertThat(baja.id()).isEqualTo(usuario.id());
+		assertThat(baja.email()).isEqualTo(usuario.email());
+		assertThat(baja.rol()).isEqualTo(usuario.rol());
+
+		assertThat(baja.activar().activo()).isTrue();
+	}
+
+	@Test
+	void cambiar_contrasena_conserva_el_estado_activo() {
+		Usuario baja = Usuario.crear(null, "cli@x.com", "hash", Rol.CLIENTE).desactivar();
+		assertThat(baja.cambiarContrasena("otro").activo()).isFalse();
+	}
 }

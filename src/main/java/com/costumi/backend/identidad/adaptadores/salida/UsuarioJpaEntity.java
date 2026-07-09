@@ -35,16 +35,20 @@ class UsuarioJpaEntity {
 	@Column(nullable = false, length = 20)
 	private Rol rol;
 
+	@Column(nullable = false)
+	private boolean activo;
+
 	protected UsuarioJpaEntity() {
 		// requerido por JPA
 	}
 
-	UsuarioJpaEntity(UUID id, UUID empresaId, String email, String passwordHash, Rol rol) {
+	UsuarioJpaEntity(UUID id, UUID empresaId, String email, String passwordHash, Rol rol, boolean activo) {
 		this.id = id;
 		this.empresaId = empresaId;
 		this.email = email;
 		this.passwordHash = passwordHash;
 		this.rol = rol;
+		this.activo = activo;
 	}
 
 	UUID getId() {
@@ -61,6 +65,10 @@ class UsuarioJpaEntity {
 
 	String getPasswordHash() {
 		return passwordHash;
+	}
+
+	boolean isActivo() {
+		return activo;
 	}
 
 	Rol getRol() {

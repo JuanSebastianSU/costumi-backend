@@ -77,6 +77,59 @@ class EmpleadoIntegrationTest {
 	}
 
 	@Test
+	void dar_de_baja_a_un_empleado_le_impide_iniciar_sesion_y_reactivarlo_lo_habilita() throws Exception {
+		UUID empresa = empresaAprobada();
+		String dueno = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.DUENO);
+		String email = "baja-" + UUID.randomUUID() + "@costumi.test";
+		String res = mvc.perform(post("/api/v1/empleados").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"email\":\"" + email + "\",\"password\":\"secret123\",\"rol\":\"MOSTRADOR\"}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		UUID empleadoId = UUID.fromString(json.readTree(res).get("id").asText());
+
+		// Login OK antes de la baja.
+		mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+						.content("{\"email\":\"" + email + "\",\"password\":\"secret123\"}"))
+				.andExpect(status().isOk());
+
+		// El dueño lo da de baja.
+		mvc.perform(post("/api/v1/empleados/{id}/desactivar", empleadoId).header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.activo").value(false));
+
+		// Ya no puede iniciar sesión (RF-8) -> 403 aunque la contraseña sea correcta.
+		mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+						.content("{\"email\":\"" + email + "\",\"password\":\"secret123\"}"))
+				.andExpect(status().isForbidden());
+
+		// Reactivarlo lo habilita de nuevo.
+		mvc.perform(post("/api/v1/empleados/{id}/activar", empleadoId).header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.activo").value(true));
+		mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+						.content("{\"email\":\"" + email + "\",\"password\":\"secret123\"}"))
+				.andExpect(status().isOk());
+	}
+
+	@Test
+	void no_se_puede_dar_de_baja_a_un_empleado_de_otra_empresa_404() throws Exception {
+		UUID empresaA = empresaAprobada();
+		String duenoA = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresaA, Rol.DUENO);
+		String email = "ajeno-" + UUID.randomUUID() + "@costumi.test";
+		String res = mvc.perform(post("/api/v1/empleados").header("Authorization", "Bearer " + duenoA)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"email\":\"" + email + "\",\"password\":\"secret123\",\"rol\":\"BODEGA\"}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		UUID empleadoDeA = UUID.fromString(json.readTree(res).get("id").asText());
+
+		// El dueño de otra empresa no puede tocarlo (aislamiento por tenant) -> 404.
+		UUID empresaB = empresaAprobada();
+		String duenoB = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresaB, Rol.DUENO);
+		mvc.perform(post("/api/v1/empleados/{id}/desactivar", empleadoDeA).header("Authorization", "Bearer " + duenoB))
+				.andExpect(status().isNotFound());
+	}
+
+	@Test
 	void correo_duplicado_devuelve_409() throws Exception {
 		UUID empresa = empresaAprobada();
 		String dueno = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.DUENO);
