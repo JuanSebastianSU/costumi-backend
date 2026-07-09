@@ -77,7 +77,7 @@ class PrendaTest {
 	@Test
 	void lleva_costo_de_adquisicion_y_deposito_sugerido() {
 		Prenda prenda = Prenda.crear(EMPRESA, CATEGORIA, "Traje", TipoArticulo.RENTA, new BigDecimal("50.00"), null,
-				EtiquetasDePrenda.ninguna(), new BigDecimal("120.00"), new BigDecimal("200.00"));
+				EtiquetasDePrenda.ninguna(), new BigDecimal("120.00"), new BigDecimal("200.00"), null, null);
 
 		assertThat(prenda.costoAdquisicion()).isEqualByComparingTo("120.00");
 		assertThat(prenda.depositoSugerido()).isEqualByComparingTo("200.00");
@@ -86,7 +86,23 @@ class PrendaTest {
 	@Test
 	void el_costo_de_adquisicion_no_puede_ser_negativo() {
 		assertThatThrownBy(() -> Prenda.crear(EMPRESA, CATEGORIA, "Traje", TipoArticulo.RENTA, new BigDecimal("50.00"),
-				null, EtiquetasDePrenda.ninguna(), new BigDecimal("-1.00"), null))
+				null, EtiquetasDePrenda.ninguna(), new BigDecimal("-1.00"), null, null, null))
+				.isInstanceOf(IllegalArgumentException.class);
+	}
+
+	@Test
+	void lleva_valores_de_multa_por_reposicion_y_dano() {
+		Prenda prenda = Prenda.crear(EMPRESA, CATEGORIA, "Traje", TipoArticulo.RENTA, new BigDecimal("50.00"), null,
+				EtiquetasDePrenda.ninguna(), null, null, new BigDecimal("300.00"), new BigDecimal("45.00"));
+
+		assertThat(prenda.valorReposicion()).isEqualByComparingTo("300.00");
+		assertThat(prenda.valorDano()).isEqualByComparingTo("45.00");
+	}
+
+	@Test
+	void el_valor_de_reposicion_no_puede_ser_negativo() {
+		assertThatThrownBy(() -> Prenda.crear(EMPRESA, CATEGORIA, "Traje", TipoArticulo.RENTA, new BigDecimal("50.00"),
+				null, EtiquetasDePrenda.ninguna(), null, null, new BigDecimal("-1.00"), null))
 				.isInstanceOf(IllegalArgumentException.class);
 	}
 }

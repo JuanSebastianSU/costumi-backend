@@ -12,7 +12,7 @@ import java.util.UUID;
  */
 public record CrearPrendaComando(UUID empresaId, UUID categoriaId, String nombre, TipoArticulo tipoArticulo,
 		BigDecimal precioRenta, BigDecimal precioVenta, BigDecimal costoAdquisicion, BigDecimal depositoSugerido,
-		List<EtiquetaSeleccionada> etiquetas) {
+		BigDecimal valorReposicion, BigDecimal valorDano, List<EtiquetaSeleccionada> etiquetas) {
 
 	public CrearPrendaComando {
 		etiquetas = (etiquetas == null) ? List.of() : List.copyOf(etiquetas);
