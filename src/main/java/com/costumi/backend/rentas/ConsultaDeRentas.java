@@ -25,6 +25,12 @@ public interface ConsultaDeRentas {
 	/** Sucursal de la renta (para actualizar el stock por sucursal al devolver, RF-18.2). */
 	Optional<UUID> sucursalDeRenta(UUID empresaId, UUID rentaId);
 
+	/**
+	 * Cuántas rentas <b>vigentes</b> (no cerradas ni canceladas: RESERVADA/ACTIVA/DEVUELTA) tiene la sucursal.
+	 * Sirve para impedir archivar una sucursal con obligaciones abiertas (RF-15.1) y reportar cuántas hay.
+	 */
+	int contarRentasVigentesEnSucursal(UUID empresaId, UUID sucursalId);
+
 	/** Cliente de la renta, si existe y pertenece a la empresa (para notificar multas, RF-11.1). */
 	Optional<UUID> clienteDeRenta(UUID empresaId, UUID rentaId);
 

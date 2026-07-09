@@ -34,4 +34,38 @@ class SucursalTest {
 		assertThatThrownBy(() -> Sucursal.crear(UUID.randomUUID(), "  ", null))
 				.isInstanceOf(IllegalArgumentException.class);
 	}
+
+	@Test
+	void una_sucursal_nace_activa() {
+		assertThat(Sucursal.crear(UUID.randomUUID(), "Centro", null).archivada()).isFalse();
+	}
+
+	@Test
+	void editar_actualiza_nombre_y_direccion() {
+		Sucursal sucursal = Sucursal.crear(UUID.randomUUID(), "Centro", "Calle 1");
+		UUID id = sucursal.id();
+
+		sucursal.editar("Centro Renovado", "Calle 2");
+
+		assertThat(sucursal.id()).isEqualTo(id);
+		assertThat(sucursal.nombre()).isEqualTo("Centro Renovado");
+		assertThat(sucursal.direccion()).isEqualTo("Calle 2");
+	}
+
+	@Test
+	void editar_exige_nombre() {
+		Sucursal sucursal = Sucursal.crear(UUID.randomUUID(), "Centro", null);
+		assertThatThrownBy(() -> sucursal.editar("  ", "Calle 2")).isInstanceOf(IllegalArgumentException.class);
+	}
+
+	@Test
+	void archivar_y_activar_una_sucursal() {
+		Sucursal sucursal = Sucursal.crear(UUID.randomUUID(), "Centro", null);
+
+		sucursal.archivar();
+		assertThat(sucursal.archivada()).isTrue();
+
+		sucursal.activar();
+		assertThat(sucursal.archivada()).isFalse();
+	}
 }

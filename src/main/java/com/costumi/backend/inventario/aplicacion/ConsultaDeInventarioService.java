@@ -141,6 +141,14 @@ class ConsultaDeInventarioService implements ConsultaDeInventario {
 				.count();
 	}
 
+	@Override
+	@Transactional(readOnly = true)
+	public int contarUnidadesEnSucursal(UUID empresaId, UUID sucursalId) {
+		return grupos.listarPorSucursal(empresaId, sucursalId).stream()
+				.mapToInt(grupo -> grupo.total())
+				.sum();
+	}
+
 	private OpcionDePool aOpcion(Prenda prenda) {
 		return new OpcionDePool(prenda.id(), prenda.nombre(), prenda.precioRenta(),
 				unidadesDisponiblesTotales(prenda.id()), Map.copyOf(prenda.etiquetas().valores()));

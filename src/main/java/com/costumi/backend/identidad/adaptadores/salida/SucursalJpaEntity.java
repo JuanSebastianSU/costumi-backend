@@ -34,15 +34,19 @@ class SucursalJpaEntity {
 	@Column(length = 300)
 	private String direccion;
 
+	@Column(nullable = false)
+	private boolean archivada;
+
 	protected SucursalJpaEntity() {
 		// requerido por JPA
 	}
 
-	SucursalJpaEntity(UUID id, UUID empresaId, String nombre, String direccion) {
+	SucursalJpaEntity(UUID id, UUID empresaId, String nombre, String direccion, boolean archivada) {
 		this.id = id;
 		this.empresaId = empresaId;
 		this.nombre = nombre;
 		this.direccion = direccion;
+		this.archivada = archivada;
 	}
 
 	UUID getId() {
@@ -59,5 +63,9 @@ class SucursalJpaEntity {
 
 	String getDireccion() {
 		return direccion;
+	}
+
+	boolean isArchivada() {
+		return archivada;
 	}
 }

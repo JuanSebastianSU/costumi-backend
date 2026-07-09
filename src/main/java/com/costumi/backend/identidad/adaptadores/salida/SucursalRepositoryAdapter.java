@@ -34,10 +34,10 @@ class SucursalRepositoryAdapter implements SucursalRepository {
 	}
 
 	private static SucursalJpaEntity aEntidad(Sucursal s) {
-		return new SucursalJpaEntity(s.id(), s.empresaId(), s.nombre(), s.direccion());
+		return new SucursalJpaEntity(s.id(), s.empresaId(), s.nombre(), s.direccion(), s.archivada());
 	}
 
 	private static Sucursal aDominio(SucursalJpaEntity e) {
-		return Sucursal.rehidratar(e.getId(), e.getEmpresaId(), e.getNombre(), e.getDireccion());
+		return Sucursal.rehidratar(e.getId(), e.getEmpresaId(), e.getNombre(), e.getDireccion(), e.isArchivada());
 	}
 }
