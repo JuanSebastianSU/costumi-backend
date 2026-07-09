@@ -6,6 +6,7 @@ import com.costumi.backend.catalogo.aplicacion.ConsultarTiposEtiqueta;
 import com.costumi.backend.catalogo.aplicacion.ConsultarValores;
 import com.costumi.backend.catalogo.aplicacion.CrearTipoEtiqueta;
 import com.costumi.backend.catalogo.aplicacion.CrearTipoEtiquetaComando;
+import com.costumi.backend.catalogo.aplicacion.GestionarEtiquetas;
 import com.costumi.backend.catalogo.aplicacion.RenombrarTipoEtiqueta;
 import com.costumi.backend.catalogo.aplicacion.RenombrarValor;
 import com.costumi.backend.catalogo.dominio.TipoEtiqueta;
@@ -38,16 +39,48 @@ class TipoEtiquetaController {
 	private final ConsultarValores consultarValores;
 	private final RenombrarTipoEtiqueta renombrarTipoEtiqueta;
 	private final RenombrarValor renombrarValor;
+	private final GestionarEtiquetas gestionarEtiquetas;
 
 	TipoEtiquetaController(CrearTipoEtiqueta crearTipoEtiqueta, ConsultarTiposEtiqueta consultarTiposEtiqueta,
 			AgregarValor agregarValor, ConsultarValores consultarValores, RenombrarTipoEtiqueta renombrarTipoEtiqueta,
-			RenombrarValor renombrarValor) {
+			RenombrarValor renombrarValor, GestionarEtiquetas gestionarEtiquetas) {
 		this.crearTipoEtiqueta = crearTipoEtiqueta;
 		this.consultarTiposEtiqueta = consultarTiposEtiqueta;
 		this.agregarValor = agregarValor;
 		this.consultarValores = consultarValores;
 		this.renombrarTipoEtiqueta = renombrarTipoEtiqueta;
 		this.renombrarValor = renombrarValor;
+		this.gestionarEtiquetas = gestionarEtiquetas;
+	}
+
+	/** Archiva un tipo de etiqueta: deja de ofrecerse para etiquetar prendas nuevas, sin borrarlo. */
+	@PostMapping("/{tipoId}/archivar")
+	TipoEtiquetaResponse archivarTipo(@PathVariable UUID tipoId, @AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		return TipoEtiquetaResponse.desde(gestionarEtiquetas.archivarTipo(empresaId, tipoId));
+	}
+
+	/** Reactiva un tipo de etiqueta archivado. */
+	@PostMapping("/{tipoId}/activar")
+	TipoEtiquetaResponse activarTipo(@PathVariable UUID tipoId, @AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		return TipoEtiquetaResponse.desde(gestionarEtiquetas.activarTipo(empresaId, tipoId));
+	}
+
+	/** Archiva un valor de etiqueta: deja de ser elegible para prendas nuevas, sin borrarlo. */
+	@PostMapping("/{tipoId}/valores/{valorId}/archivar")
+	ValorEtiquetaResponse archivarValor(@PathVariable UUID tipoId, @PathVariable UUID valorId,
+			@AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		return ValorEtiquetaResponse.desde(gestionarEtiquetas.archivarValor(empresaId, tipoId, valorId));
+	}
+
+	/** Reactiva un valor de etiqueta archivado. */
+	@PostMapping("/{tipoId}/valores/{valorId}/activar")
+	ValorEtiquetaResponse activarValor(@PathVariable UUID tipoId, @PathVariable UUID valorId,
+			@AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		return ValorEtiquetaResponse.desde(gestionarEtiquetas.activarValor(empresaId, tipoId, valorId));
 	}
 
 	@PostMapping

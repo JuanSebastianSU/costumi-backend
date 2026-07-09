@@ -74,4 +74,19 @@ class TipoEtiquetaTest {
 		assertThat(rojo.valor()).isEqualTo("Escarlata");
 		assertThat(rojo.id()).isEqualTo(id);
 	}
+
+	@Test
+	void archivar_y_activar_un_tipo_y_un_valor() {
+		TipoEtiqueta tipo = TipoEtiqueta.crear(UUID.randomUUID(), "Color", true, true);
+		tipo.archivar();
+		assertThat(tipo.archivada()).isTrue();
+		tipo.activar();
+		assertThat(tipo.archivada()).isFalse();
+
+		ValorEtiqueta valor = ValorEtiqueta.crear(UUID.randomUUID(), UUID.randomUUID(), "Rojo");
+		valor.archivar();
+		assertThat(valor.archivada()).isTrue();
+		valor.activar();
+		assertThat(valor.archivada()).isFalse();
+	}
 }

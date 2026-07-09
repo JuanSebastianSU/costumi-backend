@@ -17,7 +17,7 @@ import java.util.UUID;
 /** Casos de uso del motor de etiquetas, siempre acotados a la empresa (tenant). */
 @Service
 class TaxonomiaService implements CrearTipoEtiqueta, ConsultarTiposEtiqueta, AgregarValor, ConsultarValores,
-		RenombrarTipoEtiqueta, RenombrarValor, ConsultaDeTaxonomia {
+		RenombrarTipoEtiqueta, RenombrarValor, GestionarEtiquetas, ConsultaDeTaxonomia {
 
 	private final TipoEtiquetaRepository tipos;
 	private final ValorEtiquetaRepository valores;
@@ -113,10 +113,52 @@ class TaxonomiaService implements CrearTipoEtiqueta, ConsultarTiposEtiqueta, Agr
 	@Override
 	@Transactional(readOnly = true)
 	public boolean tipoAplicaACategoria(UUID empresaId, UUID tipoEtiquetaId, UUID categoriaId) {
+		// Un tipo archivado no se puede usar para etiquetar prendas nuevas (RF-2.7.6).
 		return tipos.buscarPorId(tipoEtiquetaId)
 				.filter(tipo -> tipo.empresaId().equals(empresaId))
+				.filter(tipo -> !tipo.archivada())
 				.map(tipo -> tipo.aplicaACategoria(categoriaId))
 				.orElse(false);
+	}
+
+	@Override
+	@Transactional
+	public TipoEtiqueta archivarTipo(UUID empresaId, UUID tipoEtiquetaId) {
+		TipoEtiqueta tipo = tipoDelTenant(empresaId, tipoEtiquetaId);
+		tipo.archivar();
+		return tipos.guardar(tipo);
+	}
+
+	@Override
+	@Transactional
+	public TipoEtiqueta activarTipo(UUID empresaId, UUID tipoEtiquetaId) {
+		TipoEtiqueta tipo = tipoDelTenant(empresaId, tipoEtiquetaId);
+		tipo.activar();
+		return tipos.guardar(tipo);
+	}
+
+	@Override
+	@Transactional
+	public ValorEtiqueta archivarValor(UUID empresaId, UUID tipoEtiquetaId, UUID valorEtiquetaId) {
+		ValorEtiqueta valor = valorDelTenant(empresaId, tipoEtiquetaId, valorEtiquetaId);
+		valor.archivar();
+		return valores.guardar(valor);
+	}
+
+	@Override
+	@Transactional
+	public ValorEtiqueta activarValor(UUID empresaId, UUID tipoEtiquetaId, UUID valorEtiquetaId) {
+		ValorEtiqueta valor = valorDelTenant(empresaId, tipoEtiquetaId, valorEtiquetaId);
+		valor.activar();
+		return valores.guardar(valor);
+	}
+
+	/** Carga el valor garantizando que es del tenant y del tipo indicado; si no, 404. */
+	private ValorEtiqueta valorDelTenant(UUID empresaId, UUID tipoEtiquetaId, UUID valorEtiquetaId) {
+		tipoDelTenant(empresaId, tipoEtiquetaId);
+		return valores.buscarPorId(valorEtiquetaId)
+				.filter(v -> v.empresaId().equals(empresaId) && v.tipoEtiquetaId().equals(tipoEtiquetaId))
+				.orElseThrow(() -> new ValorEtiquetaNoEncontrado(valorEtiquetaId));
 	}
 
 	@Override

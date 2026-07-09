@@ -36,6 +36,11 @@ public class ValorEtiqueta {
 		this.archivada = true;
 	}
 
+	/** Reactiva un valor de etiqueta archivado. */
+	public void activar() {
+		this.archivada = false;
+	}
+
 	/** Renombra el valor (RF-2.7.6). Como las prendas/variantes guardan el id, el cambio propaga. */
 	public void renombrar(String nuevoValor) {
 		this.valor = exigirValor(nuevoValor);

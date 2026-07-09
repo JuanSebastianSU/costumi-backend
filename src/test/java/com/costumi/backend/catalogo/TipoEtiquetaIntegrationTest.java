@@ -198,6 +198,59 @@ class TipoEtiquetaIntegrationTest {
 	}
 
 	@Test
+	void archivar_valor_y_tipo_los_retira_del_etiquetado_de_prendas_nuevas_y_activar_los_restituye() throws Exception {
+		String dueno = duenoDe(crearEmpresa("Empresa ArchTag"));
+		UUID cat = crearCategoria(dueno, "Camisa");
+		// Tipo que aplica a la categoría.
+		String tipoBody = mvc.perform(post("/api/v1/tipos-etiqueta").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Color\",\"defineVariante\":false,\"seleccionablePorCliente\":false,"
+								+ "\"categoriasQueAplica\":[\"" + cat + "\"]}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		UUID tipo = UUID.fromString(json.readTree(tipoBody).get("id").asText());
+		String valorBody = mvc.perform(post("/api/v1/tipos-etiqueta/{t}/valores", tipo)
+						.header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON).content("{\"valor\":\"Rojo\"}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		UUID valor = UUID.fromString(json.readTree(valorBody).get("id").asText());
+
+		// Con etiqueta activa, se puede crear una prenda con ella.
+		crearPrendaConEtiqueta(dueno, cat, tipo, valor, status().isCreated());
+
+		// Archivar el VALOR: deja de ser elegible -> la prenda nueva con esa etiqueta da 400.
+		mvc.perform(post("/api/v1/tipos-etiqueta/{t}/valores/{v}/archivar", tipo, valor)
+						.header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.archivada").value(true));
+		crearPrendaConEtiqueta(dueno, cat, tipo, valor, status().isBadRequest());
+		// Reactivar el valor lo restituye.
+		mvc.perform(post("/api/v1/tipos-etiqueta/{t}/valores/{v}/activar", tipo, valor)
+						.header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk());
+		crearPrendaConEtiqueta(dueno, cat, tipo, valor, status().isCreated());
+
+		// Archivar el TIPO: ya no aplica a la categoría -> la prenda nueva con esa etiqueta da 400.
+		mvc.perform(post("/api/v1/tipos-etiqueta/{t}/archivar", tipo).header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.archivada").value(true));
+		crearPrendaConEtiqueta(dueno, cat, tipo, valor, status().isBadRequest());
+		// Reactivar el tipo lo restituye.
+		mvc.perform(post("/api/v1/tipos-etiqueta/{t}/activar", tipo).header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk());
+		crearPrendaConEtiqueta(dueno, cat, tipo, valor, status().isCreated());
+	}
+
+	private void crearPrendaConEtiqueta(String dueno, UUID cat, UUID tipo, UUID valor,
+			org.springframework.test.web.servlet.ResultMatcher esperado) throws Exception {
+		mvc.perform(post("/api/v1/prendas").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"categoriaId\":\"" + cat + "\",\"nombre\":\"Camisa\",\"tipoArticulo\":\"RENTA\","
+								+ "\"precioRenta\":40.00,\"etiquetas\":[{\"tipoEtiquetaId\":\"" + tipo
+								+ "\",\"valorEtiquetaId\":\"" + valor + "\"}]}"))
+				.andExpect(esperado);
+	}
+
+	@Test
 	void sin_token_devuelve_401() throws Exception {
 		mvc.perform(get("/api/v1/tipos-etiqueta")).andExpect(status().isUnauthorized());
 	}
