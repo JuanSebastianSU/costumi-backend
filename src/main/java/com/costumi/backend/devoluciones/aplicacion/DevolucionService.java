@@ -67,20 +67,29 @@ class DevolucionService implements RegistrarDevolucion, ConsultarDevoluciones {
 			}
 		}
 
-		// Lo ya devuelto en devoluciones previas (por prenda) para no exceder ni cerrar antes de tiempo.
+		// Solo las piezas RESUELTAS consumen unidad y cierran la renta (RF-5.5): una faltante/perdida sin
+		// cobrar se registra en el checklist pero deja la unidad pendiente (no cuenta ni mueve inventario).
 		Map<UUID, Integer> yaDevueltoPorPrenda = new HashMap<>();
 		int yaDevueltoTotal = 0;
 		for (Devolucion previa : devoluciones.listarPorRenta(empresaId, rentaId)) {
 			for (PiezaRevisada pieza : previa.piezas()) {
+				if (!pieza.estaResuelta()) {
+					continue;
+				}
 				yaDevueltoPorPrenda.merge(pieza.prendaId(), 1, Integer::sum);
 				yaDevueltoTotal++;
 			}
 		}
 
-		// Unidades revisadas ahora, por prenda; no puede superar lo rentado de cada artículo (RF-5.5).
+		// Unidades resueltas ahora, por prenda; no puede superar lo rentado de cada artículo (RF-5.5).
 		Map<UUID, Integer> ahoraPorPrenda = new LinkedHashMap<>();
+		int resueltasAhora = 0;
 		for (PiezaRevisada pieza : comando.piezas()) {
+			if (!pieza.estaResuelta()) {
+				continue;
+			}
 			ahoraPorPrenda.merge(pieza.prendaId(), 1, Integer::sum);
+			resueltasAhora++;
 		}
 		for (Map.Entry<UUID, Integer> entrada : ahoraPorPrenda.entrySet()) {
 			int acumulado = yaDevueltoPorPrenda.getOrDefault(entrada.getKey(), 0) + entrada.getValue();
@@ -113,9 +122,9 @@ class DevolucionService implements RegistrarDevolucion, ConsultarDevoluciones {
 		Devolucion devolucion = devoluciones.guardar(Devolucion.crear(empresaId, rentaId,
 				comando.deposito(), cargoPorDanos, cargoPorRetraso, comando.piezas()));
 
-		// Cierra la renta (RF-5.1) SOLO cuando se han devuelto todas las unidades; si no, es parcial (RF-5.5)
-		// y la renta sigue ACTIVA para admitir más devoluciones.
-		int devueltoTotal = yaDevueltoTotal + comando.piezas().size();
+		// Cierra la renta (RF-5.1) SOLO cuando se han RESUELTO todas las unidades; si falta alguna (por
+		// devolver, o perdida sin cobrar) sigue ACTIVA para admitir más devoluciones (RF-5.5).
+		int devueltoTotal = yaDevueltoTotal + resueltasAhora;
 		if (devueltoTotal >= totalUnidades) {
 			rentas.marcarDevuelta(empresaId, rentaId);
 		}
@@ -150,8 +159,9 @@ class DevolucionService implements RegistrarDevolucion, ConsultarDevoluciones {
 	}
 
 	private static int contar(List<PiezaRevisada> piezas, UUID prendaId, EstadoPieza estado) {
+		// Solo piezas resueltas mueven inventario: una perdida solo sale de stock si ya se cobró (RF-5.5/5.6).
 		return (int) piezas.stream()
-				.filter(pieza -> pieza.prendaId().equals(prendaId) && pieza.estado() == estado)
+				.filter(pieza -> pieza.estaResuelta() && pieza.prendaId().equals(prendaId) && pieza.estado() == estado)
 				.count();
 	}
 }

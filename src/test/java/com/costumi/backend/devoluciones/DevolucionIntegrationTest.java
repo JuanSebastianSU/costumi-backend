@@ -269,6 +269,44 @@ class DevolucionIntegrationTest {
 	}
 
 	@Test
+	void pieza_perdida_no_cierra_la_renta_hasta_que_se_cobra_la_reposicion() throws Exception {
+		UUID renta = rentaDePrueba();
+
+		// 1ª devolución: la pieza NO llegó y se declara PERDIDA, sin cobrar. La renta sigue ACTIVA (RF-5.5).
+		mvc.perform(post("/api/v1/devoluciones").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"rentaId\":\"" + renta + "\",\"deposito\":100.00,\"cargoPorDanos\":0,"
+								+ "\"cargoPorRetraso\":0,\"piezas\":[{\"prendaId\":\"" + prenda
+								+ "\",\"descripcion\":\"Camisa\",\"llego\":false,\"estado\":\"PERDIDA\",\"perdidaCobrada\":false}]}"))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.piezas[0].resuelta").value(false));
+		mvc.perform(get("/api/v1/rentas").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.id == '" + renta + "' && @.estado == 'ACTIVA')]").exists());
+		// La unidad sigue afuera (pendiente): no se movió a dañada/perdida en inventario todavía.
+		mvc.perform(get("/api/v1/prendas/{id}/grupos-stock", prenda).header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[0].perdidas").value(0));
+
+		// 2ª devolución: se marca la pérdida como COBRADA (reposición 80). Ahora sí queda resuelta y DEVUELTA.
+		mvc.perform(post("/api/v1/devoluciones").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"rentaId\":\"" + renta + "\",\"deposito\":100.00,\"cargoPorDanos\":80.00,"
+								+ "\"cargoPorRetraso\":0,\"piezas\":[{\"prendaId\":\"" + prenda
+								+ "\",\"descripcion\":\"Camisa\",\"llego\":false,\"estado\":\"PERDIDA\",\"perdidaCobrada\":true}]}"))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.remanente").value(20.00))
+				.andExpect(jsonPath("$.piezas[0].resuelta").value(true));
+		mvc.perform(get("/api/v1/rentas").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.id == '" + renta + "' && @.estado == 'DEVUELTA')]").exists());
+		// La reposición cobrada sí sacó la unidad de stock (perdida).
+		mvc.perform(get("/api/v1/prendas/{id}/grupos-stock", prenda).header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[0].perdidas").value(1));
+	}
+
+	@Test
 	void devolver_mas_unidades_de_las_rentadas_devuelve_400() throws Exception {
 		UUID renta = rentaDeDosUnidades();
 

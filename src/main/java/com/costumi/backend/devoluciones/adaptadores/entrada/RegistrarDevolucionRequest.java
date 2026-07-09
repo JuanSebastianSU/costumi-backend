@@ -38,6 +38,8 @@ public record RegistrarDevolucionRequest(
 
 			boolean llego,
 
-			@NotNull(message = "El estado de la pieza es obligatorio") EstadoPieza estado) {
+			@NotNull(message = "El estado de la pieza es obligatorio") EstadoPieza estado,
+
+			boolean perdidaCobrada) {
 	}
 }

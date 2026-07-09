@@ -41,12 +41,15 @@ class PiezaRevisadaJpaEntity {
 	@Column(nullable = false, length = 12)
 	private EstadoPieza estado;
 
+	@Column(name = "perdida_cobrada", nullable = false)
+	private boolean perdidaCobrada;
+
 	protected PiezaRevisadaJpaEntity() {
 		// requerido por JPA
 	}
 
 	PiezaRevisadaJpaEntity(UUID id, UUID devolucionId, UUID empresaId, UUID prendaId, String descripcion, boolean llego,
-			EstadoPieza estado) {
+			EstadoPieza estado, boolean perdidaCobrada) {
 		this.id = id;
 		this.devolucionId = devolucionId;
 		this.empresaId = empresaId;
@@ -54,10 +57,15 @@ class PiezaRevisadaJpaEntity {
 		this.descripcion = descripcion;
 		this.llego = llego;
 		this.estado = estado;
+		this.perdidaCobrada = perdidaCobrada;
 	}
 
 	UUID getPrendaId() {
 		return prendaId;
+	}
+
+	boolean isPerdidaCobrada() {
+		return perdidaCobrada;
 	}
 
 	String getDescripcion() {
