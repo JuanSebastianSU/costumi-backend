@@ -34,6 +34,11 @@ public class Categoria {
 		this.archivada = true;
 	}
 
+	/** Reactiva una categoría archivada: vuelve a estar disponible para clasificar. */
+	public void activar() {
+		this.archivada = false;
+	}
+
 	/** Renombrar propaga (RF-2.7.6): es la misma categoría con otro nombre. */
 	public void renombrar(String nuevoNombre) {
 		this.nombre = exigirNombre(nuevoNombre);

@@ -94,8 +94,10 @@ class TaxonomiaService implements CrearTipoEtiqueta, ConsultarTiposEtiqueta, Agr
 	@Override
 	@Transactional(readOnly = true)
 	public boolean categoriaExiste(UUID empresaId, UUID categoriaId) {
+		// Una categoría archivada no se puede referenciar en operaciones nuevas (crear prenda/pool de disfraz).
 		return categorias.buscarPorId(categoriaId)
 				.filter(categoria -> categoria.empresaId().equals(empresaId))
+				.filter(categoria -> !categoria.archivada())
 				.isPresent();
 	}
 
