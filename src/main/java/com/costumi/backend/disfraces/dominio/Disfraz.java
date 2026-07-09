@@ -1,5 +1,6 @@
 package com.costumi.backend.disfraces.dominio;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -19,6 +20,10 @@ import java.util.UUID;
  *
  * <p>Un disfraz {@code archivado} ({@code activo == false}) deja de ofrecerse en la vitrina y no se
  * puede rentar, pero se conserva para el historial.
+ *
+ * <p><b>Precio (RF-2.10):</b> por defecto el precio de renta se deriva de la <b>suma de las prendas</b>
+ * que lo componen. Opcionalmente el dueño puede fijar un {@code precioRentaGeneral} (por día) que
+ * <b>anula</b> esa suma y cobra ese valor por el conjunto. Nulo = se cobra por prendas.
  */
 public final class Disfraz {
 
@@ -29,21 +34,30 @@ public final class Disfraz {
 	private String nombre;
 	private List<Slot> slots;
 	private boolean activo;
+	private BigDecimal precioRentaGeneral;
 
-	private Disfraz(UUID id, UUID empresaId, String nombre, List<Slot> slots, boolean activo) {
+	private Disfraz(UUID id, UUID empresaId, String nombre, List<Slot> slots, boolean activo,
+			BigDecimal precioRentaGeneral) {
 		this.id = Objects.requireNonNull(id, "id");
 		this.empresaId = Objects.requireNonNull(empresaId, "empresaId");
 		this.nombre = exigirNombre(nombre);
 		this.slots = exigirSlots(slots);
 		this.activo = activo;
+		this.precioRentaGeneral = validarPrecio(precioRentaGeneral);
 	}
 
+	public static Disfraz crear(UUID empresaId, String nombre, List<Slot> slots, BigDecimal precioRentaGeneral) {
+		return new Disfraz(UUID.randomUUID(), empresaId, nombre, slots, true, precioRentaGeneral);
+	}
+
+	/** Crea un disfraz que se cobra por prendas (sin precio general). */
 	public static Disfraz crear(UUID empresaId, String nombre, List<Slot> slots) {
-		return new Disfraz(UUID.randomUUID(), empresaId, nombre, slots, true);
+		return crear(empresaId, nombre, slots, null);
 	}
 
-	public static Disfraz rehidratar(UUID id, UUID empresaId, String nombre, List<Slot> slots, boolean activo) {
-		return new Disfraz(id, empresaId, nombre, slots, activo);
+	public static Disfraz rehidratar(UUID id, UUID empresaId, String nombre, List<Slot> slots, boolean activo,
+			BigDecimal precioRentaGeneral) {
+		return new Disfraz(id, empresaId, nombre, slots, activo, precioRentaGeneral);
 	}
 
 	/** Disponibilidad derivada (RF-2.4): se calcula a partir de los slots obligatorios. */
@@ -56,10 +70,16 @@ public final class Disfraz {
 		this.nombre = exigirNombre(nuevoNombre);
 	}
 
-	/** Redefine el disfraz completo (nombre + slots) al editarlo (RF-2.3). */
-	public void redefinir(String nuevoNombre, List<Slot> nuevosSlots) {
+	/** Redefine el disfraz completo (nombre + slots + precio general) al editarlo (RF-2.3). */
+	public void redefinir(String nuevoNombre, List<Slot> nuevosSlots, BigDecimal precioRentaGeneral) {
 		this.nombre = exigirNombre(nuevoNombre);
 		this.slots = exigirSlots(nuevosSlots);
+		this.precioRentaGeneral = validarPrecio(precioRentaGeneral);
+	}
+
+	/** ¿El disfraz cobra un precio general (que anula la suma por prendas)? */
+	public boolean tienePrecioGeneral() {
+		return precioRentaGeneral != null;
 	}
 
 	/** Lo retira de la vitrina y del alta de rentas, sin borrarlo (conserva historial). */
@@ -86,6 +106,13 @@ public final class Disfraz {
 		return nombre.trim();
 	}
 
+	private static BigDecimal validarPrecio(BigDecimal precio) {
+		if (precio != null && precio.signum() < 0) {
+			throw new IllegalArgumentException("El precio general del disfraz no puede ser negativo");
+		}
+		return precio;
+	}
+
 	public UUID id() {
 		return id;
 	}
@@ -104,5 +131,10 @@ public final class Disfraz {
 
 	public boolean activo() {
 		return activo;
+	}
+
+	/** Precio de renta por día del conjunto que anula la suma por prendas; nulo = se cobra por prendas. */
+	public BigDecimal precioRentaGeneral() {
+		return precioRentaGeneral;
 	}
 }
