@@ -1,6 +1,7 @@
 package com.costumi.backend.inventario;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -41,4 +42,23 @@ public interface ConsultaDeInventario {
 	 * prenda de la categoría). Sirve para validar la elección del cliente en un slot personalizable (RF-2.3).
 	 */
 	boolean prendaEnPool(UUID empresaId, UUID prendaId, UUID categoriaId, Map<UUID, Set<UUID>> etiquetasPermitidas);
+
+	/**
+	 * Una prenda concreta elegible en la "ruleta" de un slot: su nombre, precio de renta, unidades
+	 * disponibles (a nivel empresa) y sus valores de etiqueta ({@code tipoEtiquetaId -> valorEtiquetaId})
+	 * para que el cliente pueda filtrar por talla/color/modelo.
+	 */
+	record OpcionDePool(UUID prendaId, String nombre, BigDecimal precioRenta, int unidadesDisponibles,
+			Map<UUID, UUID> etiquetas) {
+	}
+
+	/**
+	 * Prendas concretas del pool con stock disponible (RF-2.3, "ruleta"): las de la {@code categoria}
+	 * cuyas etiquetas satisfacen los valores permitidos ({@code etiquetasPermitidas} vacío = cualquiera de
+	 * la categoría) y que tienen al menos una unidad disponible. Ordenadas por nombre.
+	 */
+	List<OpcionDePool> opcionesDelPool(UUID empresaId, UUID categoriaId, Map<UUID, Set<UUID>> etiquetasPermitidas);
+
+	/** La opción concreta de una prenda fija (nombre, precio, stock y etiquetas), si existe en la empresa. */
+	Optional<OpcionDePool> opcionDePrenda(UUID empresaId, UUID prendaId);
 }

@@ -335,6 +335,36 @@ class DisfrazIntegrationTest {
 	}
 
 	@Test
+	void ruleta_lista_las_opciones_disponibles_de_un_slot_y_la_prenda_fija() throws Exception {
+		UUID empresa = crearEmpresa("Ruleta " + UUID.randomUUID());
+		String dueno = duenoDe(empresa);
+		UUID categoria = crearCategoria(dueno, "Cat " + UUID.randomUUID());
+		UUID prendaBase = crearPrenda(dueno, categoria);
+		crearGrupo(dueno, prendaBase, 5);
+		UUID conStock = crearPrenda(dueno, categoria);
+		crearGrupo(dueno, conStock, 3);
+		UUID sinStock = crearPrenda(dueno, categoria);
+		crearGrupo(dueno, sinStock, 0);
+		// slot 1 = fijo (prendaBase); slot 2 = personalizable (pool = toda la categoría).
+		UUID disfraz = crearDisfrazFijaMasPersonalizable(dueno, prendaBase, categoria);
+
+		// Ruleta del slot personalizable: solo las prendas del pool con stock (base=5 y conStock=3), sin la de 0.
+		mvc.perform(get("/api/v1/marketplace/empresas/{e}/disfraces/{d}/slots/{o}/opciones", empresa, disfraz, 2))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.ejePrenda").value("PERSONALIZABLE"))
+				.andExpect(jsonPath("$.opciones.length()").value(2))
+				.andExpect(jsonPath("$.opciones[?(@.prendaId == '" + conStock + "')]").exists())
+				.andExpect(jsonPath("$.opciones[?(@.prendaId == '" + sinStock + "')]").doesNotExist());
+
+		// Ruleta del slot fijo: su única prenda.
+		mvc.perform(get("/api/v1/marketplace/empresas/{e}/disfraces/{d}/slots/{o}/opciones", empresa, disfraz, 1))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.ejePrenda").value("FIJA"))
+				.andExpect(jsonPath("$.opciones.length()").value(1))
+				.andExpect(jsonPath("$.opciones[0].prendaId").value(prendaBase.toString()));
+	}
+
+	@Test
 	void rentar_disfraz_con_prenda_fuera_del_pool_devuelve_400() throws Exception {
 		CtxRenta c = montarRenta("Pool Invalido");
 		UUID categoriaPool = crearCategoria(c.dueno(), "Pool " + UUID.randomUUID());
