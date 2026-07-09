@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -42,7 +43,8 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 	@Transactional
 	public Disfraz ejecutar(CrearDisfrazComando comando) {
 		comando.slots().forEach(slot -> validarSlotDelTenant(comando.empresaId(), slot));
-		Disfraz disfraz = Disfraz.crear(comando.empresaId(), comando.nombre(), aSlots(comando.slots()));
+		Disfraz disfraz = Disfraz.crear(comando.empresaId(), comando.nombre(), aSlots(comando.slots()),
+				comando.precioRentaGeneral());
 		return disfraces.guardar(disfraz);
 	}
 
@@ -53,7 +55,7 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 				.filter(d -> d.empresaId().equals(comando.empresaId()))
 				.orElseThrow(() -> new DisfrazNoEncontrado(comando.disfrazId()));
 		comando.slots().forEach(slot -> validarSlotDelTenant(comando.empresaId(), slot));
-		disfraz.redefinir(comando.nombre(), aSlots(comando.slots()));
+		disfraz.redefinir(comando.nombre(), aSlots(comando.slots()), comando.precioRentaGeneral());
 		return disfraces.guardar(disfraz);
 	}
 
@@ -149,8 +151,44 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 		if (items.isEmpty()) {
 			throw new IllegalArgumentException("El disfraz no resolvió ningún artículo para rentar");
 		}
+		// Precio general (RF-2.10): si el disfraz lo define, anula la suma por prendas repartiéndolo entre
+		// las líneas (proporcional a su precio) para que el total por día iguale el precio del conjunto.
+		if (disfraz.tienePrecioGeneral()) {
+			items = repartirPrecioGeneral(items, disfraz.precioRentaGeneral());
+		}
 		return rentas.registrar(empresaId, comando.sucursalId(), comando.clienteId(), comando.fechaRetiro(),
 				comando.fechaDevolucion(), null, items, comando.empleadoId());
+	}
+
+	/**
+	 * Reparte el {@code precioGeneral} (por día) entre las líneas proporcionalmente a su precio, de modo que
+	 * la suma de las líneas iguale exactamente el precio del conjunto; la última línea absorbe el redondeo.
+	 */
+	private static List<RegistroDeRentas.ItemDeRenta> repartirPrecioGeneral(List<RegistroDeRentas.ItemDeRenta> items,
+			BigDecimal precioGeneral) {
+		BigDecimal base = items.stream()
+				.map(it -> it.precioPorDia().multiply(BigDecimal.valueOf(it.cantidad())))
+				.reduce(BigDecimal.ZERO, BigDecimal::add);
+		List<RegistroDeRentas.ItemDeRenta> resultado = new ArrayList<>();
+		BigDecimal acumulado = BigDecimal.ZERO;
+		for (int i = 0; i < items.size(); i++) {
+			RegistroDeRentas.ItemDeRenta it = items.get(i);
+			BigDecimal cantidad = BigDecimal.valueOf(it.cantidad());
+			BigDecimal precioUnitario;
+			if (i == items.size() - 1) {
+				// La última línea toma el remanente para cuadrar el total exacto.
+				precioUnitario = precioGeneral.subtract(acumulado).divide(cantidad, 2, RoundingMode.HALF_UP);
+			} else if (base.signum() == 0) {
+				precioUnitario = BigDecimal.ZERO;
+			} else {
+				BigDecimal lineaBase = it.precioPorDia().multiply(cantidad);
+				BigDecimal lineaTotal = precioGeneral.multiply(lineaBase).divide(base, 2, RoundingMode.HALF_UP);
+				precioUnitario = lineaTotal.divide(cantidad, 2, RoundingMode.HALF_UP);
+				acumulado = acumulado.add(precioUnitario.multiply(cantidad));
+			}
+			resultado.add(new RegistroDeRentas.ItemDeRenta(it.prendaId(), it.cantidad(), precioUnitario));
+		}
+		return resultado;
 	}
 
 	/** Prenda concreta de un slot: la fija, o la elegida por el cliente validada contra el pool (RF-2.3). */

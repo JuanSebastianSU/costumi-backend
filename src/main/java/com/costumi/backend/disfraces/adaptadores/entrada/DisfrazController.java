@@ -71,7 +71,8 @@ class DisfrazController {
 			UriComponentsBuilder uriBuilder) {
 		UUID empresaId = tenant.empresaIdRequerida();
 		List<SlotComando> slots = request.slots().stream().map(DisfrazController::aSlotComando).toList();
-		Disfraz disfraz = crearDisfraz.ejecutar(new CrearDisfrazComando(empresaId, request.nombre(), slots));
+		Disfraz disfraz = crearDisfraz.ejecutar(
+				new CrearDisfrazComando(empresaId, request.nombre(), slots, request.precioRentaGeneral()));
 		URI location = uriBuilder.path("/api/v1/disfraces/{id}").buildAndExpand(disfraz.id()).toUri();
 		return ResponseEntity.created(location).body(DisfrazResponse.desde(disfraz));
 	}
@@ -81,7 +82,8 @@ class DisfrazController {
 	DisfrazResponse editar(@PathVariable UUID disfrazId, @Valid @RequestBody CrearDisfrazRequest request) {
 		UUID empresaId = tenant.empresaIdRequerida();
 		List<SlotComando> slots = request.slots().stream().map(DisfrazController::aSlotComando).toList();
-		Disfraz disfraz = editarDisfraz.ejecutar(new EditarDisfrazComando(empresaId, disfrazId, request.nombre(), slots));
+		Disfraz disfraz = editarDisfraz.ejecutar(
+				new EditarDisfrazComando(empresaId, disfrazId, request.nombre(), slots, request.precioRentaGeneral()));
 		return DisfrazResponse.desde(disfraz);
 	}
 

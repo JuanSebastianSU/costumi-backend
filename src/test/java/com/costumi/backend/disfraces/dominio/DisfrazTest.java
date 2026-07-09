@@ -107,9 +107,24 @@ class DisfrazTest {
 		UUID otra = UUID.randomUUID();
 		disfraz.redefinir("Nuevo", List.of(
 				Slot.conPrendaFija(1, "A", PRENDA_FIJA, false),
-				Slot.conPrendaFija(2, "B", otra, false)));
+				Slot.conPrendaFija(2, "B", otra, false)), null);
 
 		assertThat(disfraz.nombre()).isEqualTo("Nuevo");
 		assertThat(disfraz.slots()).hasSize(2);
+	}
+
+	@Test
+	void precio_general_es_opcional_y_no_puede_ser_negativo() {
+		Slot slot = Slot.conPrendaFija(1, "Traje", PRENDA_FIJA, false);
+
+		Disfraz porPrendas = Disfraz.crear(EMPRESA, "Sin general", List.of(slot));
+		assertThat(porPrendas.tienePrecioGeneral()).isFalse();
+
+		Disfraz conGeneral = Disfraz.crear(EMPRESA, "Con general", List.of(slot), new java.math.BigDecimal("120.00"));
+		assertThat(conGeneral.tienePrecioGeneral()).isTrue();
+		assertThat(conGeneral.precioRentaGeneral()).isEqualByComparingTo("120.00");
+
+		assertThatThrownBy(() -> Disfraz.crear(EMPRESA, "Negativo", List.of(slot), new java.math.BigDecimal("-1")))
+				.isInstanceOf(IllegalArgumentException.class);
 	}
 }

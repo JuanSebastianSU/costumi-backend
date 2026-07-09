@@ -199,6 +199,50 @@ class DisfrazIntegrationTest {
 				.andExpect(jsonPath("$[0].lineas.length()").value(2));
 	}
 
+	private UUID crearDisfrazConPrecioGeneral(String dueno, UUID prendaFija, UUID categoriaPool, String precioGeneral)
+			throws Exception {
+		String body = mvc.perform(post("/api/v1/disfraces").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Conjunto\",\"precioRentaGeneral\":" + precioGeneral + ",\"slots\":["
+								+ "{\"orden\":1,\"nombre\":\"Base\",\"ejePrenda\":\"FIJA\","
+								+ "\"prendaFijaId\":\"" + prendaFija + "\",\"opcional\":false},"
+								+ "{\"orden\":2,\"nombre\":\"Accesorio\",\"ejePrenda\":\"PERSONALIZABLE\","
+								+ "\"pool\":{\"categoriaId\":\"" + categoriaPool + "\",\"etiquetasPermitidas\":[]},"
+								+ "\"opcional\":false}]}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		return UUID.fromString(json.readTree(body).get("id").asText());
+	}
+
+	@Test
+	void precio_general_del_disfraz_anula_la_suma_por_prendas_en_la_renta() throws Exception {
+		CtxRenta c = montarRenta("Precio General");
+		UUID categoria = crearCategoria(c.dueno(), "Cat " + UUID.randomUUID());
+		UUID prendaBase = crearPrenda(c.dueno(), categoria);       // 40/día
+		UUID prendaAccesorio = crearPrenda(c.dueno(), categoria);  // 40/día (elegible del pool)
+		// Sin general, dos prendas de 40 = 80/día × 3 días = 240. Con general 100/día = 100 × 3 = 300.
+		UUID disfraz = crearDisfrazConPrecioGeneral(c.dueno(), prendaBase, categoria, "100.00");
+
+		mvc.perform(post("/api/v1/disfraces/{id}/rentar", disfraz)
+						.header("Authorization", "Bearer " + c.dueno()).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + c.sucursal() + "\",\"clienteId\":\"" + c.cliente() + "\","
+								+ "\"fechaRetiro\":\"2026-08-01\",\"fechaDevolucion\":\"2026-08-04\",\"selecciones\":["
+								+ "{\"orden\":2,\"prendaId\":\"" + prendaAccesorio + "\"}]}"))
+				.andExpect(status().isOk());
+
+		String body = mvc.perform(get("/api/v1/rentas").param("clienteId", c.cliente().toString())
+						.header("Authorization", "Bearer " + c.dueno()))
+				.andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+		var renta = json.readTree(body).get(0);
+		org.assertj.core.api.Assertions.assertThat(new java.math.BigDecimal(renta.get("importe").asText()))
+				.isEqualByComparingTo("300.00");
+		// Las dos líneas del conjunto suman el precio general por día (100), no la suma de prendas (80).
+		java.math.BigDecimal sumaPorDia = java.math.BigDecimal.ZERO;
+		for (var linea : renta.get("lineas")) {
+			sumaPorDia = sumaPorDia.add(new java.math.BigDecimal(linea.get("precioPorDia").asText()));
+		}
+		org.assertj.core.api.Assertions.assertThat(sumaPorDia).isEqualByComparingTo("100.00");
+	}
+
 	@Test
 	void cliente_del_marketplace_renta_un_disfraz_personalizable() throws Exception {
 		CtxRenta c = montarRenta("Cliente Renta Disfraz");

@@ -8,6 +8,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 /** Mapeo JPA de la cabecera del Disfraz. Lleva {@code empresa_id} (tenant). */
@@ -28,15 +29,19 @@ class DisfrazJpaEntity {
 	@Column(nullable = false)
 	private boolean activo;
 
+	@Column(name = "precio_renta_general", precision = 12, scale = 2)
+	private BigDecimal precioRentaGeneral;
+
 	protected DisfrazJpaEntity() {
 		// requerido por JPA
 	}
 
-	DisfrazJpaEntity(UUID id, UUID empresaId, String nombre, boolean activo) {
+	DisfrazJpaEntity(UUID id, UUID empresaId, String nombre, boolean activo, BigDecimal precioRentaGeneral) {
 		this.id = id;
 		this.empresaId = empresaId;
 		this.nombre = nombre;
 		this.activo = activo;
+		this.precioRentaGeneral = precioRentaGeneral;
 	}
 
 	UUID getId() {
@@ -53,5 +58,9 @@ class DisfrazJpaEntity {
 
 	boolean isActivo() {
 		return activo;
+	}
+
+	BigDecimal getPrecioRentaGeneral() {
+		return precioRentaGeneral;
 	}
 }
