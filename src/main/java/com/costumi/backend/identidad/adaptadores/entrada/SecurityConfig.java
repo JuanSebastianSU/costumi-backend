@@ -77,6 +77,9 @@ class SecurityConfig {
 								"/api/v1/tipos-etiqueta/*/activar", "/api/v1/tipos-etiqueta/*/valores/*/archivar",
 								"/api/v1/tipos-etiqueta/*/valores/*/activar").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.PATCH, "/api/v1/tipos-etiqueta/**").hasAnyRole("DUENO", "ENCARGADO")
+						.requestMatchers(HttpMethod.GET, "/api/v1/categorias/*/prendas/conteo",
+								"/api/v1/tipos-etiqueta/*/prendas/conteo",
+								"/api/v1/tipos-etiqueta/*/valores/*/prendas/conteo").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.POST, "/api/v1/prendas").hasAnyRole("DUENO", "ENCARGADO", "BODEGA")
 						.requestMatchers(HttpMethod.PUT, "/api/v1/prendas/*").hasAnyRole("DUENO", "ENCARGADO", "BODEGA")
 						.requestMatchers(HttpMethod.POST, "/api/v1/prendas/*/archivar",

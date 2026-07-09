@@ -332,6 +332,80 @@ class PrendaIntegrationTest {
 	}
 
 	@Test
+	void conteo_de_dependencias_cuenta_prendas_por_categoria_tipo_y_valor_y_excluye_archivadas() throws Exception {
+		UUID empresa = crearEmpresa("Empresa Conteo");
+		String dueno = duenoDe(empresa);
+		UUID categoria = crearCategoria(dueno, "Camisa");
+		UUID tema = crearTipo(dueno, "Tema");
+		UUID superheroe = agregarValor(dueno, tema, "Superhéroe");
+
+		// Dos prendas en la categoría; solo una lleva la etiqueta Tema=Superhéroe.
+		UUID conTag = crearPrendaConTag(dueno, categoria, "Traje héroe", tema, superheroe);
+		crearPrenda(dueno, categoria, "Camisa lisa");
+
+		// Categoría: 2 prendas activas.
+		mvc.perform(get("/api/v1/categorias/{id}/prendas/conteo", categoria).header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.prendasActivas").value(2));
+		// Tipo y valor de etiqueta: solo la prenda etiquetada.
+		mvc.perform(get("/api/v1/tipos-etiqueta/{id}/prendas/conteo", tema).header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.prendasActivas").value(1));
+		mvc.perform(get("/api/v1/tipos-etiqueta/{t}/valores/{v}/prendas/conteo", tema, superheroe)
+						.header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.prendasActivas").value(1));
+
+		// Archivar una prenda la descuenta del conteo de la categoría (no se cuentan archivadas).
+		mvc.perform(post("/api/v1/prendas/{id}/archivar", conTag).header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk());
+		mvc.perform(get("/api/v1/categorias/{id}/prendas/conteo", categoria).header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.prendasActivas").value(1));
+		mvc.perform(get("/api/v1/tipos-etiqueta/{id}/prendas/conteo", tema).header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.prendasActivas").value(0));
+	}
+
+	@Test
+	void conteo_de_dependencias_respeta_tenant_y_rol() throws Exception {
+		UUID empresaA = crearEmpresa("Conteo A");
+		String duenoA = duenoDe(empresaA);
+		UUID categoriaA = crearCategoria(duenoA, "Camisa");
+		crearPrenda(duenoA, categoriaA, "Camisa A");
+
+		// Otra empresa consulta la MISMA categoría (de A): no ve sus prendas -> 0 (aislamiento por tenant §5.4).
+		String duenoB = duenoDe(crearEmpresa("Conteo B"));
+		mvc.perform(get("/api/v1/categorias/{id}/prendas/conteo", categoriaA).header("Authorization", "Bearer " + duenoB))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.prendasActivas").value(0));
+
+		// Un rol sin permiso de mantenimiento de taxonomía no puede consultar el conteo.
+		String mostrador = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresaA, Rol.MOSTRADOR);
+		mvc.perform(get("/api/v1/categorias/{id}/prendas/conteo", categoriaA).header("Authorization", "Bearer " + mostrador))
+				.andExpect(status().isForbidden());
+	}
+
+	private UUID crearPrenda(String token, UUID categoria, String nombre) throws Exception {
+		String body = mvc.perform(post("/api/v1/prendas").header("Authorization", "Bearer " + token)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"categoriaId\":\"" + categoria + "\",\"nombre\":\"" + nombre + "\","
+								+ "\"tipoArticulo\":\"VENTA\",\"precioVenta\":100.00}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		return UUID.fromString(json.readTree(body).get("id").asText());
+	}
+
+	private UUID crearPrendaConTag(String token, UUID categoria, String nombre, UUID tipo, UUID valor) throws Exception {
+		String body = mvc.perform(post("/api/v1/prendas").header("Authorization", "Bearer " + token)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"categoriaId\":\"" + categoria + "\",\"nombre\":\"" + nombre + "\","
+								+ "\"tipoArticulo\":\"VENTA\",\"precioVenta\":100.00,\"etiquetas\":[{\"tipoEtiquetaId\":\""
+								+ tipo + "\",\"valorEtiquetaId\":\"" + valor + "\"}]}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		return UUID.fromString(json.readTree(body).get("id").asText());
+	}
+
+	@Test
 	void sin_token_devuelve_401() throws Exception {
 		mvc.perform(get("/api/v1/prendas")).andExpect(status().isUnauthorized());
 	}

@@ -61,4 +61,22 @@ public interface ConsultaDeInventario {
 
 	/** La opción concreta de una prenda fija (nombre, precio, stock y etiquetas), si existe en la empresa. */
 	Optional<OpcionDePool> opcionDePrenda(UUID empresaId, UUID prendaId);
+
+	/**
+	 * Cuántas prendas <b>activas</b> (no archivadas) de la empresa pertenecen a la categoría. Sirve para
+	 * que la UI confirme el impacto antes de archivar una categoría (RF-2.8): "esto afecta a N prendas".
+	 */
+	int contarPrendasEnCategoria(UUID empresaId, UUID categoriaId);
+
+	/**
+	 * Cuántas prendas <b>activas</b> de la empresa llevan alguna etiqueta de ese tipo. Sirve para confirmar
+	 * el impacto antes de archivar un tipo de etiqueta (RF-2.7.6).
+	 */
+	int contarPrendasConTipoEtiqueta(UUID empresaId, UUID tipoEtiquetaId);
+
+	/**
+	 * Cuántas prendas <b>activas</b> de la empresa llevan ese valor de etiqueta. Sirve para confirmar el
+	 * impacto antes de archivar un valor de etiqueta (RF-2.7.6).
+	 */
+	int contarPrendasConValorEtiqueta(UUID empresaId, UUID valorEtiquetaId);
 }
