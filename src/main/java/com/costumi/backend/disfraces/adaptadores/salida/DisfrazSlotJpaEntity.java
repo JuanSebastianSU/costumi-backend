@@ -1,7 +1,6 @@
 package com.costumi.backend.disfraces.adaptadores.salida;
 
 import com.costumi.backend.disfraces.dominio.EjeDePrenda;
-import com.costumi.backend.disfraces.dominio.EjeDeTalla;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
@@ -35,13 +34,6 @@ class DisfrazSlotJpaEntity {
 	private String nombre;
 
 	@Enumerated(EnumType.STRING)
-	@Column(name = "eje_talla", nullable = false, length = 8)
-	private EjeDeTalla ejeTalla;
-
-	@Column(name = "talla_fija", length = 60)
-	private String tallaFija;
-
-	@Enumerated(EnumType.STRING)
 	@Column(name = "eje_prenda", nullable = false, length = 16)
 	private EjeDePrenda ejePrenda;
 
@@ -62,15 +54,13 @@ class DisfrazSlotJpaEntity {
 		// requerido por JPA
 	}
 
-	DisfrazSlotJpaEntity(UUID id, UUID disfrazId, int orden, String nombre, EjeDeTalla ejeTalla, String tallaFija,
-			EjeDePrenda ejePrenda, UUID prendaFijaId, UUID categoriaId, boolean opcional,
+	DisfrazSlotJpaEntity(UUID id, UUID disfrazId, int orden, String nombre, EjeDePrenda ejePrenda,
+			UUID prendaFijaId, UUID categoriaId, boolean opcional,
 			Set<EtiquetaDeSlotEmbeddable> etiquetasPermitidas) {
 		this.id = id;
 		this.disfrazId = disfrazId;
 		this.orden = orden;
 		this.nombre = nombre;
-		this.ejeTalla = ejeTalla;
-		this.tallaFija = tallaFija;
 		this.ejePrenda = ejePrenda;
 		this.prendaFijaId = prendaFijaId;
 		this.categoriaId = categoriaId;
@@ -92,14 +82,6 @@ class DisfrazSlotJpaEntity {
 
 	String getNombre() {
 		return nombre;
-	}
-
-	EjeDeTalla getEjeTalla() {
-		return ejeTalla;
-	}
-
-	String getTallaFija() {
-		return tallaFija;
 	}
 
 	EjeDePrenda getEjePrenda() {

@@ -34,16 +34,16 @@ class DisfrazMarketplaceController {
 		this.consultarDisponibilidad = consultarDisponibilidad;
 	}
 
-	/** Lista los disfraces de la tienda (con su estructura de slots para la ruleta). */
+	/** Lista los disfraces activos de la tienda (con su estructura de slots para la ruleta). */
 	@GetMapping
 	List<DisfrazResponse> listar(@PathVariable UUID empresaId) {
-		return consultarDisfraces.deEmpresa(empresaId).stream().map(DisfrazResponse::desde).toList();
+		return consultarDisfraces.activosDeEmpresa(empresaId).stream().map(DisfrazResponse::desde).toList();
 	}
 
-	/** Detalle de un disfraz: estructura completa + disponibilidad derivada (RF-2.4). */
+	/** Detalle de un disfraz activo: estructura completa + disponibilidad derivada (RF-2.4). */
 	@GetMapping("/{disfrazId}")
 	DisfrazDetalleResponse detalle(@PathVariable UUID empresaId, @PathVariable UUID disfrazId) {
-		Disfraz disfraz = consultarDisfraces.deEmpresa(empresaId).stream()
+		Disfraz disfraz = consultarDisfraces.activosDeEmpresa(empresaId).stream()
 				.filter(d -> d.id().equals(disfrazId))
 				.findFirst()
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Disfraz no encontrado"));

@@ -77,12 +77,15 @@ class DisfrazIntegrationTest {
 				.andExpect(status().isCreated());
 	}
 
-	private UUID crearUnidadFija(String token, UUID prendaFijaId) throws Exception {
+	/** Una "pieza única" es un disfraz con un solo slot fijo (ya no existe el modo UNIDAD_FIJA). */
+	private UUID crearUnaPieza(String token, UUID prendaFijaId) throws Exception {
 		String body = mvc.perform(post("/api/v1/disfraces").header("Authorization", "Bearer " + token)
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"nombre\":\"Traje\",\"modo\":\"UNIDAD_FIJA\",\"prendaFijaId\":\"" + prendaFijaId + "\"}"))
+						.content("{\"nombre\":\"Traje\",\"slots\":[{\"orden\":1,\"nombre\":\"Traje\","
+								+ "\"ejePrenda\":\"FIJA\",\"prendaFijaId\":\"" + prendaFijaId + "\",\"opcional\":false}]}"))
 				.andExpect(status().isCreated())
-				.andExpect(jsonPath("$.modo").value("UNIDAD_FIJA"))
+				.andExpect(jsonPath("$.activo").value(true))
+				.andExpect(jsonPath("$.slots[0].ejePrenda").value("FIJA"))
 				.andReturn().getResponse().getContentAsString();
 		return UUID.fromString(json.readTree(body).get("id").asText());
 	}
@@ -95,17 +98,17 @@ class DisfrazIntegrationTest {
 	}
 
 	@Test
-	void disponibilidad_de_unidad_fija_deriva_del_stock() throws Exception {
+	void disponibilidad_de_una_pieza_deriva_del_stock() throws Exception {
 		String dueno = duenoDe(crearEmpresa("Disfraz Stock"));
 		UUID categoria = crearCategoria(dueno, "Traje");
 
 		UUID conStock = crearPrenda(dueno, categoria);
 		crearGrupo(dueno, conStock, 3);
-		UUID disfrazDisponible = crearUnidadFija(dueno, conStock);
+		UUID disfrazDisponible = crearUnaPieza(dueno, conStock);
 
 		UUID sinStock = crearPrenda(dueno, categoria);
 		crearGrupo(dueno, sinStock, 0);
-		UUID disfrazNoDisponible = crearUnidadFija(dueno, sinStock);
+		UUID disfrazNoDisponible = crearUnaPieza(dueno, sinStock);
 
 		org.assertj.core.api.Assertions.assertThat(disponible(dueno, disfrazDisponible)).isTrue();
 		org.assertj.core.api.Assertions.assertThat(disponible(dueno, disfrazNoDisponible)).isFalse();
@@ -120,8 +123,8 @@ class DisfrazIntegrationTest {
 
 		String body = mvc.perform(post("/api/v1/disfraces").header("Authorization", "Bearer " + dueno)
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"nombre\":\"Pirata\",\"modo\":\"POR_PARTES\",\"slots\":[{\"orden\":1,"
-								+ "\"nombre\":\"Sombrero\",\"ejeTalla\":\"LIBRE\",\"ejePrenda\":\"PERSONALIZABLE\","
+						.content("{\"nombre\":\"Pirata\",\"slots\":[{\"orden\":1,"
+								+ "\"nombre\":\"Sombrero\",\"ejePrenda\":\"PERSONALIZABLE\","
 								+ "\"pool\":{\"categoriaId\":\"" + categoria + "\",\"etiquetasPermitidas\":[]},"
 								+ "\"opcional\":false}]}"))
 				.andExpect(status().isCreated())
@@ -162,10 +165,10 @@ class DisfrazIntegrationTest {
 	private UUID crearDisfrazFijaMasPersonalizable(String dueno, UUID prendaFija, UUID categoriaPool) throws Exception {
 		String body = mvc.perform(post("/api/v1/disfraces").header("Authorization", "Bearer " + dueno)
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"nombre\":\"Conjunto\",\"modo\":\"POR_PARTES\",\"slots\":["
-								+ "{\"orden\":1,\"nombre\":\"Base\",\"ejeTalla\":\"LIBRE\",\"ejePrenda\":\"FIJA\","
+						.content("{\"nombre\":\"Conjunto\",\"slots\":["
+								+ "{\"orden\":1,\"nombre\":\"Base\",\"ejePrenda\":\"FIJA\","
 								+ "\"prendaFijaId\":\"" + prendaFija + "\",\"opcional\":false},"
-								+ "{\"orden\":2,\"nombre\":\"Accesorio\",\"ejeTalla\":\"LIBRE\",\"ejePrenda\":\"PERSONALIZABLE\","
+								+ "{\"orden\":2,\"nombre\":\"Accesorio\",\"ejePrenda\":\"PERSONALIZABLE\","
 								+ "\"pool\":{\"categoriaId\":\"" + categoriaPool + "\",\"etiquetasPermitidas\":[]},"
 								+ "\"opcional\":false}]}"))
 				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
@@ -231,10 +234,60 @@ class DisfrazIntegrationTest {
 		// Detalle: estructura completa (2 slots: fijo + personalizable) + disponibilidad derivada.
 		mvc.perform(get("/api/v1/marketplace/empresas/{e}/disfraces/{d}", c.empresa(), disfraz))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.disfraz.modo").value("POR_PARTES"))
+				.andExpect(jsonPath("$.disfraz.activo").value(true))
 				.andExpect(jsonPath("$.disfraz.slots.length()").value(2))
 				.andExpect(jsonPath("$.disfraz.slots[1].pool.categoriaId").value(categoria.toString()))
 				.andExpect(jsonPath("$.disponible").exists());
+	}
+
+	@Test
+	void editar_disfraz_redefine_nombre_y_slots() throws Exception {
+		String dueno = duenoDe(crearEmpresa("Editar Disfraz"));
+		UUID categoria = crearCategoria(dueno, "Cat " + UUID.randomUUID());
+		UUID prendaBase = crearPrenda(dueno, categoria);
+		UUID prendaExtra = crearPrenda(dueno, categoria);
+		UUID disfraz = crearUnaPieza(dueno, prendaBase);
+
+		mvc.perform(put("/api/v1/disfraces/{id}", disfraz).header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Renovado\",\"slots\":["
+								+ "{\"orden\":1,\"nombre\":\"Base\",\"ejePrenda\":\"FIJA\",\"prendaFijaId\":\"" + prendaBase + "\",\"opcional\":false},"
+								+ "{\"orden\":2,\"nombre\":\"Extra\",\"ejePrenda\":\"FIJA\",\"prendaFijaId\":\"" + prendaExtra + "\",\"opcional\":true}]}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.nombre").value("Renovado"))
+				.andExpect(jsonPath("$.slots.length()").value(2));
+	}
+
+	@Test
+	void archivar_saca_el_disfraz_de_la_vitrina_y_no_se_puede_rentar() throws Exception {
+		CtxRenta c = montarRenta("Archivar Disfraz");
+		UUID categoria = crearCategoria(c.dueno(), "Cat " + UUID.randomUUID());
+		UUID prendaBase = crearPrenda(c.dueno(), categoria);
+		UUID disfraz = crearUnaPieza(c.dueno(), prendaBase);
+
+		mvc.perform(post("/api/v1/disfraces/{id}/archivar", disfraz).header("Authorization", "Bearer " + c.dueno()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.activo").value(false));
+
+		// Ya no aparece en la vitrina pública.
+		mvc.perform(get("/api/v1/marketplace/empresas/{e}/disfraces", c.empresa()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(0));
+
+		// Y no se puede rentar mientras esté archivado.
+		mvc.perform(post("/api/v1/disfraces/{id}/rentar", disfraz)
+						.header("Authorization", "Bearer " + c.dueno()).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + c.sucursal() + "\",\"clienteId\":\"" + c.cliente() + "\","
+								+ "\"fechaRetiro\":\"2026-08-01\",\"fechaDevolucion\":\"2026-08-04\"}"))
+				.andExpect(status().isBadRequest());
+
+		// Reactivarlo lo devuelve a la vitrina.
+		mvc.perform(post("/api/v1/disfraces/{id}/activar", disfraz).header("Authorization", "Bearer " + c.dueno()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.activo").value(true));
+		mvc.perform(get("/api/v1/marketplace/empresas/{e}/disfraces", c.empresa()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(1));
 	}
 
 	@Test
@@ -255,12 +308,12 @@ class DisfrazIntegrationTest {
 	}
 
 	@Test
-	void por_partes_sin_slots_devuelve_400() throws Exception {
+	void disfraz_sin_slots_devuelve_400() throws Exception {
 		String dueno = duenoDe(crearEmpresa("Disfraz Vacio"));
 
 		mvc.perform(post("/api/v1/disfraces").header("Authorization", "Bearer " + dueno)
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"nombre\":\"Vacío\",\"modo\":\"POR_PARTES\",\"slots\":[]}"))
+						.content("{\"nombre\":\"Vacío\",\"slots\":[]}"))
 				.andExpect(status().isBadRequest());
 	}
 
@@ -271,7 +324,8 @@ class DisfrazIntegrationTest {
 
 		mvc.perform(post("/api/v1/disfraces").header("Authorization", "Bearer " + mostrador)
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"nombre\":\"X\",\"modo\":\"UNIDAD_FIJA\",\"prendaFijaId\":\"" + UUID.randomUUID() + "\"}"))
+						.content("{\"nombre\":\"X\",\"slots\":[{\"orden\":1,\"nombre\":\"S\",\"ejePrenda\":\"FIJA\","
+								+ "\"prendaFijaId\":\"" + UUID.randomUUID() + "\",\"opcional\":false}]}"))
 				.andExpect(status().isForbidden());
 	}
 
@@ -282,10 +336,11 @@ class DisfrazIntegrationTest {
 		UUID prendaDeA = crearPrenda(duenoA, categoriaA);
 
 		String duenoB = duenoDe(crearEmpresa("Disfraz Cross B"));
-		// B intenta un disfraz de unidad fija con la prenda de A (cross-ref por tenant, §5.4).
+		// B intenta un disfraz con un slot fijo apuntando a la prenda de A (cross-ref por tenant, §5.4).
 		mvc.perform(post("/api/v1/disfraces").header("Authorization", "Bearer " + duenoB)
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"nombre\":\"Robo\",\"modo\":\"UNIDAD_FIJA\",\"prendaFijaId\":\"" + prendaDeA + "\"}"))
+						.content("{\"nombre\":\"Robo\",\"slots\":[{\"orden\":1,\"nombre\":\"S\",\"ejePrenda\":\"FIJA\","
+								+ "\"prendaFijaId\":\"" + prendaDeA + "\",\"opcional\":false}]}"))
 				.andExpect(status().isBadRequest());
 	}
 

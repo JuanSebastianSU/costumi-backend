@@ -3,11 +3,8 @@ package com.costumi.backend.disfraces.adaptadores.salida;
 import com.costumi.backend.compartido.FiltroTenant;
 import org.hibernate.annotations.Filter;
 
-import com.costumi.backend.disfraces.dominio.ModoDeDisfraz;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
@@ -28,23 +25,18 @@ class DisfrazJpaEntity {
 	@Column(nullable = false, length = 160)
 	private String nombre;
 
-	@Enumerated(EnumType.STRING)
-	@Column(nullable = false, length = 12)
-	private ModoDeDisfraz modo;
-
-	@Column(name = "prenda_fija_id")
-	private UUID prendaFijaId;
+	@Column(nullable = false)
+	private boolean activo;
 
 	protected DisfrazJpaEntity() {
 		// requerido por JPA
 	}
 
-	DisfrazJpaEntity(UUID id, UUID empresaId, String nombre, ModoDeDisfraz modo, UUID prendaFijaId) {
+	DisfrazJpaEntity(UUID id, UUID empresaId, String nombre, boolean activo) {
 		this.id = id;
 		this.empresaId = empresaId;
 		this.nombre = nombre;
-		this.modo = modo;
-		this.prendaFijaId = prendaFijaId;
+		this.activo = activo;
 	}
 
 	UUID getId() {
@@ -59,11 +51,7 @@ class DisfrazJpaEntity {
 		return nombre;
 	}
 
-	ModoDeDisfraz getModo() {
-		return modo;
-	}
-
-	UUID getPrendaFijaId() {
-		return prendaFijaId;
+	boolean isActivo() {
+		return activo;
 	}
 }

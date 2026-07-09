@@ -4,31 +4,28 @@ import java.util.Objects;
 import java.util.UUID;
 
 /**
- * Slot / Sección de un disfraz por partes (RF-2.3, Capa 3). Lleva los <b>dos ejes</b> + opcionalidad:
+ * Slot / Sección de un disfraz (RF-2.3, Capa 3). Lleva el eje de prenda + opcionalidad:
  * <ul>
- *   <li>Eje de talla: {@link EjeDeTalla#FIJA} (se escribe {@code tallaFija}) o {@link EjeDeTalla#LIBRE}.</li>
  *   <li>Eje de prenda: {@link EjeDePrenda#FIJA} (una {@code prendaFijaId} concreta) o
  *       {@link EjeDePrenda#PERSONALIZABLE} (el cliente elige del {@link PoolDeSlot}).</li>
  *   <li>{@code opcional}: el cliente puede omitir la sección; los opcionales no bloquean disponibilidad.</li>
  * </ul>
+ *
+ * <p>La <b>talla</b> no es un eje aparte: se modela como una etiqueta (p. ej. el tipo "Talla") dentro
+ * del pool del slot. Para fijar una talla, se restringe el pool a ese valor de etiqueta.
  */
 public final class Slot {
 
 	private final int orden;
 	private final String nombre;
-	private final EjeDeTalla ejeTalla;
-	private final String tallaFija;
 	private final EjeDePrenda ejePrenda;
 	private final UUID prendaFijaId;
 	private final PoolDeSlot pool;
 	private final boolean opcional;
 
-	private Slot(int orden, String nombre, EjeDeTalla ejeTalla, String tallaFija, EjeDePrenda ejePrenda,
-			UUID prendaFijaId, PoolDeSlot pool, boolean opcional) {
+	private Slot(int orden, String nombre, EjeDePrenda ejePrenda, UUID prendaFijaId, PoolDeSlot pool, boolean opcional) {
 		this.orden = exigirOrden(orden);
 		this.nombre = exigirNombre(nombre);
-		this.ejeTalla = Objects.requireNonNull(ejeTalla, "ejeTalla");
-		this.tallaFija = validarTalla(ejeTalla, tallaFija);
 		this.ejePrenda = Objects.requireNonNull(ejePrenda, "ejePrenda");
 		this.prendaFijaId = prendaFijaId;
 		this.pool = pool;
@@ -37,22 +34,20 @@ public final class Slot {
 	}
 
 	/** Slot con prenda fija (siempre la misma prenda). */
-	public static Slot conPrendaFija(int orden, String nombre, EjeDeTalla ejeTalla, String tallaFija,
-			UUID prendaFijaId, boolean opcional) {
-		return new Slot(orden, nombre, ejeTalla, tallaFija, EjeDePrenda.FIJA,
+	public static Slot conPrendaFija(int orden, String nombre, UUID prendaFijaId, boolean opcional) {
+		return new Slot(orden, nombre, EjeDePrenda.FIJA,
 				Objects.requireNonNull(prendaFijaId, "prendaFijaId"), null, opcional);
 	}
 
 	/** Slot personalizable: el cliente elige una prenda del pool. */
-	public static Slot personalizable(int orden, String nombre, EjeDeTalla ejeTalla, String tallaFija,
-			PoolDeSlot pool, boolean opcional) {
-		return new Slot(orden, nombre, ejeTalla, tallaFija, EjeDePrenda.PERSONALIZABLE, null,
+	public static Slot personalizable(int orden, String nombre, PoolDeSlot pool, boolean opcional) {
+		return new Slot(orden, nombre, EjeDePrenda.PERSONALIZABLE, null,
 				Objects.requireNonNull(pool, "pool"), opcional);
 	}
 
-	public static Slot rehidratar(int orden, String nombre, EjeDeTalla ejeTalla, String tallaFija,
-			EjeDePrenda ejePrenda, UUID prendaFijaId, PoolDeSlot pool, boolean opcional) {
-		return new Slot(orden, nombre, ejeTalla, tallaFija, ejePrenda, prendaFijaId, pool, opcional);
+	public static Slot rehidratar(int orden, String nombre, EjeDePrenda ejePrenda, UUID prendaFijaId,
+			PoolDeSlot pool, boolean opcional) {
+		return new Slot(orden, nombre, ejePrenda, prendaFijaId, pool, opcional);
 	}
 
 	/** ¿Se puede cubrir este slot? (hay stock para la prenda fija, o el pool tiene stock). */
@@ -76,16 +71,6 @@ public final class Slot {
 		}
 	}
 
-	private static String validarTalla(EjeDeTalla ejeTalla, String tallaFija) {
-		if (ejeTalla == EjeDeTalla.FIJA) {
-			if (tallaFija == null || tallaFija.isBlank()) {
-				throw new IllegalArgumentException("Un slot de talla fija requiere la talla");
-			}
-			return tallaFija.trim();
-		}
-		return null;
-	}
-
 	private static int exigirOrden(int orden) {
 		if (orden < 1) {
 			throw new IllegalArgumentException("El orden del slot debe ser mayor o igual a 1");
@@ -106,14 +91,6 @@ public final class Slot {
 
 	public String nombre() {
 		return nombre;
-	}
-
-	public EjeDeTalla ejeTalla() {
-		return ejeTalla;
-	}
-
-	public String tallaFija() {
-		return tallaFija;
 	}
 
 	public EjeDePrenda ejePrenda() {

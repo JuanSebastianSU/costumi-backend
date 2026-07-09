@@ -33,35 +33,36 @@ class DisfrazTest {
 	}
 
 	@Test
-	void un_disfraz_por_partes_tiene_entre_1_y_8_slots() {
-		Slot slot = Slot.conPrendaFija(1, "Único", EjeDeTalla.LIBRE, null, PRENDA_FIJA, false);
+	void un_disfraz_tiene_entre_1_y_8_slots() {
+		Slot slot = Slot.conPrendaFija(1, "Único", PRENDA_FIJA, false);
 
-		assertThatThrownBy(() -> Disfraz.porPartes(EMPRESA, "Vacío", List.of()))
+		assertThatThrownBy(() -> Disfraz.crear(EMPRESA, "Vacío", List.of()))
 				.isInstanceOf(IllegalArgumentException.class);
 
 		List<Slot> nueve = java.util.stream.IntStream.rangeClosed(1, 9)
-				.mapToObj(i -> Slot.conPrendaFija(i, "S" + i, EjeDeTalla.LIBRE, null, UUID.randomUUID(), false))
+				.mapToObj(i -> Slot.conPrendaFija(i, "S" + i, UUID.randomUUID(), false))
 				.toList();
-		assertThatThrownBy(() -> Disfraz.porPartes(EMPRESA, "Demasiados", nueve))
+		assertThatThrownBy(() -> Disfraz.crear(EMPRESA, "Demasiados", nueve))
 				.isInstanceOf(IllegalArgumentException.class);
 
-		assertThat(Disfraz.porPartes(EMPRESA, "OK", List.of(slot)).slots()).hasSize(1);
+		assertThat(Disfraz.crear(EMPRESA, "OK", List.of(slot)).slots()).hasSize(1);
 	}
 
 	@Test
-	void unidad_fija_disponible_si_su_prenda_tiene_stock() {
-		Disfraz disfraz = Disfraz.unidadFija(EMPRESA, "Traje entero", PRENDA_FIJA);
+	void una_pieza_es_un_disfraz_con_un_unico_slot_fijo() {
+		Disfraz disfraz = Disfraz.crear(EMPRESA, "Traje entero",
+				List.of(Slot.conPrendaFija(1, "Traje", PRENDA_FIJA, false)));
 
+		assertThat(disfraz.slots()).hasSize(1);
 		assertThat(disfraz.estaDisponible(stock(Set.of(PRENDA_FIJA), false))).isTrue();
 		assertThat(disfraz.estaDisponible(stock(Set.of(), false))).isFalse();
 	}
 
 	@Test
 	void por_partes_disponible_si_cada_slot_obligatorio_tiene_stock() {
-		Slot obligatorioFijo = Slot.conPrendaFija(1, "Cuerpo", EjeDeTalla.LIBRE, null, PRENDA_FIJA, false);
-		Slot obligatorioPool = Slot.personalizable(2, "Sombrero", EjeDeTalla.LIBRE, null,
-				PoolDeSlot.de(CATEGORIA, Map.of()), false);
-		Disfraz disfraz = Disfraz.porPartes(EMPRESA, "Pirata", List.of(obligatorioFijo, obligatorioPool));
+		Slot obligatorioFijo = Slot.conPrendaFija(1, "Cuerpo", PRENDA_FIJA, false);
+		Slot obligatorioPool = Slot.personalizable(2, "Sombrero", PoolDeSlot.de(CATEGORIA, Map.of()), false);
+		Disfraz disfraz = Disfraz.crear(EMPRESA, "Pirata", List.of(obligatorioFijo, obligatorioPool));
 
 		// El fijo tiene stock, pero el pool no -> no disponible.
 		assertThat(disfraz.estaDisponible(stock(Set.of(PRENDA_FIJA), false))).isFalse();
@@ -71,26 +72,44 @@ class DisfrazTest {
 
 	@Test
 	void los_slots_opcionales_no_bloquean_la_disponibilidad() {
-		Slot obligatorio = Slot.conPrendaFija(1, "Cuerpo", EjeDeTalla.LIBRE, null, PRENDA_FIJA, false);
-		Slot opcional = Slot.personalizable(2, "Accesorio", EjeDeTalla.LIBRE, null,
-				PoolDeSlot.de(CATEGORIA, Map.of()), true);
-		Disfraz disfraz = Disfraz.porPartes(EMPRESA, "Con accesorio", List.of(obligatorio, opcional));
+		Slot obligatorio = Slot.conPrendaFija(1, "Cuerpo", PRENDA_FIJA, false);
+		Slot opcional = Slot.personalizable(2, "Accesorio", PoolDeSlot.de(CATEGORIA, Map.of()), true);
+		Disfraz disfraz = Disfraz.crear(EMPRESA, "Con accesorio", List.of(obligatorio, opcional));
 
 		// El opcional no tiene stock (pool=false), pero el obligatorio sí -> disponible.
 		assertThat(disfraz.estaDisponible(stock(Set.of(PRENDA_FIJA), false))).isTrue();
 	}
 
 	@Test
-	void un_slot_de_talla_fija_exige_la_talla() {
-		assertThatThrownBy(() -> Slot.conPrendaFija(1, "Cuerpo", EjeDeTalla.FIJA, "  ", PRENDA_FIJA, false))
-				.isInstanceOf(IllegalArgumentException.class);
-
-		Slot ok = Slot.conPrendaFija(1, "Cuerpo", EjeDeTalla.FIJA, "M", PRENDA_FIJA, false);
-		assertThat(ok.tallaFija()).isEqualTo("M");
+	void un_slot_personalizable_exige_pool_y_uno_fijo_exige_prenda() {
+		assertThatThrownBy(() -> Slot.personalizable(1, "X", null, false))
+				.isInstanceOf(NullPointerException.class);
+		assertThatThrownBy(() -> Slot.conPrendaFija(1, "X", null, false))
+				.isInstanceOf(NullPointerException.class);
 	}
 
 	@Test
-	void unidad_fija_no_lleva_slots() {
-		assertThat(Disfraz.unidadFija(EMPRESA, "Traje", PRENDA_FIJA).slots()).isEmpty();
+	void archivar_y_activar_cambia_el_estado() {
+		Disfraz disfraz = Disfraz.crear(EMPRESA, "Traje", List.of(Slot.conPrendaFija(1, "Traje", PRENDA_FIJA, false)));
+		assertThat(disfraz.activo()).isTrue();
+
+		disfraz.archivar();
+		assertThat(disfraz.activo()).isFalse();
+
+		disfraz.activar();
+		assertThat(disfraz.activo()).isTrue();
+	}
+
+	@Test
+	void redefinir_reemplaza_nombre_y_slots() {
+		Disfraz disfraz = Disfraz.crear(EMPRESA, "Viejo", List.of(Slot.conPrendaFija(1, "A", PRENDA_FIJA, false)));
+
+		UUID otra = UUID.randomUUID();
+		disfraz.redefinir("Nuevo", List.of(
+				Slot.conPrendaFija(1, "A", PRENDA_FIJA, false),
+				Slot.conPrendaFija(2, "B", otra, false)));
+
+		assertThat(disfraz.nombre()).isEqualTo("Nuevo");
+		assertThat(disfraz.slots()).hasSize(2);
 	}
 }
