@@ -100,6 +100,20 @@ class CategoriaIntegrationTest {
 	}
 
 	@Test
+	void crear_una_categoria_con_nombre_duplicado_devuelve_409_no_500() throws Exception {
+		UUID empresa = crearEmpresa("Empresa Dup");
+		String dueno = duenoDe(empresa);
+		String nombre = "Duplicada-" + UUID.randomUUID();
+		mvc.perform(post("/api/v1/categorias").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON).content("{\"nombre\":\"" + nombre + "\"}"))
+				.andExpect(status().isCreated());
+		// El mismo nombre choca con el índice único: debe ser 409 (no un 500 crudo).
+		mvc.perform(post("/api/v1/categorias").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON).content("{\"nombre\":\"" + nombre + "\"}"))
+				.andExpect(status().isConflict());
+	}
+
+	@Test
 	void sin_token_devuelve_401() throws Exception {
 		mvc.perform(get("/api/v1/categorias")).andExpect(status().isUnauthorized());
 	}
