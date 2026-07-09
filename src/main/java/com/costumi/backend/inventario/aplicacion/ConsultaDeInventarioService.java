@@ -114,6 +114,33 @@ class ConsultaDeInventarioService implements ConsultaDeInventario {
 				.map(this::aOpcion);
 	}
 
+	@Override
+	@Transactional(readOnly = true)
+	public int contarPrendasEnCategoria(UUID empresaId, UUID categoriaId) {
+		return (int) prendas.listarPorEmpresa(empresaId).stream()
+				.filter(prenda -> !prenda.archivada())
+				.filter(prenda -> prenda.categoriaId().equals(categoriaId))
+				.count();
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public int contarPrendasConTipoEtiqueta(UUID empresaId, UUID tipoEtiquetaId) {
+		return (int) prendas.listarPorEmpresa(empresaId).stream()
+				.filter(prenda -> !prenda.archivada())
+				.filter(prenda -> prenda.etiquetas().tipos().contains(tipoEtiquetaId))
+				.count();
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public int contarPrendasConValorEtiqueta(UUID empresaId, UUID valorEtiquetaId) {
+		return (int) prendas.listarPorEmpresa(empresaId).stream()
+				.filter(prenda -> !prenda.archivada())
+				.filter(prenda -> prenda.etiquetas().valores().containsValue(valorEtiquetaId))
+				.count();
+	}
+
 	private OpcionDePool aOpcion(Prenda prenda) {
 		return new OpcionDePool(prenda.id(), prenda.nombre(), prenda.precioRenta(),
 				unidadesDisponiblesTotales(prenda.id()), Map.copyOf(prenda.etiquetas().valores()));
