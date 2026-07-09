@@ -18,6 +18,7 @@ import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -183,6 +184,72 @@ class PrendaIntegrationTest {
 		mvc.perform(get("/api/v1/prendas").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$[?(@.nombre == 'Camisa pirata roja')]").exists());
+	}
+
+	@Test
+	void editar_una_prenda_actualiza_sus_datos() throws Exception {
+		UUID empresa = crearEmpresa("Empresa Editar");
+		String dueno = duenoDe(empresa);
+		UUID categoria = crearCategoria(dueno, "Camisa");
+		String body = mvc.perform(post("/api/v1/prendas").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"categoriaId\":\"" + categoria + "\",\"nombre\":\"Vieja\","
+								+ "\"tipoArticulo\":\"RENTA\",\"precioRenta\":40.00}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		UUID prenda = UUID.fromString(json.readTree(body).get("id").asText());
+
+		mvc.perform(put("/api/v1/prendas/{id}", prenda).header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Renovada\",\"precioRenta\":55.00,\"valorReposicion\":300.00}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.nombre").value("Renovada"))
+				.andExpect(jsonPath("$.precioRenta").value(55.00))
+				.andExpect(jsonPath("$.valorReposicion").value(300.00));
+	}
+
+	@Test
+	void archivar_una_prenda_la_saca_de_la_disponibilidad_del_disfraz_y_activar_la_restituye() throws Exception {
+		UUID empresa = crearEmpresa("Empresa Archivar");
+		String dueno = duenoDe(empresa);
+		UUID categoria = crearCategoria(dueno, "Camisa");
+		String body = mvc.perform(post("/api/v1/prendas").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"categoriaId\":\"" + categoria + "\",\"nombre\":\"Traje\","
+								+ "\"tipoArticulo\":\"RENTA\",\"precioRenta\":40.00}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		UUID prenda = UUID.fromString(json.readTree(body).get("id").asText());
+		mvc.perform(post("/api/v1/prendas/{id}/grupos-stock", prenda).header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + UUID.randomUUID() + "\",\"combinacion\":[],\"cantidadInicial\":3}"))
+				.andExpect(status().isCreated());
+		String d = mvc.perform(post("/api/v1/disfraces").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Pirata\",\"slots\":[{\"orden\":1,\"nombre\":\"Cuerpo\","
+								+ "\"ejePrenda\":\"FIJA\",\"prendaFijaId\":\"" + prenda + "\",\"opcional\":false}]}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		UUID disfraz = UUID.fromString(json.readTree(d).get("id").asText());
+
+		// Con la prenda activa, el disfraz está disponible.
+		org.assertj.core.api.Assertions.assertThat(disponible(dueno, disfraz)).isTrue();
+
+		// Archivar la prenda la retira de la operación: el disfraz deja de estar disponible.
+		mvc.perform(post("/api/v1/prendas/{id}/archivar", prenda).header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.archivada").value(true));
+		org.assertj.core.api.Assertions.assertThat(disponible(dueno, disfraz)).isFalse();
+
+		// Reactivarla la restituye.
+		mvc.perform(post("/api/v1/prendas/{id}/activar", prenda).header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.archivada").value(false));
+		org.assertj.core.api.Assertions.assertThat(disponible(dueno, disfraz)).isTrue();
+	}
+
+	private boolean disponible(String token, UUID disfrazId) throws Exception {
+		String body = mvc.perform(get("/api/v1/disfraces/{id}/disponibilidad", disfrazId)
+						.header("Authorization", "Bearer " + token))
+				.andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+		return json.readTree(body).get("disponible").asBoolean();
 	}
 
 	@Test

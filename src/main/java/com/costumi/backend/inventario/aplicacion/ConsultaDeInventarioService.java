@@ -39,6 +39,7 @@ class ConsultaDeInventarioService implements ConsultaDeInventario {
 	public boolean prendaTieneStockDisponible(UUID empresaId, UUID prendaId) {
 		return prendas.buscarPorId(prendaId)
 				.filter(prenda -> prenda.empresaId().equals(empresaId))
+				.filter(prenda -> !prenda.archivada())
 				.map(prenda -> tieneStock(prenda.id()))
 				.orElse(false);
 	}
@@ -47,6 +48,7 @@ class ConsultaDeInventarioService implements ConsultaDeInventario {
 	@Transactional(readOnly = true)
 	public boolean poolTieneStockDisponible(UUID empresaId, UUID categoriaId, Map<UUID, Set<UUID>> etiquetasPermitidas) {
 		return prendas.listarPorEmpresa(empresaId).stream()
+				.filter(prenda -> !prenda.archivada())
 				.filter(prenda -> prenda.categoriaId().equals(categoriaId))
 				.filter(prenda -> cumpleEtiquetas(prenda, etiquetasPermitidas))
 				.anyMatch(prenda -> tieneStock(prenda.id()));
@@ -58,6 +60,7 @@ class ConsultaDeInventarioService implements ConsultaDeInventario {
 			Map<UUID, Set<UUID>> etiquetasPermitidas) {
 		return prendas.buscarPorId(prendaId)
 				.filter(prenda -> prenda.empresaId().equals(empresaId))
+				.filter(prenda -> !prenda.archivada())
 				.filter(prenda -> prenda.categoriaId().equals(categoriaId))
 				.filter(prenda -> cumpleEtiquetas(prenda, etiquetasPermitidas))
 				.isPresent();

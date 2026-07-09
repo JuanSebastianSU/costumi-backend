@@ -93,8 +93,28 @@ public class Prenda {
 		this.archivada = true;
 	}
 
+	/** Reactiva una prenda archivada: vuelve a estar disponible para operar. */
+	public void activar() {
+		this.archivada = false;
+	}
+
 	public void renombrar(String nuevoNombre) {
 		this.nombre = exigirNombre(nuevoNombre);
+	}
+
+	/**
+	 * Edita los datos de la prenda (RF-2.10): nombre, precios y valores, revalidando contra su
+	 * {@code tipoArticulo} (que no cambia). Las etiquetas se reemplazan aparte con {@link #reetiquetar}.
+	 */
+	public void editar(String nombre, BigDecimal precioRenta, BigDecimal precioVenta, BigDecimal costoAdquisicion,
+			BigDecimal depositoSugerido, BigDecimal valorReposicion, BigDecimal valorDano) {
+		this.nombre = exigirNombre(nombre);
+		this.precioRenta = validarPrecio(precioRenta, tipoArticulo.incluyeRenta(), "renta");
+		this.precioVenta = validarPrecio(precioVenta, tipoArticulo.incluyeVenta(), "venta");
+		this.costoAdquisicion = validarNoNegativo(costoAdquisicion, "costo de adquisición");
+		this.depositoSugerido = validarNoNegativo(depositoSugerido, "depósito sugerido");
+		this.valorReposicion = validarNoNegativo(valorReposicion, "valor de reposición");
+		this.valorDano = validarNoNegativo(valorDano, "valor de daño");
 	}
 
 	private static String exigirNombre(String nombre) {
