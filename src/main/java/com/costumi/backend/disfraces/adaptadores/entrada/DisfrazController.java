@@ -2,10 +2,13 @@ package com.costumi.backend.disfraces.adaptadores.entrada;
 
 import com.costumi.backend.clientes.ResolucionDeClientes;
 import com.costumi.backend.compartido.ContextoDeTenant;
+import com.costumi.backend.disfraces.aplicacion.CambiarEstadoDisfraz;
 import com.costumi.backend.disfraces.aplicacion.ConsultarDisfraces;
 import com.costumi.backend.disfraces.aplicacion.ConsultarDisponibilidadDeDisfraz;
 import com.costumi.backend.disfraces.aplicacion.CrearDisfraz;
 import com.costumi.backend.disfraces.aplicacion.CrearDisfrazComando;
+import com.costumi.backend.disfraces.aplicacion.EditarDisfraz;
+import com.costumi.backend.disfraces.aplicacion.EditarDisfrazComando;
 import com.costumi.backend.disfraces.aplicacion.PoolComando;
 import com.costumi.backend.disfraces.aplicacion.RentarDisfraz;
 import com.costumi.backend.disfraces.aplicacion.RentarDisfrazComando;
@@ -19,6 +22,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -40,16 +44,21 @@ import java.util.UUID;
 class DisfrazController {
 
 	private final CrearDisfraz crearDisfraz;
+	private final EditarDisfraz editarDisfraz;
+	private final CambiarEstadoDisfraz cambiarEstadoDisfraz;
 	private final ConsultarDisfraces consultarDisfraces;
 	private final ConsultarDisponibilidadDeDisfraz consultarDisponibilidad;
 	private final RentarDisfraz rentarDisfraz;
 	private final ContextoDeTenant tenant;
 	private final ResolucionDeClientes resolucionDeClientes;
 
-	DisfrazController(CrearDisfraz crearDisfraz, ConsultarDisfraces consultarDisfraces,
+	DisfrazController(CrearDisfraz crearDisfraz, EditarDisfraz editarDisfraz,
+			CambiarEstadoDisfraz cambiarEstadoDisfraz, ConsultarDisfraces consultarDisfraces,
 			ConsultarDisponibilidadDeDisfraz consultarDisponibilidad, RentarDisfraz rentarDisfraz,
 			ContextoDeTenant tenant, ResolucionDeClientes resolucionDeClientes) {
 		this.crearDisfraz = crearDisfraz;
+		this.editarDisfraz = editarDisfraz;
+		this.cambiarEstadoDisfraz = cambiarEstadoDisfraz;
 		this.consultarDisfraces = consultarDisfraces;
 		this.consultarDisponibilidad = consultarDisponibilidad;
 		this.rentarDisfraz = rentarDisfraz;
@@ -62,10 +71,30 @@ class DisfrazController {
 			UriComponentsBuilder uriBuilder) {
 		UUID empresaId = tenant.empresaIdRequerida();
 		List<SlotComando> slots = request.slots().stream().map(DisfrazController::aSlotComando).toList();
-		Disfraz disfraz = crearDisfraz.ejecutar(new CrearDisfrazComando(
-				empresaId, request.nombre(), request.modo(), request.prendaFijaId(), slots));
+		Disfraz disfraz = crearDisfraz.ejecutar(new CrearDisfrazComando(empresaId, request.nombre(), slots));
 		URI location = uriBuilder.path("/api/v1/disfraces/{id}").buildAndExpand(disfraz.id()).toUri();
 		return ResponseEntity.created(location).body(DisfrazResponse.desde(disfraz));
+	}
+
+	/** Edita un disfraz: redefine nombre + slots (RF-2.3). */
+	@PutMapping("/{disfrazId}")
+	DisfrazResponse editar(@PathVariable UUID disfrazId, @Valid @RequestBody CrearDisfrazRequest request) {
+		UUID empresaId = tenant.empresaIdRequerida();
+		List<SlotComando> slots = request.slots().stream().map(DisfrazController::aSlotComando).toList();
+		Disfraz disfraz = editarDisfraz.ejecutar(new EditarDisfrazComando(empresaId, disfrazId, request.nombre(), slots));
+		return DisfrazResponse.desde(disfraz);
+	}
+
+	/** Archiva un disfraz: lo retira de la vitrina y del alta de rentas, sin borrarlo. */
+	@PostMapping("/{disfrazId}/archivar")
+	DisfrazResponse archivar(@PathVariable UUID disfrazId) {
+		return DisfrazResponse.desde(cambiarEstadoDisfraz.archivar(tenant.empresaIdRequerida(), disfrazId));
+	}
+
+	/** Reactiva un disfraz archivado. */
+	@PostMapping("/{disfrazId}/activar")
+	DisfrazResponse activar(@PathVariable UUID disfrazId) {
+		return DisfrazResponse.desde(cambiarEstadoDisfraz.activar(tenant.empresaIdRequerida(), disfrazId));
 	}
 
 	@GetMapping
@@ -135,7 +164,6 @@ class DisfrazController {
 					etiquetas.put(e.tipoEtiquetaId(), new LinkedHashSet<>(e.valores())));
 			pool = new PoolComando(s.pool().categoriaId(), etiquetas);
 		}
-		return new SlotComando(s.orden(), s.nombre(), s.ejeTalla(), s.tallaFija(), s.ejePrenda(), s.prendaFijaId(),
-				pool, s.opcional());
+		return new SlotComando(s.orden(), s.nombre(), s.ejePrenda(), s.prendaFijaId(), pool, s.opcional());
 	}
 }

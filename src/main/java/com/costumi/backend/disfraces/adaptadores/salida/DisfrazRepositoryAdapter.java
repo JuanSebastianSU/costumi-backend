@@ -29,8 +29,7 @@ class DisfrazRepositoryAdapter implements DisfrazRepository {
 
 	@Override
 	public Disfraz guardar(Disfraz disfraz) {
-		cabeceras.save(new DisfrazJpaEntity(disfraz.id(), disfraz.empresaId(), disfraz.nombre(), disfraz.modo(),
-				disfraz.prendaFijaId()));
+		cabeceras.save(new DisfrazJpaEntity(disfraz.id(), disfraz.empresaId(), disfraz.nombre(), disfraz.activo()));
 		slots.deleteByDisfrazId(disfraz.id());
 		for (Slot slot : disfraz.slots()) {
 			slots.save(aEntidad(disfraz.id(), slot));
@@ -55,16 +54,16 @@ class DisfrazRepositoryAdapter implements DisfrazRepository {
 			slot.pool().etiquetasPermitidas().forEach((tipo, valores) ->
 					valores.forEach(valor -> etiquetas.add(new EtiquetaDeSlotEmbeddable(tipo, valor))));
 		}
-		return new DisfrazSlotJpaEntity(UUID.randomUUID(), disfrazId, slot.orden(), slot.nombre(), slot.ejeTalla(),
-				slot.tallaFija(), slot.ejePrenda(), slot.prendaFijaId(), categoriaId, slot.opcional(), etiquetas);
+		return new DisfrazSlotJpaEntity(UUID.randomUUID(), disfrazId, slot.orden(), slot.nombre(),
+				slot.ejePrenda(), slot.prendaFijaId(), categoriaId, slot.opcional(), etiquetas);
 	}
 
 	private Disfraz aDominio(DisfrazJpaEntity cabecera) {
 		List<Slot> slotsDominio = slots.findByDisfrazIdOrderByOrden(cabecera.getId()).stream()
 				.map(DisfrazRepositoryAdapter::aSlotDominio)
 				.toList();
-		return Disfraz.rehidratar(cabecera.getId(), cabecera.getEmpresaId(), cabecera.getNombre(), cabecera.getModo(),
-				cabecera.getPrendaFijaId(), slotsDominio);
+		return Disfraz.rehidratar(cabecera.getId(), cabecera.getEmpresaId(), cabecera.getNombre(),
+				slotsDominio, cabecera.isActivo());
 	}
 
 	private static Slot aSlotDominio(DisfrazSlotJpaEntity e) {
@@ -75,7 +74,7 @@ class DisfrazRepositoryAdapter implements DisfrazRepository {
 					Collectors.mapping(EtiquetaDeSlotEmbeddable::getValorEtiquetaId, Collectors.toCollection(LinkedHashSet::new))));
 			pool = PoolDeSlot.de(e.getCategoriaId(), etiquetas);
 		}
-		return Slot.rehidratar(e.getOrden(), e.getNombre(), e.getEjeTalla(), e.getTallaFija(), e.getEjePrenda(),
-				e.getPrendaFijaId(), pool, e.isOpcional());
+		return Slot.rehidratar(e.getOrden(), e.getNombre(), e.getEjePrenda(), e.getPrendaFijaId(), pool,
+				e.isOpcional());
 	}
 }

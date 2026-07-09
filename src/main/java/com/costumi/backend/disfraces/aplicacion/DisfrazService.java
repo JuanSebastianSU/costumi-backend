@@ -22,7 +22,8 @@ import java.util.UUID;
 
 /** Casos de uso de Disfraces (Capa 3), acotados a la empresa (tenant). */
 @Service
-class DisfrazService implements CrearDisfraz, ConsultarDisfraces, ConsultarDisponibilidadDeDisfraz, RentarDisfraz {
+class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfraz, ConsultarDisfraces,
+		ConsultarDisponibilidadDeDisfraz, RentarDisfraz {
 
 	private final DisfrazRepository disfraces;
 	private final ConsultaDeInventario inventario;
@@ -40,23 +41,39 @@ class DisfrazService implements CrearDisfraz, ConsultarDisfraces, ConsultarDispo
 	@Override
 	@Transactional
 	public Disfraz ejecutar(CrearDisfrazComando comando) {
-		validarReferenciasDelTenant(comando);
-		Disfraz disfraz = switch (comando.modo()) {
-			case UNIDAD_FIJA -> Disfraz.unidadFija(comando.empresaId(), comando.nombre(), comando.prendaFijaId());
-			case POR_PARTES -> Disfraz.porPartes(comando.empresaId(), comando.nombre(), aSlots(comando.slots()));
-		};
+		comando.slots().forEach(slot -> validarSlotDelTenant(comando.empresaId(), slot));
+		Disfraz disfraz = Disfraz.crear(comando.empresaId(), comando.nombre(), aSlots(comando.slots()));
+		return disfraces.guardar(disfraz);
+	}
+
+	@Override
+	@Transactional
+	public Disfraz ejecutar(EditarDisfrazComando comando) {
+		Disfraz disfraz = disfraces.buscarPorId(comando.disfrazId())
+				.filter(d -> d.empresaId().equals(comando.empresaId()))
+				.orElseThrow(() -> new DisfrazNoEncontrado(comando.disfrazId()));
+		comando.slots().forEach(slot -> validarSlotDelTenant(comando.empresaId(), slot));
+		disfraz.redefinir(comando.nombre(), aSlots(comando.slots()));
+		return disfraces.guardar(disfraz);
+	}
+
+	@Override
+	@Transactional
+	public Disfraz archivar(UUID empresaId, UUID disfrazId) {
+		Disfraz disfraz = exigirDelTenant(empresaId, disfrazId);
+		disfraz.archivar();
+		return disfraces.guardar(disfraz);
+	}
+
+	@Override
+	@Transactional
+	public Disfraz activar(UUID empresaId, UUID disfrazId) {
+		Disfraz disfraz = exigirDelTenant(empresaId, disfrazId);
+		disfraz.activar();
 		return disfraces.guardar(disfraz);
 	}
 
 	/** §5.4: toda referencia por id (prenda fija, categoría y valores del pool) debe ser del tenant. */
-	private void validarReferenciasDelTenant(CrearDisfrazComando comando) {
-		UUID empresaId = comando.empresaId();
-		switch (comando.modo()) {
-			case UNIDAD_FIJA -> exigirPrendaDelTenant(empresaId, comando.prendaFijaId());
-			case POR_PARTES -> comando.slots().forEach(slot -> validarSlotDelTenant(empresaId, slot));
-		}
-	}
-
 	private void validarSlotDelTenant(UUID empresaId, SlotComando slot) {
 		switch (slot.ejePrenda()) {
 			case FIJA -> exigirPrendaDelTenant(empresaId, slot.prendaFijaId());
@@ -81,6 +98,12 @@ class DisfrazService implements CrearDisfraz, ConsultarDisfraces, ConsultarDispo
 		}
 	}
 
+	private Disfraz exigirDelTenant(UUID empresaId, UUID disfrazId) {
+		return disfraces.buscarPorId(disfrazId)
+				.filter(d -> d.empresaId().equals(empresaId))
+				.orElseThrow(() -> new DisfrazNoEncontrado(disfrazId));
+	}
+
 	@Override
 	@Transactional(readOnly = true)
 	public List<Disfraz> deEmpresa(UUID empresaId) {
@@ -89,10 +112,14 @@ class DisfrazService implements CrearDisfraz, ConsultarDisfraces, ConsultarDispo
 
 	@Override
 	@Transactional(readOnly = true)
+	public List<Disfraz> activosDeEmpresa(UUID empresaId) {
+		return disfraces.listarPorEmpresa(empresaId).stream().filter(Disfraz::activo).toList();
+	}
+
+	@Override
+	@Transactional(readOnly = true)
 	public boolean estaDisponible(UUID empresaId, UUID disfrazId) {
-		Disfraz disfraz = disfraces.buscarPorId(disfrazId)
-				.filter(d -> d.empresaId().equals(empresaId))
-				.orElseThrow(() -> new DisfrazNoEncontrado(disfrazId));
+		Disfraz disfraz = exigirDelTenant(empresaId, disfrazId);
 		return disfraz.estaDisponible(consultaDeStockPara(empresaId));
 	}
 
@@ -100,9 +127,10 @@ class DisfrazService implements CrearDisfraz, ConsultarDisfraces, ConsultarDispo
 	@Transactional
 	public UUID ejecutar(RentarDisfrazComando comando) {
 		UUID empresaId = comando.empresaId();
-		Disfraz disfraz = disfraces.buscarPorId(comando.disfrazId())
-				.filter(d -> d.empresaId().equals(empresaId))
-				.orElseThrow(() -> new DisfrazNoEncontrado(comando.disfrazId()));
+		Disfraz disfraz = exigirDelTenant(empresaId, comando.disfrazId());
+		if (!disfraz.activo()) {
+			throw new IllegalArgumentException("El disfraz está archivado y no se puede rentar");
+		}
 		Map<Integer, UUID> seleccionPorOrden = new HashMap<>();
 		if (comando.selecciones() != null) {
 			for (RentarDisfrazComando.SeleccionDeSlot seleccion : comando.selecciones()) {
@@ -110,18 +138,13 @@ class DisfrazService implements CrearDisfraz, ConsultarDisfraces, ConsultarDispo
 			}
 		}
 		List<RegistroDeRentas.ItemDeRenta> items = new ArrayList<>();
-		switch (disfraz.modo()) {
-			case UNIDAD_FIJA -> items.add(itemDeRenta(empresaId, disfraz.prendaFijaId()));
-			case POR_PARTES -> {
-				for (Slot slot : disfraz.slots()) {
-					boolean elegido = seleccionPorOrden.containsKey(slot.orden());
-					// Los slots opcionales solo entran si el cliente los eligió; los obligatorios siempre.
-					if (!slot.esObligatorio() && !elegido) {
-						continue;
-					}
-					items.add(itemDeRenta(empresaId, resolverPrenda(empresaId, slot, seleccionPorOrden.get(slot.orden()))));
-				}
+		for (Slot slot : disfraz.slots()) {
+			boolean elegido = seleccionPorOrden.containsKey(slot.orden());
+			// Los slots opcionales solo entran si el cliente los eligió; los obligatorios siempre.
+			if (!slot.esObligatorio() && !elegido) {
+				continue;
 			}
+			items.add(itemDeRenta(empresaId, resolverPrenda(empresaId, slot, seleccionPorOrden.get(slot.orden()))));
 		}
 		if (items.isEmpty()) {
 			throw new IllegalArgumentException("El disfraz no resolvió ningún artículo para rentar");
@@ -173,13 +196,13 @@ class DisfrazService implements CrearDisfraz, ConsultarDisfraces, ConsultarDispo
 
 	private static Slot aSlot(SlotComando c) {
 		if (c.ejePrenda() == EjeDePrenda.FIJA) {
-			return Slot.conPrendaFija(c.orden(), c.nombre(), c.ejeTalla(), c.tallaFija(), c.prendaFijaId(), c.opcional());
+			return Slot.conPrendaFija(c.orden(), c.nombre(), c.prendaFijaId(), c.opcional());
 		}
 		PoolComando pool = c.pool();
 		if (pool == null) {
 			throw new IllegalArgumentException("Un slot personalizable requiere pool");
 		}
-		return Slot.personalizable(c.orden(), c.nombre(), c.ejeTalla(), c.tallaFija(),
+		return Slot.personalizable(c.orden(), c.nombre(),
 				PoolDeSlot.de(pool.categoriaId(), pool.etiquetasPermitidas()), c.opcional());
 	}
 }
