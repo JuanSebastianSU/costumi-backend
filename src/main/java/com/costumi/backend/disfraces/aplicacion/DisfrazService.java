@@ -12,10 +12,13 @@ import com.costumi.backend.rentas.RegistroDeRentas;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.costumi.backend.inventario.ConsultaDeInventario;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -24,7 +27,7 @@ import java.util.UUID;
 /** Casos de uso de Disfraces (Capa 3), acotados a la empresa (tenant). */
 @Service
 class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfraz, ConsultarDisfraces,
-		ConsultarDisponibilidadDeDisfraz, RentarDisfraz {
+		ConsultarDisponibilidadDeDisfraz, ConsultarOpcionesDeSlot, RentarDisfraz {
 
 	private final DisfrazRepository disfraces;
 	private final ConsultaDeInventario inventario;
@@ -123,6 +126,32 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 	public boolean estaDisponible(UUID empresaId, UUID disfrazId) {
 		Disfraz disfraz = exigirDelTenant(empresaId, disfrazId);
 		return disfraz.estaDisponible(consultaDeStockPara(empresaId));
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public OpcionesDeSlot opciones(UUID empresaId, UUID disfrazId, int orden, List<UUID> valoresFiltro) {
+		Disfraz disfraz = exigirDelTenant(empresaId, disfrazId);
+		if (!disfraz.activo()) {
+			throw new DisfrazNoEncontrado(disfrazId);
+		}
+		Slot slot = disfraz.slots().stream().filter(s -> s.orden() == orden).findFirst()
+				.orElseThrow(() -> new IllegalArgumentException("El slot " + orden + " no existe en el disfraz"));
+		List<ConsultaDeInventario.OpcionDePool> opciones;
+		if (slot.ejePrenda() == EjeDePrenda.FIJA) {
+			opciones = inventario.opcionDePrenda(empresaId, slot.prendaFijaId()).map(List::of).orElseGet(List::of);
+		} else {
+			opciones = inventario.opcionesDelPool(empresaId, slot.pool().categoriaId(),
+					slot.pool().etiquetasPermitidas());
+		}
+		// Filtro adicional de la ruleta: la opción debe incluir TODOS los valores de etiqueta elegidos.
+		if (valoresFiltro != null && !valoresFiltro.isEmpty()) {
+			Set<UUID> requeridos = new HashSet<>(valoresFiltro);
+			opciones = opciones.stream()
+					.filter(opcion -> opcion.etiquetas().values().containsAll(requeridos))
+					.toList();
+		}
+		return new OpcionesDeSlot(slot.orden(), slot.nombre(), slot.ejePrenda(), slot.opcional(), opciones);
 	}
 
 	@Override

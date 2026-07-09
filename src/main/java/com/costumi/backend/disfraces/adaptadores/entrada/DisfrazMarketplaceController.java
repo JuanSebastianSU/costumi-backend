@@ -2,11 +2,13 @@ package com.costumi.backend.disfraces.adaptadores.entrada;
 
 import com.costumi.backend.disfraces.aplicacion.ConsultarDisfraces;
 import com.costumi.backend.disfraces.aplicacion.ConsultarDisponibilidadDeDisfraz;
+import com.costumi.backend.disfraces.aplicacion.ConsultarOpcionesDeSlot;
 import com.costumi.backend.disfraces.dominio.Disfraz;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -27,11 +29,14 @@ class DisfrazMarketplaceController {
 
 	private final ConsultarDisfraces consultarDisfraces;
 	private final ConsultarDisponibilidadDeDisfraz consultarDisponibilidad;
+	private final ConsultarOpcionesDeSlot consultarOpcionesDeSlot;
 
 	DisfrazMarketplaceController(ConsultarDisfraces consultarDisfraces,
-			ConsultarDisponibilidadDeDisfraz consultarDisponibilidad) {
+			ConsultarDisponibilidadDeDisfraz consultarDisponibilidad,
+			ConsultarOpcionesDeSlot consultarOpcionesDeSlot) {
 		this.consultarDisfraces = consultarDisfraces;
 		this.consultarDisponibilidad = consultarDisponibilidad;
+		this.consultarOpcionesDeSlot = consultarOpcionesDeSlot;
 	}
 
 	/** Lista los disfraces activos de la tienda (con su estructura de slots para la ruleta). */
@@ -49,6 +54,16 @@ class DisfrazMarketplaceController {
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Disfraz no encontrado"));
 		boolean disponible = consultarDisponibilidad.estaDisponible(empresaId, disfrazId);
 		return new DisfrazDetalleResponse(DisfrazResponse.desde(disfraz), disponible);
+	}
+
+	/**
+	 * "Ruleta" de un slot: las opciones concretas disponibles que el cliente puede elegir (con su stock y
+	 * precio). {@code valores} (opcional, repetible) acota por valores de etiqueta (talla/color/modelo).
+	 */
+	@GetMapping("/{disfrazId}/slots/{orden}/opciones")
+	SlotOpcionesResponse opcionesDeSlot(@PathVariable UUID empresaId, @PathVariable UUID disfrazId,
+			@PathVariable int orden, @RequestParam(name = "valores", required = false) List<UUID> valores) {
+		return SlotOpcionesResponse.desde(consultarOpcionesDeSlot.opciones(empresaId, disfrazId, orden, valores));
 	}
 
 	/** Detalle público: la estructura del disfraz + si está disponible ahora. */

@@ -7,7 +7,10 @@ import com.costumi.backend.inventario.dominio.PrendaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -84,6 +87,37 @@ class ConsultaDeInventarioService implements ConsultaDeInventario {
 		return prendas.buscarPorId(prendaId)
 				.filter(prenda -> prenda.empresaId().equals(empresaId))
 				.map(com.costumi.backend.inventario.dominio.Prenda::precioRenta);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<OpcionDePool> opcionesDelPool(UUID empresaId, UUID categoriaId,
+			Map<UUID, Set<UUID>> etiquetasPermitidas) {
+		return prendas.listarPorEmpresa(empresaId).stream()
+				.filter(prenda -> !prenda.archivada())
+				.filter(prenda -> prenda.categoriaId().equals(categoriaId))
+				.filter(prenda -> cumpleEtiquetas(prenda, etiquetasPermitidas))
+				.map(this::aOpcion)
+				.filter(opcion -> opcion.unidadesDisponibles() > 0)
+				.sorted(Comparator.comparing(OpcionDePool::nombre, String.CASE_INSENSITIVE_ORDER))
+				.toList();
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public Optional<OpcionDePool> opcionDePrenda(UUID empresaId, UUID prendaId) {
+		return prendas.buscarPorId(prendaId)
+				.filter(prenda -> prenda.empresaId().equals(empresaId))
+				.map(this::aOpcion);
+	}
+
+	private OpcionDePool aOpcion(Prenda prenda) {
+		return new OpcionDePool(prenda.id(), prenda.nombre(), prenda.precioRenta(),
+				unidadesDisponiblesTotales(prenda.id()), Map.copyOf(prenda.etiquetas().valores()));
+	}
+
+	private int unidadesDisponiblesTotales(UUID prendaId) {
+		return grupos.listarPorPrenda(prendaId).stream().mapToInt(grupo -> grupo.disponibles()).sum();
 	}
 
 	private boolean tieneStock(UUID prendaId) {
