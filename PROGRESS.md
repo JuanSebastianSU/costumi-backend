@@ -5,6 +5,42 @@
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
 ## Fase actual
+**Fase 9 — Flujo del CLIENTE del marketplace + expansión disfraz/precios/multas/reembolsos (2026-07-08).** Con el backend
+desplegado en **Railway** (`just-upliftment-production-cb1f.up.railway.app`, Dockerfile + `server.port=${PORT}`, SuperAdmin
+por env), se detectó que el **flujo de compra del CLIENTE** (rol sin `empresa_id`) estaba roto (403/500/FK) y se completó;
+luego se expandió el modelo de disfraz y todo el ciclo de precios/multas/devoluciones/reembolsos según nuevos
+requerimientos de Juan. Todo por **rebanadas pequeñas, cada una con su PR + tests + ArchUnit + Modulith en verde**.
+
+- **Flujo del cliente del marketplace — HECHO y MERGEADO (PRs #46–#49, migración V41):** el rol **CLIENTE** (token sin
+  `empresa_id`) ya puede comprar/rentar en cualquier tienda. (a) **Carrito + checkout** venta y renta para CLIENTE:
+  `clientes.ResolucionDeClientes.fichaDeUsuario` crea/enlaza automáticamente la **ficha de cliente por tienda** (columna
+  `cliente.usuario_id`, **V41**, índice único empresa×usuario), resolviendo la FK `carrito.cliente_id`; `CarritoController`
+  y `DisfrazController` resuelven empresa/cliente **por rol** (staff = del token; CLIENTE = empresaId del request + su
+  propia ficha). SecurityConfig habilita CLIENTE en `/carritos/items`,`/checkout`,`/checkout-renta` y en rentar disfraz.
+  (b) **Rentar disfraz personalizable** + disponibilidad para CLIENTE. (c) **Vitrina pública** `GET /marketplace/empresas/
+  {id}/disfraces` (+ `/{disfrazId}` con estructura completa). (d) **"Mis Pedidos"** `GET /clientes/me/historial` (une las
+  fichas del usuario en todas las tiendas). Fue un hueco real: antes solo se había probado como staff.
+
+- **Expansión disfraz/precios/multas/reembolsos — 8 rebanadas, migraciones V42–V48, 332 tests verdes.** Rebanadas 1–4
+  MERGEADAS (PRs #50–#53); 5–8 listas para aplicar (parches `slice-N-*.patch`, mismo flujo per-PR):
+  1. **Disfraz siempre por-partes (V42):** se elimina el modo `UNIDAD_FIJA` (una pieza = 1 slot fijo); la **talla deja de
+     ser eje del slot** (se modela como etiqueta del pool); `activo`/**editar** (`PUT /disfraces/{id}`) + **archivar/activar**.
+  2. **Precio general dual del disfraz (V43):** `precioRentaGeneral` (por día) que **anula la suma por prendas**; al rentar
+     se reparte proporcional entre líneas para que el total iguale el precio del conjunto.
+  3. **Devolución — piezas faltantes (V44):** una pieza que no llegó o `PERDIDA` **no cierra la renta** hasta devolverla o
+     marcarla **perdida + cobrada** (`perdidaCobrada`); solo piezas resueltas consumen unidad, mueven inventario y cierran.
+  4. **Ruleta (sin migración):** `GET /marketplace/empresas/{e}/disfraces/{d}/slots/{orden}/opciones` (público) lista las
+     prendas concretas del pool con **stock, precio y etiquetas**, filtrable por `valores`. Puerto `ConsultaDeInventario.
+     opcionesDelPool`/`opcionDePrenda`.
+  5. **Valor de multa por prenda (V45):** `Prenda.valorReposicion` (pérdida) y `valorDano` — base para sugerir el cobro.
+  6. **Política de retraso fija/acumulativa (V46):** `configuracion.modoRecargoRetraso` (ACUMULATIVA por defecto | FIJA);
+     el puerto `ConsultaDeConfiguracion.recargoPorRetraso(empresaId, dias)` encapsula el cálculo.
+  7. **Reembolsos por local (V47):** `reembolsosActivos` + `ventanaReembolsoDias` (0 = sin límite); `Venta.creadaEn` para
+     la ventana; `POST /ventas/{id}/devolver` **gatea** con la política (→ 409 si no aplica).
+  8. **Reembolso PARCIAL de venta (V48):** `LineaDeVenta.cantidadDevuelta`; `Venta.devolver(cantidades)` (vacío = todo lo
+     pendiente) → estado **`PARCIALMENTE_DEVUELTA`**/`DEVUELTA`, reingresa solo lo devuelto; el endpoint acepta cuerpo
+     opcional `{lineas:[{prendaId,cantidad}]}`; respuesta con `cantidadDevuelta` por línea y `montoReembolsado` proporcional.
+
 **Fase 8 — Cierre TOTAL del backend (work order de Juan, 2026-07-07).** Se cierra todo lo pendiente: Grupo A (infra
 enchufable, gateada por credencial → `docs/INFRA_PENDIENTE.md`), Grupo B (lógica diferida: renta multi-artículo, checkout
 de renta, disfraz→renta, devolución parcial, stock por sucursal), deuda menor, y barrido final RF-0…18. Rebanada por
@@ -208,21 +244,21 @@ Estado: ✅ hecho y **mergeado en `main`** · 🔵 en **PR abierta** (sin mergea
 | Andamiaje + anti-erosión (ArchUnit/Modulith/CI) | — | ✅ | PR #1 |
 | Identidad y tenant (Empresa/Sucursal/Usuario/auth) | Hexagonal | ✅ | Auth JWT + rol/tenant + bootstrap + §5.4 forzado + refresh + alta empleados (RF-8) + **GET /sucursales (#20)** + **marketplace: rol CLIENTE + auto-registro (#22), solicitud de tienda (#23), aprobar→promueve a Dueño+Casa Matriz (#24)** + **recuperación de contraseña (RF-1.1, #26)** + **permisos granulares por empleado (RF-1.5): interceptor de deny-override sobre la plantilla del rol + editor `GET/PUT /empleados/{id}/permisos` (#11)** + **usuario↔N sucursales (RF-1.2/8.1): `PUT/GET /empleados/{id}/sucursales` (#11)** + **registro de actividad de ventas del empleado (RF-8.2): `GET /empleados/{id}/actividad` (#11)**. |
 | Catálogo y taxonomía (etiquetas, categorías) | Hexagonal | ✅ | Categoría, TipoEtiqueta/ValorEtiqueta, tipo↔categoría, renombrar, siembra al aprobar |
-| Inventario y disponibilidad | Hexagonal | ✅ | Prenda, GrupoDeStock, variantes, stock-bajo + ajuste con motivo auditado (RF-10) + **fotos de prenda en S3 (RF-2.9, #28 — código completo, gateado)** + **stock por sucursal (RF-18.2): `GrupoDeStock.sucursalId` (migración V33 con backfill), disponibilidad/baja/retorno acotados a la sucursal, misma variante en 2 sucursales = grupos aparte, y transferencia entre sucursales `POST /grupos-stock/{id}/transferir` (RF-10.3) — Rebanada 6, Grupo B** |
-| Disfraces (capa 3) | Hexagonal | ✅ | Disfraz+Slot+pool + disponibilidad derivada + **rentar disfraz (RF-2.3/3.1): resuelve slots (fijo→su prenda; personalizable→prenda elegida validada contra el pool con `ConsultaDeInventario.prendaEnPool`) → renta multi-artículo vía `RegistroDeRentas`, `POST /disfraces/{id}/rentar` — Rebanada 9** |
+| Inventario y disponibilidad | Hexagonal | ✅ | Prenda, GrupoDeStock, variantes, stock-bajo + ajuste con motivo auditado (RF-10) + **fotos de prenda en S3 (RF-2.9, #28 — código completo, gateado)** + **stock por sucursal (RF-18.2): `GrupoDeStock.sucursalId` (migración V33 con backfill), disponibilidad/baja/retorno acotados a la sucursal, misma variante en 2 sucursales = grupos aparte, y transferencia entre sucursales `POST /grupos-stock/{id}/transferir` (RF-10.3) — Rebanada 6, Grupo B** + **Fase 9: valores de multa por prenda (`valorReposicion`/`valorDano`, V45) + `ConsultaDeInventario.opcionesDelPool`/`opcionDePrenda` para la ruleta** |
+| Disfraces (capa 3) | Hexagonal | ✅ | Disfraz+Slot+pool + disponibilidad derivada + **rentar disfraz (RF-2.3/3.1): resuelve slots (fijo→su prenda; personalizable→prenda elegida validada contra el pool con `ConsultaDeInventario.prendaEnPool`) → renta multi-artículo vía `RegistroDeRentas`, `POST /disfraces/{id}/rentar` — Rebanada 9** + **expansión Fase 9: disfraz siempre por-partes (fuera `UNIDAD_FIJA`; talla = etiqueta del pool) + editar/archivar (`PUT`/`archivar`/`activar`, V42) + precio general dual `precioRentaGeneral` (V43) + rentar/vitrina para el CLIENTE del marketplace + ruleta `GET …/slots/{orden}/opciones`** |
 | Pedidos / carrito | Hexagonal | ✅ | Carrito segmentado + checkout→venta + **checkout→renta con fechas por línea (RF-16.4/18.6-7): línea de carrito con periodo (V35), agrupa por (retiro,devolución) → una renta multi-artículo por periodo vía `RegistroDeRentas`, `POST /carritos/checkout-renta` — Rebanada 8**. |
-| Rentas | Hexagonal | 🟨 | Crear + estados + disponibilidad + advisory lock + idempotencia + extensión/renovación (RF-3.6) + contrato PDF (#27) + **multi-artículo (RF-3.1/16.2): renta con N líneas (`renta_linea`, V34), importe = Σ precio×cantidad×días, disponibilidad por línea, request compatible (1 artículo o `lineas[]`) — Rebanada 7**. ⬜ Falta armado por partes (Rebanada 9) y devolución parcial (Rebanada 10) |
-| Ventas / POS | Hexagonal | ✅ | Venta + descuento + total + baja de stock atómica (anti-sobreventa) + **devolución de venta (RF-4.5, fix post-barrido): `POST /ventas/{id}/devolver` marca DEVUELTA y reingresa el stock; el reintegro del dinero va por un pago REEMBOLSO** |
+| Rentas | Hexagonal | ✅ | Crear + estados + disponibilidad + advisory lock + idempotencia + extensión/renovación (RF-3.6) + contrato PDF (#27) + **multi-artículo (RF-3.1/16.2): renta con N líneas (`renta_linea`, V34), importe = Σ precio×cantidad×días, disponibilidad por línea, request compatible (1 artículo o `lineas[]`) — Rebanada 7** + armado por partes (Rebanada 9) + devolución parcial (Rebanada 10) |
+| Ventas / POS | Hexagonal | ✅ | Venta + descuento + total + baja de stock atómica (anti-sobreventa) + **devolución de venta (RF-4.5): `POST /ventas/{id}/devolver` reingresa stock; el reintegro va por un pago REEMBOLSO** + **política de reembolso por local (Fase 9): `reembolsosActivos` + ventana en días gatean la devolución (→409, V47) + reembolso PARCIAL: devolver unidades por prenda → `PARCIALMENTE_DEVUELTA`, `montoReembolsado` proporcional (V48)** |
 | Pagos, caja y depósitos | Hexagonal | ✅ | Reembolsos/saldo/idempotencia + mixto+vuelto, depósito-retención, comprobante (+ PDF #27), impuesto configurable + **pago en línea / pasarela MercadoPago (RF-6.11, #31 — código completo, gateado): /pagos/intento + /pagos/webhook idempotente** |
 | Caja / turno | Hexagonal | ✅ | Turno + movimientos + corte y cuadre por método |
-| Devoluciones y multas | Hexagonal | ✅ | Checklist + multa (respeta switch) + inventario + evento + **devolución parcial (RF-5.5/5.6): cada pieza se liga a su prenda/artículo (V36), daño por artículo, y la renta solo pasa a DEVUELTA cuando se devolvieron todas las unidades (parcial ⇒ sigue ACTIVA); valida no exceder lo rentado — Rebanada 10** |
+| Devoluciones y multas | Hexagonal | ✅ | Checklist + multa (respeta switch) + inventario + evento + **devolución parcial (RF-5.5/5.6): cada pieza se liga a su prenda/artículo (V36), daño por artículo, y la renta solo pasa a DEVUELTA cuando se devolvieron todas las unidades (parcial ⇒ sigue ACTIVA); valida no exceder lo rentado — Rebanada 10** + **Fase 9: pieza faltante/perdida no cierra la renta hasta devolverla o marcarla perdida+cobrada (`perdidaCobrada`, V44) + valor de multa por prenda (`valorReposicion`/`valorDano`, V45) + recargo por retraso fija/acumulativa (V46)** |
 | Clientes | Simple | ✅ | Ficha + búsqueda + lista negra + historial (7.2) + filtro de pendientes (11.5/11.6) + **device_token para push (RF-18.11, #29)**. Completo. |
 | Empleados | Simple | ✅ | Alta de empleado por la empresa (RF-8) — correo único, sin SUPERADMIN, login. ⬜ Falta usuario↔N sucursales (RF-1.2), turno/actividad (RF-8.2) — Grupo C |
 | Reportes | Simple (lectura) | ✅ | Ingresos, ganancia, rentas vencidas, depósitos activos, ingresos por método, rankings, ventas por empleado, desglose por etiqueta, tablero de inventario (9.3)+resumen, export CSV **y PDF (RF-9.2, #27)** + comprobante/contrato PDF (RF-3.4). **Completo.** |
 | Notificaciones (WhatsApp/FCM) | Simple (adaptador) | ✅ | Envío por canal + estados + disparador de multas + recordatorio de vencidas (RF-11.1) + **canales WhatsApp/FCM reales gateados + router + device_token (RF-11.4/18.11, #29 — código completo, pendiente credencial)** |
-| Configuración de empresa | Simple | ✅ | Switches que controlan de verdad (multas, multi-sucursal, conteo-stock) + reglas por defecto (moneda/recargo, 12.2) + respaldo/restauración (12.3) — mergeado (PR #15). Falta pagoEnLinea (infra) |
+| Configuración de empresa | Simple | ✅ | Switches que controlan de verdad (multas, multi-sucursal, conteo-stock) + reglas por defecto (moneda/recargo, 12.2) + respaldo/restauración (12.3) — mergeado (PR #15). Falta pagoEnLinea (infra) + **Fase 9: política de recargo por retraso `modoRecargoRetraso` FIJA/ACUMULATIVA (V46) + política de reembolso `reembolsosActivos`/`ventanaReembolsoDias` (V47)** |
 | Auditoría | Simple | ✅ | Registro por domain events. Auditadas: venta, pago, caja, stock ajustado, devolución, y **todo el ciclo de empresa del SuperAdmin — aprobar + suspender/rechazar/reactivar (RF-15.5, fix post-barrido)** |
-| Marketplace (backend) | Simple (lectura) | ✅ | Descubrimiento + búsqueda de empresas ACTIVAS + **catálogo público por tienda (RF-18, #25)** + **checkout de RENTA del cliente por carrito (Rebanada 8)**. |
+| Marketplace (backend) | Simple (lectura) | ✅ | Descubrimiento + búsqueda de empresas ACTIVAS + **catálogo público por tienda (RF-18, #25)** + **checkout de RENTA del cliente por carrito (Rebanada 8)** + **Fase 9: flujo de compra/renta completo del rol CLIENTE (carrito+checkout con ficha auto-enlazada por tienda V41, rentar disfraz, vitrina de disfraces, ruleta de opciones, "Mis Pedidos" `GET /clientes/me/historial`)**. |
 
 ## Decisiones aceptadas
 - **Plan de cierre (2026-07-04, `CIERRE_BACKEND.md` de Juan):** cerrar el backend en **3 tandas** (T1=P0+P1,
@@ -231,7 +267,16 @@ Estado: ✅ hecho y **mergeado en `main`** · 🔵 en **PR abierta** (sin mergea
   **al final** (tras Tanda 3), no en Tanda 1. El backlog P0–P5 vive en `CIERRE_BACKEND.md`.
 - **Decisión (2026-07-04, aprobada por Juan):** se acepta `reactivar` (SUSPENDIDA → ACTIVA)
   como acción del SuperAdmin aunque no figuraba en RF-15.3; se considera complemento natural
-  de `suspender`. Pendiente reflejarlo en `BACKEND_REQUIREMENTS.md` (RF-15.3).
+  de `suspender`. ✅ Reflejado en `BACKEND_REQUIREMENTS.md` (RF-15.3, 2026-07-08).
+- **Decisión (2026-07-08, aprobada por Juan) — modelo de disfraz/precios/multas/reembolsos:**
+  el disfraz es **siempre por-partes** (fuera "unidad fija"; "una pieza" = 1 slot fijo) y la
+  **talla es una etiqueta** del pool, no un eje; el disfraz admite **editar/archivar** y un
+  **precio general** opcional que anula la suma por prendas; la **prenda** lleva valores de
+  multa (reposición/daño); el **recargo por retraso** es fijo o acumulativo; en la devolución
+  una **pieza faltante/perdida no cierra** hasta devolverla o cobrarla; y la **venta** tiene
+  **política de reembolso por local** (sí/no + ventana) con reembolso **total o parcial**.
+  ✅ Reflejado en `BACKEND_REQUIREMENTS.md` (RF-2.3/2.4/2.10, RF-4.5, RF-5) e implementado
+  (rebanadas 1–8, V42–V48).
 
 ## Decisiones pendientes (resolver antes de tocar su tema)
 - **Pasarela de pago concreta** (cuando se active el pago en línea, RF-6.11) — 🚫 decisión/infra.
@@ -256,6 +301,18 @@ Estado: ✅ hecho y **mergeado en `main`** · 🔵 en **PR abierta** (sin mergea
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-08 (f)** — **Despliegue en Railway + flujo del CLIENTE del marketplace + expansión disfraz/multas/reembolsos.**
+  Backend live en Railway (Dockerfile multi-stage temurin-21, `server.port=${PORT}`, SuperAdmin/demo por env). Se
+  detectó y cerró el **flujo de compra del rol CLIENTE** (antes 403/500/FK, solo probado como staff): carrito+checkout
+  venta/renta con **ficha de cliente auto-enlazada por tienda** (`cliente.usuario_id`, **V41**, `ResolucionDeClientes`),
+  rentar disfraz personalizable, **vitrina pública** de disfraces y **"Mis Pedidos"** (PRs #46–#49). Luego la **expansión
+  disfraz/precios/multas/reembolsos en 8 rebanadas (V42–V48, 332 tests):** (1) disfraz siempre por-partes + editar/archivar
+  + talla como etiqueta; (2) precio general dual del disfraz; (3) devolución: piezas faltantes que bloquean el cierre
+  hasta devolver o perdida+cobrada; (4) ruleta de opciones por slot con stock+filtros; (5) valor de multa por prenda;
+  (6) recargo por retraso fija/acumulativa; (7) política de reembolso por local (sí/no + ventana); (8) reembolso PARCIAL
+  de venta. Rebanadas 1–4 mergeadas (PRs #50–#53); 5–8 entregadas como parches, listas para PR. Cada rebanada validada
+  local con la suite completa + ArchUnit + Modulith. _Decisión de Juan reflejada en `BACKEND_REQUIREMENTS.md`
+  (RF-2.3/2.4/2.10, RF-4.5, RF-5)._
 - **2026-07-06 (e)** — **Cierre final del backend: 6 bloques restantes, todos verdes (rama `feat/cierre-final`).**
   **Notificaciones** recordatorio de vencidas al cliente (RF-11.1); **Renta** extensión/renovación con recálculo de
   importe (RF-3.6); **Inventario** ajuste de stock con motivo auditado por evento `StockAjustado` (RF-10);
