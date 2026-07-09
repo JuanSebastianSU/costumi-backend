@@ -181,4 +181,97 @@ class RegistrarSucursalIntegrationTest {
 						.header("Authorization", "Bearer " + duenoDeOtra))
 				.andExpect(status().isForbidden());
 	}
+
+	@Test
+	void editar_una_sucursal_actualiza_nombre_y_direccion() throws Exception {
+		UUID empresaId = registrarEmpresa("Editar Suc " + UUID.randomUUID());
+		aprobar(empresaId);
+		String dueno = tokenDueno(empresaId);
+		UUID sucursal = crearSucursal(dueno, empresaId, "Centro");
+
+		mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+						.patch("/api/v1/empresas/{empresaId}/sucursales/{id}", empresaId, sucursal)
+						.header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Centro Renovado\",\"direccion\":\"Av. Nueva 99\"}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.nombre").value("Centro Renovado"))
+				.andExpect(jsonPath("$.direccion").value("Av. Nueva 99"));
+	}
+
+	@Test
+	void archivar_una_sucursal_sin_dependencias_y_reactivar() throws Exception {
+		UUID empresaId = registrarEmpresa("Archivar Suc " + UUID.randomUUID());
+		aprobar(empresaId);
+		String dueno = tokenDueno(empresaId);
+		UUID sucursal = crearSucursal(dueno, empresaId, "Centro");
+
+		mvc.perform(post("/api/v1/empresas/{empresaId}/sucursales/{id}/archivar", empresaId, sucursal)
+						.header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.archivada").value(true));
+
+		mvc.perform(post("/api/v1/empresas/{empresaId}/sucursales/{id}/activar", empresaId, sucursal)
+						.header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.archivada").value(false));
+	}
+
+	@Test
+	void no_se_puede_archivar_una_sucursal_con_stock_409() throws Exception {
+		UUID empresaId = registrarEmpresa("Suc Con Stock " + UUID.randomUUID());
+		aprobar(empresaId);
+		String dueno = tokenDueno(empresaId);
+		UUID sucursal = crearSucursal(dueno, empresaId, "Centro");
+
+		// Sembrar stock en esa sucursal (categoría -> prenda -> grupo de stock). Nombre único: el alta de
+		// empresa ya siembra categorías por defecto (evita chocar con el índice único de nombre).
+		UUID categoria = crearCategoria(dueno, "Cat " + UUID.randomUUID());
+		String p = mvc.perform(post("/api/v1/prendas").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"categoriaId\":\"" + categoria + "\",\"nombre\":\"Traje\","
+								+ "\"tipoArticulo\":\"RENTA\",\"precioRenta\":40.00}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		UUID prenda = UUID.fromString(json.readTree(p).get("id").asText());
+		mvc.perform(post("/api/v1/prendas/{id}/grupos-stock", prenda).header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + sucursal + "\",\"combinacion\":[],\"cantidadInicial\":3}"))
+				.andExpect(status().isCreated());
+
+		// Archivar la sucursal con stock: 409 con el conteo.
+		mvc.perform(post("/api/v1/empresas/{empresaId}/sucursales/{id}/archivar", empresaId, sucursal)
+						.header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.unidadesStock").value(3))
+				.andExpect(jsonPath("$.rentasVigentes").value(0));
+	}
+
+	@Test
+	void un_rol_sin_permiso_no_puede_archivar_una_sucursal_403() throws Exception {
+		UUID empresaId = registrarEmpresa("Suc Rol " + UUID.randomUUID());
+		aprobar(empresaId);
+		String dueno = tokenDueno(empresaId);
+		UUID sucursal = crearSucursal(dueno, empresaId, "Centro");
+
+		String mostrador = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresaId, Rol.MOSTRADOR);
+		mvc.perform(post("/api/v1/empresas/{empresaId}/sucursales/{id}/archivar", empresaId, sucursal)
+						.header("Authorization", "Bearer " + mostrador))
+				.andExpect(status().isForbidden());
+	}
+
+	private UUID crearSucursal(String token, UUID empresaId, String nombre) throws Exception {
+		String body = mvc.perform(post("/api/v1/empresas/{empresaId}/sucursales", empresaId)
+						.header("Authorization", "Bearer " + token)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"" + nombre + "\"}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		return UUID.fromString(json.readTree(body).get("id").asText());
+	}
+
+	private UUID crearCategoria(String token, String nombre) throws Exception {
+		String body = mvc.perform(post("/api/v1/categorias").header("Authorization", "Bearer " + token)
+						.contentType(MediaType.APPLICATION_JSON).content("{\"nombre\":\"" + nombre + "\"}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		return UUID.fromString(json.readTree(body).get("id").asText());
+	}
 }

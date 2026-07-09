@@ -45,6 +45,12 @@ class GrupoDeStockRepositoryAdapter implements GrupoDeStockRepository {
 	}
 
 	@Override
+	public List<GrupoDeStock> listarPorSucursal(UUID empresaId, UUID sucursalId) {
+		return jpa.findByEmpresaIdAndSucursalId(empresaId, sucursalId).stream()
+				.map(GrupoDeStockRepositoryAdapter::aDominio).toList();
+	}
+
+	@Override
 	public List<GrupoDeStock> listarBajoUmbral(UUID empresaId, int umbral) {
 		return jpa.findByEmpresaIdAndDisponiblesLessThan(empresaId, umbral).stream()
 				.map(GrupoDeStockRepositoryAdapter::aDominio).toList();

@@ -79,4 +79,10 @@ public interface ConsultaDeInventario {
 	 * impacto antes de archivar un valor de etiqueta (RF-2.7.6).
 	 */
 	int contarPrendasConValorEtiqueta(UUID empresaId, UUID valorEtiquetaId);
+
+	/**
+	 * Cuántas <b>unidades</b> de stock (en cualquier estado) hay en la sucursal (de la empresa). Sirve para
+	 * impedir archivar una sucursal que todavía tiene inventario (RF-15.1) y reportar cuánto queda.
+	 */
+	int contarUnidadesEnSucursal(UUID empresaId, UUID sucursalId);
 }

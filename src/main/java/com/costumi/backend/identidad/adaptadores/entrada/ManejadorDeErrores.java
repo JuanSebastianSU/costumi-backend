@@ -9,6 +9,8 @@ import com.costumi.backend.identidad.aplicacion.EmpresaNoEncontrada;
 import com.costumi.backend.identidad.aplicacion.EmpresaNoOperativa;
 import com.costumi.backend.identidad.aplicacion.LimiteDeSucursales;
 import com.costumi.backend.identidad.aplicacion.RefreshInvalido;
+import com.costumi.backend.identidad.aplicacion.SucursalConDependencias;
+import com.costumi.backend.identidad.aplicacion.SucursalNoEncontrada;
 import com.costumi.backend.identidad.aplicacion.TokenDeRecuperacionInvalido;
 import com.costumi.backend.identidad.dominio.TransicionDeEstadoInvalida;
 import org.springframework.http.HttpStatus;
@@ -38,6 +40,22 @@ class ManejadorDeErrores {
 	ProblemDetail cuentaDesactivada(CuentaDesactivada ex) {
 		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
 		problema.setTitle("Cuenta desactivada");
+		return problema;
+	}
+
+	@ExceptionHandler(SucursalNoEncontrada.class)
+	ProblemDetail sucursalNoEncontrada(SucursalNoEncontrada ex) {
+		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+		problema.setTitle("Sucursal no encontrada");
+		return problema;
+	}
+
+	@ExceptionHandler(SucursalConDependencias.class)
+	ProblemDetail sucursalConDependencias(SucursalConDependencias ex) {
+		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+		problema.setTitle("Sucursal con dependencias");
+		problema.setProperty("unidadesStock", ex.unidadesStock());
+		problema.setProperty("rentasVigentes", ex.rentasVigentes());
 		return problema;
 	}
 

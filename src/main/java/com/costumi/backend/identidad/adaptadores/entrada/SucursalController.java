@@ -1,6 +1,9 @@
 package com.costumi.backend.identidad.adaptadores.entrada;
 
 import com.costumi.backend.identidad.aplicacion.AccesoAlTenantDenegado;
+import com.costumi.backend.identidad.aplicacion.EditarSucursal;
+import com.costumi.backend.identidad.aplicacion.EditarSucursalComando;
+import com.costumi.backend.identidad.aplicacion.GestionarEstadoDeSucursal;
 import com.costumi.backend.identidad.aplicacion.ListarSucursales;
 import com.costumi.backend.identidad.aplicacion.RegistrarSucursal;
 import com.costumi.backend.identidad.aplicacion.RegistrarSucursalComando;
@@ -10,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -27,10 +31,15 @@ import java.util.UUID;
 class SucursalController {
 
 	private final RegistrarSucursal registrarSucursal;
+	private final EditarSucursal editarSucursal;
+	private final GestionarEstadoDeSucursal gestionarEstadoDeSucursal;
 	private final ListarSucursales listarSucursales;
 
-	SucursalController(RegistrarSucursal registrarSucursal, ListarSucursales listarSucursales) {
+	SucursalController(RegistrarSucursal registrarSucursal, EditarSucursal editarSucursal,
+			GestionarEstadoDeSucursal gestionarEstadoDeSucursal, ListarSucursales listarSucursales) {
 		this.registrarSucursal = registrarSucursal;
+		this.editarSucursal = editarSucursal;
+		this.gestionarEstadoDeSucursal = gestionarEstadoDeSucursal;
 		this.listarSucursales = listarSucursales;
 	}
 
@@ -62,6 +71,35 @@ class SucursalController {
 		URI location = uriBuilder.path("/api/v1/empresas/{empresaId}/sucursales/{id}")
 				.buildAndExpand(empresaId, sucursal.id()).toUri();
 		return ResponseEntity.created(location).body(SucursalResponse.desde(sucursal));
+	}
+
+	/** Edita nombre/dirección de una sucursal (RF-15.1). Rol DUENO/ENCARGADO (config de seguridad). */
+	@PatchMapping("/{id}")
+	SucursalResponse editar(@PathVariable UUID empresaId, @PathVariable UUID id,
+			@Valid @RequestBody EditarSucursalRequest request, @AuthenticationPrincipal Jwt jwt) {
+		verificarDuenoDelTenant(jwt, empresaId);
+		Sucursal sucursal = editarSucursal.ejecutar(
+				new EditarSucursalComando(empresaId, id, request.nombre(), request.direccion()));
+		return SucursalResponse.desde(sucursal);
+	}
+
+	/**
+	 * Archiva una sucursal: la retira de la operación sin borrarla. Falla con 409 si aún tiene stock o
+	 * rentas vigentes (no se puede dejar inventario/obligaciones huérfanos).
+	 */
+	@PostMapping("/{id}/archivar")
+	SucursalResponse archivar(@PathVariable UUID empresaId, @PathVariable UUID id,
+			@AuthenticationPrincipal Jwt jwt) {
+		verificarDuenoDelTenant(jwt, empresaId);
+		return SucursalResponse.desde(gestionarEstadoDeSucursal.archivar(empresaId, id));
+	}
+
+	/** Reactiva una sucursal archivada. */
+	@PostMapping("/{id}/activar")
+	SucursalResponse activar(@PathVariable UUID empresaId, @PathVariable UUID id,
+			@AuthenticationPrincipal Jwt jwt) {
+		verificarDuenoDelTenant(jwt, empresaId);
+		return SucursalResponse.desde(gestionarEstadoDeSucursal.activar(empresaId, id));
 	}
 
 	private static void verificarDuenoDelTenant(Jwt jwt, UUID empresaId) {

@@ -4,6 +4,7 @@ import com.costumi.backend.configuracion.ConsultaDeConfiguracion;
 import com.costumi.backend.inventario.ConsultaDeInventario;
 import com.costumi.backend.rentas.ConsultaDeRentas;
 import com.costumi.backend.rentas.RegistroDeRentas;
+import com.costumi.backend.rentas.dominio.EstadoRenta;
 import com.costumi.backend.rentas.dominio.Renta;
 import com.costumi.backend.rentas.dominio.RentaLinea;
 import com.costumi.backend.rentas.dominio.RentaRepository;
@@ -113,6 +114,15 @@ class RentaService implements CrearRenta, ConsultarRentas, GestionarRenta, Consu
 		return rentas.buscarPorId(rentaId)
 				.filter(renta -> renta.empresaId().equals(empresaId))
 				.map(Renta::sucursalId);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public int contarRentasVigentesEnSucursal(UUID empresaId, UUID sucursalId) {
+		return (int) rentas.listarPorEmpresa(empresaId).stream()
+				.filter(renta -> renta.sucursalId().equals(sucursalId))
+				.filter(renta -> renta.estado() != EstadoRenta.CERRADA && renta.estado() != EstadoRenta.CANCELADA)
+				.count();
 	}
 
 	@Override
