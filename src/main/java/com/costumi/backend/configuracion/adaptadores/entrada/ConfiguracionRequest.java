@@ -10,5 +10,5 @@ import java.math.BigDecimal;
  */
 public record ConfiguracionRequest(boolean conteoStock, boolean multasActivo, boolean multiSucursal,
 		boolean pagoEnLinea, BigDecimal tasaImpuesto, String moneda, BigDecimal recargoPorRetrasoPorDia,
-		RecargoPorRetraso modoRecargoRetraso) {
+		RecargoPorRetraso modoRecargoRetraso, Boolean reembolsosActivos, Integer ventanaReembolsoDias) {
 }

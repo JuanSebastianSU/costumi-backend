@@ -33,4 +33,10 @@ public interface ConsultaDeConfiguracion {
 
 	/** ¿La empresa acepta pago en línea (pasarela)? (por defecto no, RF-6.11/12.4). */
 	boolean pagoEnLinea(UUID empresaId);
+
+	/**
+	 * ¿La política del local permite reembolsar (devolver) una venta hecha hace {@code diasDesdeLaVenta}
+	 * días? (RF-4.5): requiere reembolsos activos y, si hay ventana, estar dentro de ella.
+	 */
+	boolean reembolsoPermitido(UUID empresaId, long diasDesdeLaVenta);
 }

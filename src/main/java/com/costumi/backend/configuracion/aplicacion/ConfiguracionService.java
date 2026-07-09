@@ -30,7 +30,8 @@ class ConfiguracionService implements GestionarConfiguracion, ConsultaDeConfigur
 	public ConfiguracionDeEmpresa actualizar(ActualizarConfiguracionComando comando) {
 		return configuraciones.guardar(ConfiguracionDeEmpresa.de(comando.empresaId(), comando.conteoStock(),
 				comando.multasActivo(), comando.multiSucursal(), comando.pagoEnLinea(), comando.tasaImpuesto(),
-				comando.moneda(), comando.recargoPorRetrasoPorDia(), comando.modoRecargoRetraso()));
+				comando.moneda(), comando.recargoPorRetrasoPorDia(), comando.modoRecargoRetraso(),
+				comando.reembolsosActivos(), comando.ventanaReembolsoDias()));
 	}
 
 	@Override
@@ -73,5 +74,11 @@ class ConfiguracionService implements GestionarConfiguracion, ConsultaDeConfigur
 	@Transactional(readOnly = true)
 	public boolean pagoEnLinea(UUID empresaId) {
 		return deEmpresa(empresaId).pagoEnLinea();
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public boolean reembolsoPermitido(UUID empresaId, long diasDesdeLaVenta) {
+		return deEmpresa(empresaId).reembolsoPermitido(diasDesdeLaVenta);
 	}
 }

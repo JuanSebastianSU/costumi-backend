@@ -59,7 +59,10 @@ class ConfiguracionController {
 				: request.recargoPorRetrasoPorDia();
 		RecargoPorRetraso modo = request.modoRecargoRetraso() == null ? RecargoPorRetraso.ACUMULATIVA
 				: request.modoRecargoRetraso();
+		// Reembolsos: por defecto activos y sin ventana (0) si el request no los especifica.
+		boolean reembolsos = request.reembolsosActivos() == null || request.reembolsosActivos();
+		int ventana = request.ventanaReembolsoDias() == null ? 0 : request.ventanaReembolsoDias();
 		return new ActualizarConfiguracionComando(empresaId, request.conteoStock(), request.multasActivo(),
-				request.multiSucursal(), request.pagoEnLinea(), tasa, moneda, recargo, modo);
+				request.multiSucursal(), request.pagoEnLinea(), tasa, moneda, recargo, modo, reembolsos, ventana);
 	}
 }

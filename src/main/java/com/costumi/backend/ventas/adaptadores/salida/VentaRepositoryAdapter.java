@@ -24,7 +24,8 @@ class VentaRepositoryAdapter implements VentaRepository {
 	@Override
 	public Venta guardar(Venta venta) {
 		cabeceras.save(new VentaJpaEntity(venta.id(), venta.empresaId(), venta.sucursalId(), venta.empleadoId(),
-				venta.clienteId(), venta.descuento(), venta.total(), venta.estado(), venta.claveIdempotencia()));
+				venta.clienteId(), venta.descuento(), venta.total(), venta.estado(), venta.claveIdempotencia(),
+				venta.creadaEn()));
 		for (LineaDeVenta linea : venta.lineas()) {
 			lineas.save(new LineaDeVentaJpaEntity(UUID.randomUUID(), venta.id(), venta.empresaId(),
 					linea.prendaId(), linea.cantidad(), linea.precioUnitario()));
@@ -53,6 +54,6 @@ class VentaRepositoryAdapter implements VentaRepository {
 				.toList();
 		return Venta.rehidratar(cabecera.getId(), cabecera.getEmpresaId(), cabecera.getSucursalId(),
 				cabecera.getEmpleadoId(), cabecera.getClienteId(), cabecera.getDescuento(), cabecera.getTotal(),
-				cabecera.getEstado(), lineasDominio, cabecera.getClaveIdempotencia());
+				cabecera.getEstado(), lineasDominio, cabecera.getClaveIdempotencia(), cabecera.getCreadaEn());
 	}
 }

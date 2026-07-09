@@ -6,12 +6,15 @@ import com.costumi.backend.inventario.ConsultaDeInventario;
 import com.costumi.backend.ventas.ConsultaDeVentas;
 import com.costumi.backend.ventas.RegistroDeVentas;
 import com.costumi.backend.ventas.dominio.LineaDeVenta;
+import com.costumi.backend.ventas.dominio.ReembolsoNoPermitido;
 import com.costumi.backend.ventas.dominio.Venta;
 import com.costumi.backend.ventas.dominio.VentaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -74,6 +77,12 @@ class VentaService implements RegistrarVenta, ConsultarVentas, RegistroDeVentas,
 		Venta venta = ventas.buscarPorId(ventaId)
 				.filter(v -> v.empresaId().equals(empresaId))
 				.orElseThrow(() -> new VentaNoEncontrada(ventaId));
+		// Política de reembolso del local (RF-4.5): reembolsos activos y, si hay ventana, dentro del plazo.
+		long diasDesdeLaVenta = ChronoUnit.DAYS.between(venta.creadaEn().atZone(ZoneOffset.UTC).toLocalDate(),
+				java.time.LocalDate.now(ZoneOffset.UTC));
+		if (!configuracion.reembolsoPermitido(empresaId, diasDesdeLaVenta)) {
+			throw new ReembolsoNoPermitido(ventaId);
+		}
 		venta.devolver(); // CONFIRMADA -> DEVUELTA (valida el estado, RF-4.5)
 		// Reingresa el stock vendido (si la empresa cuenta stock, igual que al confirmar la venta).
 		if (configuracion.conteoStock(empresaId)) {

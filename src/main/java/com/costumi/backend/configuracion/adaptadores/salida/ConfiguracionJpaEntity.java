@@ -49,13 +49,19 @@ class ConfiguracionJpaEntity {
 	@Column(name = "modo_recargo_retraso", nullable = false, length = 12)
 	private RecargoPorRetraso modoRecargoRetraso;
 
+	@Column(name = "reembolsos_activos", nullable = false)
+	private boolean reembolsosActivos;
+
+	@Column(name = "ventana_reembolso_dias", nullable = false)
+	private int ventanaReembolsoDias;
+
 	protected ConfiguracionJpaEntity() {
 		// requerido por JPA
 	}
 
 	ConfiguracionJpaEntity(UUID empresaId, boolean conteoStock, boolean multasActivo, boolean multiSucursal,
 			boolean pagoEnLinea, BigDecimal tasaImpuesto, String moneda, BigDecimal recargoPorRetrasoPorDia,
-			RecargoPorRetraso modoRecargoRetraso) {
+			RecargoPorRetraso modoRecargoRetraso, boolean reembolsosActivos, int ventanaReembolsoDias) {
 		this.empresaId = empresaId;
 		this.conteoStock = conteoStock;
 		this.multasActivo = multasActivo;
@@ -65,6 +71,8 @@ class ConfiguracionJpaEntity {
 		this.moneda = moneda;
 		this.recargoPorRetrasoPorDia = recargoPorRetrasoPorDia;
 		this.modoRecargoRetraso = modoRecargoRetraso;
+		this.reembolsosActivos = reembolsosActivos;
+		this.ventanaReembolsoDias = ventanaReembolsoDias;
 	}
 
 	UUID getEmpresaId() {
@@ -101,5 +109,13 @@ class ConfiguracionJpaEntity {
 
 	RecargoPorRetraso getModoRecargoRetraso() {
 		return modoRecargoRetraso;
+	}
+
+	boolean isReembolsosActivos() {
+		return reembolsosActivos;
+	}
+
+	int getVentanaReembolsoDias() {
+		return ventanaReembolsoDias;
 	}
 }
