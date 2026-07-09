@@ -12,9 +12,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-/** Casos de uso de Prendas: crear y listar, acotados a la empresa (tenant). */
+/** Casos de uso de Prendas: crear, editar, archivar/activar y listar, acotados a la empresa (tenant). */
 @Service
-class PrendaService implements CrearPrenda, ConsultarPrendas {
+class PrendaService implements CrearPrenda, EditarPrenda, CambiarEstadoPrenda, ConsultarPrendas {
 
 	private final PrendaRepository prendas;
 	private final ConsultaDeTaxonomia taxonomia;
@@ -35,6 +35,39 @@ class PrendaService implements CrearPrenda, ConsultarPrendas {
 				comando.tipoArticulo(), comando.precioRenta(), comando.precioVenta(), etiquetas,
 				comando.costoAdquisicion(), comando.depositoSugerido(), comando.valorReposicion(),
 				comando.valorDano()));
+	}
+
+	@Override
+	@Transactional
+	public Prenda ejecutar(EditarPrendaComando comando) {
+		Prenda prenda = exigirDelTenant(comando.empresaId(), comando.prendaId());
+		prenda.editar(comando.nombre(), comando.precioRenta(), comando.precioVenta(), comando.costoAdquisicion(),
+				comando.depositoSugerido(), comando.valorReposicion(), comando.valorDano());
+		// Las etiquetas se revalidan contra la categoría (que no cambia) y reemplazan las anteriores (RF-2.7).
+		prenda.reetiquetar(validarEtiquetas(comando.empresaId(), prenda.categoriaId(), comando.etiquetas()));
+		return prendas.guardar(prenda);
+	}
+
+	@Override
+	@Transactional
+	public Prenda archivar(UUID empresaId, UUID prendaId) {
+		Prenda prenda = exigirDelTenant(empresaId, prendaId);
+		prenda.archivar();
+		return prendas.guardar(prenda);
+	}
+
+	@Override
+	@Transactional
+	public Prenda activar(UUID empresaId, UUID prendaId) {
+		Prenda prenda = exigirDelTenant(empresaId, prendaId);
+		prenda.activar();
+		return prendas.guardar(prenda);
+	}
+
+	private Prenda exigirDelTenant(UUID empresaId, UUID prendaId) {
+		return prendas.buscarPorId(prendaId)
+				.filter(p -> p.empresaId().equals(empresaId))
+				.orElseThrow(() -> new PrendaNoEncontrada(prendaId));
 	}
 
 	@Override

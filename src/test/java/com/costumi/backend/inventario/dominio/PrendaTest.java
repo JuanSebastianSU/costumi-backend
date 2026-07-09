@@ -91,6 +91,33 @@ class PrendaTest {
 	}
 
 	@Test
+	void editar_actualiza_datos_y_revalida_contra_el_tipo() {
+		Prenda prenda = Prenda.crear(EMPRESA, CATEGORIA, "Vieja", TipoArticulo.RENTA, new BigDecimal("50.00"), null);
+
+		prenda.editar("Nueva", new BigDecimal("70.00"), null, new BigDecimal("120.00"), new BigDecimal("200.00"),
+				new BigDecimal("300.00"), new BigDecimal("40.00"));
+
+		assertThat(prenda.nombre()).isEqualTo("Nueva");
+		assertThat(prenda.precioRenta()).isEqualByComparingTo("70.00");
+		assertThat(prenda.valorReposicion()).isEqualByComparingTo("300.00");
+		// Es de RENTA: editar sin precio de renta es inválido.
+		assertThatThrownBy(() -> prenda.editar("X", null, null, null, null, null, null))
+				.isInstanceOf(IllegalArgumentException.class);
+	}
+
+	@Test
+	void archivar_y_activar_cambia_el_estado() {
+		Prenda prenda = Prenda.crear(EMPRESA, CATEGORIA, "P", TipoArticulo.RENTA, new BigDecimal("50.00"), null);
+		assertThat(prenda.archivada()).isFalse();
+
+		prenda.archivar();
+		assertThat(prenda.archivada()).isTrue();
+
+		prenda.activar();
+		assertThat(prenda.archivada()).isFalse();
+	}
+
+	@Test
 	void lleva_valores_de_multa_por_reposicion_y_dano() {
 		Prenda prenda = Prenda.crear(EMPRESA, CATEGORIA, "Traje", TipoArticulo.RENTA, new BigDecimal("50.00"), null,
 				EtiquetasDePrenda.ninguna(), null, null, new BigDecimal("300.00"), new BigDecimal("45.00"));
