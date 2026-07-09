@@ -138,6 +138,39 @@ class VentaIntegrationTest {
 	}
 
 	@Test
+	void devolucion_parcial_reingresa_solo_lo_devuelto_y_marca_la_venta_parcial() throws Exception {
+		UUID[] ctx = montar();
+		UUID sucursal = ctx[0];
+		UUID prenda = ctx[1];
+
+		// Vender 2 (stock 5 -> 3), total 100.
+		String res = mvc.perform(post("/api/v1/ventas").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + sucursal + "\",\"lineas\":[{\"prendaId\":\"" + prenda
+								+ "\",\"cantidad\":2,\"precioUnitario\":50.00}]}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		UUID ventaId = UUID.fromString(json.readTree(res).get("id").asText());
+
+		// Devolver 1 de 2 (parcial): la venta queda PARCIALMENTE_DEVUELTA y reembolsa 50.
+		mvc.perform(post("/api/v1/ventas/{id}/devolver", ventaId).header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"lineas\":[{\"prendaId\":\"" + prenda + "\",\"cantidad\":1}]}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.estado").value("PARCIALMENTE_DEVUELTA"))
+				.andExpect(jsonPath("$.montoReembolsado").value(50.00))
+				.andExpect(jsonPath("$.lineas[0].cantidadDevuelta").value(1));
+		// Solo se reingresó 1 unidad: 3 -> 4.
+		org.assertj.core.api.Assertions.assertThat(disponiblesDe(prenda)).isEqualTo(4);
+
+		// Devolver el resto (sin cuerpo = todo lo pendiente): queda DEVUELTA y reembolsa el total.
+		mvc.perform(post("/api/v1/ventas/{id}/devolver", ventaId).header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.estado").value("DEVUELTA"))
+				.andExpect(jsonPath("$.montoReembolsado").value(100.00));
+		org.assertj.core.api.Assertions.assertThat(disponiblesDe(prenda)).isEqualTo(5);
+	}
+
+	@Test
 	void con_reembolsos_desactivados_la_venta_no_se_puede_devolver() throws Exception {
 		UUID[] ctx = montar();
 		UUID sucursal = ctx[0];

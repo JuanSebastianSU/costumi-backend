@@ -16,6 +16,7 @@ import java.math.BigDecimal;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -73,7 +74,7 @@ class VentaService implements RegistrarVenta, ConsultarVentas, RegistroDeVentas,
 
 	@Override
 	@Transactional
-	public Venta devolver(UUID empresaId, UUID ventaId) {
+	public Venta devolver(UUID empresaId, UUID ventaId, Map<UUID, Integer> cantidades) {
 		Venta venta = ventas.buscarPorId(ventaId)
 				.filter(v -> v.empresaId().equals(empresaId))
 				.orElseThrow(() -> new VentaNoEncontrada(ventaId));
@@ -83,13 +84,12 @@ class VentaService implements RegistrarVenta, ConsultarVentas, RegistroDeVentas,
 		if (!configuracion.reembolsoPermitido(empresaId, diasDesdeLaVenta)) {
 			throw new ReembolsoNoPermitido(ventaId);
 		}
-		venta.devolver(); // CONFIRMADA -> DEVUELTA (valida el estado, RF-4.5)
-		// Reingresa el stock vendido (si la empresa cuenta stock, igual que al confirmar la venta).
+		// Devuelve las unidades indicadas (o todo lo pendiente) y actualiza el estado (parcial/total, RF-4.5).
+		Map<UUID, Integer> devueltas = venta.devolver(cantidades);
+		// Reingresa al stock SOLO lo devuelto (si la empresa cuenta stock, igual que al confirmar la venta).
 		if (configuracion.conteoStock(empresaId)) {
-			for (LineaDeVenta linea : venta.lineas()) {
-				ajusteDeInventario.reingresarDisponibles(empresaId, venta.sucursalId(), linea.prendaId(),
-						linea.cantidad());
-			}
+			devueltas.forEach((prendaId, cantidad) ->
+					ajusteDeInventario.reingresarDisponibles(empresaId, venta.sucursalId(), prendaId, cantidad));
 		}
 		return ventas.guardar(venta);
 	}
