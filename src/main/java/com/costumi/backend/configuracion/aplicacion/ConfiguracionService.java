@@ -30,7 +30,7 @@ class ConfiguracionService implements GestionarConfiguracion, ConsultaDeConfigur
 	public ConfiguracionDeEmpresa actualizar(ActualizarConfiguracionComando comando) {
 		return configuraciones.guardar(ConfiguracionDeEmpresa.de(comando.empresaId(), comando.conteoStock(),
 				comando.multasActivo(), comando.multiSucursal(), comando.pagoEnLinea(), comando.tasaImpuesto(),
-				comando.moneda(), comando.recargoPorRetrasoPorDia()));
+				comando.moneda(), comando.recargoPorRetrasoPorDia(), comando.modoRecargoRetraso()));
 	}
 
 	@Override
@@ -61,6 +61,12 @@ class ConfiguracionService implements GestionarConfiguracion, ConsultaDeConfigur
 	@Transactional(readOnly = true)
 	public java.math.BigDecimal recargoPorRetrasoPorDia(UUID empresaId) {
 		return deEmpresa(empresaId).recargoPorRetrasoPorDia();
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public java.math.BigDecimal recargoPorRetraso(UUID empresaId, long diasAtraso) {
+		return deEmpresa(empresaId).recargoPorRetraso(diasAtraso);
 	}
 
 	@Override

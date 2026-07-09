@@ -2,6 +2,7 @@ package com.costumi.backend.configuracion.adaptadores.entrada;
 
 import com.costumi.backend.configuracion.aplicacion.ActualizarConfiguracionComando;
 import com.costumi.backend.configuracion.aplicacion.GestionarConfiguracion;
+import com.costumi.backend.configuracion.dominio.RecargoPorRetraso;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -56,7 +57,9 @@ class ConfiguracionController {
 		String moneda = (request.moneda() == null || request.moneda().isBlank()) ? "COP" : request.moneda();
 		BigDecimal recargo = request.recargoPorRetrasoPorDia() == null ? BigDecimal.ZERO
 				: request.recargoPorRetrasoPorDia();
+		RecargoPorRetraso modo = request.modoRecargoRetraso() == null ? RecargoPorRetraso.ACUMULATIVA
+				: request.modoRecargoRetraso();
 		return new ActualizarConfiguracionComando(empresaId, request.conteoStock(), request.multasActivo(),
-				request.multiSucursal(), request.pagoEnLinea(), tasa, moneda, recargo);
+				request.multiSucursal(), request.pagoEnLinea(), tasa, moneda, recargo, modo);
 	}
 }

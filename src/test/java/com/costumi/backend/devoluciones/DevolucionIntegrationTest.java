@@ -203,6 +203,29 @@ class DevolucionIntegrationTest {
 	}
 
 	@Test
+	void con_politica_de_recargo_fija_el_retraso_es_un_monto_unico() throws Exception {
+		// Misma renta vencida (5 días tarde), pero con política de recargo FIJA.
+		UUID renta = rentaVencida();
+
+		mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/configuracion")
+						.header("Authorization", "Bearer " + dueno).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"conteoStock\":true,\"multasActivo\":true,\"multiSucursal\":false,\"pagoEnLinea\":false,"
+								+ "\"recargoPorRetrasoPorDia\":10.00,\"modoRecargoRetraso\":\"FIJA\"}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.modoRecargoRetraso").value("FIJA"));
+
+		// Fija: 5 días de atraso -> se cobra el monto único 10 (no 10×5=50). Depósito 100 -> remanente 90.
+		mvc.perform(post("/api/v1/devoluciones").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"rentaId\":\"" + renta + "\",\"deposito\":100.00,\"cargoPorDanos\":0,"
+								+ "\"fechaDevolucionReal\":\"2020-01-10\",\"piezas\":[{\"prendaId\":\"" + prenda
+								+ "\",\"descripcion\":\"Camisa\",\"llego\":true,\"estado\":\"BIEN\"}]}"))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.cargoPorRetraso").value(10.00))
+				.andExpect(jsonPath("$.remanente").value(90.00));
+	}
+
+	@Test
 	void devolver_una_renta_de_otra_empresa_devuelve_400() throws Exception {
 		rentaDePrueba(); // deja this.dueno de la empresa A con una renta
 		String duenoDeA = this.dueno;

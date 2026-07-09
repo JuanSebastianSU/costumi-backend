@@ -20,9 +20,11 @@ public class ConfiguracionDeEmpresa {
 	private final BigDecimal tasaImpuesto;
 	private final String moneda;
 	private final BigDecimal recargoPorRetrasoPorDia;
+	private final RecargoPorRetraso modoRecargoRetraso;
 
 	private ConfiguracionDeEmpresa(UUID empresaId, boolean conteoStock, boolean multasActivo, boolean multiSucursal,
-			boolean pagoEnLinea, BigDecimal tasaImpuesto, String moneda, BigDecimal recargoPorRetrasoPorDia) {
+			boolean pagoEnLinea, BigDecimal tasaImpuesto, String moneda, BigDecimal recargoPorRetrasoPorDia,
+			RecargoPorRetraso modoRecargoRetraso) {
 		this.empresaId = Objects.requireNonNull(empresaId, "empresaId");
 		this.conteoStock = conteoStock;
 		this.multasActivo = multasActivo;
@@ -42,18 +44,34 @@ public class ConfiguracionDeEmpresa {
 			throw new IllegalArgumentException("El recargo por retraso por día no puede ser negativo");
 		}
 		this.recargoPorRetrasoPorDia = recargoPorRetrasoPorDia;
+		this.modoRecargoRetraso = (modoRecargoRetraso == null) ? RecargoPorRetraso.ACUMULATIVA : modoRecargoRetraso;
 	}
 
-	/** Defaults sensatos (RF-1/12.2): conteo y multas activos; multi-sucursal/pago en línea/impuesto/recargo en 0; moneda COP. */
+	/** Defaults sensatos (RF-1/12.2): conteo y multas activos; multi-sucursal/pago en línea/impuesto/recargo en 0; moneda COP; recargo acumulativo. */
 	public static ConfiguracionDeEmpresa porDefecto(UUID empresaId) {
-		return new ConfiguracionDeEmpresa(empresaId, true, true, false, false, BigDecimal.ZERO, "COP", BigDecimal.ZERO);
+		return new ConfiguracionDeEmpresa(empresaId, true, true, false, false, BigDecimal.ZERO, "COP", BigDecimal.ZERO,
+				RecargoPorRetraso.ACUMULATIVA);
 	}
 
 	public static ConfiguracionDeEmpresa de(UUID empresaId, boolean conteoStock, boolean multasActivo,
 			boolean multiSucursal, boolean pagoEnLinea, BigDecimal tasaImpuesto, String moneda,
-			BigDecimal recargoPorRetrasoPorDia) {
+			BigDecimal recargoPorRetrasoPorDia, RecargoPorRetraso modoRecargoRetraso) {
 		return new ConfiguracionDeEmpresa(empresaId, conteoStock, multasActivo, multiSucursal, pagoEnLinea,
-				tasaImpuesto, moneda, recargoPorRetrasoPorDia);
+				tasaImpuesto, moneda, recargoPorRetrasoPorDia, modoRecargoRetraso);
+	}
+
+	/**
+	 * Recargo por retraso a cobrar (RF-5.2) según el modo: {@code ACUMULATIVA} = monto × días de atraso;
+	 * {@code FIJA} = monto único si hubo atraso. Sin atraso (días ≤ 0), 0.
+	 */
+	public BigDecimal recargoPorRetraso(long diasAtraso) {
+		if (diasAtraso <= 0) {
+			return BigDecimal.ZERO;
+		}
+		return switch (modoRecargoRetraso) {
+			case FIJA -> recargoPorRetrasoPorDia;
+			case ACUMULATIVA -> recargoPorRetrasoPorDia.multiply(BigDecimal.valueOf(diasAtraso));
+		};
 	}
 
 	public UUID empresaId() {
@@ -70,6 +88,10 @@ public class ConfiguracionDeEmpresa {
 
 	public BigDecimal recargoPorRetrasoPorDia() {
 		return recargoPorRetrasoPorDia;
+	}
+
+	public RecargoPorRetraso modoRecargoRetraso() {
+		return modoRecargoRetraso;
 	}
 
 	public boolean conteoStock() {
