@@ -1,6 +1,7 @@
 package com.costumi.backend.ventas.dominio;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -8,7 +9,8 @@ import java.util.UUID;
 
 /**
  * Venta / transacción de POS (RF-4). Va a nombre del empleado logueado (RF-4.2); el cliente es
- * opcional. Lleva sus líneas, un descuento y el total. Agregado de dominio.
+ * opcional. Lleva sus líneas, un descuento, el total y la fecha en que se registró (para la ventana
+ * de reembolso, RF-4.5). Agregado de dominio.
  */
 public class Venta {
 
@@ -22,9 +24,11 @@ public class Venta {
 	private EstadoVenta estado;
 	private final List<LineaDeVenta> lineas;
 	private final String claveIdempotencia;
+	private final Instant creadaEn;
 
 	private Venta(UUID id, UUID empresaId, UUID sucursalId, UUID empleadoId, UUID clienteId, BigDecimal descuento,
-			BigDecimal total, EstadoVenta estado, List<LineaDeVenta> lineas, String claveIdempotencia) {
+			BigDecimal total, EstadoVenta estado, List<LineaDeVenta> lineas, String claveIdempotencia,
+			Instant creadaEn) {
 		this.id = Objects.requireNonNull(id, "id");
 		this.empresaId = Objects.requireNonNull(empresaId, "empresaId");
 		this.sucursalId = Objects.requireNonNull(sucursalId, "sucursalId");
@@ -35,6 +39,7 @@ public class Venta {
 		this.estado = Objects.requireNonNull(estado, "estado");
 		this.lineas = new ArrayList<>(lineas);
 		this.claveIdempotencia = claveIdempotencia;
+		this.creadaEn = Objects.requireNonNull(creadaEn, "creadaEn");
 	}
 
 	public static Venta crear(UUID empresaId, UUID sucursalId, UUID empleadoId, UUID clienteId, BigDecimal descuento,
@@ -51,14 +56,14 @@ public class Venta {
 			throw new IllegalArgumentException("El descuento no puede exceder el subtotal");
 		}
 		return new Venta(UUID.randomUUID(), empresaId, sucursalId, empleadoId, clienteId, dscto,
-				subtotal.subtract(dscto), EstadoVenta.CONFIRMADA, List.copyOf(lineas), claveIdempotencia);
+				subtotal.subtract(dscto), EstadoVenta.CONFIRMADA, List.copyOf(lineas), claveIdempotencia, Instant.now());
 	}
 
 	public static Venta rehidratar(UUID id, UUID empresaId, UUID sucursalId, UUID empleadoId, UUID clienteId,
 			BigDecimal descuento, BigDecimal total, EstadoVenta estado, List<LineaDeVenta> lineas,
-			String claveIdempotencia) {
+			String claveIdempotencia, Instant creadaEn) {
 		return new Venta(id, empresaId, sucursalId, empleadoId, clienteId, descuento, total, estado, lineas,
-				claveIdempotencia);
+				claveIdempotencia, creadaEn);
 	}
 
 	/**
@@ -111,5 +116,10 @@ public class Venta {
 	/** Clave de idempotencia (RF-17.6); null si la venta no vino con una. */
 	public String claveIdempotencia() {
 		return claveIdempotencia;
+	}
+
+	/** Momento en que se registró la venta; base para la ventana de reembolso (RF-4.5). */
+	public Instant creadaEn() {
+		return creadaEn;
 	}
 }

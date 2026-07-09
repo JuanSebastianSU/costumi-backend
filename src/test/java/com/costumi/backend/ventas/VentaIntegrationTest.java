@@ -138,6 +138,34 @@ class VentaIntegrationTest {
 	}
 
 	@Test
+	void con_reembolsos_desactivados_la_venta_no_se_puede_devolver() throws Exception {
+		UUID[] ctx = montar();
+		UUID sucursal = ctx[0];
+		UUID prenda = ctx[1];
+
+		// Vender 2 (stock 5 -> 3).
+		String res = mvc.perform(post("/api/v1/ventas").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + sucursal + "\",\"lineas\":[{\"prendaId\":\"" + prenda
+								+ "\",\"cantidad\":2,\"precioUnitario\":50.00}]}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		UUID ventaId = UUID.fromString(json.readTree(res).get("id").asText());
+
+		// Política del local: reembolsos desactivados (RF-4.5).
+		mvc.perform(put("/api/v1/configuracion").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"conteoStock\":true,\"multasActivo\":true,\"multiSucursal\":false,\"pagoEnLinea\":false,"
+								+ "\"reembolsosActivos\":false}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.reembolsosActivos").value(false));
+
+		// Devolver la venta se rechaza (409) y no reingresa stock (sigue en 3).
+		mvc.perform(post("/api/v1/ventas/{id}/devolver", ventaId).header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isConflict());
+		org.assertj.core.api.Assertions.assertThat(disponiblesDe(prenda)).isEqualTo(3);
+	}
+
+	@Test
 	void con_conteo_de_stock_apagado_la_venta_no_controla_inventario() throws Exception {
 		UUID[] ctx = montar();
 		UUID sucursal = ctx[0];

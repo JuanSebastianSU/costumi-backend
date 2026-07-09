@@ -69,4 +69,25 @@ class ConfiguracionDeEmpresaTest {
 		assertThat(acumulativa.recargoPorRetraso(3)).isEqualByComparingTo("30.00");
 		assertThat(fija.recargoPorRetraso(3)).isEqualByComparingTo("10.00");
 	}
+
+	@Test
+	void el_reembolso_respeta_el_switch_y_la_ventana() {
+		UUID empresa = UUID.randomUUID();
+
+		// Por defecto: reembolsos activos y sin ventana -> siempre permitido.
+		ConfiguracionDeEmpresa porDefecto = ConfiguracionDeEmpresa.porDefecto(empresa);
+		assertThat(porDefecto.reembolsoPermitido(0)).isTrue();
+		assertThat(porDefecto.reembolsoPermitido(999)).isTrue();
+
+		// Reembolsos desactivados -> nunca permitido.
+		ConfiguracionDeEmpresa sinReembolsos = ConfiguracionDeEmpresa.de(empresa, true, true, false, false,
+				BigDecimal.ZERO, "COP", BigDecimal.ZERO, RecargoPorRetraso.ACUMULATIVA, false, 0);
+		assertThat(sinReembolsos.reembolsoPermitido(0)).isFalse();
+
+		// Con ventana de 5 días: dentro sí, fuera no.
+		ConfiguracionDeEmpresa conVentana = ConfiguracionDeEmpresa.de(empresa, true, true, false, false,
+				BigDecimal.ZERO, "COP", BigDecimal.ZERO, RecargoPorRetraso.ACUMULATIVA, true, 5);
+		assertThat(conVentana.reembolsoPermitido(5)).isTrue();
+		assertThat(conVentana.reembolsoPermitido(6)).isFalse();
+	}
 }

@@ -21,10 +21,12 @@ public class ConfiguracionDeEmpresa {
 	private final String moneda;
 	private final BigDecimal recargoPorRetrasoPorDia;
 	private final RecargoPorRetraso modoRecargoRetraso;
+	private final boolean reembolsosActivos;
+	private final int ventanaReembolsoDias;
 
 	private ConfiguracionDeEmpresa(UUID empresaId, boolean conteoStock, boolean multasActivo, boolean multiSucursal,
 			boolean pagoEnLinea, BigDecimal tasaImpuesto, String moneda, BigDecimal recargoPorRetrasoPorDia,
-			RecargoPorRetraso modoRecargoRetraso) {
+			RecargoPorRetraso modoRecargoRetraso, boolean reembolsosActivos, int ventanaReembolsoDias) {
 		this.empresaId = Objects.requireNonNull(empresaId, "empresaId");
 		this.conteoStock = conteoStock;
 		this.multasActivo = multasActivo;
@@ -45,19 +47,34 @@ public class ConfiguracionDeEmpresa {
 		}
 		this.recargoPorRetrasoPorDia = recargoPorRetrasoPorDia;
 		this.modoRecargoRetraso = (modoRecargoRetraso == null) ? RecargoPorRetraso.ACUMULATIVA : modoRecargoRetraso;
+		this.reembolsosActivos = reembolsosActivos;
+		if (ventanaReembolsoDias < 0) {
+			throw new IllegalArgumentException("La ventana de reembolso (días) no puede ser negativa");
+		}
+		this.ventanaReembolsoDias = ventanaReembolsoDias;
 	}
 
-	/** Defaults sensatos (RF-1/12.2): conteo y multas activos; multi-sucursal/pago en línea/impuesto/recargo en 0; moneda COP; recargo acumulativo. */
+	/** Defaults sensatos (RF-1/12.2): conteo y multas activos; multi-sucursal/pago en línea/impuesto/recargo en 0; moneda COP; recargo acumulativo; reembolsos activos sin ventana. */
 	public static ConfiguracionDeEmpresa porDefecto(UUID empresaId) {
 		return new ConfiguracionDeEmpresa(empresaId, true, true, false, false, BigDecimal.ZERO, "COP", BigDecimal.ZERO,
-				RecargoPorRetraso.ACUMULATIVA);
+				RecargoPorRetraso.ACUMULATIVA, true, 0);
 	}
 
 	public static ConfiguracionDeEmpresa de(UUID empresaId, boolean conteoStock, boolean multasActivo,
 			boolean multiSucursal, boolean pagoEnLinea, BigDecimal tasaImpuesto, String moneda,
-			BigDecimal recargoPorRetrasoPorDia, RecargoPorRetraso modoRecargoRetraso) {
+			BigDecimal recargoPorRetrasoPorDia, RecargoPorRetraso modoRecargoRetraso, boolean reembolsosActivos,
+			int ventanaReembolsoDias) {
 		return new ConfiguracionDeEmpresa(empresaId, conteoStock, multasActivo, multiSucursal, pagoEnLinea,
-				tasaImpuesto, moneda, recargoPorRetrasoPorDia, modoRecargoRetraso);
+				tasaImpuesto, moneda, recargoPorRetrasoPorDia, modoRecargoRetraso, reembolsosActivos,
+				ventanaReembolsoDias);
+	}
+
+	/** Overload sin política de reembolso: reembolsos activos y sin ventana (defaults). */
+	public static ConfiguracionDeEmpresa de(UUID empresaId, boolean conteoStock, boolean multasActivo,
+			boolean multiSucursal, boolean pagoEnLinea, BigDecimal tasaImpuesto, String moneda,
+			BigDecimal recargoPorRetrasoPorDia, RecargoPorRetraso modoRecargoRetraso) {
+		return de(empresaId, conteoStock, multasActivo, multiSucursal, pagoEnLinea, tasaImpuesto, moneda,
+				recargoPorRetrasoPorDia, modoRecargoRetraso, true, 0);
 	}
 
 	/**
@@ -92,6 +109,26 @@ public class ConfiguracionDeEmpresa {
 
 	public RecargoPorRetraso modoRecargoRetraso() {
 		return modoRecargoRetraso;
+	}
+
+	public boolean reembolsosActivos() {
+		return reembolsosActivos;
+	}
+
+	/** Ventana de reembolso en días desde la venta; 0 = sin límite (RF-4.5). */
+	public int ventanaReembolsoDias() {
+		return ventanaReembolsoDias;
+	}
+
+	/**
+	 * ¿Se permite reembolsar (devolver) una venta hecha hace {@code diasDesdeLaVenta} días? (RF-4.5):
+	 * requiere reembolsos activos y, si hay ventana ({@code > 0}), estar dentro de ella.
+	 */
+	public boolean reembolsoPermitido(long diasDesdeLaVenta) {
+		if (!reembolsosActivos) {
+			return false;
+		}
+		return ventanaReembolsoDias == 0 || diasDesdeLaVenta <= ventanaReembolsoDias;
 	}
 
 	public boolean conteoStock() {

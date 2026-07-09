@@ -2,6 +2,7 @@ package com.costumi.backend.ventas.adaptadores.entrada;
 
 import com.costumi.backend.inventario.StockInsuficiente;
 import com.costumi.backend.ventas.aplicacion.VentaNoEncontrada;
+import com.costumi.backend.ventas.dominio.ReembolsoNoPermitido;
 import com.costumi.backend.ventas.dominio.VentaNoDevolvible;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -37,6 +38,13 @@ class ManejadorDeErroresVentas {
 	ProblemDetail ventaNoDevolvible(VentaNoDevolvible ex) {
 		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
 		problema.setTitle("Venta no devolvible");
+		return problema;
+	}
+
+	@ExceptionHandler(ReembolsoNoPermitido.class)
+	ProblemDetail reembolsoNoPermitido(ReembolsoNoPermitido ex) {
+		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+		problema.setTitle("Reembolso no permitido");
 		return problema;
 	}
 }

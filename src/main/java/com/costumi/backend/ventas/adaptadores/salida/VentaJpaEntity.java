@@ -12,6 +12,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.UUID;
 
 /** Mapeo JPA de la cabecera de la Venta. Lleva {@code empresa_id} (tenant). */
@@ -48,12 +49,15 @@ class VentaJpaEntity {
 	@Column(name = "clave_idempotencia", length = 120)
 	private String claveIdempotencia;
 
+	@Column(name = "creada_en", nullable = false)
+	private Instant creadaEn;
+
 	protected VentaJpaEntity() {
 		// requerido por JPA
 	}
 
 	VentaJpaEntity(UUID id, UUID empresaId, UUID sucursalId, UUID empleadoId, UUID clienteId, BigDecimal descuento,
-			BigDecimal total, EstadoVenta estado, String claveIdempotencia) {
+			BigDecimal total, EstadoVenta estado, String claveIdempotencia, Instant creadaEn) {
 		this.id = id;
 		this.empresaId = empresaId;
 		this.sucursalId = sucursalId;
@@ -63,6 +67,7 @@ class VentaJpaEntity {
 		this.total = total;
 		this.estado = estado;
 		this.claveIdempotencia = claveIdempotencia;
+		this.creadaEn = creadaEn;
 	}
 
 	UUID getId() {
@@ -99,5 +104,9 @@ class VentaJpaEntity {
 
 	String getClaveIdempotencia() {
 		return claveIdempotencia;
+	}
+
+	Instant getCreadaEn() {
+		return creadaEn;
 	}
 }
