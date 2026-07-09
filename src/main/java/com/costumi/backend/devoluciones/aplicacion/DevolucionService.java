@@ -143,7 +143,8 @@ class DevolucionService implements RegistrarDevolucion, ConsultarDevoluciones {
 
 	/**
 	 * Recargo por retraso (RF-5.2): si el comando trae un valor, es un override manual; si no, se deriva
-	 * del recargo configurado por día (RF-12.2) por los días de atraso (fecha real − fecha pactada, ≥ 0).
+	 * de la política de la empresa (RF-12.2) según los días de atraso (fecha real − fecha pactada, ≥ 0):
+	 * acumulativa (monto × días) o fija (monto único si hubo atraso).
 	 */
 	private BigDecimal recargoPorRetraso(RegistrarDevolucionComando comando, UUID empresaId, UUID rentaId) {
 		if (comando.cargoPorRetraso() != null) {
@@ -155,7 +156,7 @@ class DevolucionService implements RegistrarDevolucion, ConsultarDevoluciones {
 			return BigDecimal.ZERO;
 		}
 		long diasAtraso = Math.max(0, ChronoUnit.DAYS.between(pactada, real));
-		return configuracion.recargoPorRetrasoPorDia(empresaId).multiply(BigDecimal.valueOf(diasAtraso));
+		return configuracion.recargoPorRetraso(empresaId, diasAtraso);
 	}
 
 	private static int contar(List<PiezaRevisada> piezas, UUID prendaId, EstadoPieza estado) {

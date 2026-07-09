@@ -25,6 +25,12 @@ public interface ConsultaDeConfiguracion {
 	/** Recargo por día de retraso configurado (RF-12.2); base para calcular la multa por retraso (RF-5.2). */
 	BigDecimal recargoPorRetrasoPorDia(UUID empresaId);
 
+	/**
+	 * Recargo por retraso a cobrar según la política de la empresa (RF-5.2/12.2): acumulativo (monto × días)
+	 * o fijo (monto único si hubo atraso). {@code diasAtraso} ≤ 0 ⇒ 0.
+	 */
+	BigDecimal recargoPorRetraso(UUID empresaId, long diasAtraso);
+
 	/** ¿La empresa acepta pago en línea (pasarela)? (por defecto no, RF-6.11/12.4). */
 	boolean pagoEnLinea(UUID empresaId);
 }

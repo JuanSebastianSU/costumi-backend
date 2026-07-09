@@ -21,7 +21,7 @@ class ConfiguracionRepositoryAdapter implements ConfiguracionRepository {
 	public ConfiguracionDeEmpresa guardar(ConfiguracionDeEmpresa c) {
 		ConfiguracionJpaEntity guardada = jpa.save(new ConfiguracionJpaEntity(c.empresaId(), c.conteoStock(),
 				c.multasActivo(), c.multiSucursal(), c.pagoEnLinea(), c.tasaImpuesto(), c.moneda(),
-				c.recargoPorRetrasoPorDia()));
+				c.recargoPorRetrasoPorDia(), c.modoRecargoRetraso()));
 		return aDominio(guardada);
 	}
 
@@ -33,6 +33,6 @@ class ConfiguracionRepositoryAdapter implements ConfiguracionRepository {
 	private static ConfiguracionDeEmpresa aDominio(ConfiguracionJpaEntity e) {
 		return ConfiguracionDeEmpresa.de(e.getEmpresaId(), e.isConteoStock(), e.isMultasActivo(),
 				e.isMultiSucursal(), e.isPagoEnLinea(), e.getTasaImpuesto(), e.getMoneda(),
-				e.getRecargoPorRetrasoPorDia());
+				e.getRecargoPorRetrasoPorDia(), e.getModoRecargoRetraso());
 	}
 }
