@@ -17,6 +17,7 @@ import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -191,5 +192,58 @@ class EmpleadoIntegrationTest {
 		String mostrador = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.MOSTRADOR);
 		mvc.perform(get("/api/v1/empleados").header("Authorization", "Bearer " + mostrador))
 				.andExpect(status().isForbidden());
+	}
+
+	private UUID altaId(String token, String rol) throws Exception {
+		String res = mvc.perform(post("/api/v1/empleados").header("Authorization", "Bearer " + token)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"email\":\"e-" + UUID.randomUUID() + "@costumi.test\",\"password\":\"secret123\","
+								+ "\"rol\":\"" + rol + "\"}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		return UUID.fromString(json.readTree(res).get("id").asText());
+	}
+
+	@Test
+	void el_dueno_asciende_un_mostrador_a_encargado() throws Exception {
+		UUID empresa = empresaAprobada();
+		String dueno = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.DUENO);
+		UUID mostrador = altaId(dueno, "MOSTRADOR");
+
+		// G2: el dueño puede fijar un rol por debajo suyo (ENCARGADO).
+		mvc.perform(put("/api/v1/empleados/{id}/rol", mostrador).header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON).content("{\"rol\":\"ENCARGADO\"}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.rol").value("ENCARGADO"));
+	}
+
+	@Test
+	void nadie_puede_cambiar_a_un_empleado_a_dueno_403() throws Exception {
+		UUID empresa = empresaAprobada();
+		String dueno = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.DUENO);
+		UUID mostrador = altaId(dueno, "MOSTRADOR");
+
+		// B3: nadie fija el rol DUEÑO por esta vía (ni el propio dueño: no está por debajo suyo).
+		mvc.perform(put("/api/v1/empleados/{id}/rol", mostrador).header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON).content("{\"rol\":\"DUENO\"}"))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void un_encargado_no_puede_ascender_a_alguien_a_encargado_403() throws Exception {
+		UUID empresa = empresaAprobada();
+		String dueno = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.DUENO);
+		String encargado = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.ENCARGADO);
+		UUID mostrador = altaId(dueno, "MOSTRADOR");
+
+		// B3: el encargado no puede fijar un rol de su mismo nivel (ENCARGADO).
+		mvc.perform(put("/api/v1/empleados/{id}/rol", mostrador).header("Authorization", "Bearer " + encargado)
+						.contentType(MediaType.APPLICATION_JSON).content("{\"rol\":\"ENCARGADO\"}"))
+				.andExpect(status().isForbidden());
+
+		// Pero sí puede moverlo entre roles operativos (por debajo suyo).
+		mvc.perform(put("/api/v1/empleados/{id}/rol", mostrador).header("Authorization", "Bearer " + encargado)
+						.contentType(MediaType.APPLICATION_JSON).content("{\"rol\":\"BODEGA\"}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.rol").value("BODEGA"));
 	}
 }

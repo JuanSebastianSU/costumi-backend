@@ -70,6 +70,7 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.PUT, "/api/v1/empleados/*/permisos").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.GET, "/api/v1/empleados/*/sucursales").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.PUT, "/api/v1/empleados/*/sucursales").hasAnyRole("DUENO", "ENCARGADO")
+						.requestMatchers(HttpMethod.PUT, "/api/v1/empleados/*/rol").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.GET, "/api/v1/empleados/*/actividad").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.POST, "/api/v1/categorias").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.PATCH, "/api/v1/categorias/*").hasAnyRole("DUENO", "ENCARGADO")
