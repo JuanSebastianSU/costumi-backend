@@ -132,6 +132,63 @@ class PermisosEmpleadoIntegrationTest {
 				.andExpect(jsonPath("$.totalVendido").value(0));
 	}
 
+	@Test
+	void un_encargado_no_puede_crear_un_dueno() throws Exception {
+		UUID empresa = crearEmpresaAprobada();
+		String encargado = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.ENCARGADO);
+		// B3: el encargado solo crea roles por debajo suyo; un DUEÑO no se crea por alta -> 403.
+		mvc.perform(post("/api/v1/empleados").header("Authorization", "Bearer " + encargado)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"email\":\"nuevo-" + UUID.randomUUID() + "@x.test\",\"password\":\"secret123\","
+								+ "\"rol\":\"DUENO\"}"))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void un_encargado_puede_crear_un_operativo() throws Exception {
+		UUID empresa = crearEmpresaAprobada();
+		String encargado = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.ENCARGADO);
+		// Positivo: el encargado sí puede crear roles operativos (por debajo suyo).
+		mvc.perform(post("/api/v1/empleados").header("Authorization", "Bearer " + encargado)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"email\":\"mos-" + UUID.randomUUID() + "@x.test\",\"password\":\"secret123\","
+								+ "\"rol\":\"MOSTRADOR\"}"))
+				.andExpect(status().isCreated());
+	}
+
+	@Test
+	void un_encargado_no_puede_re_concederse_lo_que_el_dueno_le_quito() throws Exception {
+		UUID empresa = crearEmpresaAprobada();
+		String dueno = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.DUENO);
+		AuthTestHelper.Sesion encargado = AuthTestHelper.sesion(mvc, json, usuarios, passwordEncoder, empresa,
+				Rol.ENCARGADO);
+
+		// El dueño le quita PAGOS al encargado (el dueño sí puede: está por encima).
+		mvc.perform(put("/api/v1/empleados/{id}/permisos", encargado.usuarioId())
+						.header("Authorization", "Bearer " + dueno).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"seccion\":\"PAGOS\",\"accion\":\"ACCION\",\"concedido\":false}"))
+				.andExpect(status().isOk());
+
+		// B3: el encargado NO puede editar sus propios permisos (re-concederse PAGOS) -> 403.
+		mvc.perform(put("/api/v1/empleados/{id}/permisos", encargado.usuarioId())
+						.header("Authorization", "Bearer " + encargado.token()).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"seccion\":\"PAGOS\",\"accion\":\"ACCION\",\"concedido\":true}"))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void un_encargado_no_puede_editar_los_permisos_de_otro_encargado() throws Exception {
+		UUID empresa = crearEmpresaAprobada();
+		String encargadoA = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.ENCARGADO);
+		AuthTestHelper.Sesion encargadoB = AuthTestHelper.sesion(mvc, json, usuarios, passwordEncoder, empresa,
+				Rol.ENCARGADO);
+		// B3: no se gestiona a un igual en la pirámide -> 403.
+		mvc.perform(put("/api/v1/empleados/{id}/permisos", encargadoB.usuarioId())
+						.header("Authorization", "Bearer " + encargadoA).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"seccion\":\"PAGOS\",\"accion\":\"ACCION\",\"concedido\":false}"))
+				.andExpect(status().isForbidden());
+	}
+
 	private UUID crearSucursal(String dueno, UUID empresa, String nombre) throws Exception {
 		String res = mvc.perform(post("/api/v1/empresas/" + empresa + "/sucursales")
 						.header("Authorization", "Bearer " + dueno).contentType(MediaType.APPLICATION_JSON)

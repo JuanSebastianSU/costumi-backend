@@ -3,6 +3,7 @@ package com.costumi.backend.identidad.adaptadores.entrada;
 import com.costumi.backend.identidad.aplicacion.AltaDeEmpleado;
 import com.costumi.backend.identidad.aplicacion.AsignarSucursales;
 import com.costumi.backend.identidad.aplicacion.GestionarEstadoDeEmpleado;
+import com.costumi.backend.identidad.dominio.Rol;
 import com.costumi.backend.identidad.dominio.Usuario;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -44,14 +45,14 @@ class EmpleadoController {
 	EmpleadoResponse desactivar(@PathVariable UUID usuarioId, @AuthenticationPrincipal Jwt jwt) {
 		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
 		UUID actorId = UUID.fromString(jwt.getSubject());
-		return EmpleadoResponse.desde(gestionarEstadoDeEmpleado.desactivar(empresaId, actorId, usuarioId));
+		return EmpleadoResponse.desde(gestionarEstadoDeEmpleado.desactivar(empresaId, actorRol(jwt), actorId, usuarioId));
 	}
 
 	/** Reactiva a un empleado dado de baja. DUENO/ENCARGADO. */
 	@PostMapping("/{usuarioId}/activar")
 	EmpleadoResponse activar(@PathVariable UUID usuarioId, @AuthenticationPrincipal Jwt jwt) {
 		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
-		return EmpleadoResponse.desde(gestionarEstadoDeEmpleado.activar(empresaId, usuarioId));
+		return EmpleadoResponse.desde(gestionarEstadoDeEmpleado.activar(empresaId, actorRol(jwt), usuarioId));
 	}
 
 	@PostMapping
@@ -59,7 +60,7 @@ class EmpleadoController {
 			@AuthenticationPrincipal Jwt jwt, UriComponentsBuilder uriBuilder) {
 		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
 		Usuario empleado = altaDeEmpleado.ejecutar(new AltaDeEmpleado.AltaDeEmpleadoComando(
-				empresaId, request.email(), request.password(), request.rol()));
+				empresaId, actorRol(jwt), request.email(), request.password(), request.rol()));
 		URI location = uriBuilder.path("/api/v1/empleados/{id}").buildAndExpand(empleado.id()).toUri();
 		return ResponseEntity.created(location).body(EmpleadoResponse.desde(empleado));
 	}
@@ -69,14 +70,18 @@ class EmpleadoController {
 	List<UUID> asignarSucursales(@PathVariable UUID usuarioId, @Valid @RequestBody AsignarSucursalesRequest request,
 			@AuthenticationPrincipal Jwt jwt) {
 		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
-		asignarSucursales.asignar(empresaId, usuarioId, Set.copyOf(request.sucursalIds()));
-		return asignarSucursales.sucursalesDe(empresaId, usuarioId);
+		asignarSucursales.asignar(empresaId, actorRol(jwt), usuarioId, Set.copyOf(request.sucursalIds()));
+		return asignarSucursales.sucursalesDe(empresaId, actorRol(jwt), usuarioId);
 	}
 
 	@GetMapping("/{usuarioId}/sucursales")
 	List<UUID> sucursalesDe(@PathVariable UUID usuarioId, @AuthenticationPrincipal Jwt jwt) {
 		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
-		return asignarSucursales.sucursalesDe(empresaId, usuarioId);
+		return asignarSucursales.sucursalesDe(empresaId, actorRol(jwt), usuarioId);
+	}
+
+	private static Rol actorRol(Jwt jwt) {
+		return Rol.valueOf(jwt.getClaimAsString("rol"));
 	}
 
 	record AsignarSucursalesRequest(@NotNull List<UUID> sucursalIds) {

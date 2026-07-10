@@ -31,6 +31,10 @@ class AltaDeEmpleadoService implements AltaDeEmpleado {
 		if (comando.rol() == Rol.CLIENTE) {
 			throw new IllegalArgumentException("El CLIENTE es un usuario del marketplace, no un empleado de la empresa");
 		}
+		// B3 (RF-1.3): solo se puede crear un rol estrictamente por debajo del propio (nadie crea un DUEÑO por alta).
+		if (!comando.actorRol().puedeGestionarA(comando.rol())) {
+			throw new GestionDeEmpleadoNoPermitida();
+		}
 		if (comando.password() == null || comando.password().length() < 8) {
 			throw new IllegalArgumentException("La contraseña del empleado debe tener al menos 8 caracteres");
 		}
