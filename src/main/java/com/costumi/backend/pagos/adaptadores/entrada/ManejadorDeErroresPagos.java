@@ -31,4 +31,18 @@ class ManejadorDeErroresPagos {
 		problema.setTitle("Pasarela de pago no configurada");
 		return problema;
 	}
+
+	@ExceptionHandler(FirmaDeWebhookInvalida.class)
+	ProblemDetail firmaDeWebhookInvalida(FirmaDeWebhookInvalida ex) {
+		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
+		problema.setTitle("Firma de webhook inválida");
+		return problema;
+	}
+
+	@ExceptionHandler(FirmaDeWebhookNoConfigurada.class)
+	ProblemDetail firmaDeWebhookNoConfigurada(FirmaDeWebhookNoConfigurada ex) {
+		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
+		problema.setTitle("Webhook de pagos no configurado");
+		return problema;
+	}
 }
