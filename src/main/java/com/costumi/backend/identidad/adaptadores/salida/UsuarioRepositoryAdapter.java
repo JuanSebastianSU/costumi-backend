@@ -4,6 +4,7 @@ import com.costumi.backend.identidad.dominio.Usuario;
 import com.costumi.backend.identidad.dominio.UsuarioRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -30,6 +31,11 @@ class UsuarioRepositoryAdapter implements UsuarioRepository {
 	@Override
 	public Optional<Usuario> buscarPorId(UUID id) {
 		return jpa.findFirstById(id).map(UsuarioRepositoryAdapter::aDominio);
+	}
+
+	@Override
+	public List<Usuario> listarPorEmpresa(UUID empresaId) {
+		return jpa.findByEmpresaId(empresaId).stream().map(UsuarioRepositoryAdapter::aDominio).toList();
 	}
 
 	private static UsuarioJpaEntity aEntidad(Usuario u) {
