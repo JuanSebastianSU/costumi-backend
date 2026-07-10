@@ -3,6 +3,7 @@ package com.costumi.backend.inventario.adaptadores.entrada;
 import com.costumi.backend.inventario.aplicacion.AlmacenDeImagenesNoConfigurado;
 import com.costumi.backend.inventario.aplicacion.CombinacionDeVarianteInvalida;
 import com.costumi.backend.inventario.aplicacion.EtiquetaDePrendaInvalida;
+import com.costumi.backend.inventario.aplicacion.FormatoDeImagenNoSoportado;
 import com.costumi.backend.inventario.aplicacion.GrupoDeStockNoEncontrado;
 import com.costumi.backend.inventario.aplicacion.PrendaNoEncontrada;
 import com.costumi.backend.inventario.aplicacion.VarianteDuplicada;
@@ -37,6 +38,13 @@ class ManejadorDeErroresInventario {
 	ProblemDetail almacenNoConfigurado(AlmacenDeImagenesNoConfigurado ex) {
 		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
 		problema.setTitle("Almacenamiento de imágenes no configurado");
+		return problema;
+	}
+
+	@ExceptionHandler(FormatoDeImagenNoSoportado.class)
+	ProblemDetail formatoDeImagenNoSoportado(FormatoDeImagenNoSoportado ex) {
+		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.UNSUPPORTED_MEDIA_TYPE, ex.getMessage());
+		problema.setTitle("Formato de imagen no soportado");
 		return problema;
 	}
 
