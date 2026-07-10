@@ -123,6 +123,13 @@ class ManejadorDeErrores {
 		return problema;
 	}
 
+	@ExceptionHandler(DemasiadosIntentos.class)
+	ProblemDetail demasiadosIntentos(DemasiadosIntentos ex) {
+		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage());
+		problema.setTitle("Demasiados intentos");
+		return problema;
+	}
+
 	@ExceptionHandler(GestionDeEmpleadoNoPermitida.class)
 	ProblemDetail gestionDeEmpleadoNoPermitida(GestionDeEmpleadoNoPermitida ex) {
 		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());

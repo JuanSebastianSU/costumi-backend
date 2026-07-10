@@ -24,18 +24,22 @@ class AuthController {
 	private final RefrescarToken refrescarToken;
 	private final RegistrarCliente registrarCliente;
 	private final RecuperarContrasena recuperarContrasena;
+	private final LimitadorDeIntentos limitador;
 
 	AuthController(AutenticarUsuario autenticarUsuario, RefrescarToken refrescarToken,
-			RegistrarCliente registrarCliente, RecuperarContrasena recuperarContrasena) {
+			RegistrarCliente registrarCliente, RecuperarContrasena recuperarContrasena,
+			LimitadorDeIntentos limitador) {
 		this.autenticarUsuario = autenticarUsuario;
 		this.refrescarToken = refrescarToken;
 		this.registrarCliente = registrarCliente;
 		this.recuperarContrasena = recuperarContrasena;
+		this.limitador = limitador;
 	}
 
-	/** Login: email + contraseña → token de acceso + token de refresco. */
+	/** Login: email + contraseña → token de acceso + token de refresco. Limitado por cuenta (A2). */
 	@PostMapping("/login")
 	TokenResponse login(@Valid @RequestBody LoginRequest request) {
+		exigirDentroDelLimite("login", request.email());
 		Credenciales credenciales = autenticarUsuario.autenticar(request.email(), request.password());
 		return new TokenResponse(credenciales.accessToken(), credenciales.refreshToken(), "Bearer");
 	}
@@ -43,6 +47,7 @@ class AuthController {
 	/** Auto-registro de un cliente (usuario final): crea la cuenta y devuelve tokens (auto-login). */
 	@PostMapping("/registro")
 	TokenResponse registro(@Valid @RequestBody RegistroRequest request) {
+		exigirDentroDelLimite("registro", request.email());
 		Credenciales credenciales = registrarCliente.ejecutar(request.email(), request.password());
 		return new TokenResponse(credenciales.accessToken(), credenciales.refreshToken(), "Bearer");
 	}
@@ -50,6 +55,7 @@ class AuthController {
 	/** Olvidé mi contraseña (RF-1.1): si el correo existe, envía un token por email. Siempre 204 (no revela). */
 	@PostMapping("/olvide")
 	ResponseEntity<Void> olvide(@Valid @RequestBody OlvideRequest request) {
+		exigirDentroDelLimite("olvide", request.email());
 		recuperarContrasena.solicitar(request.email());
 		return ResponseEntity.noContent().build();
 	}
@@ -66,6 +72,14 @@ class AuthController {
 	TokenResponse refrescar(@Valid @RequestBody RefreshRequest request) {
 		Credenciales credenciales = refrescarToken.ejecutar(request.refreshToken());
 		return new TokenResponse(credenciales.accessToken(), credenciales.refreshToken(), "Bearer");
+	}
+
+	/** Corta con 429 si se superó el límite de intentos para (acción + email). Clave por cuenta (A2). */
+	private void exigirDentroDelLimite(String accion, String email) {
+		String clave = accion + ":" + (email == null ? "" : email.trim().toLowerCase());
+		if (!limitador.permitir(clave)) {
+			throw new DemasiadosIntentos();
+		}
 	}
 
 	/** Identidad del usuario autenticado (requiere token válido). */
