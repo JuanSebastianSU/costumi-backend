@@ -3,6 +3,7 @@ package com.costumi.backend.identidad.adaptadores.entrada;
 import com.costumi.backend.identidad.aplicacion.AltaDeEmpleado;
 import com.costumi.backend.identidad.aplicacion.AsignarSucursales;
 import com.costumi.backend.identidad.aplicacion.GestionarEstadoDeEmpleado;
+import com.costumi.backend.identidad.aplicacion.ListarEmpleados;
 import com.costumi.backend.identidad.dominio.Rol;
 import com.costumi.backend.identidad.dominio.Usuario;
 import jakarta.validation.Valid;
@@ -32,12 +33,26 @@ class EmpleadoController {
 	private final AltaDeEmpleado altaDeEmpleado;
 	private final AsignarSucursales asignarSucursales;
 	private final GestionarEstadoDeEmpleado gestionarEstadoDeEmpleado;
+	private final ListarEmpleados listarEmpleados;
 
 	EmpleadoController(AltaDeEmpleado altaDeEmpleado, AsignarSucursales asignarSucursales,
-			GestionarEstadoDeEmpleado gestionarEstadoDeEmpleado) {
+			GestionarEstadoDeEmpleado gestionarEstadoDeEmpleado, ListarEmpleados listarEmpleados) {
 		this.altaDeEmpleado = altaDeEmpleado;
 		this.asignarSucursales = asignarSucursales;
 		this.gestionarEstadoDeEmpleado = gestionarEstadoDeEmpleado;
+		this.listarEmpleados = listarEmpleados;
+	}
+
+	/**
+	 * Lista el personal de la empresa (RF-8, G1). Con la guarda de pirámide (B3): el actor solo ve a quienes
+	 * puede gestionar (estrictamente por debajo suyo). DUENO/ENCARGADO.
+	 */
+	@GetMapping
+	List<EmpleadoDetalleResponse> listar(@AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		return listarEmpleados.delTenant(empresaId, actorRol(jwt)).stream()
+				.map(EmpleadoDetalleResponse::desde)
+				.toList();
 	}
 
 	/** Da de baja a un empleado (RF-8): no podrá autenticarse ni renovar sesión. DUENO/ENCARGADO. */

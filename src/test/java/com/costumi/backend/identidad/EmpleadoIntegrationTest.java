@@ -15,6 +15,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.UUID;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -150,5 +151,45 @@ class EmpleadoIntegrationTest {
 		UUID empresa = empresaAprobada();
 		String mostrador = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.MOSTRADOR);
 		crearEmpleado(mostrador, "x-" + UUID.randomUUID() + "@costumi.test", "BODEGA", 403);
+	}
+
+	@Test
+	void el_dueno_lista_su_personal_con_rol_y_estado() throws Exception {
+		UUID empresa = empresaAprobada();
+		String dueno = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.DUENO);
+		crearEmpleado(dueno, "mos-" + UUID.randomUUID() + "@costumi.test", "MOSTRADOR", 201);
+		crearEmpleado(dueno, "bod-" + UUID.randomUUID() + "@costumi.test", "BODEGA", 201);
+
+		// G1: el dueño ve a quienes puede gestionar (los 2 creados), no a sí mismo; con rol y estado.
+		mvc.perform(get("/api/v1/empleados").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(2))
+				.andExpect(jsonPath("$[?(@.rol == 'MOSTRADOR')]").exists())
+				.andExpect(jsonPath("$[?(@.rol == 'BODEGA')]").exists())
+				.andExpect(jsonPath("$[?(@.rol == 'DUENO')]").doesNotExist())
+				.andExpect(jsonPath("$[0].activo").value(true))
+				.andExpect(jsonPath("$[0].email").exists());
+	}
+
+	@Test
+	void un_encargado_solo_ve_a_los_operativos_no_al_dueno_ni_a_los_encargados() throws Exception {
+		UUID empresa = empresaAprobada();
+		String dueno = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.DUENO);
+		String encargado = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.ENCARGADO);
+		crearEmpleado(dueno, "mos-" + UUID.randomUUID() + "@costumi.test", "MOSTRADOR", 201);
+
+		mvc.perform(get("/api/v1/empleados").header("Authorization", "Bearer " + encargado))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.rol == 'MOSTRADOR')]").exists())
+				.andExpect(jsonPath("$[?(@.rol == 'DUENO')]").doesNotExist())
+				.andExpect(jsonPath("$[?(@.rol == 'ENCARGADO')]").doesNotExist());
+	}
+
+	@Test
+	void un_mostrador_no_puede_listar_el_personal_403() throws Exception {
+		UUID empresa = empresaAprobada();
+		String mostrador = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.MOSTRADOR);
+		mvc.perform(get("/api/v1/empleados").header("Authorization", "Bearer " + mostrador))
+				.andExpect(status().isForbidden());
 	}
 }
