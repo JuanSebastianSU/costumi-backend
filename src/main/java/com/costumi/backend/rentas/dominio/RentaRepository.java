@@ -1,5 +1,8 @@
 package com.costumi.backend.rentas.dominio;
 
+import com.costumi.backend.compartido.Pagina;
+import com.costumi.backend.compartido.SolicitudDePagina;
+
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -15,6 +18,9 @@ public interface RentaRepository {
 	List<Renta> listarPorEmpresa(UUID empresaId);
 
 	List<Renta> listarPorCliente(UUID empresaId, UUID clienteId);
+
+	/** Página de rentas de la empresa (opcionalmente filtradas por cliente), más recientes primero (C3). */
+	Pagina<Renta> listar(UUID empresaId, UUID clienteId, SolicitudDePagina solicitud);
 
 	/** Cuántas <b>unidades</b> de la prenda están comprometidas por rentas vigentes que se traslapan con el periodo (RF-3.2). */
 	long cantidadSolapada(UUID empresaId, UUID prendaId, LocalDate retiro, LocalDate devolucion);

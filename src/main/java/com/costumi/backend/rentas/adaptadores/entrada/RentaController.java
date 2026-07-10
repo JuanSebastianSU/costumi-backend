@@ -1,5 +1,7 @@
 package com.costumi.backend.rentas.adaptadores.entrada;
 
+import com.costumi.backend.compartido.RespuestaPaginada;
+import com.costumi.backend.compartido.SolicitudDePagina;
 import com.costumi.backend.rentas.aplicacion.ConsultarRentas;
 import com.costumi.backend.rentas.aplicacion.CrearRenta;
 import com.costumi.backend.rentas.aplicacion.CrearRentaComando;
@@ -102,13 +104,16 @@ class RentaController {
 	}
 
 	@GetMapping
-	List<RentaResponse> listar(@RequestParam(required = false) UUID clienteId, @AuthenticationPrincipal Jwt jwt) {
+	RespuestaPaginada<RentaResponse> listar(@RequestParam(required = false) UUID clienteId,
+			@RequestParam(required = false) Integer pagina, @RequestParam(required = false) Integer tamano,
+			@AuthenticationPrincipal Jwt jwt) {
 		String empresaId = jwt.getClaimAsString("empresa_id");
 		if (empresaId == null) {
-			return List.of();
+			return new RespuestaPaginada<>(List.of(), 0, 0, 0, 0);
 		}
-		return consultarRentas.buscar(UUID.fromString(empresaId), clienteId).stream()
-				.map(RentaResponse::desde).toList();
+		return RespuestaPaginada.desde(
+				consultarRentas.listar(UUID.fromString(empresaId), clienteId, SolicitudDePagina.de(pagina, tamano)),
+				RentaResponse::desde);
 	}
 
 	@PostMapping("/{id}/entregar")

@@ -53,6 +53,10 @@ class LineaDeVentaJpaEntity {
 		this.cantidadDevuelta = cantidadDevuelta;
 	}
 
+	UUID getVentaId() {
+		return ventaId;
+	}
+
 	UUID getPrendaId() {
 		return prendaId;
 	}

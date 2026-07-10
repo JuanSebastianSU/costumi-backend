@@ -138,7 +138,7 @@ class CarritoIntegrationTest {
 		// La venta quedó registrada (2 × 90 = 180).
 		mvc.perform(get("/api/v1/ventas").header("Authorization", "Bearer " + c.dueno()))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.total == 180.00)]").exists());
+				.andExpect(jsonPath("$.contenido[?(@.total == 180.00)]").exists());
 
 		// RF-17.6: un segundo checkout del mismo carrito (ya confirmado) no crea otra venta -> 404.
 		mvc.perform(post("/api/v1/carritos/checkout").header("Authorization", "Bearer " + c.dueno())
@@ -147,7 +147,7 @@ class CarritoIntegrationTest {
 				.andExpect(status().isNotFound());
 		mvc.perform(get("/api/v1/ventas").header("Authorization", "Bearer " + c.dueno()))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.length()").value(1)); // sigue habiendo una sola venta
+				.andExpect(jsonPath("$.total").value(1)); // sigue habiendo una sola venta
 	}
 
 	@Test
@@ -174,7 +174,7 @@ class CarritoIntegrationTest {
 		mvc.perform(get("/api/v1/rentas").param("clienteId", c.cliente().toString())
 						.header("Authorization", "Bearer " + c.dueno()))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.length()").value(2));
+				.andExpect(jsonPath("$.total").value(2));
 
 		// El carrito de renta quedó confirmado (ya no hay pendiente) -> 404 al pedirlo.
 		mvc.perform(get("/api/v1/carritos").header("Authorization", "Bearer " + c.dueno())

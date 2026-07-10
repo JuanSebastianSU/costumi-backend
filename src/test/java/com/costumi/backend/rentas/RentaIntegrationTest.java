@@ -169,7 +169,7 @@ class RentaIntegrationTest {
 		mvc.perform(get("/api/v1/rentas").param("clienteId", c.cliente().toString())
 						.header("Authorization", "Bearer " + c.dueno()))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.id == '" + renta + "')]").exists());
+				.andExpect(jsonPath("$.contenido[?(@.id == '" + renta + "')]").exists());
 	}
 
 	@Test
@@ -273,7 +273,7 @@ class RentaIntegrationTest {
 		mvc.perform(get("/api/v1/rentas").param("clienteId", c.cliente().toString())
 						.header("Authorization", "Bearer " + c.dueno()))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.length()").value(1)); // no se duplicó (RF-17.6)
+				.andExpect(jsonPath("$.total").value(1)); // no se duplicó (RF-17.6)
 	}
 
 	@Test

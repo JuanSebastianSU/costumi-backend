@@ -1,5 +1,7 @@
 package com.costumi.backend.ventas.adaptadores.entrada;
 
+import com.costumi.backend.compartido.RespuestaPaginada;
+import com.costumi.backend.compartido.SolicitudDePagina;
 import com.costumi.backend.ventas.aplicacion.ConsultarVentas;
 import com.costumi.backend.ventas.aplicacion.DevolverVenta;
 import com.costumi.backend.ventas.aplicacion.RegistrarVenta;
@@ -15,6 +17,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -71,11 +74,14 @@ class VentaController {
 	}
 
 	@GetMapping
-	List<VentaResponse> listar(@AuthenticationPrincipal Jwt jwt) {
+	RespuestaPaginada<VentaResponse> listar(@RequestParam(required = false) Integer pagina,
+			@RequestParam(required = false) Integer tamano, @AuthenticationPrincipal Jwt jwt) {
 		String empresaId = jwt.getClaimAsString("empresa_id");
 		if (empresaId == null) {
-			return List.of();
+			return new RespuestaPaginada<>(List.of(), 0, 0, 0, 0);
 		}
-		return consultarVentas.deEmpresa(UUID.fromString(empresaId)).stream().map(VentaResponse::desde).toList();
+		return RespuestaPaginada.desde(
+				consultarVentas.listar(UUID.fromString(empresaId), SolicitudDePagina.de(pagina, tamano)),
+				VentaResponse::desde);
 	}
 }

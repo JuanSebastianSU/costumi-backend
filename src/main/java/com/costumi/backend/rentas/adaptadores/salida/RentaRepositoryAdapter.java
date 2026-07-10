@@ -1,18 +1,26 @@
 package com.costumi.backend.rentas.adaptadores.salida;
 
+import com.costumi.backend.compartido.Pagina;
+import com.costumi.backend.compartido.SolicitudDePagina;
 import com.costumi.backend.rentas.dominio.EstadoRenta;
 import com.costumi.backend.rentas.dominio.Renta;
 import com.costumi.backend.rentas.dominio.RentaLinea;
 import com.costumi.backend.rentas.dominio.RentaRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /** Adaptador de salida: implementa el puerto {@link RentaRepository} con JPA (cabecera + líneas). */
 @Repository
@@ -65,6 +73,31 @@ class RentaRepositoryAdapter implements RentaRepository {
 	}
 
 	@Override
+	public Pagina<Renta> listar(UUID empresaId, UUID clienteId, SolicitudDePagina solicitud) {
+		Pageable pageable = PageRequest.of(solicitud.pagina(), solicitud.tamano(),
+				Sort.by(Sort.Order.desc("fechaRetiro"), Sort.Order.asc("id")));
+		Page<RentaJpaEntity> pagina = (clienteId == null)
+				? jpa.findByEmpresaId(empresaId, pageable)
+				: jpa.findByEmpresaIdAndClienteId(empresaId, clienteId, pageable);
+		return new Pagina<>(aDominioEnLote(pagina.getContent()), pagina.getTotalElements(),
+				solicitud.pagina(), solicitud.tamano());
+	}
+
+	/** Rehidrata una página de rentas cargando TODAS sus líneas en una sola consulta (evita el N+1, C3). */
+	private List<Renta> aDominioEnLote(List<RentaJpaEntity> entidades) {
+		if (entidades.isEmpty()) {
+			return List.of();
+		}
+		List<UUID> ids = entidades.stream().map(RentaJpaEntity::getId).toList();
+		Map<UUID, List<RentaLinea>> lineasPorRenta = lineasJpa.findByRentaIdIn(ids).stream()
+				.collect(Collectors.groupingBy(RentaLineaJpaEntity::getRentaId, Collectors.mapping(
+						l -> RentaLinea.de(l.getPrendaId(), l.getCantidad(), l.getPrecioPorDia()), Collectors.toList())));
+		return entidades.stream()
+				.map(e -> aDominioConLineas(e, lineasPorRenta.getOrDefault(e.getId(), List.of())))
+				.toList();
+	}
+
+	@Override
 	public long cantidadSolapada(UUID empresaId, UUID prendaId, LocalDate retiro, LocalDate devolucion) {
 		return jpa.sumarCantidadSolapada(empresaId, prendaId, retiro, devolucion, ESTADOS_VIGENTES);
 	}
@@ -94,6 +127,10 @@ class RentaRepositoryAdapter implements RentaRepository {
 		List<RentaLinea> lineas = lineasJpa.findByRentaId(e.getId()).stream()
 				.map(l -> RentaLinea.de(l.getPrendaId(), l.getCantidad(), l.getPrecioPorDia()))
 				.toList();
+		return aDominioConLineas(e, lineas);
+	}
+
+	private static Renta aDominioConLineas(RentaJpaEntity e, List<RentaLinea> lineas) {
 		if (lineas.isEmpty()) {
 			// Resiliencia ante filas previas a la migración: reconstruye la línea del artículo principal.
 			lineas = List.of(RentaLinea.de(e.getPrendaId(), 1, e.getPrecioPorDia()));
