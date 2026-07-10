@@ -3,6 +3,7 @@ package com.costumi.backend.inventario;
 import com.costumi.backend.TestcontainersConfiguration;
 import com.costumi.backend.identidad.AuthTestHelper;
 import com.costumi.backend.identidad.dominio.Rol;
+import com.costumi.backend.identidad.dominio.SucursalRepository;
 import com.costumi.backend.identidad.dominio.UsuarioRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -36,6 +37,9 @@ class PrendaIntegrationTest {
 
 	@Autowired
 	UsuarioRepository usuarios;
+
+	@Autowired
+	SucursalRepository sucursales;
 
 	@Autowired
 	PasswordEncoder passwordEncoder;
@@ -220,7 +224,8 @@ class PrendaIntegrationTest {
 		UUID prenda = UUID.fromString(json.readTree(body).get("id").asText());
 		mvc.perform(post("/api/v1/prendas/{id}/grupos-stock", prenda).header("Authorization", "Bearer " + dueno)
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"sucursalId\":\"" + UUID.randomUUID() + "\",\"combinacion\":[],\"cantidadInicial\":3}"))
+						.content("{\"sucursalId\":\"" + AuthTestHelper.sucursal(sucursales, empresa)
+								+ "\",\"combinacion\":[],\"cantidadInicial\":3}"))
 				.andExpect(status().isCreated());
 		String d = mvc.perform(post("/api/v1/disfraces").header("Authorization", "Bearer " + dueno)
 						.contentType(MediaType.APPLICATION_JSON)

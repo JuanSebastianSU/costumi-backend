@@ -1,6 +1,7 @@
 package com.costumi.backend.inventario.aplicacion;
 
 import com.costumi.backend.catalogo.ConsultaDeTaxonomia;
+import com.costumi.backend.identidad.ConsultaDeSucursales;
 import com.costumi.backend.inventario.StockAjustado;
 import com.costumi.backend.inventario.dominio.CombinacionDeVariante;
 import com.costumi.backend.inventario.dominio.GrupoDeStock;
@@ -24,13 +25,15 @@ class GrupoDeStockService implements CrearGrupoDeStock, ConsultarGruposDeStock, 
 	private final PrendaRepository prendas;
 	private final GrupoDeStockRepository grupos;
 	private final ConsultaDeTaxonomia taxonomia;
+	private final ConsultaDeSucursales sucursales;
 	private final ApplicationEventPublisher eventos;
 
 	GrupoDeStockService(PrendaRepository prendas, GrupoDeStockRepository grupos, ConsultaDeTaxonomia taxonomia,
-			ApplicationEventPublisher eventos) {
+			ConsultaDeSucursales sucursales, ApplicationEventPublisher eventos) {
 		this.prendas = prendas;
 		this.grupos = grupos;
 		this.taxonomia = taxonomia;
+		this.sucursales = sucursales;
 		this.eventos = eventos;
 	}
 
@@ -38,6 +41,7 @@ class GrupoDeStockService implements CrearGrupoDeStock, ConsultarGruposDeStock, 
 	@Transactional
 	public GrupoDeStock ejecutar(CrearGrupoDeStockComando comando) {
 		Prenda prenda = exigirPrendaDelTenant(comando.empresaId(), comando.prendaId());
+		exigirSucursalActiva(comando.empresaId(), comando.sucursalId());
 		CombinacionDeVariante combinacion = validarCombinacion(comando.empresaId(), prenda.categoriaId(),
 				comando.combinacion());
 		exigirVarianteNoDuplicada(comando.prendaId(), comando.sucursalId(), combinacion);
@@ -101,6 +105,7 @@ class GrupoDeStockService implements CrearGrupoDeStock, ConsultarGruposDeStock, 
 		if (comando.sucursalDestinoId() == null || comando.sucursalDestinoId().equals(origen.sucursalId())) {
 			throw new IllegalArgumentException("La sucursal de destino debe ser distinta a la de origen");
 		}
+		exigirSucursalActiva(comando.empresaId(), comando.sucursalDestinoId());
 		// Destino = mismo grupo (prenda + variante) en la sucursal de destino; si no existe, se crea vacío.
 		GrupoDeStock destino = grupos.listarPorPrendaYSucursal(origen.prendaId(), comando.sucursalDestinoId()).stream()
 				.filter(origen::mismaVariante)
@@ -145,6 +150,13 @@ class GrupoDeStockService implements CrearGrupoDeStock, ConsultarGruposDeStock, 
 			mapa.put(seleccion.tipoEtiquetaId(), seleccion.valorEtiquetaId());
 		}
 		return CombinacionDeVariante.de(mapa);
+	}
+
+	/** SEC-1: la sucursal debe existir, ser del tenant y estar activa; si no, referencia colgante. */
+	private void exigirSucursalActiva(UUID empresaId, UUID sucursalId) {
+		if (!sucursales.existeActiva(empresaId, sucursalId)) {
+			throw new IllegalArgumentException("La sucursal no existe o está archivada en esta empresa");
+		}
 	}
 
 	private void exigirVarianteNoDuplicada(UUID prendaId, UUID sucursalId, CombinacionDeVariante combinacion) {

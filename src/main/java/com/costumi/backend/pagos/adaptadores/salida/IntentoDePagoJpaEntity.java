@@ -1,5 +1,6 @@
 package com.costumi.backend.pagos.adaptadores.salida;
 
+import com.costumi.backend.compartido.FiltroTenant;
 import com.costumi.backend.pagos.dominio.EstadoIntento;
 import com.costumi.backend.pagos.dominio.TipoConcepto;
 import jakarta.persistence.Column;
@@ -8,14 +9,19 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.Filter;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
-/** Mapeo JPA del intento de pago en línea. Nunca se expone por la API. */
+/**
+ * Mapeo JPA del intento de pago en línea. Nunca se expone por la API. Lleva el filtro multi-tenant
+ * (SEC-3): toda carga por id queda acotada al {@code empresa_id} del token, como el resto de entidades.
+ */
 @Entity
 @Table(name = "intento_de_pago")
+@Filter(name = FiltroTenant.NOMBRE)
 class IntentoDePagoJpaEntity {
 
 	@Id

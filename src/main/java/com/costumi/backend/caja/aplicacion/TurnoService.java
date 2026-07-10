@@ -15,14 +15,20 @@ import java.util.UUID;
 class TurnoService implements AbrirTurno, RegistrarMovimiento, CerrarTurno, ConsultarTurnos {
 
 	private final TurnoRepository turnos;
+	private final com.costumi.backend.identidad.ConsultaDeSucursales sucursales;
 
-	TurnoService(TurnoRepository turnos) {
+	TurnoService(TurnoRepository turnos, com.costumi.backend.identidad.ConsultaDeSucursales sucursales) {
 		this.turnos = turnos;
+		this.sucursales = sucursales;
 	}
 
 	@Override
 	@Transactional
 	public Turno ejecutar(AbrirTurnoComando comando) {
+		// SEC-1: el turno de caja debe abrirse en una sucursal existente, del tenant y activa.
+		if (!sucursales.existeActiva(comando.empresaId(), comando.sucursalId())) {
+			throw new IllegalArgumentException("La sucursal no existe o está archivada en esta empresa");
+		}
 		return turnos.guardar(Turno.abrir(comando.empresaId(), comando.sucursalId(), comando.empleadoId(),
 				comando.fondoInicial()));
 	}

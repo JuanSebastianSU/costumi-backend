@@ -3,6 +3,7 @@ package com.costumi.backend.inventario;
 import com.costumi.backend.TestcontainersConfiguration;
 import com.costumi.backend.identidad.AuthTestHelper;
 import com.costumi.backend.identidad.dominio.Rol;
+import com.costumi.backend.identidad.dominio.SucursalRepository;
 import com.costumi.backend.identidad.dominio.UsuarioRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -40,16 +41,21 @@ class GrupoDeStockIntegrationTest {
 	UsuarioRepository usuarios;
 
 	@Autowired
-	PasswordEncoder passwordEncoder;
+	SucursalRepository sucursales;
 
-	/** Sucursal donde vive el stock de cada test (RF-18.2). La misma para todo el método de prueba. */
-	private final UUID sucursal = UUID.randomUUID();
+	@Autowired
+	PasswordEncoder passwordEncoder;
 
 	private UUID crearEmpresa(String nombre) throws Exception {
 		String body = mvc.perform(post("/api/v1/empresas").contentType(MediaType.APPLICATION_JSON)
 						.content("{\"nombre\":\"" + nombre + "\"}"))
 				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
 		return UUID.fromString(json.readTree(body).get("id").asText());
+	}
+
+	/** Sucursal activa real de la empresa (RF-18.2): el stock exige una sucursal existente y activa (SEC-1). */
+	private UUID sucursalDe(UUID empresaId) {
+		return AuthTestHelper.sucursal(sucursales, empresaId);
 	}
 
 	private String duenoDe(UUID empresaId) throws Exception {
@@ -92,7 +98,8 @@ class GrupoDeStockIntegrationTest {
 		return "[{\"tipoEtiquetaId\":\"" + tipoId + "\",\"valorEtiquetaId\":\"" + valorId + "\"}]";
 	}
 
-	private UUID crearGrupo(String token, UUID prendaId, String combinacionJson, int cantidad) throws Exception {
+	private UUID crearGrupo(String token, UUID prendaId, UUID sucursal, String combinacionJson, int cantidad)
+			throws Exception {
 		String body = mvc.perform(post("/api/v1/prendas/{prendaId}/grupos-stock", prendaId)
 						.header("Authorization", "Bearer " + token)
 						.contentType(MediaType.APPLICATION_JSON)
@@ -110,7 +117,7 @@ class GrupoDeStockIntegrationTest {
 		UUID empresa = crearEmpresa("Empresa Ajuste " + UUID.randomUUID());
 		String dueno = duenoDe(empresa);
 		UUID prenda = crearPrenda(dueno, crearCategoria(dueno, "Camisa " + UUID.randomUUID()));
-		UUID grupo = crearGrupo(dueno, prenda, "[]", 5);
+		UUID grupo = crearGrupo(dueno, prenda, sucursalDe(empresa), "[]", 5);
 
 		// Ajuste con motivo: -2 disponibles (RF-10).
 		mvc.perform(post("/api/v1/grupos-stock/{id}/ajuste", grupo).header("Authorization", "Bearer " + dueno)
@@ -138,7 +145,7 @@ class GrupoDeStockIntegrationTest {
 		UUID prenda = crearPrenda(dueno, crearCategoria(dueno, "Camisa"));
 		UUID color = crearTipoVariante(dueno, "Color");
 		UUID rojo = agregarValor(dueno, color, "Rojo");
-		UUID grupo = crearGrupo(dueno, prenda, combinacion(color, rojo), 8);
+		UUID grupo = crearGrupo(dueno, prenda, sucursalDe(empresa), combinacion(color, rojo), 8);
 
 		mvc.perform(get("/api/v1/prendas/{prendaId}/grupos-stock", prenda).header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
@@ -160,10 +167,11 @@ class GrupoDeStockIntegrationTest {
 	void dos_grupos_con_la_misma_combinacion_devuelve_409() throws Exception {
 		UUID empresa = crearEmpresa("Empresa Dup");
 		String dueno = duenoDe(empresa);
+		UUID sucursal = sucursalDe(empresa);
 		UUID prenda = crearPrenda(dueno, crearCategoria(dueno, "Camisa"));
 		UUID color = crearTipoVariante(dueno, "Color");
 		UUID rojo = agregarValor(dueno, color, "Rojo");
-		crearGrupo(dueno, prenda, combinacion(color, rojo), 5);
+		crearGrupo(dueno, prenda, sucursal, combinacion(color, rojo), 5);
 
 		mvc.perform(post("/api/v1/prendas/{prendaId}/grupos-stock", prenda)
 						.header("Authorization", "Bearer " + dueno)
@@ -186,8 +194,8 @@ class GrupoDeStockIntegrationTest {
 		mvc.perform(post("/api/v1/prendas/{prendaId}/grupos-stock", prenda)
 						.header("Authorization", "Bearer " + dueno)
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"sucursalId\":\"" + sucursal + "\",\"combinacion\":" + combinacion(color, valorDeTalla)
-								+ ",\"cantidadInicial\":3}"))
+						.content("{\"sucursalId\":\"" + sucursalDe(empresa) + "\",\"combinacion\":"
+								+ combinacion(color, valorDeTalla) + ",\"cantidadInicial\":3}"))
 				.andExpect(status().isBadRequest());
 	}
 
@@ -207,8 +215,8 @@ class GrupoDeStockIntegrationTest {
 		mvc.perform(post("/api/v1/prendas/{prendaId}/grupos-stock", prenda)
 						.header("Authorization", "Bearer " + dueno)
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"sucursalId\":\"" + sucursal + "\",\"combinacion\":" + combinacion(material, algodon)
-								+ ",\"cantidadInicial\":3}"))
+						.content("{\"sucursalId\":\"" + sucursalDe(empresa) + "\",\"combinacion\":"
+								+ combinacion(material, algodon) + ",\"cantidadInicial\":3}"))
 				.andExpect(status().isBadRequest());
 	}
 
@@ -218,7 +226,7 @@ class GrupoDeStockIntegrationTest {
 		String dueno = duenoDe(empresa);
 		UUID prenda = crearPrenda(dueno, crearCategoria(dueno, "Camisa"));
 
-		crearGrupo(dueno, prenda, "[]", 4);
+		crearGrupo(dueno, prenda, sucursalDe(empresa), "[]", 4);
 	}
 
 	@Test
@@ -226,7 +234,7 @@ class GrupoDeStockIntegrationTest {
 		UUID empresa = crearEmpresa("Empresa Stock2");
 		String dueno = duenoDe(empresa);
 		UUID prenda = crearPrenda(dueno, crearCategoria(dueno, "Camisa"));
-		UUID grupo = crearGrupo(dueno, prenda, "[]", 2);
+		UUID grupo = crearGrupo(dueno, prenda, sucursalDe(empresa), "[]", 2);
 
 		mvc.perform(post("/api/v1/grupos-stock/{grupoId}/mover", grupo)
 						.header("Authorization", "Bearer " + dueno)
@@ -240,20 +248,22 @@ class GrupoDeStockIntegrationTest {
 		String duenoA = duenoDe(crearEmpresa("Stock A"));
 		UUID prendaDeA = crearPrenda(duenoA, crearCategoria(duenoA, "Camisa"));
 
-		String duenoB = duenoDe(crearEmpresa("Stock B"));
+		UUID empresaB = crearEmpresa("Stock B");
+		String duenoB = duenoDe(empresaB);
 		mvc.perform(post("/api/v1/prendas/{prendaId}/grupos-stock", prendaDeA)
 						.header("Authorization", "Bearer " + duenoB)
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"sucursalId\":\"" + sucursal + "\",\"cantidadInicial\":5}"))
+						.content("{\"sucursalId\":\"" + sucursalDe(empresaB) + "\",\"cantidadInicial\":5}"))
 				.andExpect(status().isNotFound());
 	}
 
 	@Test
 	void mover_un_grupo_de_otra_empresa_devuelve_404() throws Exception {
 		// A crea un grupo con stock.
-		String duenoA = duenoDe(crearEmpresa("Mover A"));
+		UUID empresaA = crearEmpresa("Mover A");
+		String duenoA = duenoDe(empresaA);
 		UUID prendaDeA = crearPrenda(duenoA, crearCategoria(duenoA, "Camisa"));
-		UUID grupoDeA = crearGrupo(duenoA, prendaDeA, "[]", 5);
+		UUID grupoDeA = crearGrupo(duenoA, prendaDeA, sucursalDe(empresaA), "[]", 5);
 
 		// B intenta cargar por PK y mover ese grupo: el find() forzado lo bloquea (§5.4) -> 404.
 		String duenoB = duenoDe(crearEmpresa("Mover B"));
@@ -266,9 +276,10 @@ class GrupoDeStockIntegrationTest {
 
 	@Test
 	void reabastecer_aumenta_el_stock_y_stock_bajo_lo_lista() throws Exception {
-		String dueno = duenoDe(crearEmpresa("Reabastecer"));
+		UUID empresa = crearEmpresa("Reabastecer");
+		String dueno = duenoDe(empresa);
 		UUID prenda = crearPrenda(dueno, crearCategoria(dueno, "Camisa"));
-		UUID grupo = crearGrupo(dueno, prenda, "[]", 2);
+		UUID grupo = crearGrupo(dueno, prenda, sucursalDe(empresa), "[]", 2);
 
 		// Con umbral 5, el grupo (2 disponibles) sale en stock bajo.
 		mvc.perform(get("/api/v1/grupos-stock/stock-bajo").param("umbral", "5")
@@ -296,8 +307,8 @@ class GrupoDeStockIntegrationTest {
 		UUID empresa = crearEmpresa("Empresa MultiSucursal " + UUID.randomUUID());
 		String dueno = duenoDe(empresa);
 		UUID prenda = crearPrenda(dueno, crearCategoria(dueno, "Camisa " + UUID.randomUUID()));
-		UUID sucursalA = UUID.randomUUID();
-		UUID sucursalB = UUID.randomUUID();
+		UUID sucursalA = sucursalDe(empresa);
+		UUID sucursalB = sucursalDe(empresa);
 
 		mvc.perform(post("/api/v1/prendas/{prendaId}/grupos-stock", prenda).header("Authorization", "Bearer " + dueno)
 						.contentType(MediaType.APPLICATION_JSON)
@@ -323,8 +334,9 @@ class GrupoDeStockIntegrationTest {
 		UUID empresa = crearEmpresa("Empresa Transfer " + UUID.randomUUID());
 		String dueno = duenoDe(empresa);
 		UUID prenda = crearPrenda(dueno, crearCategoria(dueno, "Camisa " + UUID.randomUUID()));
-		UUID grupoOrigen = crearGrupo(dueno, prenda, "[]", 10); // vive en la sucursal del campo `sucursal`
-		UUID sucursalDestino = UUID.randomUUID();
+		UUID sucursalOrigen = sucursalDe(empresa);
+		UUID grupoOrigen = crearGrupo(dueno, prenda, sucursalOrigen, "[]", 10);
+		UUID sucursalDestino = sucursalDe(empresa);
 
 		mvc.perform(post("/api/v1/grupos-stock/{grupoId}/transferir", grupoOrigen)
 						.header("Authorization", "Bearer " + dueno)
@@ -340,7 +352,7 @@ class GrupoDeStockIntegrationTest {
 				.andExpect(jsonPath("$.length()").value(2))
 				.andExpect(jsonPath("$[?(@.sucursalId == '" + sucursalDestino + "')].disponibles",
 						org.hamcrest.Matchers.hasItem(3)))
-				.andExpect(jsonPath("$[?(@.sucursalId == '" + sucursal + "')].disponibles",
+				.andExpect(jsonPath("$[?(@.sucursalId == '" + sucursalOrigen + "')].disponibles",
 						org.hamcrest.Matchers.hasItem(7)));
 	}
 
@@ -349,12 +361,43 @@ class GrupoDeStockIntegrationTest {
 		UUID empresa = crearEmpresa("Empresa TransferMax " + UUID.randomUUID());
 		String dueno = duenoDe(empresa);
 		UUID prenda = crearPrenda(dueno, crearCategoria(dueno, "Camisa " + UUID.randomUUID()));
-		UUID grupoOrigen = crearGrupo(dueno, prenda, "[]", 2);
+		UUID grupoOrigen = crearGrupo(dueno, prenda, sucursalDe(empresa), "[]", 2);
 
 		mvc.perform(post("/api/v1/grupos-stock/{grupoId}/transferir", grupoOrigen)
 						.header("Authorization", "Bearer " + dueno)
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"sucursalDestinoId\":\"" + UUID.randomUUID() + "\",\"cantidad\":5}"))
+						.content("{\"sucursalDestinoId\":\"" + sucursalDe(empresa) + "\",\"cantidad\":5}"))
+				.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	void crear_grupo_en_sucursal_inexistente_devuelve_400() throws Exception {
+		// SEC-1: no se puede anclar stock a una sucursal que no existe (ni a la de otra empresa: para este
+		// tenant simplemente "no existe") -> referencia colgante rechazada.
+		UUID empresa = crearEmpresa("Suc Inexistente " + UUID.randomUUID());
+		String dueno = duenoDe(empresa);
+		UUID prenda = crearPrenda(dueno, crearCategoria(dueno, "Camisa"));
+
+		mvc.perform(post("/api/v1/prendas/{prendaId}/grupos-stock", prenda).header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + UUID.randomUUID() + "\",\"combinacion\":[],\"cantidadInicial\":3}"))
+				.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	void crear_grupo_en_sucursal_archivada_devuelve_400() throws Exception {
+		// SEC-1: una sucursal archivada no admite stock nuevo (no se puede "revivir" por la API).
+		UUID empresa = crearEmpresa("Suc Archivada " + UUID.randomUUID());
+		String dueno = duenoDe(empresa);
+		UUID prenda = crearPrenda(dueno, crearCategoria(dueno, "Camisa"));
+		UUID sucursal = sucursalDe(empresa);
+		var s = sucursales.buscarPorId(sucursal).orElseThrow();
+		s.archivar();
+		sucursales.guardar(s);
+
+		mvc.perform(post("/api/v1/prendas/{prendaId}/grupos-stock", prenda).header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + sucursal + "\",\"combinacion\":[],\"cantidadInicial\":3}"))
 				.andExpect(status().isBadRequest());
 	}
 

@@ -28,13 +28,15 @@ class VentaService implements RegistrarVenta, ConsultarVentas, RegistroDeVentas,
 	private final ConsultaDeInventario inventario;
 	private final AjusteDeInventario ajusteDeInventario;
 	private final ConsultaDeConfiguracion configuracion;
+	private final com.costumi.backend.identidad.ConsultaDeSucursales sucursales;
 
 	VentaService(VentaRepository ventas, ConsultaDeInventario inventario, AjusteDeInventario ajusteDeInventario,
-			ConsultaDeConfiguracion configuracion) {
+			ConsultaDeConfiguracion configuracion, com.costumi.backend.identidad.ConsultaDeSucursales sucursales) {
 		this.ventas = ventas;
 		this.inventario = inventario;
 		this.ajusteDeInventario = ajusteDeInventario;
 		this.configuracion = configuracion;
+		this.sucursales = sucursales;
 	}
 
 	@Override
@@ -46,6 +48,10 @@ class VentaService implements RegistrarVenta, ConsultarVentas, RegistroDeVentas,
 			if (existente.isPresent()) {
 				return existente.get();
 			}
+		}
+		// SEC-1: la venta debe anclarse a una sucursal existente, del tenant y activa.
+		if (!sucursales.existeActiva(comando.empresaId(), comando.sucursalId())) {
+			throw new IllegalArgumentException("La sucursal no existe o está archivada en esta empresa");
 		}
 		for (LineaDeVenta linea : comando.lineas()) {
 			if (!inventario.prendaExiste(comando.empresaId(), linea.prendaId())) {

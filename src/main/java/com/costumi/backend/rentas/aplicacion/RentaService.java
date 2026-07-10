@@ -25,11 +25,14 @@ class RentaService implements CrearRenta, ConsultarRentas, GestionarRenta, Consu
 	private final RentaRepository rentas;
 	private final ConsultaDeInventario inventario;
 	private final ConsultaDeConfiguracion configuracion;
+	private final com.costumi.backend.identidad.ConsultaDeSucursales sucursales;
 
-	RentaService(RentaRepository rentas, ConsultaDeInventario inventario, ConsultaDeConfiguracion configuracion) {
+	RentaService(RentaRepository rentas, ConsultaDeInventario inventario, ConsultaDeConfiguracion configuracion,
+			com.costumi.backend.identidad.ConsultaDeSucursales sucursales) {
 		this.rentas = rentas;
 		this.inventario = inventario;
 		this.configuracion = configuracion;
+		this.sucursales = sucursales;
 	}
 
 	@Override
@@ -43,6 +46,10 @@ class RentaService implements CrearRenta, ConsultarRentas, GestionarRenta, Consu
 		}
 		if (comando.lineas() == null || comando.lineas().isEmpty()) {
 			throw new IllegalArgumentException("La renta debe tener al menos un artículo");
+		}
+		// SEC-1: la renta debe anclarse a una sucursal existente, del tenant y activa.
+		if (!sucursales.existeActiva(comando.empresaId(), comando.sucursalId())) {
+			throw new IllegalArgumentException("La sucursal no existe o está archivada en esta empresa");
 		}
 		// Cantidad total pedida por prenda (una misma prenda puede venir en varias líneas).
 		Map<UUID, Integer> cantidadPorPrenda = new LinkedHashMap<>();
