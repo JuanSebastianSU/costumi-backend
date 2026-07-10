@@ -101,4 +101,13 @@ class ClienteService implements CrearCliente, ConsultarClientes, CambiarListaNeg
 				.filter(cliente -> empresaId.equals(cliente.empresaId()))
 				.isPresent();
 	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public boolean estaEnListaNegra(UUID empresaId, UUID clienteId) {
+		return clientes.buscarPorId(clienteId)
+				.filter(cliente -> empresaId.equals(cliente.empresaId()))
+				.map(Cliente::enListaNegra)
+				.orElse(false);
+	}
 }

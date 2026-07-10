@@ -1,5 +1,6 @@
 package com.costumi.backend.rentas.adaptadores.entrada;
 
+import com.costumi.backend.rentas.aplicacion.ClienteEnListaNegra;
 import com.costumi.backend.rentas.aplicacion.RentaNoEncontrada;
 import com.costumi.backend.rentas.aplicacion.SinDisponibilidad;
 import com.costumi.backend.rentas.dominio.TransicionDeRentaInvalida;
@@ -30,6 +31,13 @@ class ManejadorDeErroresRentas {
 	ProblemDetail sinDisponibilidad(SinDisponibilidad ex) {
 		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
 		problema.setTitle("Sin disponibilidad");
+		return problema;
+	}
+
+	@ExceptionHandler(ClienteEnListaNegra.class)
+	ProblemDetail clienteEnListaNegra(ClienteEnListaNegra ex) {
+		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+		problema.setTitle("Cliente en lista negra");
 		return problema;
 	}
 
