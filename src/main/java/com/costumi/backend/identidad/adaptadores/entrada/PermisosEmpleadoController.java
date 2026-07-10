@@ -2,6 +2,7 @@ package com.costumi.backend.identidad.adaptadores.entrada;
 
 import com.costumi.backend.identidad.aplicacion.GestionarPermisosDeEmpleado;
 import com.costumi.backend.identidad.dominio.AccionDePermiso;
+import com.costumi.backend.identidad.dominio.Rol;
 import com.costumi.backend.identidad.dominio.Seccion;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -30,7 +31,8 @@ class PermisosEmpleadoController {
 	@GetMapping
 	List<PermisoDto> matriz(@PathVariable UUID usuarioId, @AuthenticationPrincipal Jwt jwt) {
 		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
-		return permisos.matriz(empresaId, usuarioId).stream()
+		Rol actorRol = Rol.valueOf(jwt.getClaimAsString("rol"));
+		return permisos.matriz(empresaId, actorRol, usuarioId).stream()
 				.map(p -> new PermisoDto(p.seccion(), p.accion(), p.concedido()))
 				.toList();
 	}
@@ -39,7 +41,8 @@ class PermisosEmpleadoController {
 	void establecer(@PathVariable UUID usuarioId, @RequestBody EstablecerPermisoRequest request,
 			@AuthenticationPrincipal Jwt jwt) {
 		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
-		permisos.establecer(empresaId, usuarioId, request.seccion(), request.accion(), request.concedido());
+		Rol actorRol = Rol.valueOf(jwt.getClaimAsString("rol"));
+		permisos.establecer(empresaId, actorRol, usuarioId, request.seccion(), request.accion(), request.concedido());
 	}
 
 	record PermisoDto(Seccion seccion, AccionDePermiso accion, boolean concedido) {

@@ -7,6 +7,7 @@ import com.costumi.backend.identidad.aplicacion.EmailYaRegistrado;
 import com.costumi.backend.identidad.aplicacion.EmpleadoNoEncontrado;
 import com.costumi.backend.identidad.aplicacion.EmpresaNoEncontrada;
 import com.costumi.backend.identidad.aplicacion.EmpresaNoOperativa;
+import com.costumi.backend.identidad.aplicacion.GestionDeEmpleadoNoPermitida;
 import com.costumi.backend.identidad.aplicacion.LimiteDeSucursales;
 import com.costumi.backend.identidad.aplicacion.RefreshInvalido;
 import com.costumi.backend.identidad.aplicacion.SucursalConDependencias;
@@ -119,6 +120,13 @@ class ManejadorDeErrores {
 	ProblemDetail accesoAlTenantDenegado(AccesoAlTenantDenegado ex) {
 		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
 		problema.setTitle("Acceso denegado");
+		return problema;
+	}
+
+	@ExceptionHandler(GestionDeEmpleadoNoPermitida.class)
+	ProblemDetail gestionDeEmpleadoNoPermitida(GestionDeEmpleadoNoPermitida ex) {
+		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
+		problema.setTitle("Gestión de empleado no permitida");
 		return problema;
 	}
 }
