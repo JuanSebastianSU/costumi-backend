@@ -26,15 +26,18 @@ class RentaService implements CrearRenta, ConsultarRentas, GestionarRenta, Consu
 	private final ConsultaDeInventario inventario;
 	private final ConsultaDeConfiguracion configuracion;
 	private final com.costumi.backend.identidad.ConsultaDeSucursales sucursales;
+	private final com.costumi.backend.identidad.ConsultaDeAsignaciones asignaciones;
 	private final com.costumi.backend.clientes.ResolucionDeClientes clientes;
 
 	RentaService(RentaRepository rentas, ConsultaDeInventario inventario, ConsultaDeConfiguracion configuracion,
 			com.costumi.backend.identidad.ConsultaDeSucursales sucursales,
+			com.costumi.backend.identidad.ConsultaDeAsignaciones asignaciones,
 			com.costumi.backend.clientes.ResolucionDeClientes clientes) {
 		this.rentas = rentas;
 		this.inventario = inventario;
 		this.configuracion = configuracion;
 		this.sucursales = sucursales;
+		this.asignaciones = asignaciones;
 		this.clientes = clientes;
 	}
 
@@ -53,6 +56,10 @@ class RentaService implements CrearRenta, ConsultarRentas, GestionarRenta, Consu
 		// SEC-1: la renta debe anclarse a una sucursal existente, del tenant y activa.
 		if (!sucursales.existeActiva(comando.empresaId(), comando.sucursalId())) {
 			throw new IllegalArgumentException("La sucursal no existe o está archivada en esta empresa");
+		}
+		// B2 (RF-1.2): un empleado de rol acotado solo opera en las sucursales que tiene asignadas.
+		if (!asignaciones.empleadoPuedeOperarEn(comando.empresaId(), comando.empleadoId(), comando.sucursalId())) {
+			throw new com.costumi.backend.compartido.EmpleadoNoAsignadoASucursal(comando.sucursalId());
 		}
 		// SEC-2: el cliente debe existir y ser de esta empresa (no una referencia colgante/ajena).
 		if (!clientes.existe(comando.empresaId(), comando.clienteId())) {

@@ -16,10 +16,13 @@ class TurnoService implements AbrirTurno, RegistrarMovimiento, CerrarTurno, Cons
 
 	private final TurnoRepository turnos;
 	private final com.costumi.backend.identidad.ConsultaDeSucursales sucursales;
+	private final com.costumi.backend.identidad.ConsultaDeAsignaciones asignaciones;
 
-	TurnoService(TurnoRepository turnos, com.costumi.backend.identidad.ConsultaDeSucursales sucursales) {
+	TurnoService(TurnoRepository turnos, com.costumi.backend.identidad.ConsultaDeSucursales sucursales,
+			com.costumi.backend.identidad.ConsultaDeAsignaciones asignaciones) {
 		this.turnos = turnos;
 		this.sucursales = sucursales;
+		this.asignaciones = asignaciones;
 	}
 
 	@Override
@@ -28,6 +31,10 @@ class TurnoService implements AbrirTurno, RegistrarMovimiento, CerrarTurno, Cons
 		// SEC-1: el turno de caja debe abrirse en una sucursal existente, del tenant y activa.
 		if (!sucursales.existeActiva(comando.empresaId(), comando.sucursalId())) {
 			throw new IllegalArgumentException("La sucursal no existe o está archivada en esta empresa");
+		}
+		// B2 (RF-1.2): un empleado de rol acotado solo abre caja en las sucursales que tiene asignadas.
+		if (!asignaciones.empleadoPuedeOperarEn(comando.empresaId(), comando.empleadoId(), comando.sucursalId())) {
+			throw new com.costumi.backend.compartido.EmpleadoNoAsignadoASucursal(comando.sucursalId());
 		}
 		return turnos.guardar(Turno.abrir(comando.empresaId(), comando.sucursalId(), comando.empleadoId(),
 				comando.fondoInicial()));
