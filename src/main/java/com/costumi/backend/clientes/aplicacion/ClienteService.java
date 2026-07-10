@@ -93,4 +93,12 @@ class ClienteService implements CrearCliente, ConsultarClientes, CambiarListaNeg
 				.map(Cliente::id)
 				.orElseGet(() -> clientes.guardar(Cliente.deUsuario(empresaId, usuarioId, email)).id());
 	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public boolean existe(UUID empresaId, UUID clienteId) {
+		return clientes.buscarPorId(clienteId)
+				.filter(cliente -> empresaId.equals(cliente.empresaId()))
+				.isPresent();
+	}
 }

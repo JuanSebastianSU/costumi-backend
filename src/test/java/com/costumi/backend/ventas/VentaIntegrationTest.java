@@ -75,6 +75,22 @@ class VentaIntegrationTest {
 	}
 
 	@Test
+	void registrar_venta_con_cliente_inexistente_devuelve_400() throws Exception {
+		UUID[] ctx = montar();
+		UUID sucursal = ctx[0];
+		UUID prenda = ctx[1];
+
+		// SEC-2: si la venta declara un cliente, debe existir y ser de esta empresa (una venta sin cliente
+		// —anónima de mostrador— sí se permite, como en los demás tests).
+		mvc.perform(post("/api/v1/ventas").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + sucursal + "\",\"clienteId\":\"" + UUID.randomUUID()
+								+ "\",\"lineas\":[{\"prendaId\":\"" + prenda
+								+ "\",\"cantidad\":1,\"precioUnitario\":50.00}]}"))
+				.andExpect(status().isBadRequest());
+	}
+
+	@Test
 	void registrar_venta_calcula_el_total_con_descuento() throws Exception {
 		UUID[] ctx = montar();
 		UUID sucursal = ctx[0];

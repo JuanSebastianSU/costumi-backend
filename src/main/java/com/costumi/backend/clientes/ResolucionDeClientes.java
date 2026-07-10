@@ -14,4 +14,11 @@ public interface ResolucionDeClientes {
 	 * no existe (proyección por-tienda de la cuenta del marketplace, RF-14.4/18.5).
 	 */
 	UUID fichaDeUsuario(UUID empresaId, UUID usuarioId, String email);
+
+	/**
+	 * ¿El cliente existe y pertenece a la empresa (tenant)? Validación de referencia cruzada (§5.4, SEC-2):
+	 * la usan Rentas/Ventas/Pedidos para no anclar una operación a un cliente inexistente o de otra empresa.
+	 * Filtra por {@code empresaId} explícito (correcto aun con el filtro multi-tenant apagado).
+	 */
+	boolean existe(UUID empresaId, UUID clienteId);
 }

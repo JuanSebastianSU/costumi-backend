@@ -29,16 +29,19 @@ class CarritoService implements AgregarItemAlCarrito, ConsultarCarrito, HacerChe
 	private final RegistroDeRentas rentas;
 	private final ContextoDeTenant contexto;
 	private final com.costumi.backend.identidad.ConsultaDeSucursales sucursales;
+	private final com.costumi.backend.clientes.ResolucionDeClientes clientes;
 
 	CarritoService(CarritoRepository carritos, ConsultaDeInventario inventario, RegistroDeVentas ventas,
 			RegistroDeRentas rentas, ContextoDeTenant contexto,
-			com.costumi.backend.identidad.ConsultaDeSucursales sucursales) {
+			com.costumi.backend.identidad.ConsultaDeSucursales sucursales,
+			com.costumi.backend.clientes.ResolucionDeClientes clientes) {
 		this.carritos = carritos;
 		this.inventario = inventario;
 		this.ventas = ventas;
 		this.rentas = rentas;
 		this.contexto = contexto;
 		this.sucursales = sucursales;
+		this.clientes = clientes;
 	}
 
 	@Override
@@ -47,6 +50,11 @@ class CarritoService implements AgregarItemAlCarrito, ConsultarCarrito, HacerChe
 		// SEC-1: el carrito se ancla a una sucursal; debe existir, ser del tenant y estar activa.
 		if (!sucursales.existeActiva(comando.empresaId(), comando.sucursalId())) {
 			throw new IllegalArgumentException("La sucursal no existe o está archivada en esta empresa");
+		}
+		// SEC-2: el carrito pertenece a un cliente; debe existir y ser de esta empresa (en el flujo CLIENTE
+		// la ficha ya viene resuelta/creada del token, así que siempre pasa).
+		if (!clientes.existe(comando.empresaId(), comando.clienteId())) {
+			throw new IllegalArgumentException("El cliente no existe en esta empresa");
 		}
 		Carrito carrito = carritos
 				.buscarPendiente(comando.empresaId(), comando.sucursalId(), comando.clienteId(), comando.tipo())
