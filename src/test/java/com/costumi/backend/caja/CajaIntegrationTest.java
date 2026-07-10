@@ -41,12 +41,14 @@ class CajaIntegrationTest {
 
 	private String dueno;
 	private UUID sucursal;
+	private UUID empresa;
 
 	private void montar() throws Exception {
 		String res = mvc.perform(post("/api/v1/empresas").contentType(MediaType.APPLICATION_JSON)
 						.content("{\"nombre\":\"Caja " + UUID.randomUUID() + "\"}"))
 				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
 		UUID empresa = UUID.fromString(json.readTree(res).get("id").asText());
+		this.empresa = empresa;
 		String superAdmin = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, null, Rol.SUPERADMIN);
 		mvc.perform(post("/api/v1/empresas/{id}/aprobar", empresa).header("Authorization", "Bearer " + superAdmin))
 				.andExpect(status().isOk());
@@ -120,6 +122,33 @@ class CajaIntegrationTest {
 				.andExpect(status().isNotFound());
 		// silencia el warning de variable no usada
 		org.assertj.core.api.Assertions.assertThat(duenoA).isNotBlank();
+	}
+
+	@Test
+	void un_empleado_acotado_solo_abre_caja_en_su_sucursal_asignada() throws Exception {
+		montar();
+		// Un MOSTRADOR (rol acotado) recién creado no tiene sucursales asignadas.
+		AuthTestHelper.Sesion mostrador = AuthTestHelper.sesion(mvc, json, usuarios, passwordEncoder, empresa,
+				Rol.MOSTRADOR);
+
+		// B2 (RF-1.2): sin asignación, abrir caja en la sucursal -> 403.
+		mvc.perform(post("/api/v1/caja/turnos").header("Authorization", "Bearer " + mostrador.token())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + sucursal + "\",\"fondoInicial\":100.00}"))
+				.andExpect(status().isForbidden());
+
+		// El dueño lo asigna a la sucursal.
+		mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+						.put("/api/v1/empleados/{id}/sucursales", mostrador.usuarioId())
+						.header("Authorization", "Bearer " + dueno).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalIds\":[\"" + sucursal + "\"]}"))
+				.andExpect(status().isOk());
+
+		// Ahora sí puede abrir caja en esa sucursal.
+		mvc.perform(post("/api/v1/caja/turnos").header("Authorization", "Bearer " + mostrador.token())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + sucursal + "\",\"fondoInicial\":100.00}"))
+				.andExpect(status().isCreated());
 	}
 
 	@Test

@@ -33,6 +33,13 @@ class ManejadorDeErroresCompartido {
 		return problema;
 	}
 
+	@ExceptionHandler(EmpleadoNoAsignadoASucursal.class)
+	ProblemDetail empleadoNoAsignado(EmpleadoNoAsignadoASucursal ex) {
+		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
+		problema.setTitle("Empleado no asignado a la sucursal");
+		return problema;
+	}
+
 	/**
 	 * Traduce las violaciones de integridad de la BD a <b>409 Conflict</b> en vez de un 500 crudo: un índice
 	 * único duplicado (p. ej. dos categorías con el mismo nombre) es un conflicto del cliente, no un fallo del

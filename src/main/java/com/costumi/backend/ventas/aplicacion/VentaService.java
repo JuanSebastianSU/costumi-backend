@@ -29,16 +29,19 @@ class VentaService implements RegistrarVenta, ConsultarVentas, RegistroDeVentas,
 	private final AjusteDeInventario ajusteDeInventario;
 	private final ConsultaDeConfiguracion configuracion;
 	private final com.costumi.backend.identidad.ConsultaDeSucursales sucursales;
+	private final com.costumi.backend.identidad.ConsultaDeAsignaciones asignaciones;
 	private final com.costumi.backend.clientes.ResolucionDeClientes clientes;
 
 	VentaService(VentaRepository ventas, ConsultaDeInventario inventario, AjusteDeInventario ajusteDeInventario,
 			ConsultaDeConfiguracion configuracion, com.costumi.backend.identidad.ConsultaDeSucursales sucursales,
+			com.costumi.backend.identidad.ConsultaDeAsignaciones asignaciones,
 			com.costumi.backend.clientes.ResolucionDeClientes clientes) {
 		this.ventas = ventas;
 		this.inventario = inventario;
 		this.ajusteDeInventario = ajusteDeInventario;
 		this.configuracion = configuracion;
 		this.sucursales = sucursales;
+		this.asignaciones = asignaciones;
 		this.clientes = clientes;
 	}
 
@@ -55,6 +58,10 @@ class VentaService implements RegistrarVenta, ConsultarVentas, RegistroDeVentas,
 		// SEC-1: la venta debe anclarse a una sucursal existente, del tenant y activa.
 		if (!sucursales.existeActiva(comando.empresaId(), comando.sucursalId())) {
 			throw new IllegalArgumentException("La sucursal no existe o está archivada en esta empresa");
+		}
+		// B2 (RF-1.2): un empleado de rol acotado solo opera en las sucursales que tiene asignadas.
+		if (!asignaciones.empleadoPuedeOperarEn(comando.empresaId(), comando.empleadoId(), comando.sucursalId())) {
+			throw new com.costumi.backend.compartido.EmpleadoNoAsignadoASucursal(comando.sucursalId());
 		}
 		// SEC-2: si la venta va a nombre de un cliente, debe existir y ser de esta empresa (el cliente es
 		// opcional: una venta de mostrador puede ser anónima, RF-4).
