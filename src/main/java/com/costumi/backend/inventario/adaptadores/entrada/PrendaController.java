@@ -85,8 +85,7 @@ class PrendaController {
 		if (archivo == null || archivo.isEmpty()) {
 			throw new IllegalArgumentException("El archivo de la foto es obligatorio");
 		}
-		Prenda prenda = asignarFotoDePrenda.ejecutar(empresaId, id, archivo.getBytes(),
-				archivo.getContentType(), archivo.getOriginalFilename());
+		Prenda prenda = asignarFotoDePrenda.ejecutar(empresaId, id, archivo.getBytes());
 		return ResponseEntity.ok(PrendaResponse.desde(prenda));
 	}
 

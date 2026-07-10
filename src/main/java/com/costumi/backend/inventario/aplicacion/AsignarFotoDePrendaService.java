@@ -2,6 +2,7 @@ package com.costumi.backend.inventario.aplicacion;
 
 import com.costumi.backend.inventario.dominio.Prenda;
 import com.costumi.backend.inventario.dominio.PrendaRepository;
+import com.costumi.backend.inventario.dominio.TipoDeImagen;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,21 +25,15 @@ class AsignarFotoDePrendaService implements AsignarFotoDePrenda {
 
 	@Override
 	@Transactional
-	public Prenda ejecutar(UUID empresaId, UUID prendaId, byte[] contenido, String contentType, String nombreArchivo) {
+	public Prenda ejecutar(UUID empresaId, UUID prendaId, byte[] contenido) {
 		Prenda prenda = prendas.buscarPorId(prendaId)
 				.filter(p -> p.empresaId().equals(empresaId))
 				.orElseThrow(() -> new PrendaNoEncontrada(prendaId));
-		String clave = "prendas/" + empresaId + "/" + prendaId + "/" + UUID.randomUUID() + extension(nombreArchivo);
-		String url = almacen.subir(contenido, contentType, clave);
+		// C1: solo imágenes reales (por magic bytes); el tipo/extensión salen del contenido, no del cliente.
+		TipoDeImagen tipo = TipoDeImagen.detectar(contenido).orElseThrow(FormatoDeImagenNoSoportado::new);
+		String clave = "prendas/" + empresaId + "/" + prendaId + "/" + UUID.randomUUID() + tipo.extension();
+		String url = almacen.subir(contenido, tipo.contentType(), clave);
 		prenda.asignarFoto(url);
 		return prendas.guardar(prenda);
-	}
-
-	private static String extension(String nombreArchivo) {
-		if (nombreArchivo == null) {
-			return "";
-		}
-		int punto = nombreArchivo.lastIndexOf('.');
-		return (punto >= 0) ? nombreArchivo.substring(punto).toLowerCase() : "";
 	}
 }
