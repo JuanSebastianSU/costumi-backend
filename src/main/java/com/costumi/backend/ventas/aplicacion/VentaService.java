@@ -29,14 +29,17 @@ class VentaService implements RegistrarVenta, ConsultarVentas, RegistroDeVentas,
 	private final AjusteDeInventario ajusteDeInventario;
 	private final ConsultaDeConfiguracion configuracion;
 	private final com.costumi.backend.identidad.ConsultaDeSucursales sucursales;
+	private final com.costumi.backend.clientes.ResolucionDeClientes clientes;
 
 	VentaService(VentaRepository ventas, ConsultaDeInventario inventario, AjusteDeInventario ajusteDeInventario,
-			ConsultaDeConfiguracion configuracion, com.costumi.backend.identidad.ConsultaDeSucursales sucursales) {
+			ConsultaDeConfiguracion configuracion, com.costumi.backend.identidad.ConsultaDeSucursales sucursales,
+			com.costumi.backend.clientes.ResolucionDeClientes clientes) {
 		this.ventas = ventas;
 		this.inventario = inventario;
 		this.ajusteDeInventario = ajusteDeInventario;
 		this.configuracion = configuracion;
 		this.sucursales = sucursales;
+		this.clientes = clientes;
 	}
 
 	@Override
@@ -52,6 +55,11 @@ class VentaService implements RegistrarVenta, ConsultarVentas, RegistroDeVentas,
 		// SEC-1: la venta debe anclarse a una sucursal existente, del tenant y activa.
 		if (!sucursales.existeActiva(comando.empresaId(), comando.sucursalId())) {
 			throw new IllegalArgumentException("La sucursal no existe o está archivada en esta empresa");
+		}
+		// SEC-2: si la venta va a nombre de un cliente, debe existir y ser de esta empresa (el cliente es
+		// opcional: una venta de mostrador puede ser anónima, RF-4).
+		if (comando.clienteId() != null && !clientes.existe(comando.empresaId(), comando.clienteId())) {
+			throw new IllegalArgumentException("El cliente no existe en esta empresa");
 		}
 		for (LineaDeVenta linea : comando.lineas()) {
 			if (!inventario.prendaExiste(comando.empresaId(), linea.prendaId())) {

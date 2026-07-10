@@ -97,6 +97,18 @@ class RentaIntegrationTest {
 	}
 
 	@Test
+	void crear_renta_con_cliente_inexistente_devuelve_400() throws Exception {
+		Ctx c = montar();
+		// SEC-2: la renta no puede anclarse a un cliente inexistente/ajeno.
+		String body = "{\"sucursalId\":\"" + c.sucursal() + "\",\"clienteId\":\"" + UUID.randomUUID() + "\",\"prendaId\":\""
+				+ c.prenda() + "\",\"fechaRetiro\":\"2026-08-01\",\"fechaDevolucion\":\"2026-08-04\","
+				+ "\"precioPorDia\":20.00,\"deposito\":50.00}";
+		mvc.perform(post("/api/v1/rentas").header("Authorization", "Bearer " + c.dueno())
+						.contentType(MediaType.APPLICATION_JSON).content(body))
+				.andExpect(status().isBadRequest());
+	}
+
+	@Test
 	void extender_una_renta_recalcula_el_importe() throws Exception {
 		Ctx c = montar();
 		UUID renta = crearRenta(c);
