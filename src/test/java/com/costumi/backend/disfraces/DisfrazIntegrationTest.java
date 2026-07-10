@@ -202,8 +202,8 @@ class DisfrazIntegrationTest {
 		mvc.perform(get("/api/v1/rentas").param("clienteId", c.cliente().toString())
 						.header("Authorization", "Bearer " + c.dueno()))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.length()").value(1))
-				.andExpect(jsonPath("$[0].lineas.length()").value(2));
+				.andExpect(jsonPath("$.total").value(1))
+				.andExpect(jsonPath("$.contenido[0].lineas.length()").value(2));
 	}
 
 	private UUID crearDisfrazConPrecioGeneral(String dueno, UUID prendaFija, UUID categoriaPool, String precioGeneral)
@@ -239,7 +239,7 @@ class DisfrazIntegrationTest {
 		String body = mvc.perform(get("/api/v1/rentas").param("clienteId", c.cliente().toString())
 						.header("Authorization", "Bearer " + c.dueno()))
 				.andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-		var renta = json.readTree(body).get(0);
+		var renta = json.readTree(body).get("contenido").get(0);
 		org.assertj.core.api.Assertions.assertThat(new java.math.BigDecimal(renta.get("importe").asText()))
 				.isEqualByComparingTo("300.00");
 		// Las dos líneas del conjunto suman el precio general por día (100), no la suma de prendas (80).

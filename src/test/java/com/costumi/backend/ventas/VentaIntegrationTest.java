@@ -108,7 +108,7 @@ class VentaIntegrationTest {
 
 		mvc.perform(get("/api/v1/ventas").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.length()").value(1));
+				.andExpect(jsonPath("$.total").value(1));
 	}
 
 	@Test
@@ -285,10 +285,39 @@ class VentaIntegrationTest {
 
 		mvc.perform(get("/api/v1/ventas").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.length()").value(1)); // no se duplicó
+				.andExpect(jsonPath("$.total").value(1)); // no se duplicó
 
 		// Y el stock se descontó una sola vez (5 - 1 = 4), no dos.
 		org.assertj.core.api.Assertions.assertThat(disponiblesDe(prenda)).isEqualTo(4);
+	}
+
+	@Test
+	void el_listado_de_ventas_se_pagina() throws Exception {
+		UUID[] ctx = montar();
+		UUID sucursal = ctx[0];
+		UUID prenda = ctx[1];
+		String linea = "\"lineas\":[{\"prendaId\":\"" + prenda + "\",\"cantidad\":1,\"precioUnitario\":10.00}]}";
+		for (int i = 0; i < 3; i++) {
+			mvc.perform(post("/api/v1/ventas").header("Authorization", "Bearer " + dueno)
+							.contentType(MediaType.APPLICATION_JSON)
+							.content("{\"sucursalId\":\"" + sucursal + "\"," + linea))
+					.andExpect(status().isCreated());
+		}
+
+		// C3: pedir tamaño 2 → primera página con 2 elementos, total 3, 2 páginas.
+		mvc.perform(get("/api/v1/ventas").param("tamano", "2").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.contenido.length()").value(2))
+				.andExpect(jsonPath("$.total").value(3))
+				.andExpect(jsonPath("$.pagina").value(0))
+				.andExpect(jsonPath("$.totalPaginas").value(2));
+
+		// La segunda página trae el elemento restante.
+		mvc.perform(get("/api/v1/ventas").param("tamano", "2").param("pagina", "1")
+						.header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.contenido.length()").value(1))
+				.andExpect(jsonPath("$.pagina").value(1));
 	}
 
 	@Test

@@ -129,7 +129,7 @@ class DevolucionIntegrationTest {
 		// RF-5.1: la renta quedó DEVUELTA (checklist conectado).
 		mvc.perform(get("/api/v1/rentas").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.id == '" + renta + "' && @.estado == 'DEVUELTA')]").exists());
+				.andExpect(jsonPath("$.contenido[?(@.id == '" + renta + "' && @.estado == 'DEVUELTA')]").exists());
 	}
 
 	@Test
@@ -277,7 +277,7 @@ class DevolucionIntegrationTest {
 				.andExpect(status().isCreated());
 		mvc.perform(get("/api/v1/rentas").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.id == '" + renta + "' && @.estado == 'ACTIVA')]").exists());
+				.andExpect(jsonPath("$.contenido[?(@.id == '" + renta + "' && @.estado == 'ACTIVA')]").exists());
 
 		// 2ª devolución: la unidad restante. Ahora sí queda DEVUELTA.
 		mvc.perform(post("/api/v1/devoluciones").header("Authorization", "Bearer " + dueno)
@@ -288,7 +288,7 @@ class DevolucionIntegrationTest {
 				.andExpect(status().isCreated());
 		mvc.perform(get("/api/v1/rentas").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.id == '" + renta + "' && @.estado == 'DEVUELTA')]").exists());
+				.andExpect(jsonPath("$.contenido[?(@.id == '" + renta + "' && @.estado == 'DEVUELTA')]").exists());
 	}
 
 	@Test
@@ -305,7 +305,7 @@ class DevolucionIntegrationTest {
 				.andExpect(jsonPath("$.piezas[0].resuelta").value(false));
 		mvc.perform(get("/api/v1/rentas").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.id == '" + renta + "' && @.estado == 'ACTIVA')]").exists());
+				.andExpect(jsonPath("$.contenido[?(@.id == '" + renta + "' && @.estado == 'ACTIVA')]").exists());
 		// La unidad sigue afuera (pendiente): no se movió a dañada/perdida en inventario todavía.
 		mvc.perform(get("/api/v1/prendas/{id}/grupos-stock", prenda).header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
@@ -322,7 +322,7 @@ class DevolucionIntegrationTest {
 				.andExpect(jsonPath("$.piezas[0].resuelta").value(true));
 		mvc.perform(get("/api/v1/rentas").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.id == '" + renta + "' && @.estado == 'DEVUELTA')]").exists());
+				.andExpect(jsonPath("$.contenido[?(@.id == '" + renta + "' && @.estado == 'DEVUELTA')]").exists());
 		// La reposición cobrada sí sacó la unidad de stock (perdida).
 		mvc.perform(get("/api/v1/prendas/{id}/grupos-stock", prenda).header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())

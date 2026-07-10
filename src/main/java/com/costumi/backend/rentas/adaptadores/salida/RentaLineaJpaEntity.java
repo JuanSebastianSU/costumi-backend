@@ -48,6 +48,10 @@ class RentaLineaJpaEntity {
 		this.precioPorDia = precioPorDia;
 	}
 
+	UUID getRentaId() {
+		return rentaId;
+	}
+
 	UUID getPrendaId() {
 		return prendaId;
 	}
