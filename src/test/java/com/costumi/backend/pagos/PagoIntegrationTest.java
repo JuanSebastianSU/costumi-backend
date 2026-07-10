@@ -314,4 +314,14 @@ class PagoIntegrationTest {
 		mvc.perform(get("/api/v1/pagos").param("conceptoId", UUID.randomUUID().toString()))
 				.andExpect(status().isUnauthorized());
 	}
+
+	@Test
+	void webhook_sin_secreto_de_firma_configurado_devuelve_503() throws Exception {
+		// SEC-5, fail-closed: sin `costumi.pasarela.mp.webhook-secret` (vacío en pruebas), el webhook rechaza
+		// TODA confirmación (aunque traiga firma) -> no se puede confirmar un pago sin webhook firmado.
+		mvc.perform(post("/api/v1/pagos/webhook").header("X-Signature", "loquesea")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"intentoId\":\"" + UUID.randomUUID() + "\",\"idPagoExterno\":\"mp-1\"}"))
+				.andExpect(status().isServiceUnavailable());
+	}
 }

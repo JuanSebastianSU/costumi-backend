@@ -17,6 +17,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -37,16 +38,18 @@ class PagoController {
 	private final com.costumi.backend.compartido.GeneradorDePdf pdf;
 	private final CrearIntentoDePago crearIntentoDePago;
 	private final ConfirmarPagoEnLinea confirmarPagoEnLinea;
+	private final VerificadorDeFirmaDeWebhook verificadorDeFirma;
 
 	PagoController(RegistrarPago registrarPago, ConsultarPagos consultarPagos, RegistrarCobroMixto registrarCobroMixto,
 			com.costumi.backend.compartido.GeneradorDePdf pdf, CrearIntentoDePago crearIntentoDePago,
-			ConfirmarPagoEnLinea confirmarPagoEnLinea) {
+			ConfirmarPagoEnLinea confirmarPagoEnLinea, VerificadorDeFirmaDeWebhook verificadorDeFirma) {
 		this.registrarPago = registrarPago;
 		this.consultarPagos = consultarPagos;
 		this.registrarCobroMixto = registrarCobroMixto;
 		this.pdf = pdf;
 		this.crearIntentoDePago = crearIntentoDePago;
 		this.confirmarPagoEnLinea = confirmarPagoEnLinea;
+		this.verificadorDeFirma = verificadorDeFirma;
 	}
 
 	/** Inicia un pago en línea (RF-6.11): crea el checkout en la pasarela y devuelve la URL. */
@@ -59,9 +62,15 @@ class PagoController {
 		return new IntentoDePagoResponse(r.intentoId(), r.urlCheckout());
 	}
 
-	/** Webhook de la pasarela (RF-6.11): confirma el pago y registra el Pago (idempotente). Público. */
+	/**
+	 * Webhook de la pasarela (RF-6.11): confirma el pago y registra el Pago (idempotente). Público, pero
+	 * <b>firmado</b> (SEC-5): se exige un header {@code X-Signature} = HMAC del contenido con el secreto
+	 * compartido; sin firma válida se rechaza (401), y sin secreto configurado se rechaza (503, fail-closed).
+	 */
 	@PostMapping("/webhook")
-	ResponseEntity<Void> webhook(@Valid @RequestBody WebhookPagoRequest request) {
+	ResponseEntity<Void> webhook(@Valid @RequestBody WebhookPagoRequest request,
+			@RequestHeader(value = "X-Signature", required = false) String firma) {
+		verificadorDeFirma.exigirFirmaValida(request.intentoId() + ":" + request.idPagoExterno(), firma);
 		confirmarPagoEnLinea.ejecutar(request.intentoId(), request.idPagoExterno());
 		return ResponseEntity.noContent().build();
 	}
