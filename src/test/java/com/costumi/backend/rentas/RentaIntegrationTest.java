@@ -109,6 +109,19 @@ class RentaIntegrationTest {
 	}
 
 	@Test
+	void un_cliente_en_lista_negra_no_puede_rentar_409() throws Exception {
+		Ctx c = montar();
+		// B1 (RF-7.4): poner al cliente en lista negra y luego intentar rentar -> 409.
+		mvc.perform(post("/api/v1/clientes/{id}/lista-negra", c.cliente()).header("Authorization", "Bearer " + c.dueno())
+						.contentType(MediaType.APPLICATION_JSON).content("{\"enListaNegra\":true}"))
+				.andExpect(status().isOk());
+
+		mvc.perform(post("/api/v1/rentas").header("Authorization", "Bearer " + c.dueno())
+						.contentType(MediaType.APPLICATION_JSON).content(rentaBody(c, "2026-08-01", "2026-08-04")))
+				.andExpect(status().isConflict());
+	}
+
+	@Test
 	void extender_una_renta_recalcula_el_importe() throws Exception {
 		Ctx c = montar();
 		UUID renta = crearRenta(c);

@@ -21,4 +21,10 @@ public interface ResolucionDeClientes {
 	 * Filtra por {@code empresaId} explícito (correcto aun con el filtro multi-tenant apagado).
 	 */
 	boolean existe(UUID empresaId, UUID clienteId);
+
+	/**
+	 * ¿El cliente (de la empresa) está en <b>lista negra</b>? (RF-7.4). La usa Rentas para impedir que un
+	 * cliente bloqueado inicie una nueva renta. {@code false} si el cliente no existe o no es de la empresa.
+	 */
+	boolean estaEnListaNegra(UUID empresaId, UUID clienteId);
 }
