@@ -2,6 +2,7 @@ package com.costumi.backend.identidad.adaptadores.entrada;
 
 import com.costumi.backend.identidad.aplicacion.AltaDeEmpleado;
 import com.costumi.backend.identidad.aplicacion.AsignarSucursales;
+import com.costumi.backend.identidad.aplicacion.CambiarRolDeEmpleado;
 import com.costumi.backend.identidad.aplicacion.GestionarEstadoDeEmpleado;
 import com.costumi.backend.identidad.aplicacion.ListarEmpleados;
 import com.costumi.backend.identidad.dominio.Rol;
@@ -34,13 +35,16 @@ class EmpleadoController {
 	private final AsignarSucursales asignarSucursales;
 	private final GestionarEstadoDeEmpleado gestionarEstadoDeEmpleado;
 	private final ListarEmpleados listarEmpleados;
+	private final CambiarRolDeEmpleado cambiarRolDeEmpleado;
 
 	EmpleadoController(AltaDeEmpleado altaDeEmpleado, AsignarSucursales asignarSucursales,
-			GestionarEstadoDeEmpleado gestionarEstadoDeEmpleado, ListarEmpleados listarEmpleados) {
+			GestionarEstadoDeEmpleado gestionarEstadoDeEmpleado, ListarEmpleados listarEmpleados,
+			CambiarRolDeEmpleado cambiarRolDeEmpleado) {
 		this.altaDeEmpleado = altaDeEmpleado;
 		this.asignarSucursales = asignarSucursales;
 		this.gestionarEstadoDeEmpleado = gestionarEstadoDeEmpleado;
 		this.listarEmpleados = listarEmpleados;
+		this.cambiarRolDeEmpleado = cambiarRolDeEmpleado;
 	}
 
 	/**
@@ -95,8 +99,23 @@ class EmpleadoController {
 		return asignarSucursales.sucursalesDe(empresaId, actorRol(jwt), usuarioId);
 	}
 
+	/**
+	 * Cambia el rol de un empleado ya creado (RF-8, G2). Con la guarda de pirámide (B3): solo se puede fijar
+	 * un rol estrictamente por debajo del propio y sobre un empleado también por debajo. DUENO/ENCARGADO.
+	 */
+	@PutMapping("/{usuarioId}/rol")
+	EmpleadoResponse cambiarRol(@PathVariable UUID usuarioId, @Valid @RequestBody CambiarRolRequest request,
+			@AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		return EmpleadoResponse.desde(
+				cambiarRolDeEmpleado.ejecutar(empresaId, actorRol(jwt), usuarioId, request.rol()));
+	}
+
 	private static Rol actorRol(Jwt jwt) {
 		return Rol.valueOf(jwt.getClaimAsString("rol"));
+	}
+
+	record CambiarRolRequest(@NotNull Rol rol) {
 	}
 
 	record AsignarSucursalesRequest(@NotNull List<UUID> sucursalIds) {

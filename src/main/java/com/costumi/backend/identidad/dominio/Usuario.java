@@ -67,6 +67,15 @@ public class Usuario {
 		return new Usuario(id, empresaId, email, passwordHash, rol, true);
 	}
 
+	/**
+	 * Cambia el rol del empleado (RF-8, G2). Misma cuenta (id/email/contraseña/estado). {@code validarTenant}
+	 * rechaza pasar a un rol que no pertenece a una empresa (SuperAdmin/Cliente): un empleado sigue siendo
+	 * personal de su empresa. La autoridad para hacerlo (pirámide) la exige la capa de aplicación.
+	 */
+	public Usuario cambiarRol(Rol nuevoRol) {
+		return new Usuario(id, empresaId, email, passwordHash, nuevoRol, activo);
+	}
+
 	private static UUID validarTenant(UUID empresaId, Rol rol) {
 		if (!rol.requiereEmpresa() && empresaId != null) {
 			throw new IllegalArgumentException("El rol " + rol + " no pertenece a ninguna empresa");
