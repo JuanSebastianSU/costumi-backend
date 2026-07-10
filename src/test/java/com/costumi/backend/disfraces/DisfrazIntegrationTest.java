@@ -3,6 +3,7 @@ package com.costumi.backend.disfraces;
 import com.costumi.backend.TestcontainersConfiguration;
 import com.costumi.backend.identidad.AuthTestHelper;
 import com.costumi.backend.identidad.dominio.Rol;
+import com.costumi.backend.identidad.dominio.SucursalRepository;
 import com.costumi.backend.identidad.dominio.UsuarioRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -38,6 +39,9 @@ class DisfrazIntegrationTest {
 	UsuarioRepository usuarios;
 
 	@Autowired
+	SucursalRepository sucursales;
+
+	@Autowired
 	PasswordEncoder passwordEncoder;
 
 	private UUID crearEmpresa(String nombre) throws Exception {
@@ -67,13 +71,14 @@ class DisfrazIntegrationTest {
 		return UUID.fromString(json.readTree(body).get("id").asText());
 	}
 
-	private void crearGrupo(String token, UUID prendaId, int cantidad) throws Exception {
-		// La disponibilidad del disfraz es a nivel de empresa (agrega todas las sucursales),
-		// así que aquí la sucursal solo necesita ser un UUID válido para pasar la validación.
+	private void crearGrupo(String token, UUID empresa, UUID prendaId, int cantidad) throws Exception {
+		// La disponibilidad del disfraz es a nivel de empresa (agrega todas las sucursales); el stock exige
+		// una sucursal existente y activa (SEC-1), así que se ancla a una sucursal real de la empresa.
 		mvc.perform(post("/api/v1/prendas/{prendaId}/grupos-stock", prendaId)
 						.header("Authorization", "Bearer " + token)
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"sucursalId\":\"" + UUID.randomUUID() + "\",\"combinacion\":[],\"cantidadInicial\":" + cantidad + "}"))
+						.content("{\"sucursalId\":\"" + AuthTestHelper.sucursal(sucursales, empresa)
+								+ "\",\"combinacion\":[],\"cantidadInicial\":" + cantidad + "}"))
 				.andExpect(status().isCreated());
 	}
 
@@ -99,15 +104,16 @@ class DisfrazIntegrationTest {
 
 	@Test
 	void disponibilidad_de_una_pieza_deriva_del_stock() throws Exception {
-		String dueno = duenoDe(crearEmpresa("Disfraz Stock"));
+		UUID empresa = crearEmpresa("Disfraz Stock");
+		String dueno = duenoDe(empresa);
 		UUID categoria = crearCategoria(dueno, "Traje");
 
 		UUID conStock = crearPrenda(dueno, categoria);
-		crearGrupo(dueno, conStock, 3);
+		crearGrupo(dueno, empresa, conStock, 3);
 		UUID disfrazDisponible = crearUnaPieza(dueno, conStock);
 
 		UUID sinStock = crearPrenda(dueno, categoria);
-		crearGrupo(dueno, sinStock, 0);
+		crearGrupo(dueno, empresa, sinStock, 0);
 		UUID disfrazNoDisponible = crearUnaPieza(dueno, sinStock);
 
 		org.assertj.core.api.Assertions.assertThat(disponible(dueno, disfrazDisponible)).isTrue();
@@ -116,10 +122,11 @@ class DisfrazIntegrationTest {
 
 	@Test
 	void por_partes_con_slot_personalizable_deriva_del_pool() throws Exception {
-		String dueno = duenoDe(crearEmpresa("Disfraz Pool"));
+		UUID empresa = crearEmpresa("Disfraz Pool");
+		String dueno = duenoDe(empresa);
 		UUID categoria = crearCategoria(dueno, "Sombrero");
 		UUID prenda = crearPrenda(dueno, categoria);
-		crearGrupo(dueno, prenda, 2);
+		crearGrupo(dueno, empresa, prenda, 2);
 
 		String body = mvc.perform(post("/api/v1/disfraces").header("Authorization", "Bearer " + dueno)
 						.contentType(MediaType.APPLICATION_JSON)
@@ -340,11 +347,11 @@ class DisfrazIntegrationTest {
 		String dueno = duenoDe(empresa);
 		UUID categoria = crearCategoria(dueno, "Cat " + UUID.randomUUID());
 		UUID prendaBase = crearPrenda(dueno, categoria);
-		crearGrupo(dueno, prendaBase, 5);
+		crearGrupo(dueno, empresa, prendaBase, 5);
 		UUID conStock = crearPrenda(dueno, categoria);
-		crearGrupo(dueno, conStock, 3);
+		crearGrupo(dueno, empresa, conStock, 3);
 		UUID sinStock = crearPrenda(dueno, categoria);
-		crearGrupo(dueno, sinStock, 0);
+		crearGrupo(dueno, empresa, sinStock, 0);
 		// slot 1 = fijo (prendaBase); slot 2 = personalizable (pool = toda la categoría).
 		UUID disfraz = crearDisfrazFijaMasPersonalizable(dueno, prendaBase, categoria);
 
