@@ -138,5 +138,10 @@ class ConfirmarPagoEnLineaServiceTest {
 		public EstadoPagoExterno consultarPago(String idPagoExterno) {
 			return estado;
 		}
+
+		@Override
+		public void reembolsar(String idPagoExterno, BigDecimal monto) {
+			throw new UnsupportedOperationException();
+		}
 	}
 }

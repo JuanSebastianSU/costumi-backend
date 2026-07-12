@@ -1,6 +1,10 @@
 package com.costumi.backend.pagos.adaptadores.entrada;
 
+import com.costumi.backend.pagos.aplicacion.DecisionDeReembolsoNoPermitida;
+import com.costumi.backend.pagos.aplicacion.ItemNoDevuelto;
 import com.costumi.backend.pagos.aplicacion.PagoEnLineaDeshabilitado;
+import com.costumi.backend.pagos.aplicacion.SolicitudDeReembolsoInvalida;
+import com.costumi.backend.pagos.aplicacion.SolicitudDeReembolsoNoEncontrada;
 import com.costumi.backend.pagos.aplicacion.VerificacionDePagoFallida;
 import com.costumi.backend.pagos.dominio.PasarelaNoConfigurada;
 import org.springframework.http.HttpStatus;
@@ -37,6 +41,34 @@ class ManejadorDeErroresPagos {
 	ProblemDetail verificacionDePagoFallida(VerificacionDePagoFallida ex) {
 		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
 		problema.setTitle("Verificación de pago fallida");
+		return problema;
+	}
+
+	@ExceptionHandler(SolicitudDeReembolsoNoEncontrada.class)
+	ProblemDetail solicitudNoEncontrada(SolicitudDeReembolsoNoEncontrada ex) {
+		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+		problema.setTitle("Solicitud de reembolso no encontrada");
+		return problema;
+	}
+
+	@ExceptionHandler(SolicitudDeReembolsoInvalida.class)
+	ProblemDetail solicitudInvalida(SolicitudDeReembolsoInvalida ex) {
+		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+		problema.setTitle("Solicitud de reembolso inválida");
+		return problema;
+	}
+
+	@ExceptionHandler(ItemNoDevuelto.class)
+	ProblemDetail itemNoDevuelto(ItemNoDevuelto ex) {
+		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+		problema.setTitle("Ítem no devuelto");
+		return problema;
+	}
+
+	@ExceptionHandler(DecisionDeReembolsoNoPermitida.class)
+	ProblemDetail decisionNoPermitida(DecisionDeReembolsoNoPermitida ex) {
+		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
+		problema.setTitle("Decisión de reembolso no permitida");
 		return problema;
 	}
 

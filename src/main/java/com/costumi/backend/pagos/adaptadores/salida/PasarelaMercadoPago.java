@@ -71,4 +71,19 @@ class PasarelaMercadoPago implements PasarelaDePago {
 				: new BigDecimal(String.valueOf(pago.get("transaction_amount")));
 		return new EstadoPagoExterno(aprobado, monto);
 	}
+
+	@Override
+	public void reembolsar(String idPagoExterno, BigDecimal monto) {
+		if (!configurada()) {
+			throw new PasarelaNoConfigurada();
+		}
+		// POST /v1/payments/{id}/refunds con {amount}: reembolso total o parcial (P-6).
+		RestClient.create().post()
+				.uri("https://api.mercadopago.com/v1/payments/{id}/refunds", idPagoExterno)
+				.header("Authorization", "Bearer " + accessToken)
+				.contentType(MediaType.APPLICATION_JSON)
+				.body(Map.of("amount", monto))
+				.retrieve()
+				.toBodilessEntity();
+	}
 }

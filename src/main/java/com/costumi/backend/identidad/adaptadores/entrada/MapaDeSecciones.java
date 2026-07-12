@@ -43,7 +43,7 @@ final class MapaDeSecciones {
 		if (empiezaCon(ruta, "/api/v1/devoluciones")) {
 			return Seccion.DEVOLUCIONES;
 		}
-		if (empiezaCon(ruta, "/api/v1/pagos")) {
+		if (empiezaCon(ruta, "/api/v1/pagos") || empiezaCon(ruta, "/api/v1/reembolsos")) {
 			return Seccion.PAGOS;
 		}
 		if (empiezaCon(ruta, "/api/v1/caja")) {
