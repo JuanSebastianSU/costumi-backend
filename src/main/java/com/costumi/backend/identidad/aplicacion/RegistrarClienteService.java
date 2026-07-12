@@ -16,12 +16,12 @@ class RegistrarClienteService implements RegistrarCliente {
 
 	private final UsuarioRepository usuarios;
 	private final PasswordEncoder passwordEncoder;
-	private final EmisorDeTokens emisor;
+	private final EmisorDeSesion sesiones;
 
-	RegistrarClienteService(UsuarioRepository usuarios, PasswordEncoder passwordEncoder, EmisorDeTokens emisor) {
+	RegistrarClienteService(UsuarioRepository usuarios, PasswordEncoder passwordEncoder, EmisorDeSesion sesiones) {
 		this.usuarios = usuarios;
 		this.passwordEncoder = passwordEncoder;
-		this.emisor = emisor;
+		this.sesiones = sesiones;
 	}
 
 	@Override
@@ -36,6 +36,6 @@ class RegistrarClienteService implements RegistrarCliente {
 		}
 		Usuario cliente = usuarios.guardar(
 				Usuario.crear(null, normalizado, passwordEncoder.encode(password), Rol.CLIENTE));
-		return new Credenciales(emisor.emitir(cliente), emisor.emitirRefresh(cliente));
+		return sesiones.nuevaSesion(cliente);
 	}
 }
