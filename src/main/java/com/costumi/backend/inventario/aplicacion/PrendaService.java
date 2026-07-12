@@ -1,6 +1,8 @@
 package com.costumi.backend.inventario.aplicacion;
 
 import com.costumi.backend.catalogo.ConsultaDeTaxonomia;
+import com.costumi.backend.compartido.Pagina;
+import com.costumi.backend.compartido.SolicitudDePagina;
 import com.costumi.backend.inventario.dominio.EtiquetasDePrenda;
 import com.costumi.backend.inventario.dominio.Prenda;
 import com.costumi.backend.inventario.dominio.PrendaRepository;
@@ -74,6 +76,12 @@ class PrendaService implements CrearPrenda, EditarPrenda, CambiarEstadoPrenda, C
 	@Transactional(readOnly = true)
 	public List<Prenda> deEmpresa(UUID empresaId) {
 		return prendas.listarPorEmpresa(empresaId);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public Pagina<Prenda> listar(UUID empresaId, SolicitudDePagina solicitud) {
+		return prendas.listar(empresaId, solicitud);
 	}
 
 	/**

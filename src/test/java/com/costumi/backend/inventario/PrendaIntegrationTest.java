@@ -122,7 +122,7 @@ class PrendaIntegrationTest {
 		// Persisten (round-trip por GET).
 		mvc.perform(get("/api/v1/prendas").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.id == '" + prenda + "')].valorReposicion").value(300.00));
+				.andExpect(jsonPath("$.contenido[?(@.id == '" + prenda + "')].valorReposicion").value(300.00));
 	}
 
 	@Test
@@ -187,7 +187,7 @@ class PrendaIntegrationTest {
 
 		mvc.perform(get("/api/v1/prendas").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.nombre == 'Camisa pirata roja')]").exists());
+				.andExpect(jsonPath("$.contenido[?(@.nombre == 'Camisa pirata roja')]").exists());
 	}
 
 	@Test
@@ -303,7 +303,7 @@ class PrendaIntegrationTest {
 		String duenoB = duenoDe(empresaB);
 		mvc.perform(get("/api/v1/prendas").header("Authorization", "Bearer " + duenoB))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.nombre == '" + nombreExclusivo + "')]").doesNotExist());
+				.andExpect(jsonPath("$.contenido[?(@.nombre == '" + nombreExclusivo + "')]").doesNotExist());
 	}
 
 	@Test
@@ -408,6 +408,29 @@ class PrendaIntegrationTest {
 								+ tipo + "\",\"valorEtiquetaId\":\"" + valor + "\"}]}"))
 				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
 		return UUID.fromString(json.readTree(body).get("id").asText());
+	}
+
+	@Test
+	void el_listado_de_prendas_se_pagina() throws Exception {
+		UUID empresa = crearEmpresa("Empresa Pagina");
+		String dueno = duenoDe(empresa);
+		UUID categoria = crearCategoria(dueno, "Camisa");
+		crearPrenda(dueno, categoria, "Alfa");
+		crearPrenda(dueno, categoria, "Beta");
+		crearPrenda(dueno, categoria, "Gamma");
+
+		mvc.perform(get("/api/v1/prendas").param("tamano", "2").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.contenido.length()").value(2))
+				.andExpect(jsonPath("$.total").value(3))
+				.andExpect(jsonPath("$.totalPaginas").value(2))
+				.andExpect(jsonPath("$.contenido[0].nombre").value("Alfa"));
+
+		mvc.perform(get("/api/v1/prendas").param("tamano", "2").param("pagina", "1")
+						.header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.contenido.length()").value(1))
+				.andExpect(jsonPath("$.contenido[0].nombre").value("Gamma"));
 	}
 
 	@Test

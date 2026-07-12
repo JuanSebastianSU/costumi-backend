@@ -9,6 +9,8 @@ import com.costumi.backend.clientes.aplicacion.CrearClienteComando;
 import com.costumi.backend.clientes.aplicacion.RegistrarDeviceToken;
 import com.costumi.backend.clientes.dominio.Cliente;
 import com.costumi.backend.clientes.dominio.HistorialItem;
+import com.costumi.backend.compartido.RespuestaPaginada;
+import com.costumi.backend.compartido.SolicitudDePagina;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -68,21 +70,20 @@ class ClienteController {
 	}
 
 	@GetMapping
-	List<ClienteResponse> listar(@RequestParam(required = false) String buscar,
+	RespuestaPaginada<ClienteResponse> listar(@RequestParam(required = false) String buscar,
 			@RequestParam(required = false, defaultValue = "false") boolean conPendientes,
+			@RequestParam(required = false) Integer pagina, @RequestParam(required = false) Integer tamano,
 			@AuthenticationPrincipal Jwt jwt) {
 		String empresaIdClaim = jwt.getClaimAsString("empresa_id");
 		if (empresaIdClaim == null) {
-			return List.of();
+			return new RespuestaPaginada<>(List.of(), 0, 0, 0, 0);
 		}
 		UUID empresaId = UUID.fromString(empresaIdClaim);
-		var clientes = consultarClientes.buscar(empresaId, buscar);
-		if (conPendientes) {
-			// RF-11.5/11.6: solo los clientes con rentas activas pendientes de devolver.
-			var pendientes = new java.util.HashSet<>(consultarHistorial.clientesConPendientes(empresaId));
-			clientes = clientes.stream().filter(c -> pendientes.contains(c.id())).toList();
-		}
-		return clientes.stream().map(ClienteResponse::desde).toList();
+		// RF-11.5/11.6: con pendientes, restringe la página a los clientes con rentas activas por devolver.
+		List<UUID> idsFiltro = conPendientes ? consultarHistorial.clientesConPendientes(empresaId) : null;
+		return RespuestaPaginada.desde(
+				consultarClientes.listar(empresaId, buscar, idsFiltro, SolicitudDePagina.de(pagina, tamano)),
+				ClienteResponse::desde);
 	}
 
 	@GetMapping("/{id}/historial")
