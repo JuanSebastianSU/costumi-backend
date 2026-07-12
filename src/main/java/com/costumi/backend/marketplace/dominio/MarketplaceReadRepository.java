@@ -13,4 +13,10 @@ public interface MarketplaceReadRepository {
 
 	/** Catálogo público (prendas no archivadas) de una empresa ACTIVA. Vacío si no está activa. */
 	List<PrendaEnVitrina> catalogoDe(UUID empresaId);
+
+	/**
+	 * Sucursales ACTIVAS (puntos de retiro) de una empresa ACTIVA, para que el cliente elija dónde
+	 * retirar (RF-18.5). Vacío si la empresa no existe o no está activa.
+	 */
+	List<SucursalEnVitrina> sucursalesActivasDe(UUID empresaId);
 }
