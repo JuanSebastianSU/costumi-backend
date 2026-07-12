@@ -16,11 +16,15 @@ import java.util.UUID;
 class HistorialJdbcAdapter implements HistorialReadRepository {
 
 	private static final String HISTORIAL = """
-			select 'RENTA' as tipo, id as operacion_id, importe as monto, estado, fecha_retiro as fecha
-			from renta where empresa_id = :empresaId and cliente_id = :clienteId
+			select 'RENTA' as tipo, r.id as operacion_id, r.importe as monto, r.estado, r.fecha_retiro as fecha,
+			       e.id as empresa_id, e.nombre as empresa_nombre
+			from renta r join empresa e on e.id = r.empresa_id
+			where r.empresa_id = :empresaId and r.cliente_id = :clienteId
 			union all
-			select 'VENTA' as tipo, id as operacion_id, total as monto, estado, null::date as fecha
-			from venta where empresa_id = :empresaId and cliente_id = :clienteId
+			select 'VENTA' as tipo, v.id as operacion_id, v.total as monto, v.estado, null::date as fecha,
+			       e.id as empresa_id, e.nombre as empresa_nombre
+			from venta v join empresa e on e.id = v.empresa_id
+			where v.empresa_id = :empresaId and v.cliente_id = :clienteId
 			order by fecha desc nulls last
 			""";
 
