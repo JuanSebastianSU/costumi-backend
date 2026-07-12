@@ -226,6 +226,40 @@ class CarritoIntegrationTest {
 	}
 
 	@Test
+	void el_carrito_muestra_precio_por_linea_y_total() throws Exception {
+		Ctx c = montar(); // prenda: precioRenta 30.00 (por día), precioVenta 90.00
+
+		// VENTA x2 -> 90 × 2 = 180. El cliente ve el total ANTES de confirmar (RF-18.5).
+		agregar(c, "VENTA", 2);
+		String venta = mvc.perform(get("/api/v1/carritos").header("Authorization", "Bearer " + c.dueno())
+						.param("sucursalId", c.sucursal().toString())
+						.param("clienteId", c.cliente().toString())
+						.param("tipo", "VENTA"))
+				.andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+		org.assertj.core.api.Assertions.assertThat(json.readTree(venta).get("total").decimalValue())
+				.isEqualByComparingTo("180.00");
+		org.assertj.core.api.Assertions.assertThat(
+				json.readTree(venta).get("lineas").get(0).get("precioUnitario").decimalValue())
+				.isEqualByComparingTo("90.00");
+		org.assertj.core.api.Assertions.assertThat(
+				json.readTree(venta).get("lineas").get(0).get("subtotal").decimalValue())
+				.isEqualByComparingTo("180.00");
+
+		// RENTA x2, periodo 01→04 ago (3 días) -> 30 × 2 × 3 = 180.
+		agregar(c, "RENTA", 2);
+		String renta = mvc.perform(get("/api/v1/carritos").header("Authorization", "Bearer " + c.dueno())
+						.param("sucursalId", c.sucursal().toString())
+						.param("clienteId", c.cliente().toString())
+						.param("tipo", "RENTA"))
+				.andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+		org.assertj.core.api.Assertions.assertThat(json.readTree(renta).get("total").decimalValue())
+				.isEqualByComparingTo("180.00");
+		org.assertj.core.api.Assertions.assertThat(
+				json.readTree(renta).get("lineas").get(0).get("subtotal").decimalValue())
+				.isEqualByComparingTo("180.00");
+	}
+
+	@Test
 	void sin_token_devuelve_401() throws Exception {
 		mvc.perform(get("/api/v1/carritos")
 						.param("sucursalId", UUID.randomUUID().toString())

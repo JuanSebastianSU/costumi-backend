@@ -66,9 +66,38 @@ class CarritoService implements AgregarItemAlCarrito, ConsultarCarrito, HacerChe
 
 	@Override
 	@Transactional(readOnly = true)
-	public Carrito pendiente(UUID empresaId, UUID sucursalId, UUID clienteId, TipoPedido tipo) {
-		return carritos.buscarPendiente(empresaId, sucursalId, clienteId, tipo)
+	public CarritoValorizado pendiente(UUID empresaId, UUID sucursalId, UUID clienteId, TipoPedido tipo) {
+		Carrito carrito = carritos.buscarPendiente(empresaId, sucursalId, clienteId, tipo)
 				.orElseThrow(CarritoNoEncontrado::new);
+		// Valorizamos con la MISMA lógica que el checkout, para que el total mostrado coincida con
+		// lo que se cobrará. VENTA: precioVenta × cantidad. RENTA: precioPorDía × cantidad × días.
+		List<CarritoValorizado.LineaValorizada> lineas = new ArrayList<>();
+		BigDecimal total = BigDecimal.ZERO;
+		for (LineaDeCarrito linea : carrito.lineas()) {
+			BigDecimal precioUnitario = (tipo == TipoPedido.VENTA
+					? inventario.precioVenta(empresaId, linea.prendaId())
+					: inventario.precioRenta(empresaId, linea.prendaId())).orElse(null);
+			BigDecimal subtotal = null;
+			if (precioUnitario != null) {
+				subtotal = precioUnitario.multiply(BigDecimal.valueOf(linea.cantidad()));
+				if (tipo == TipoPedido.RENTA) {
+					subtotal = subtotal.multiply(BigDecimal.valueOf(dias(linea.fechaRetiro(), linea.fechaDevolucion())));
+				}
+				total = total.add(subtotal);
+			}
+			lineas.add(new CarritoValorizado.LineaValorizada(linea.prendaId(), linea.cantidad(),
+					linea.fechaRetiro(), linea.fechaDevolucion(), precioUnitario, subtotal));
+		}
+		return new CarritoValorizado(carrito.id(), carrito.sucursalId(), carrito.clienteId(),
+				carrito.tipo(), carrito.estado(), lineas, total);
+	}
+
+	/** Días facturables del periodo de renta (igual que el dominio Renta: al menos 1). */
+	private static long dias(LocalDate retiro, LocalDate devolucion) {
+		if (retiro == null || devolucion == null) {
+			return 1;
+		}
+		return Math.max(1, java.time.temporal.ChronoUnit.DAYS.between(retiro, devolucion));
 	}
 
 	@Override
