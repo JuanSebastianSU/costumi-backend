@@ -1,10 +1,39 @@
 # Costumi — Estado del proyecto (PROGRESS)
 
+> **📌 Este es el PROGRESS del BACKEND** (repo `costumi-backend`). No confundir con los docs de la **app Android**
+> (`PLAN_ANDROID.md`, `DISENO_PANTALLAS.md`, `ORDEN_CONSTRUCCION.md`), que son de otro frente. El detalle fino de las
+> correcciones de auditoría vive en `AUDITORIA_Y_CORRECCIONES.md`.
+>
 > Se actualiza **al final de cada sesión**. Es lo primero que se lee (después de
 > `CLAUDE.md`) para retomar sin perder el hilo. Regla: mueve ítems entre secciones,
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
 ## Fase actual
+**Fase 10 — Auditoría y cierre profesional del backend + verificación E2E en vivo (2026-07-09 → 07-12).** Tras el flujo del
+cliente (Fase 9), se hizo una **auditoría completa** y se cerraron **29 correcciones** por rebanadas (cada una PR + tests +
+ArchUnit + Modulith en verde), todas **mergeadas a `main`** (V49→V53). El backend quedó **funcionalmente completo y con la
+seguridad cerrada**. Resumen (detalle en `AUDITORIA_Y_CORRECCIONES.md`):
+- **CRUD de mantenimiento completo:** familia **editar + archivar/activar** en prenda, categoría, tipo/valor de etiqueta,
+  sucursal, empleado (baja/reactivar) y **cliente** (R-E); **borrar físico de grupo de stock** con guarda (R-F); conteo de
+  dependencias antes de archivar (R-G); fix global 500→**409** (violación de unicidad).
+- **Barrido de seguridad §6 (cerrado):** aislamiento multi-tenant verificado; validación de sucursal/cliente al crear
+  (SEC-1/2); `@Filter` en IntentoDePago (SEC-3); **webhook de pago firmado HMAC** (SEC-5); lista negra bloquea renta (B1);
+  empleado acotado a su sucursal (B2); **pirámide de roles** en gestión de personal (B3); **rate-limiting** de auth (A2);
+  allowlist de imagen por magic bytes (C1); **paginación** de listas (C3); headers/HSTS (C4); **scan de dependencias**
+  Dependabot + dependency-review (C5); **refresh JWT revocable con rotación y detección de reuso + logout** (C2).
+- **Gestión de personal completa:** `GET /empleados` (G1), `PUT /empleados/{id}/rol` (G2).
+- **Pagos en línea listos-para-credenciales:** **P-3** (verificar el pago contra MercadoPago antes de confirmar, gateado) y
+  **P-6/reembolsos**: nuevo **workflow de reembolso en 2 pasos** (solicitar → aprobar/rechazar con motivo), con **precondición
+  de ítem devuelto**, **escalamiento por pirámide**, refund a tarjeta gateado, y **self-service del cliente** (correcciones 28/29).
+- **Contrato OpenAPI** verificado y con `ProblemDetail` documentado; **verificación E2E en vivo** (jar de prod + Postgres real,
+  todos los roles, correcciones 1–29): **102/102 OK** (ver `REPORTE_E2E.md`).
+- **Pendiente = solo externo:** credenciales MercadoPago (sandbox) para el checkout alojado y el refund real, y —opcional—
+  la migración a **Spring Boot 4** (PRs Dependabot en rojo, van juntos). El **frente Android** arranca desde cero con los 3
+  docs de la app ya actualizados a estas correcciones.
+
+---
+
+### Fase 9 (historial — fase anterior)
 **Fase 9 — Flujo del CLIENTE del marketplace + expansión disfraz/precios/multas/reembolsos (2026-07-08).** Con el backend
 desplegado en **Railway** (`just-upliftment-production-cb1f.up.railway.app`, Dockerfile + `server.port=${PORT}`, SuperAdmin
 por env), se detectó que el **flujo de compra del CLIENTE** (rol sin `empresa_id`) estaba roto (403/500/FK) y se completó;
@@ -301,6 +330,20 @@ Estado: ✅ hecho y **mergeado en `main`** · 🔵 en **PR abierta** (sin mergea
 - ¿La API solo expone DTOs y el contrato OpenAPI está al día?
 
 ## Registro de sesiones
+- **2026-07-09 → 07-12** — **Auditoría y cierre profesional del backend (29 correcciones) + E2E en vivo + docs de la app Android.**
+  Auditoría completa → **29 correcciones por rebanadas** (cada una PR + tests + ArchUnit + Modulith en verde), todas mergeadas
+  a `main` (V49→V53). **CRUD de mantenimiento:** editar+archivar/activar en prenda/categoría/etiquetas/sucursal/empleado(baja)/
+  **cliente** (R-E), **borrar grupo de stock** (R-F), conteo de dependencias (R-G), fix 500→409. **Seguridad §6 (cerrada):**
+  SEC-1/2/3 (validar sucursal/cliente, @Filter), **webhook firmado HMAC** (SEC-5), B1 lista negra, B2 sucursal, **B3 pirámide**,
+  A2 rate-limit, C1 magic-bytes, **C2 refresh revocable con rotación+reuso+logout**, **C3 paginación**, C4 HSTS/headers,
+  **C5 scan de deps** (Dependabot + dependency-review). **Personal:** G1 `GET /empleados`, G2 `PUT /empleados/{id}/rol`.
+  **Pagos listos-para-credenciales:** P-3 (verificar contra MercadoPago, gateado) y **P-6/reembolsos** = nuevo **workflow en
+  2 pasos** (solicitar→aprobar/rechazar con motivo, precondición de ítem devuelto, escalamiento por pirámide, refund a tarjeta
+  gateado, **self-service del cliente**). **OpenAPI** verificado + `ProblemDetail`. **E2E en vivo** (jar de prod + Postgres real,
+  todos los roles, correcciones 1–29): **102/102 OK** (`REPORTE_E2E.md`, `e2e-full.sh`). **Docs de la app Android** reescritos/
+  actualizados a estas correcciones (`DISENO_PANTALLAS.md`, `PLAN_ANDROID.md`, `ORDEN_CONSTRUCCION.md`; el frente Android se
+  construye desde cero, contract-first desde `/v3/api-docs`). **Pendiente = solo externo:** credenciales MercadoPago sandbox y
+  (opcional) migración a Spring Boot 4. Detalle fino en `AUDITORIA_Y_CORRECCIONES.md`.
 - **2026-07-08 (f)** — **Despliegue en Railway + flujo del CLIENTE del marketplace + expansión disfraz/multas/reembolsos.**
   Backend live en Railway (Dockerfile multi-stage temurin-21, `server.port=${PORT}`, SuperAdmin/demo por env). Se
   detectó y cerró el **flujo de compra del rol CLIENTE** (antes 403/500/FK, solo probado como staff): carrito+checkout
