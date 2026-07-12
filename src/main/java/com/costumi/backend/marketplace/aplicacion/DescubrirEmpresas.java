@@ -2,6 +2,7 @@ package com.costumi.backend.marketplace.aplicacion;
 
 import com.costumi.backend.marketplace.dominio.EmpresaEnVitrina;
 import com.costumi.backend.marketplace.dominio.PrendaEnVitrina;
+import com.costumi.backend.marketplace.dominio.SucursalEnVitrina;
 
 import java.util.List;
 import java.util.UUID;
@@ -16,4 +17,10 @@ public interface DescubrirEmpresas {
 
 	/** Catálogo público de una tienda (empresa ACTIVA). Vacío si no existe o no está activa. */
 	List<PrendaEnVitrina> catalogo(UUID empresaId);
+
+	/**
+	 * Sucursales (puntos de retiro) de una tienda ACTIVA, para que el cliente elija dónde retirar
+	 * su renta/compra (RF-18.5). Vacío si la tienda no existe o no está activa.
+	 */
+	List<SucursalEnVitrina> sucursales(UUID empresaId);
 }

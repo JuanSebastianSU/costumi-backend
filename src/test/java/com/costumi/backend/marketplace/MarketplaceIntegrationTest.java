@@ -82,4 +82,43 @@ class MarketplaceIntegrationTest {
 				.andExpect(jsonPath("$[?(@.nombre == '" + marca + " Centro')]").exists())
 				.andExpect(jsonPath("$.length()").value(1));
 	}
+
+	/**
+	 * RF-18.5: el cliente del marketplace necesita elegir la sucursal (punto de retiro) para armar su
+	 * carrito. Debe poder listarlas sin token (vitrina pública). Al aprobar una empresa se crea su
+	 * Casa Matriz, que aparece aquí.
+	 */
+	@Test
+	void las_sucursales_de_una_tienda_activa_son_publicas() throws Exception {
+		// Flujo real de onboarding: un CLIENTE pide abrir su tienda (con token) → al aprobar se
+		// crea la Casa Matriz (solo se provisiona cuando la empresa viene de una solicitud).
+		String cliente = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, null, Rol.CLIENTE);
+		String nombre = "Tienda-" + UUID.randomUUID();
+		String res = mvc.perform(post("/api/v1/empresas").header("Authorization", "Bearer " + cliente)
+						.contentType(MediaType.APPLICATION_JSON).content("{\"nombre\":\"" + nombre + "\"}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		UUID empresa = UUID.fromString(json.readTree(res).get("id").asText());
+
+		String superAdmin = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, null, Rol.SUPERADMIN);
+		mvc.perform(post("/api/v1/empresas/{id}/aprobar", empresa)
+						.header("Authorization", "Bearer " + superAdmin))
+				.andExpect(status().isOk());
+
+		// Endpoint público (sin token): aparece la Casa Matriz creada al aprobar.
+		mvc.perform(get("/api/v1/marketplace/empresas/{id}/sucursales", empresa))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(1))
+				.andExpect(jsonPath("$[0].id").exists())
+				.andExpect(jsonPath("$[0].nombre").value("Casa Matriz"));
+	}
+
+	/** Una tienda que no está ACTIVA (p. ej. pendiente de aprobación) no expone sus sucursales. */
+	@Test
+	void una_tienda_no_activa_no_expone_sucursales() throws Exception {
+		UUID empresa = crearEmpresa("Pendiente-" + UUID.randomUUID()); // queda PENDIENTE
+
+		mvc.perform(get("/api/v1/marketplace/empresas/{id}/sucursales", empresa))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(0));
+	}
 }
