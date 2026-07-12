@@ -50,4 +50,25 @@ class PasarelaMercadoPago implements PasarelaDePago {
 		String id = respuesta == null ? null : String.valueOf(respuesta.getOrDefault("id", ""));
 		return new ResultadoCheckout(url, id);
 	}
+
+	@Override
+	@SuppressWarnings("unchecked")
+	public EstadoPagoExterno consultarPago(String idPagoExterno) {
+		if (!configurada()) {
+			throw new PasarelaNoConfigurada();
+		}
+		// GET /v1/payments/{id}: la fuente de verdad del pago (P-3). "approved" = cobrado.
+		Map<String, Object> pago = RestClient.create().get()
+				.uri("https://api.mercadopago.com/v1/payments/{id}", idPagoExterno)
+				.header("Authorization", "Bearer " + accessToken)
+				.retrieve()
+				.body(Map.class);
+		if (pago == null) {
+			return new EstadoPagoExterno(false, null);
+		}
+		boolean aprobado = "approved".equals(pago.get("status"));
+		BigDecimal monto = pago.get("transaction_amount") == null ? null
+				: new BigDecimal(String.valueOf(pago.get("transaction_amount")));
+		return new EstadoPagoExterno(aprobado, monto);
+	}
 }
