@@ -1,8 +1,14 @@
 package com.costumi.backend.inventario.adaptadores.salida;
 
+import com.costumi.backend.compartido.Pagina;
+import com.costumi.backend.compartido.SolicitudDePagina;
 import com.costumi.backend.inventario.dominio.EtiquetasDePrenda;
 import com.costumi.backend.inventario.dominio.Prenda;
 import com.costumi.backend.inventario.dominio.PrendaRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
 import java.util.LinkedHashMap;
@@ -37,6 +43,15 @@ class PrendaRepositoryAdapter implements PrendaRepository {
 	@Override
 	public List<Prenda> listarPorEmpresa(UUID empresaId) {
 		return jpa.findByEmpresaId(empresaId).stream().map(PrendaRepositoryAdapter::aDominio).toList();
+	}
+
+	@Override
+	public Pagina<Prenda> listar(UUID empresaId, SolicitudDePagina solicitud) {
+		Pageable pageable = PageRequest.of(solicitud.pagina(), solicitud.tamano(),
+				Sort.by(Sort.Order.asc("nombre"), Sort.Order.asc("id")));
+		Page<PrendaJpaEntity> pagina = jpa.findByEmpresaId(empresaId, pageable);
+		return new Pagina<>(pagina.getContent().stream().map(PrendaRepositoryAdapter::aDominio).toList(),
+				pagina.getTotalElements(), solicitud.pagina(), solicitud.tamano());
 	}
 
 	private static PrendaJpaEntity aEntidad(Prenda p) {

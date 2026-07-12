@@ -1,6 +1,7 @@
 package com.costumi.backend.inventario.adaptadores.salida;
 
 import com.costumi.backend.compartido.FiltroTenant;
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.Filter;
 
 import com.costumi.backend.inventario.dominio.TipoArticulo;
@@ -60,8 +61,11 @@ class PrendaJpaEntity {
 	@Column(name = "valor_dano", precision = 12, scale = 2)
 	private BigDecimal valorDano;
 
+	// EAGER + @BatchSize: al listar una página, las etiquetas de todas las prendas se cargan en
+	// pocas consultas IN en lugar de una por prenda (evita el N+1, C3).
 	@ElementCollection(fetch = FetchType.EAGER)
 	@CollectionTable(name = "prenda_valor_etiqueta", joinColumns = @JoinColumn(name = "prenda_id"))
+	@BatchSize(size = 100)
 	private Set<EtiquetaDePrendaEmbeddable> etiquetas = new LinkedHashSet<>();
 
 	@Column(nullable = false)

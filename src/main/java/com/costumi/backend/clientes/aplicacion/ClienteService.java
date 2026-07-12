@@ -5,9 +5,12 @@ import com.costumi.backend.clientes.dominio.Cliente;
 import com.costumi.backend.clientes.dominio.ClienteRepository;
 import com.costumi.backend.clientes.dominio.HistorialItem;
 import com.costumi.backend.clientes.dominio.HistorialReadRepository;
+import com.costumi.backend.compartido.Pagina;
+import com.costumi.backend.compartido.SolicitudDePagina;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -38,6 +41,14 @@ class ClienteService implements CrearCliente, ConsultarClientes, CambiarListaNeg
 			return clientes.listarPorEmpresa(empresaId);
 		}
 		return clientes.buscarPorEmpresaYTexto(empresaId, texto.trim());
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public Pagina<Cliente> listar(UUID empresaId, String texto, Collection<UUID> idsFiltro,
+			SolicitudDePagina solicitud) {
+		String normalizado = (texto == null || texto.isBlank()) ? null : texto.trim();
+		return clientes.listar(empresaId, normalizado, idsFiltro, solicitud);
 	}
 
 	@Override

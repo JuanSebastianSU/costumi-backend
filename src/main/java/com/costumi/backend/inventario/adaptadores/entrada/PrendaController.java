@@ -1,5 +1,7 @@
 package com.costumi.backend.inventario.adaptadores.entrada;
 
+import com.costumi.backend.compartido.RespuestaPaginada;
+import com.costumi.backend.compartido.SolicitudDePagina;
 import com.costumi.backend.inventario.aplicacion.AsignarFotoDePrenda;
 import com.costumi.backend.inventario.aplicacion.CambiarEstadoPrenda;
 import com.costumi.backend.inventario.aplicacion.ConsultarPrendas;
@@ -105,11 +107,14 @@ class PrendaController {
 	}
 
 	@GetMapping
-	List<PrendaResponse> listar(@AuthenticationPrincipal Jwt jwt) {
+	RespuestaPaginada<PrendaResponse> listar(@RequestParam(required = false) Integer pagina,
+			@RequestParam(required = false) Integer tamano, @AuthenticationPrincipal Jwt jwt) {
 		String empresaId = jwt.getClaimAsString("empresa_id");
 		if (empresaId == null) {
-			return List.of();
+			return new RespuestaPaginada<>(List.of(), 0, 0, 0, 0);
 		}
-		return consultarPrendas.deEmpresa(UUID.fromString(empresaId)).stream().map(PrendaResponse::desde).toList();
+		return RespuestaPaginada.desde(
+				consultarPrendas.listar(UUID.fromString(empresaId), SolicitudDePagina.de(pagina, tamano)),
+				PrendaResponse::desde);
 	}
 }

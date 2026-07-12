@@ -96,7 +96,7 @@ class ClienteIntegrationTest {
 		// RF-11.5/11.6: con la renta ACTIVA, el cliente sale en el filtro de pendientes.
 		mvc.perform(get("/api/v1/clientes").param("conPendientes", "true").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.id == '" + cliente + "')]").exists());
+				.andExpect(jsonPath("$.contenido[?(@.id == '" + cliente + "')]").exists());
 	}
 
 	@Test
@@ -108,7 +108,7 @@ class ClienteIntegrationTest {
 
 		mvc.perform(get("/api/v1/clientes").param("buscar", doc).header("Authorization", "Bearer " + mostrador))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.documento == '" + doc + "')]").exists());
+				.andExpect(jsonPath("$.contenido[?(@.documento == '" + doc + "')]").exists());
 
 		String encargado = token(empresa, Rol.ENCARGADO);
 		mvc.perform(post("/api/v1/clientes/{id}/lista-negra", cliente).header("Authorization", "Bearer " + encargado)
@@ -127,7 +127,7 @@ class ClienteIntegrationTest {
 		String duenoB = token(empresaB, Rol.DUENO);
 		mvc.perform(get("/api/v1/clientes").header("Authorization", "Bearer " + duenoB))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.documento == 'DOC-A')]").doesNotExist());
+				.andExpect(jsonPath("$.contenido[?(@.documento == 'DOC-A')]").doesNotExist());
 	}
 
 	@Test
@@ -138,6 +138,29 @@ class ClienteIntegrationTest {
 		mvc.perform(post("/api/v1/clientes").header("Authorization", "Bearer " + bodega)
 						.contentType(MediaType.APPLICATION_JSON).content("{\"nombre\":\"X\"}"))
 				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void el_listado_de_clientes_se_pagina() throws Exception {
+		UUID empresa = crearEmpresa("Cli Pagina " + UUID.randomUUID());
+		String dueno = token(empresa, Rol.DUENO);
+		crearCliente(dueno, "Ana", "DOC-" + UUID.randomUUID());
+		crearCliente(dueno, "Bruno", "DOC-" + UUID.randomUUID());
+		crearCliente(dueno, "Carla", "DOC-" + UUID.randomUUID());
+
+		// Primera página de tamaño 2: 2 elementos, total 3, 2 páginas.
+		mvc.perform(get("/api/v1/clientes").param("tamano", "2").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.contenido.length()").value(2))
+				.andExpect(jsonPath("$.total").value(3))
+				.andExpect(jsonPath("$.totalPaginas").value(2));
+
+		// Segunda página: el elemento restante.
+		mvc.perform(get("/api/v1/clientes").param("tamano", "2").param("pagina", "1")
+						.header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.contenido.length()").value(1))
+				.andExpect(jsonPath("$.pagina").value(1));
 	}
 
 	@Test
