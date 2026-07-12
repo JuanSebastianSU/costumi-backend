@@ -12,20 +12,20 @@ class AutenticarUsuarioService implements AutenticarUsuario {
 
 	private final UsuarioRepository usuarios;
 	private final PasswordEncoder passwordEncoder;
-	private final EmisorDeTokens emisor;
+	private final EmisorDeSesion sesiones;
 	private final String hashDummy;
 
-	AutenticarUsuarioService(UsuarioRepository usuarios, PasswordEncoder passwordEncoder, EmisorDeTokens emisor) {
+	AutenticarUsuarioService(UsuarioRepository usuarios, PasswordEncoder passwordEncoder, EmisorDeSesion sesiones) {
 		this.usuarios = usuarios;
 		this.passwordEncoder = passwordEncoder;
-		this.emisor = emisor;
+		this.sesiones = sesiones;
 		// Hash de referencia para igualar el tiempo cuando el email no existe
 		// (evita enumeración de usuarios por timing).
 		this.hashDummy = passwordEncoder.encode("usuario-inexistente");
 	}
 
 	@Override
-	@Transactional(readOnly = true)
+	@Transactional
 	public Credenciales autenticar(String email, String password) {
 		Usuario usuario = usuarios.buscarPorEmail(email).orElse(null);
 		if (usuario == null) {
@@ -39,6 +39,6 @@ class AutenticarUsuarioService implements AutenticarUsuario {
 		if (!usuario.activo()) {
 			throw new CuentaDesactivada();
 		}
-		return new Credenciales(emisor.emitir(usuario), emisor.emitirRefresh(usuario));
+		return sesiones.nuevaSesion(usuario);
 	}
 }

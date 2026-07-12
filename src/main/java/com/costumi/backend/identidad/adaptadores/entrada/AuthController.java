@@ -1,6 +1,7 @@
 package com.costumi.backend.identidad.adaptadores.entrada;
 
 import com.costumi.backend.identidad.aplicacion.AutenticarUsuario;
+import com.costumi.backend.identidad.aplicacion.CerrarSesion;
 import com.costumi.backend.identidad.aplicacion.Credenciales;
 import com.costumi.backend.identidad.aplicacion.RecuperarContrasena;
 import com.costumi.backend.identidad.aplicacion.RefrescarToken;
@@ -22,15 +23,17 @@ class AuthController {
 
 	private final AutenticarUsuario autenticarUsuario;
 	private final RefrescarToken refrescarToken;
+	private final CerrarSesion cerrarSesion;
 	private final RegistrarCliente registrarCliente;
 	private final RecuperarContrasena recuperarContrasena;
 	private final LimitadorDeIntentos limitador;
 
-	AuthController(AutenticarUsuario autenticarUsuario, RefrescarToken refrescarToken,
+	AuthController(AutenticarUsuario autenticarUsuario, RefrescarToken refrescarToken, CerrarSesion cerrarSesion,
 			RegistrarCliente registrarCliente, RecuperarContrasena recuperarContrasena,
 			LimitadorDeIntentos limitador) {
 		this.autenticarUsuario = autenticarUsuario;
 		this.refrescarToken = refrescarToken;
+		this.cerrarSesion = cerrarSesion;
 		this.registrarCliente = registrarCliente;
 		this.recuperarContrasena = recuperarContrasena;
 		this.limitador = limitador;
@@ -67,11 +70,18 @@ class AuthController {
 		return ResponseEntity.noContent().build();
 	}
 
-	/** Refresh: token de refresco → nuevo par de tokens (RF-1.1). */
+	/** Refresh: token de refresco → nuevo par de tokens, con rotación (RF-1.1, C2). */
 	@PostMapping("/refresh")
 	TokenResponse refrescar(@Valid @RequestBody RefreshRequest request) {
 		Credenciales credenciales = refrescarToken.ejecutar(request.refreshToken());
 		return new TokenResponse(credenciales.accessToken(), credenciales.refreshToken(), "Bearer");
+	}
+
+	/** Logout (C2): revoca la familia del refresco. Idempotente → siempre 204. */
+	@PostMapping("/logout")
+	ResponseEntity<Void> logout(@Valid @RequestBody RefreshRequest request) {
+		cerrarSesion.cerrar(request.refreshToken());
+		return ResponseEntity.noContent().build();
 	}
 
 	/** Corta con 429 si se superó el límite de intentos para (acción + email). Clave por cuenta (A2). */

@@ -1,5 +1,6 @@
 package com.costumi.backend.identidad.adaptadores.salida;
 
+import com.costumi.backend.identidad.aplicacion.RefreshDecodificado;
 import com.costumi.backend.identidad.aplicacion.RefreshInvalido;
 import com.costumi.backend.identidad.aplicacion.ValidadorDeRefresh;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -21,17 +22,18 @@ class ValidadorDeRefreshJwt implements ValidadorDeRefresh {
 	}
 
 	@Override
-	public String emailDelRefresh(String refreshToken) {
+	public RefreshDecodificado validar(String refreshToken) {
 		try {
 			Jwt jwt = decoder.decode(refreshToken);
 			if (!"refresh".equals(jwt.getClaimAsString("token_use"))) {
 				throw new RefreshInvalido(); // un token de acceso no sirve para refrescar
 			}
 			String email = jwt.getClaimAsString("email");
-			if (email == null || email.isBlank()) {
-				throw new RefreshInvalido();
+			String jti = jwt.getId();
+			if (email == null || email.isBlank() || jti == null || jti.isBlank()) {
+				throw new RefreshInvalido(); // sin jti no se puede registrar/revocar server-side (C2)
 			}
-			return email;
+			return new RefreshDecodificado(email, jti);
 		} catch (JwtException e) {
 			throw new RefreshInvalido();
 		}

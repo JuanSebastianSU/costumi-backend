@@ -1,6 +1,7 @@
 package com.costumi.backend.identidad.adaptadores.salida;
 
 import com.costumi.backend.identidad.aplicacion.EmisorDeTokens;
+import com.costumi.backend.identidad.aplicacion.RefreshEmitido;
 import com.costumi.backend.identidad.dominio.Usuario;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
@@ -36,15 +37,17 @@ class EmisorDeTokensJwt implements EmisorDeTokens {
 
 	@Override
 	public String emitir(Usuario usuario) {
-		return emitir(usuario, expiracion, "access");
+		return emitir(usuario, expiracion, "access", null);
 	}
 
 	@Override
-	public String emitirRefresh(Usuario usuario) {
-		return emitir(usuario, expiracionRefresh, "refresh");
+	public RefreshEmitido emitirRefresh(Usuario usuario, String jti) {
+		Instant expiraEn = Instant.now().plus(expiracionRefresh);
+		String token = emitir(usuario, expiracionRefresh, "refresh", jti);
+		return new RefreshEmitido(token, expiraEn);
 	}
 
-	private String emitir(Usuario usuario, Duration duracion, String uso) {
+	private String emitir(Usuario usuario, Duration duracion, String uso, String jti) {
 		Instant ahora = Instant.now();
 		JwtClaimsSet.Builder claims = JwtClaimsSet.builder()
 				.issuer(issuer)
@@ -54,6 +57,9 @@ class EmisorDeTokensJwt implements EmisorDeTokens {
 				.claim("email", usuario.email())
 				.claim("rol", usuario.rol().name())
 				.claim("token_use", uso);
+		if (jti != null) {
+			claims.id(jti); // claim "jti": permite registrar y revocar el refresh server-side (C2)
+		}
 		if (usuario.empresaId() != null) {
 			claims.claim("empresa_id", usuario.empresaId().toString());
 		}

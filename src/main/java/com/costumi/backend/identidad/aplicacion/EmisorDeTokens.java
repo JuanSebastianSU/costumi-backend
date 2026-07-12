@@ -11,6 +11,9 @@ public interface EmisorDeTokens {
 	/** Token de acceso (corta vida) para el Usuario. */
 	String emitir(Usuario usuario);
 
-	/** Token de refresco (larga vida) para renovar el acceso sin volver a loguearse (RF-1.1). */
-	String emitirRefresh(Usuario usuario);
+	/**
+	 * Token de refresco (larga vida) con el {@code jti} indicado, para poder registrarlo y revocarlo
+	 * server-side (C2). Devuelve el token y su vencimiento (que la app persiste junto al {@code jti}).
+	 */
+	RefreshEmitido emitirRefresh(Usuario usuario, String jti);
 }
