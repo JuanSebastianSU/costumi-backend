@@ -1,0 +1,37 @@
+# Dependabot (C5): abre PRs de actualización de dependencias y, junto con las "Dependabot alerts"
+# del repo (Settings → Code security), avisa de CVEs conocidos en el árbol completo de dependencias.
+version: 2
+updates:
+  # Dependencias Maven del backend.
+  - package-ecosystem: maven
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Bogota
+    open-pull-requests-limit: 10
+    labels:
+      - dependencies
+    commit-message:
+      prefix: "chore(deps)"
+    # Agrupa parches/menores en un solo PR para reducir ruido; las mayores van sueltas para revisarlas.
+    groups:
+      minor-y-parches:
+        update-types:
+          - minor
+          - patch
+
+  # Versiones de las GitHub Actions usadas por el CI.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Bogota
+    labels:
+      - dependencies
+      - ci
+    commit-message:
+      prefix: "chore(ci)"
