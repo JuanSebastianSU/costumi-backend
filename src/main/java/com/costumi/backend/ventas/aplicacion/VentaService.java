@@ -136,6 +136,16 @@ class VentaService implements RegistrarVenta, ConsultarVentas, RegistroDeVentas,
 
 	@Override
 	@Transactional(readOnly = true)
+	public boolean estaDevuelta(UUID empresaId, UUID ventaId) {
+		return ventas.buscarPorId(ventaId)
+				.filter(venta -> venta.empresaId().equals(empresaId))
+				.map(venta -> venta.estado() == com.costumi.backend.ventas.dominio.EstadoVenta.DEVUELTA
+						|| venta.estado() == com.costumi.backend.ventas.dominio.EstadoVenta.PARCIALMENTE_DEVUELTA)
+				.orElse(false);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
 	public ActividadDeEmpleado actividadDeEmpleado(UUID empresaId, UUID empleadoId) {
 		List<Venta> deEmpleado = ventas.listarPorEmpresa(empresaId).stream()
 				.filter(venta -> empleadoId.equals(venta.empleadoId())

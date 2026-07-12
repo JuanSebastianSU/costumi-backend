@@ -172,6 +172,15 @@ class RentaService implements CrearRenta, ConsultarRentas, GestionarRenta, Consu
 
 	@Override
 	@Transactional(readOnly = true)
+	public boolean estaDevuelta(UUID empresaId, UUID rentaId) {
+		return rentas.buscarPorId(rentaId)
+				.filter(renta -> renta.empresaId().equals(empresaId))
+				.map(renta -> renta.estado() == EstadoRenta.DEVUELTA || renta.estado() == EstadoRenta.CERRADA)
+				.orElse(false);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
 	public Optional<java.time.LocalDate> fechaDevolucionDeRenta(UUID empresaId, UUID rentaId) {
 		return rentas.buscarPorId(rentaId)
 				.filter(renta -> renta.empresaId().equals(empresaId))

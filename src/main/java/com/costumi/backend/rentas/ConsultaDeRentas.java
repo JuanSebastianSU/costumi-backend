@@ -37,6 +37,12 @@ public interface ConsultaDeRentas {
 	/** Importe a cobrar de la renta (RF-3.3), si existe y pertenece a la empresa. Para el saldo (RF-6.1). */
 	Optional<BigDecimal> importeDeRenta(UUID empresaId, UUID rentaId);
 
+	/**
+	 * ¿La renta ya tiene el ítem de vuelta? (DEVUELTA o CERRADA, RF-5.1). La usa Pagos para no aprobar un
+	 * reembolso antes de recuperar el disfraz. {@code false} si no existe o no es de la empresa.
+	 */
+	boolean estaDevuelta(UUID empresaId, UUID rentaId);
+
 	/** Fecha de devolución pactada de la renta, si existe y es de la empresa (para el recargo por retraso, RF-5.2). */
 	Optional<java.time.LocalDate> fechaDevolucionDeRenta(UUID empresaId, UUID rentaId);
 

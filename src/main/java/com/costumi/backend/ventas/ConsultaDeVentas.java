@@ -17,6 +17,12 @@ public interface ConsultaDeVentas {
 	/** Total a cobrar de la venta (subtotal − descuento, RF-4.3), si existe y pertenece a la empresa. */
 	Optional<BigDecimal> totalDeVenta(UUID empresaId, UUID ventaId);
 
+	/**
+	 * ¿La venta tiene mercancía ya devuelta? (DEVUELTA o PARCIALMENTE_DEVUELTA, RF-4.5). La usa Pagos para no
+	 * aprobar un reembolso antes de recuperar el disfraz. {@code false} si no existe o no es de la empresa.
+	 */
+	boolean estaDevuelta(UUID empresaId, UUID ventaId);
+
 	/** Resumen de la actividad de ventas confirmadas del empleado en la empresa (RF-8.2). */
 	ActividadDeEmpleado actividadDeEmpleado(UUID empresaId, UUID empleadoId);
 }

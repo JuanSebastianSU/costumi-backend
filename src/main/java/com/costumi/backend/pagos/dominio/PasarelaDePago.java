@@ -20,6 +20,12 @@ public interface PasarelaDePago {
 	 */
 	EstadoPagoExterno consultarPago(String idPagoExterno);
 
+	/**
+	 * Reembolsa {@code monto} del pago {@code idPagoExterno} en el proveedor (P-6): total o parcial.
+	 * Lanza {@link PasarelaNoConfigurada} si no hay credencial.
+	 */
+	void reembolsar(String idPagoExterno, BigDecimal monto);
+
 	record ResultadoCheckout(String urlCheckout, String idExterno) {
 	}
 
