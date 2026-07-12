@@ -3,6 +3,7 @@ package com.costumi.backend.pagos.adaptadores.entrada;
 import com.costumi.backend.pagos.aplicacion.DecisionDeReembolsoNoPermitida;
 import com.costumi.backend.pagos.aplicacion.ItemNoDevuelto;
 import com.costumi.backend.pagos.aplicacion.PagoEnLineaDeshabilitado;
+import com.costumi.backend.pagos.aplicacion.ReembolsoNoAutorizado;
 import com.costumi.backend.pagos.aplicacion.SolicitudDeReembolsoInvalida;
 import com.costumi.backend.pagos.aplicacion.SolicitudDeReembolsoNoEncontrada;
 import com.costumi.backend.pagos.aplicacion.VerificacionDePagoFallida;
@@ -69,6 +70,13 @@ class ManejadorDeErroresPagos {
 	ProblemDetail decisionNoPermitida(DecisionDeReembolsoNoPermitida ex) {
 		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
 		problema.setTitle("Decisión de reembolso no permitida");
+		return problema;
+	}
+
+	@ExceptionHandler(ReembolsoNoAutorizado.class)
+	ProblemDetail reembolsoNoAutorizado(ReembolsoNoAutorizado ex) {
+		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
+		problema.setTitle("Reembolso no autorizado");
 		return problema;
 	}
 

@@ -5,6 +5,8 @@ import com.costumi.backend.pagos.aplicacion.DecidirReembolso;
 import com.costumi.backend.pagos.aplicacion.DecidirReembolsoComando;
 import com.costumi.backend.pagos.aplicacion.SolicitarReembolso;
 import com.costumi.backend.pagos.aplicacion.SolicitarReembolsoComando;
+import com.costumi.backend.pagos.aplicacion.SolicitarReembolsoDeCliente;
+import com.costumi.backend.pagos.aplicacion.SolicitarReembolsoDeClienteComando;
 import com.costumi.backend.pagos.dominio.SolicitudDeReembolso;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -28,12 +30,15 @@ import java.util.UUID;
 class ReembolsoController {
 
 	private final SolicitarReembolso solicitarReembolso;
+	private final SolicitarReembolsoDeCliente solicitarReembolsoDeCliente;
 	private final DecidirReembolso decidirReembolso;
 	private final ConsultarReembolsos consultarReembolsos;
 
-	ReembolsoController(SolicitarReembolso solicitarReembolso, DecidirReembolso decidirReembolso,
+	ReembolsoController(SolicitarReembolso solicitarReembolso,
+			SolicitarReembolsoDeCliente solicitarReembolsoDeCliente, DecidirReembolso decidirReembolso,
 			ConsultarReembolsos consultarReembolsos) {
 		this.solicitarReembolso = solicitarReembolso;
+		this.solicitarReembolsoDeCliente = solicitarReembolsoDeCliente;
 		this.decidirReembolso = decidirReembolso;
 		this.consultarReembolsos = consultarReembolsos;
 	}
@@ -46,6 +51,19 @@ class ReembolsoController {
 		SolicitudDeReembolso solicitud = solicitarReembolso.ejecutar(new SolicitarReembolsoComando(empresaId,
 				request.tipoConcepto(), request.conceptoId(), request.solicitanteClienteId(), request.monto(),
 				request.motivo()));
+		URI location = uriBuilder.path("/api/v1/reembolsos/{id}").buildAndExpand(solicitud.id()).toUri();
+		return ResponseEntity.created(location).body(SolicitudDeReembolsoResponse.desde(solicitud));
+	}
+
+	/** Paso 1 (self-service): el propio CLIENTE solicita el reembolso de su venta/renta desde su cuenta. */
+	@PostMapping("/cliente")
+	ResponseEntity<SolicitudDeReembolsoResponse> solicitarComoCliente(
+			@Valid @RequestBody SolicitarReembolsoDeClienteRequest request, @AuthenticationPrincipal Jwt jwt,
+			UriComponentsBuilder uriBuilder) {
+		UUID usuarioId = UUID.fromString(jwt.getSubject());
+		SolicitudDeReembolso solicitud = solicitarReembolsoDeCliente.ejecutar(new SolicitarReembolsoDeClienteComando(
+				request.empresaId(), usuarioId, jwt.getClaimAsString("email"), request.tipoConcepto(),
+				request.conceptoId(), request.monto(), request.motivo()));
 		URI location = uriBuilder.path("/api/v1/reembolsos/{id}").buildAndExpand(solicitud.id()).toUri();
 		return ResponseEntity.created(location).body(SolicitudDeReembolsoResponse.desde(solicitud));
 	}

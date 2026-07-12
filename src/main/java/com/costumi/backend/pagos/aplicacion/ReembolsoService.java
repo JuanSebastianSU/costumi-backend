@@ -1,5 +1,6 @@
 package com.costumi.backend.pagos.aplicacion;
 
+import com.costumi.backend.clientes.ResolucionDeClientes;
 import com.costumi.backend.identidad.ConsultaDeJerarquiaDeRoles;
 import com.costumi.backend.pagos.dominio.MetodoPago;
 import com.costumi.backend.pagos.dominio.Pago;
@@ -25,7 +26,8 @@ import java.util.UUID;
  * pasarela está configurada, P-6). El dinero solo se mueve al aprobar, nunca antes de recuperar la mercancía.
  */
 @Service
-class ReembolsoService implements SolicitarReembolso, DecidirReembolso, ConsultarReembolsos {
+class ReembolsoService implements SolicitarReembolso, SolicitarReembolsoDeCliente, DecidirReembolso,
+		ConsultarReembolsos {
 
 	private static final String PREFIJO_PASARELA = "pasarela:";
 
@@ -36,10 +38,11 @@ class ReembolsoService implements SolicitarReembolso, DecidirReembolso, Consulta
 	private final ConsultaDeVentas ventas;
 	private final ConsultaDeRentas rentas;
 	private final ConsultaDeJerarquiaDeRoles jerarquia;
+	private final ResolucionDeClientes clientes;
 
 	ReembolsoService(SolicitudDeReembolsoRepository solicitudes, PagoRepository pagos, RegistrarPago registrarPago,
 			PasarelaDePago pasarela, ConsultaDeVentas ventas, ConsultaDeRentas rentas,
-			ConsultaDeJerarquiaDeRoles jerarquia) {
+			ConsultaDeJerarquiaDeRoles jerarquia, ResolucionDeClientes clientes) {
 		this.solicitudes = solicitudes;
 		this.pagos = pagos;
 		this.registrarPago = registrarPago;
@@ -47,24 +50,47 @@ class ReembolsoService implements SolicitarReembolso, DecidirReembolso, Consulta
 		this.ventas = ventas;
 		this.rentas = rentas;
 		this.jerarquia = jerarquia;
+		this.clientes = clientes;
 	}
 
 	@Override
 	@Transactional
 	public SolicitudDeReembolso ejecutar(SolicitarReembolsoComando comando) {
-		BigDecimal saldo = pagos.saldoNetoPorConcepto(comando.empresaId(), comando.conceptoId());
+		return crearSolicitud(comando.empresaId(), comando.tipoConcepto(), comando.conceptoId(),
+				comando.solicitanteClienteId(), comando.monto(), comando.motivo());
+	}
+
+	@Override
+	@Transactional
+	public SolicitudDeReembolso ejecutar(SolicitarReembolsoDeClienteComando comando) {
+		// El cliente solo puede pedir el reembolso de su propia operación: se verifica la propiedad.
+		UUID ficha = clientes.fichaDeUsuarioSiExiste(comando.empresaId(), comando.usuarioId())
+				.orElseThrow(ReembolsoNoAutorizado::new);
+		UUID clienteDelConcepto = switch (comando.tipoConcepto()) {
+			case VENTA -> ventas.clienteDeVenta(comando.empresaId(), comando.conceptoId()).orElse(null);
+			case RENTA -> rentas.clienteDeRenta(comando.empresaId(), comando.conceptoId()).orElse(null);
+		};
+		if (clienteDelConcepto == null || !clienteDelConcepto.equals(ficha)) {
+			throw new ReembolsoNoAutorizado();
+		}
+		return crearSolicitud(comando.empresaId(), comando.tipoConcepto(), comando.conceptoId(), ficha,
+				comando.monto(), comando.motivo());
+	}
+
+	private SolicitudDeReembolso crearSolicitud(UUID empresaId, com.costumi.backend.pagos.dominio.TipoConcepto tipo,
+			UUID conceptoId, UUID solicitanteClienteId, BigDecimal monto, String motivo) {
+		BigDecimal saldo = pagos.saldoNetoPorConcepto(empresaId, conceptoId);
 		if (saldo.signum() <= 0) {
 			throw new SolicitudDeReembolsoInvalida("La operación no tiene saldo pagado para reembolsar");
 		}
-		if (comando.monto().compareTo(saldo) > 0) {
-			throw new SolicitudDeReembolsoInvalida(
-					"El monto (" + comando.monto() + ") supera el saldo pagado (" + saldo + ")");
+		if (monto.compareTo(saldo) > 0) {
+			throw new SolicitudDeReembolsoInvalida("El monto (" + monto + ") supera el saldo pagado (" + saldo + ")");
 		}
-		if (solicitudes.existePendientePorConcepto(comando.empresaId(), comando.conceptoId())) {
+		if (solicitudes.existePendientePorConcepto(empresaId, conceptoId)) {
 			throw new SolicitudDeReembolsoInvalida("Ya hay una solicitud de reembolso pendiente para esta operación");
 		}
-		return solicitudes.guardar(SolicitudDeReembolso.crear(comando.empresaId(), comando.tipoConcepto(),
-				comando.conceptoId(), comando.solicitanteClienteId(), comando.monto(), comando.motivo()));
+		return solicitudes.guardar(
+				SolicitudDeReembolso.crear(empresaId, tipo, conceptoId, solicitanteClienteId, monto, motivo));
 	}
 
 	@Override

@@ -138,6 +138,12 @@ class ClienteService implements CrearCliente, ConsultarClientes, CambiarListaNeg
 
 	@Override
 	@Transactional(readOnly = true)
+	public java.util.Optional<UUID> fichaDeUsuarioSiExiste(UUID empresaId, UUID usuarioId) {
+		return clientes.buscarPorEmpresaYUsuario(empresaId, usuarioId).map(Cliente::id);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
 	public boolean existe(UUID empresaId, UUID clienteId) {
 		return clientes.buscarPorId(clienteId)
 				.filter(cliente -> empresaId.equals(cliente.empresaId()))

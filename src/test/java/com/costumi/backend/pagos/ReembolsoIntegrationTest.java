@@ -133,6 +133,30 @@ class ReembolsoIntegrationTest {
 	}
 
 	@Test
+	void un_cliente_no_puede_pedir_el_reembolso_de_una_operacion_ajena_403() throws Exception {
+		UUID empresa = crearEmpresa("Reemb Cli " + UUID.randomUUID());
+		String cliente = token(null, Rol.CLIENTE); // cliente a nivel plataforma, sin ficha ni venta en esta empresa
+
+		mvc.perform(post("/api/v1/reembolsos/cliente").header("Authorization", "Bearer " + cliente)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"empresaId\":\"" + empresa + "\",\"tipoConcepto\":\"VENTA\",\"conceptoId\":\""
+								+ UUID.randomUUID() + "\",\"monto\":10.00,\"motivo\":\"quiero mi plata\"}"))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void el_personal_no_usa_el_endpoint_self_service_del_cliente_403() throws Exception {
+		UUID empresa = crearEmpresa("Reemb Self " + UUID.randomUUID());
+		String dueno = token(empresa, Rol.DUENO); // el endpoint /cliente es solo para rol CLIENTE
+
+		mvc.perform(post("/api/v1/reembolsos/cliente").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"empresaId\":\"" + empresa + "\",\"tipoConcepto\":\"VENTA\",\"conceptoId\":\""
+								+ UUID.randomUUID() + "\",\"monto\":10.00,\"motivo\":\"x\"}"))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
 	void sin_token_devuelve_401() throws Exception {
 		mvc.perform(get("/api/v1/reembolsos")).andExpect(status().isUnauthorized());
 	}
