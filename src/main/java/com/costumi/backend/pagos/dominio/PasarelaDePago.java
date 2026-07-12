@@ -14,6 +14,16 @@ public interface PasarelaDePago {
 	 */
 	ResultadoCheckout crearCheckout(BigDecimal monto, String moneda, String referencia, String descripcion);
 
+	/**
+	 * Consulta el estado real de un pago en el proveedor (P-3): permite verificar contra la fuente antes de
+	 * dar por bueno un webhook. Lanza {@link PasarelaNoConfigurada} si no hay credencial.
+	 */
+	EstadoPagoExterno consultarPago(String idPagoExterno);
+
 	record ResultadoCheckout(String urlCheckout, String idExterno) {
+	}
+
+	/** Estado de un pago según el proveedor: si está aprobado y por qué monto (P-3). */
+	record EstadoPagoExterno(boolean aprobado, BigDecimal monto) {
 	}
 }

@@ -1,6 +1,7 @@
 package com.costumi.backend.pagos.adaptadores.entrada;
 
 import com.costumi.backend.pagos.aplicacion.PagoEnLineaDeshabilitado;
+import com.costumi.backend.pagos.aplicacion.VerificacionDePagoFallida;
 import com.costumi.backend.pagos.dominio.PasarelaNoConfigurada;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -29,6 +30,13 @@ class ManejadorDeErroresPagos {
 	ProblemDetail pasarelaNoConfigurada(PasarelaNoConfigurada ex) {
 		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
 		problema.setTitle("Pasarela de pago no configurada");
+		return problema;
+	}
+
+	@ExceptionHandler(VerificacionDePagoFallida.class)
+	ProblemDetail verificacionDePagoFallida(VerificacionDePagoFallida ex) {
+		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+		problema.setTitle("Verificación de pago fallida");
 		return problema;
 	}
 
