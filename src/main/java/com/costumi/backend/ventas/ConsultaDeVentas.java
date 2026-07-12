@@ -23,6 +23,12 @@ public interface ConsultaDeVentas {
 	 */
 	boolean estaDevuelta(UUID empresaId, UUID ventaId);
 
+	/**
+	 * Cliente a nombre del que se hizo la venta, si existe y es de la empresa (vacío en ventas anónimas). La usa
+	 * Pagos para verificar que un cliente solo pida el reembolso de su propia venta (RF-4.5).
+	 */
+	Optional<UUID> clienteDeVenta(UUID empresaId, UUID ventaId);
+
 	/** Resumen de la actividad de ventas confirmadas del empleado en la empresa (RF-8.2). */
 	ActividadDeEmpleado actividadDeEmpleado(UUID empresaId, UUID empleadoId);
 }

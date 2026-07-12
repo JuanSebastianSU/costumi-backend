@@ -1,5 +1,6 @@
 package com.costumi.backend.pagos.aplicacion;
 
+import com.costumi.backend.clientes.ResolucionDeClientes;
 import com.costumi.backend.identidad.ConsultaDeJerarquiaDeRoles;
 import com.costumi.backend.pagos.dominio.MetodoPago;
 import com.costumi.backend.pagos.dominio.Pago;
@@ -38,6 +39,7 @@ class ReembolsoServiceTest {
 	private ConsultaDeVentas ventas;
 	private ConsultaDeRentas rentas;
 	private ConsultaDeJerarquiaDeRoles jerarquia;
+	private ResolucionDeClientes clientes;
 	private ReembolsoService service;
 
 	private final UUID empresa = UUID.randomUUID();
@@ -52,7 +54,9 @@ class ReembolsoServiceTest {
 		ventas = mock(ConsultaDeVentas.class);
 		rentas = mock(ConsultaDeRentas.class);
 		jerarquia = mock(ConsultaDeJerarquiaDeRoles.class);
-		service = new ReembolsoService(solicitudes, pagos, registrarPago, pasarela, ventas, rentas, jerarquia);
+		clientes = mock(ResolucionDeClientes.class);
+		service = new ReembolsoService(solicitudes, pagos, registrarPago, pasarela, ventas, rentas, jerarquia,
+				clientes);
 		when(solicitudes.guardar(any())).thenAnswer(inv -> inv.getArgument(0));
 	}
 
@@ -156,6 +160,43 @@ class ReembolsoServiceTest {
 				decidir(s.id(), true, "lo apruebo", UUID.randomUUID(), "ENCARGADO"));
 
 		assertThat(decidida.estado().name()).isEqualTo("APROBADA");
+	}
+
+	@Test
+	void un_cliente_solicita_el_reembolso_de_su_propia_venta() {
+		UUID usuario = UUID.randomUUID();
+		UUID ficha = UUID.randomUUID();
+		when(clientes.fichaDeUsuarioSiExiste(empresa, usuario)).thenReturn(Optional.of(ficha));
+		when(ventas.clienteDeVenta(empresa, venta)).thenReturn(Optional.of(ficha)); // la venta es suya
+		when(pagos.saldoNetoPorConcepto(empresa, venta)).thenReturn(new BigDecimal("100.00"));
+		when(solicitudes.existePendientePorConcepto(empresa, venta)).thenReturn(false);
+
+		SolicitudDeReembolso s = service.ejecutar(new SolicitarReembolsoDeClienteComando(empresa, usuario,
+				"c@x.com", TipoConcepto.VENTA, venta, new BigDecimal("50.00"), "no me quedó"));
+
+		assertThat(s.estaPendiente()).isTrue();
+		assertThat(s.solicitanteClienteId()).isEqualTo(ficha);
+	}
+
+	@Test
+	void un_cliente_no_puede_solicitar_el_reembolso_de_una_venta_ajena() {
+		UUID usuario = UUID.randomUUID();
+		when(clientes.fichaDeUsuarioSiExiste(empresa, usuario)).thenReturn(Optional.of(UUID.randomUUID()));
+		when(ventas.clienteDeVenta(empresa, venta)).thenReturn(Optional.of(UUID.randomUUID())); // de otro cliente
+
+		assertThatThrownBy(() -> service.ejecutar(new SolicitarReembolsoDeClienteComando(empresa, usuario,
+				"c@x.com", TipoConcepto.VENTA, venta, new BigDecimal("50.00"), "dame la plata")))
+				.isInstanceOf(ReembolsoNoAutorizado.class);
+	}
+
+	@Test
+	void un_cliente_sin_ficha_en_la_empresa_no_puede_solicitar() {
+		UUID usuario = UUID.randomUUID();
+		when(clientes.fichaDeUsuarioSiExiste(empresa, usuario)).thenReturn(Optional.empty());
+
+		assertThatThrownBy(() -> service.ejecutar(new SolicitarReembolsoDeClienteComando(empresa, usuario,
+				"c@x.com", TipoConcepto.VENTA, venta, new BigDecimal("50.00"), "hola")))
+				.isInstanceOf(ReembolsoNoAutorizado.class);
 	}
 
 	// --- helpers ---

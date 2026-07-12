@@ -146,6 +146,14 @@ class VentaService implements RegistrarVenta, ConsultarVentas, RegistroDeVentas,
 
 	@Override
 	@Transactional(readOnly = true)
+	public Optional<UUID> clienteDeVenta(UUID empresaId, UUID ventaId) {
+		return ventas.buscarPorId(ventaId)
+				.filter(venta -> venta.empresaId().equals(empresaId))
+				.map(Venta::clienteId);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
 	public ActividadDeEmpleado actividadDeEmpleado(UUID empresaId, UUID empleadoId) {
 		List<Venta> deEmpleado = ventas.listarPorEmpresa(empresaId).stream()
 				.filter(venta -> empleadoId.equals(venta.empleadoId())
