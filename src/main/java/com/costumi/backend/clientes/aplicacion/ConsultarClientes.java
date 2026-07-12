@@ -15,7 +15,9 @@ public interface ConsultarClientes {
 
 	/**
 	 * Página de clientes de la empresa (C3). {@code texto} filtra por nombre/documento/teléfono;
-	 * {@code idsFiltro} restringe a esos ids (null = sin restricción; vacío = página vacía).
+	 * {@code idsFiltro} restringe a esos ids (null = sin restricción; vacío = página vacía). Por defecto
+	 * excluye las fichas archivadas; {@code incluirArchivados=true} las incluye (R-E).
 	 */
-	Pagina<Cliente> listar(UUID empresaId, String texto, Collection<UUID> idsFiltro, SolicitudDePagina solicitud);
+	Pagina<Cliente> listar(UUID empresaId, String texto, Collection<UUID> idsFiltro, boolean incluirArchivados,
+			SolicitudDePagina solicitud);
 }

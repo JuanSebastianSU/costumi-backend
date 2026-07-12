@@ -17,12 +17,13 @@ public class Cliente {
 	private String documento;
 	private String direccion;
 	private boolean enListaNegra;
+	private boolean archivada; // archivada (RF-7): retirada de la lista activa, sin borrar su historial
 	private String deviceToken; // token de dispositivo para push FCM (RF-18.11); null si no registró
 	/** Usuario del marketplace dueño de esta ficha (RF-14.4); null en fichas creadas por el personal. */
 	private final UUID usuarioId;
 
 	private Cliente(UUID id, UUID empresaId, String nombre, String telefono, String email, String documento,
-			String direccion, boolean enListaNegra, UUID usuarioId) {
+			String direccion, boolean enListaNegra, boolean archivada, UUID usuarioId) {
 		this.id = Objects.requireNonNull(id, "id");
 		this.empresaId = Objects.requireNonNull(empresaId, "empresaId");
 		this.nombre = exigirNombre(nombre);
@@ -31,12 +32,14 @@ public class Cliente {
 		this.documento = limpiar(documento);
 		this.direccion = limpiar(direccion);
 		this.enListaNegra = enListaNegra;
+		this.archivada = archivada;
 		this.usuarioId = usuarioId;
 	}
 
 	public static Cliente crear(UUID empresaId, String nombre, String telefono, String email, String documento,
 			String direccion) {
-		return new Cliente(UUID.randomUUID(), empresaId, nombre, telefono, email, documento, direccion, false, null);
+		return new Cliente(UUID.randomUUID(), empresaId, nombre, telefono, email, documento, direccion, false, false,
+				null);
 	}
 
 	/**
@@ -45,15 +48,35 @@ public class Cliente {
 	 */
 	public static Cliente deUsuario(UUID empresaId, UUID usuarioId, String email) {
 		String nombre = (email == null || email.isBlank()) ? "Cliente" : email.trim();
-		return new Cliente(UUID.randomUUID(), empresaId, nombre, null, email, null, null, false, usuarioId);
+		return new Cliente(UUID.randomUUID(), empresaId, nombre, null, email, null, null, false, false, usuarioId);
 	}
 
 	public static Cliente rehidratar(UUID id, UUID empresaId, String nombre, String telefono, String email,
-			String documento, String direccion, boolean enListaNegra, String deviceToken, UUID usuarioId) {
+			String documento, String direccion, boolean enListaNegra, boolean archivada, String deviceToken,
+			UUID usuarioId) {
 		Cliente cliente = new Cliente(id, empresaId, nombre, telefono, email, documento, direccion, enListaNegra,
-				usuarioId);
+				archivada, usuarioId);
 		cliente.deviceToken = limpiar(deviceToken);
 		return cliente;
+	}
+
+	/** Actualiza los datos de contacto/identidad de la ficha (RF-7). El nombre sigue siendo obligatorio. */
+	public void editar(String nombre, String telefono, String email, String documento, String direccion) {
+		this.nombre = exigirNombre(nombre);
+		this.telefono = limpiar(telefono);
+		this.email = limpiar(email);
+		this.documento = limpiar(documento);
+		this.direccion = limpiar(direccion);
+	}
+
+	/** Retira la ficha de la lista activa (soft-delete): no se borra, conserva su historial. */
+	public void archivar() {
+		this.archivada = true;
+	}
+
+	/** Reincorpora una ficha archivada a la operación. */
+	public void activar() {
+		this.archivada = false;
 	}
 
 	/** Registra/actualiza el token de dispositivo para notificaciones push (RF-18.11). */
@@ -114,6 +137,10 @@ public class Cliente {
 
 	public boolean enListaNegra() {
 		return enListaNegra;
+	}
+
+	public boolean archivada() {
+		return archivada;
 	}
 
 	/** Usuario del marketplace dueño de la ficha (null si la creó el personal). */

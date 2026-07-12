@@ -17,7 +17,7 @@ import java.util.UUID;
 /** Casos de uso de Clientes: crear, buscar, lista negra e historial, acotados a la empresa (tenant). */
 @Service
 class ClienteService implements CrearCliente, ConsultarClientes, CambiarListaNegra, ConsultarHistorial,
-		RegistrarDeviceToken, ResolucionDeClientes {
+		RegistrarDeviceToken, EditarCliente, CambiarEstadoCliente, ResolucionDeClientes {
 
 	private final ClienteRepository clientes;
 	private final HistorialReadRepository historial;
@@ -46,9 +46,40 @@ class ClienteService implements CrearCliente, ConsultarClientes, CambiarListaNeg
 	@Override
 	@Transactional(readOnly = true)
 	public Pagina<Cliente> listar(UUID empresaId, String texto, Collection<UUID> idsFiltro,
-			SolicitudDePagina solicitud) {
+			boolean incluirArchivados, SolicitudDePagina solicitud) {
 		String normalizado = (texto == null || texto.isBlank()) ? null : texto.trim();
-		return clientes.listar(empresaId, normalizado, idsFiltro, solicitud);
+		return clientes.listar(empresaId, normalizado, idsFiltro, incluirArchivados, solicitud);
+	}
+
+	@Override
+	@Transactional
+	public Cliente ejecutar(EditarClienteComando comando) {
+		Cliente cliente = exigirDelTenant(comando.empresaId(), comando.clienteId());
+		cliente.editar(comando.nombre(), comando.telefono(), comando.email(), comando.documento(),
+				comando.direccion());
+		return clientes.guardar(cliente);
+	}
+
+	@Override
+	@Transactional
+	public Cliente archivar(UUID empresaId, UUID clienteId) {
+		Cliente cliente = exigirDelTenant(empresaId, clienteId);
+		cliente.archivar();
+		return clientes.guardar(cliente);
+	}
+
+	@Override
+	@Transactional
+	public Cliente activar(UUID empresaId, UUID clienteId) {
+		Cliente cliente = exigirDelTenant(empresaId, clienteId);
+		cliente.activar();
+		return clientes.guardar(cliente);
+	}
+
+	private Cliente exigirDelTenant(UUID empresaId, UUID clienteId) {
+		return clientes.buscarPorId(clienteId)
+				.filter(c -> c.empresaId().equals(empresaId))
+				.orElseThrow(() -> new ClienteNoEncontrado(clienteId));
 	}
 
 	@Override
@@ -119,6 +150,15 @@ class ClienteService implements CrearCliente, ConsultarClientes, CambiarListaNeg
 		return clientes.buscarPorId(clienteId)
 				.filter(cliente -> empresaId.equals(cliente.empresaId()))
 				.map(Cliente::enListaNegra)
+				.orElse(false);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public boolean estaArchivado(UUID empresaId, UUID clienteId) {
+		return clientes.buscarPorId(clienteId)
+				.filter(cliente -> empresaId.equals(cliente.empresaId()))
+				.map(Cliente::archivada)
 				.orElse(false);
 	}
 }

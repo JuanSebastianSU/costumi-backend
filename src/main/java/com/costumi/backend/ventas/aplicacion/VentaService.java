@@ -68,6 +68,10 @@ class VentaService implements RegistrarVenta, ConsultarVentas, RegistroDeVentas,
 		if (comando.clienteId() != null && !clientes.existe(comando.empresaId(), comando.clienteId())) {
 			throw new IllegalArgumentException("El cliente no existe en esta empresa");
 		}
+		// R-E: el personal no vende a nombre de una ficha archivada (retirada); reactivarla primero.
+		if (comando.clienteId() != null && clientes.estaArchivado(comando.empresaId(), comando.clienteId())) {
+			throw new com.costumi.backend.compartido.ClienteArchivado(comando.clienteId());
+		}
 		for (LineaDeVenta linea : comando.lineas()) {
 			if (!inventario.prendaExiste(comando.empresaId(), linea.prendaId())) {
 				throw new IllegalArgumentException("La prenda no existe en esta empresa");

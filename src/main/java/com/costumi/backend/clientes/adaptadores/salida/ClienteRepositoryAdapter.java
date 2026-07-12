@@ -47,7 +47,7 @@ class ClienteRepositoryAdapter implements ClienteRepository {
 
 	@Override
 	public Pagina<Cliente> listar(UUID empresaId, String texto, Collection<UUID> idsFiltro,
-			SolicitudDePagina solicitud) {
+			boolean incluirArchivados, SolicitudDePagina solicitud) {
 		// Restricción por ids presente pero vacía: ningún cliente califica (p. ej. nadie con pendientes).
 		if (idsFiltro != null && idsFiltro.isEmpty()) {
 			return new Pagina<>(List.of(), 0, solicitud.pagina(), solicitud.tamano());
@@ -57,13 +57,13 @@ class ClienteRepositoryAdapter implements ClienteRepository {
 		boolean hayTexto = texto != null && !texto.isBlank();
 		Page<ClienteJpaEntity> pagina;
 		if (idsFiltro != null && hayTexto) {
-			pagina = jpa.buscarEnIds(empresaId, texto, idsFiltro, pageable);
+			pagina = jpa.buscarEnIds(empresaId, texto, idsFiltro, incluirArchivados, pageable);
 		} else if (idsFiltro != null) {
-			pagina = jpa.findByEmpresaIdAndIdIn(empresaId, idsFiltro, pageable);
+			pagina = jpa.listarEnIds(empresaId, idsFiltro, incluirArchivados, pageable);
 		} else if (hayTexto) {
-			pagina = jpa.buscarPagina(empresaId, texto, pageable);
+			pagina = jpa.buscarPagina(empresaId, texto, incluirArchivados, pageable);
 		} else {
-			pagina = jpa.findByEmpresaId(empresaId, pageable);
+			pagina = jpa.listarPagina(empresaId, incluirArchivados, pageable);
 		}
 		return new Pagina<>(pagina.getContent().stream().map(ClienteRepositoryAdapter::aDominio).toList(),
 				pagina.getTotalElements(), solicitud.pagina(), solicitud.tamano());
@@ -81,11 +81,12 @@ class ClienteRepositoryAdapter implements ClienteRepository {
 
 	private static ClienteJpaEntity aEntidad(Cliente c) {
 		return new ClienteJpaEntity(c.id(), c.empresaId(), c.nombre(), c.telefono(), c.email(), c.documento(),
-				c.direccion(), c.enListaNegra(), c.deviceToken(), c.usuarioId());
+				c.direccion(), c.enListaNegra(), c.archivada(), c.deviceToken(), c.usuarioId());
 	}
 
 	private static Cliente aDominio(ClienteJpaEntity e) {
 		return Cliente.rehidratar(e.getId(), e.getEmpresaId(), e.getNombre(), e.getTelefono(), e.getEmail(),
-				e.getDocumento(), e.getDireccion(), e.isEnListaNegra(), e.getDeviceToken(), e.getUsuarioId());
+				e.getDocumento(), e.getDireccion(), e.isEnListaNegra(), e.isArchivada(), e.getDeviceToken(),
+				e.getUsuarioId());
 	}
 }
