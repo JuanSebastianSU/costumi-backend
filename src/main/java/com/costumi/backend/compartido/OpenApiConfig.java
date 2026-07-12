@@ -4,6 +4,13 @@ import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.PathItem;
 import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.media.Content;
+import io.swagger.v3.oas.models.media.IntegerSchema;
+import io.swagger.v3.oas.models.media.MediaType;
+import io.swagger.v3.oas.models.media.ObjectSchema;
+import io.swagger.v3.oas.models.media.Schema;
+import io.swagger.v3.oas.models.media.StringSchema;
+import io.swagger.v3.oas.models.responses.ApiResponse;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import org.springdoc.core.customizers.OpenApiCustomizer;
@@ -67,5 +74,41 @@ class OpenApiConfig {
 				}
 			});
 		};
+	}
+
+	/**
+	 * Documenta el cuerpo de error de la API en el contrato: el {@code ProblemDetail} (RFC 7807) que devuelven
+	 * todos los {@code @ExceptionHandler}. Registra el schema y le suma a cada operación una respuesta
+	 * {@code default} con {@code application/problem+json}, para que el cliente Kotlin tipe los errores.
+	 */
+	@Bean
+	OpenApiCustomizer respuestasDeErrorProblemDetail() {
+		return openApi -> {
+			if (openApi.getComponents() == null || openApi.getPaths() == null) {
+				return;
+			}
+			openApi.getComponents().addSchemas("ProblemDetail", esquemaProblemDetail());
+			Content contenido = new Content().addMediaType("application/problem+json",
+					new MediaType().schema(new Schema<>().$ref("#/components/schemas/ProblemDetail")));
+			ApiResponse respuestaDeError = new ApiResponse()
+					.description("Error de la API en formato RFC 7807 (application/problem+json).")
+					.content(contenido);
+			openApi.getPaths().values().forEach(item -> item.readOperations().forEach(op -> {
+				if (op.getResponses() != null && op.getResponses().get("default") == null) {
+					op.getResponses().addApiResponse("default", respuestaDeError);
+				}
+			}));
+		};
+	}
+
+	/** Schema RFC 7807 (los campos que Spring pone en {@link org.springframework.http.ProblemDetail}). */
+	private static Schema<?> esquemaProblemDetail() {
+		return new ObjectSchema()
+				.description("Detalle de un problema según RFC 7807.")
+				.addProperty("type", new StringSchema().format("uri").description("URI que identifica el tipo de error."))
+				.addProperty("title", new StringSchema().description("Resumen legible del tipo de error."))
+				.addProperty("status", new IntegerSchema().format("int32").description("Código de estado HTTP."))
+				.addProperty("detail", new StringSchema().description("Explicación específica de esta ocurrencia."))
+				.addProperty("instance", new StringSchema().format("uri").description("URI del recurso afectado."));
 	}
 }

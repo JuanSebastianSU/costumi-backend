@@ -43,6 +43,19 @@ class OpenApiIntegrationTest {
 	}
 
 	@Test
+	void el_contrato_documenta_el_error_problem_detail() throws Exception {
+		mvc.perform(get("/v3/api-docs"))
+				.andExpect(status().isOk())
+				// El schema RFC 7807 está registrado...
+				.andExpect(jsonPath("$.components.schemas.ProblemDetail.properties.status.type").value("integer"))
+				.andExpect(jsonPath("$.components.schemas.ProblemDetail.properties.detail.type").value("string"))
+				// ...y cada operación referencia una respuesta 'default' de error (application/problem+json).
+				.andExpect(jsonPath(
+						"$.paths['/api/v1/clientes'].get.responses.default.content['application/problem+json']"
+								+ ".schema.$ref").value("#/components/schemas/ProblemDetail"));
+	}
+
+	@Test
 	void los_endpoints_publicos_no_exigen_token_en_el_contrato() throws Exception {
 		// Los públicos llevan security: [] (sobreescribe el requisito global) para no confundir al cliente.
 		mvc.perform(get("/v3/api-docs"))
