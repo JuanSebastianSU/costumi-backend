@@ -100,6 +100,7 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.POST, "/api/v1/grupos-stock/*/mover").hasAnyRole("DUENO", "ENCARGADO", "BODEGA")
 						.requestMatchers(HttpMethod.POST, "/api/v1/grupos-stock/*/entrada").hasAnyRole("DUENO", "ENCARGADO", "BODEGA")
 						.requestMatchers(HttpMethod.POST, "/api/v1/grupos-stock/*/ajuste").hasAnyRole("DUENO", "ENCARGADO", "BODEGA")
+						.requestMatchers(HttpMethod.DELETE, "/api/v1/grupos-stock/*").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.POST, "/api/v1/disfraces").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.PUT, "/api/v1/disfraces/*").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.POST, "/api/v1/disfraces/*/archivar",

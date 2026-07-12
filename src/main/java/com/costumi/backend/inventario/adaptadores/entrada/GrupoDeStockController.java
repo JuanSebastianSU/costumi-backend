@@ -5,6 +5,7 @@ import com.costumi.backend.inventario.aplicacion.ConsultarGruposDeStock;
 import com.costumi.backend.inventario.aplicacion.ConsultarStockBajo;
 import com.costumi.backend.inventario.aplicacion.CrearGrupoDeStock;
 import com.costumi.backend.inventario.aplicacion.CrearGrupoDeStockComando;
+import com.costumi.backend.inventario.aplicacion.EliminarGrupoDeStock;
 import com.costumi.backend.inventario.aplicacion.MoverUnidades;
 import com.costumi.backend.inventario.aplicacion.MoverUnidadesComando;
 import com.costumi.backend.inventario.aplicacion.ReabastecerGrupo;
@@ -15,6 +16,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -38,10 +40,11 @@ class GrupoDeStockController {
 	private final ConsultarStockBajo consultarStockBajo;
 	private final AjustarStock ajustarStock;
 	private final TransferirStock transferirStock;
+	private final EliminarGrupoDeStock eliminarGrupoDeStock;
 
 	GrupoDeStockController(CrearGrupoDeStock crearGrupoDeStock, ConsultarGruposDeStock consultarGruposDeStock,
 			MoverUnidades moverUnidades, ReabastecerGrupo reabastecerGrupo, ConsultarStockBajo consultarStockBajo,
-			AjustarStock ajustarStock, TransferirStock transferirStock) {
+			AjustarStock ajustarStock, TransferirStock transferirStock, EliminarGrupoDeStock eliminarGrupoDeStock) {
 		this.crearGrupoDeStock = crearGrupoDeStock;
 		this.consultarGruposDeStock = consultarGruposDeStock;
 		this.moverUnidades = moverUnidades;
@@ -49,6 +52,7 @@ class GrupoDeStockController {
 		this.consultarStockBajo = consultarStockBajo;
 		this.ajustarStock = ajustarStock;
 		this.transferirStock = transferirStock;
+		this.eliminarGrupoDeStock = eliminarGrupoDeStock;
 	}
 
 	@PostMapping("/api/v1/prendas/{prendaId}/grupos-stock")
@@ -106,6 +110,14 @@ class GrupoDeStockController {
 		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
 		return GrupoDeStockResponse.desde(ajustarStock.ejecutar(new AjustarStock.AjustarStockComando(
 				empresaId, grupoId, request.estado(), request.delta(), request.motivo())));
+	}
+
+	/** Borra físicamente un grupo (R-F): solo si está vacío y no es el último de su prenda+sucursal. DUENO/ENCARGADO. */
+	@DeleteMapping("/api/v1/grupos-stock/{grupoId}")
+	ResponseEntity<Void> eliminar(@PathVariable UUID grupoId, @AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		eliminarGrupoDeStock.ejecutar(empresaId, grupoId);
+		return ResponseEntity.noContent().build();
 	}
 
 	@GetMapping("/api/v1/grupos-stock/stock-bajo")

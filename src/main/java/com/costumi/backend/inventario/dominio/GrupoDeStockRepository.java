@@ -9,6 +9,9 @@ public interface GrupoDeStockRepository {
 
 	GrupoDeStock guardar(GrupoDeStock grupoDeStock);
 
+	/** Borrado físico de un grupo (R-F): solo lo invoca el caso de uso tras validar que es seguro. */
+	void eliminar(UUID id);
+
 	Optional<GrupoDeStock> buscarPorId(UUID id);
 
 	List<GrupoDeStock> listarPorPrenda(UUID prendaId);

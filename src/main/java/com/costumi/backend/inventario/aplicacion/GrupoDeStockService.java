@@ -20,7 +20,7 @@ import java.util.UUID;
 /** Casos de uso de Grupos de stock (variantes), acotados a la empresa (tenant). */
 @Service
 class GrupoDeStockService implements CrearGrupoDeStock, ConsultarGruposDeStock, MoverUnidades, ReabastecerGrupo,
-		ConsultarStockBajo, AjustarStock, TransferirStock {
+		ConsultarStockBajo, AjustarStock, TransferirStock, EliminarGrupoDeStock {
 
 	private final PrendaRepository prendas;
 	private final GrupoDeStockRepository grupos;
@@ -80,6 +80,28 @@ class GrupoDeStockService implements CrearGrupoDeStock, ConsultarGruposDeStock, 
 	@Transactional(readOnly = true)
 	public List<GrupoDeStock> deEmpresa(UUID empresaId, int umbral) {
 		return grupos.listarBajoUmbral(empresaId, umbral);
+	}
+
+	@Override
+	@Transactional
+	public void ejecutar(UUID empresaId, UUID grupoId) {
+		GrupoDeStock grupo = grupos.buscarPorId(grupoId)
+				.filter(g -> g.empresaId().equals(empresaId))
+				.orElseThrow(() -> new GrupoDeStockNoEncontrado(grupoId));
+		// R-F: el borrado físico solo es seguro si el grupo está vacío...
+		if (grupo.total() > 0) {
+			throw new GrupoDeStockNoBorrable(
+					"El grupo tiene " + grupo.total() + " unidades; ajustá su stock a 0 antes de borrarlo");
+		}
+		// ...y no es el último grupo de su prenda en la sucursal (las devoluciones reingresan en algún grupo
+		// de esa prenda+sucursal; borrar el último las dejaría sin destino). Para retirar la prenda de la
+		// sucursal se archiva la prenda, no se borra su último grupo.
+		long enLaSucursal = grupos.listarPorPrendaYSucursal(grupo.prendaId(), grupo.sucursalId()).size();
+		if (enLaSucursal <= 1) {
+			throw new GrupoDeStockNoBorrable(
+					"Es el único grupo de la prenda en esta sucursal; archivá la prenda en su lugar");
+		}
+		grupos.eliminar(grupoId);
 	}
 
 	@Override

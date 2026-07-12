@@ -17,6 +17,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.UUID;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -399,6 +400,53 @@ class GrupoDeStockIntegrationTest {
 						.contentType(MediaType.APPLICATION_JSON)
 						.content("{\"sucursalId\":\"" + sucursal + "\",\"combinacion\":[],\"cantidadInicial\":3}"))
 				.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	void borrar_un_grupo_vacio_que_no_es_el_ultimo_devuelve_204() throws Exception {
+		UUID empresa = crearEmpresa("Grupo Borrar " + UUID.randomUUID());
+		String dueno = duenoDe(empresa);
+		UUID sucursal = sucursalDe(empresa);
+		UUID prenda = crearPrenda(dueno, crearCategoria(dueno, "Camisa"));
+		UUID color = crearTipoVariante(dueno, "Color " + UUID.randomUUID());
+		UUID rojo = agregarValor(dueno, color, "Rojo");
+		UUID azul = agregarValor(dueno, color, "Azul");
+		UUID grupoA = crearGrupo(dueno, prenda, sucursal, combinacion(color, rojo), 0);
+		crearGrupo(dueno, prenda, sucursal, combinacion(color, azul), 0); // otro grupo de la misma prenda+sucursal
+
+		mvc.perform(delete("/api/v1/grupos-stock/{id}", grupoA).header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isNoContent());
+
+		mvc.perform(get("/api/v1/prendas/{prendaId}/grupos-stock", prenda).header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.id == '" + grupoA + "')]").doesNotExist());
+	}
+
+	@Test
+	void borrar_el_ultimo_grupo_de_la_prenda_en_la_sucursal_devuelve_409() throws Exception {
+		UUID empresa = crearEmpresa("Grupo Ultimo " + UUID.randomUUID());
+		String dueno = duenoDe(empresa);
+		UUID prenda = crearPrenda(dueno, crearCategoria(dueno, "Camisa"));
+		UUID grupo = crearGrupo(dueno, prenda, sucursalDe(empresa), "[]", 0); // único grupo, vacío
+
+		mvc.perform(delete("/api/v1/grupos-stock/{id}", grupo).header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isConflict());
+	}
+
+	@Test
+	void borrar_un_grupo_con_unidades_devuelve_409() throws Exception {
+		UUID empresa = crearEmpresa("Grupo Con Stock " + UUID.randomUUID());
+		String dueno = duenoDe(empresa);
+		UUID sucursal = sucursalDe(empresa);
+		UUID prenda = crearPrenda(dueno, crearCategoria(dueno, "Camisa"));
+		UUID color = crearTipoVariante(dueno, "Color " + UUID.randomUUID());
+		UUID rojo = agregarValor(dueno, color, "Rojo");
+		UUID azul = agregarValor(dueno, color, "Azul");
+		UUID conStock = crearGrupo(dueno, prenda, sucursal, combinacion(color, rojo), 5); // tiene unidades
+		crearGrupo(dueno, prenda, sucursal, combinacion(color, azul), 0); // no es el último, aísla la guarda de unidades
+
+		mvc.perform(delete("/api/v1/grupos-stock/{id}", conStock).header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isConflict());
 	}
 
 	@Test

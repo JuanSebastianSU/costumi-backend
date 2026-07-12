@@ -4,6 +4,7 @@ import com.costumi.backend.inventario.aplicacion.AlmacenDeImagenesNoConfigurado;
 import com.costumi.backend.inventario.aplicacion.CombinacionDeVarianteInvalida;
 import com.costumi.backend.inventario.aplicacion.EtiquetaDePrendaInvalida;
 import com.costumi.backend.inventario.aplicacion.FormatoDeImagenNoSoportado;
+import com.costumi.backend.inventario.aplicacion.GrupoDeStockNoBorrable;
 import com.costumi.backend.inventario.aplicacion.GrupoDeStockNoEncontrado;
 import com.costumi.backend.inventario.aplicacion.PrendaNoEncontrada;
 import com.costumi.backend.inventario.aplicacion.VarianteDuplicada;
@@ -73,6 +74,13 @@ class ManejadorDeErroresInventario {
 	ProblemDetail varianteDuplicada(VarianteDuplicada ex) {
 		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
 		problema.setTitle("Variante duplicada");
+		return problema;
+	}
+
+	@ExceptionHandler(GrupoDeStockNoBorrable.class)
+	ProblemDetail grupoNoBorrable(GrupoDeStockNoBorrable ex) {
+		ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+		problema.setTitle("Grupo de stock no borrable");
 		return problema;
 	}
 }
