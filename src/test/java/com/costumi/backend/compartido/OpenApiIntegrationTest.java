@@ -41,4 +41,18 @@ class OpenApiIntegrationTest {
 				.andExpect(jsonPath("$.paths['/api/v1/clientes/{id}/historial']").exists())
 				.andExpect(jsonPath("$.paths['/api/v1/notificaciones/recordar-vencidas']").exists());
 	}
+
+	@Test
+	void los_endpoints_publicos_no_exigen_token_en_el_contrato() throws Exception {
+		// Los públicos llevan security: [] (sobreescribe el requisito global) para no confundir al cliente.
+		mvc.perform(get("/v3/api-docs"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.paths['/api/v1/auth/login'].post.security").isEmpty())
+				.andExpect(jsonPath("$.paths['/api/v1/auth/registro'].post.security").isEmpty())
+				.andExpect(jsonPath("$.paths['/api/v1/empresas'].post.security").isEmpty())
+				.andExpect(jsonPath("$.paths['/api/v1/pagos/webhook'].post.security").isEmpty())
+				.andExpect(jsonPath("$.paths['/api/v1/marketplace/empresas'].get.security").isEmpty())
+				// Un endpoint protegido conserva el requisito global (no se le pone security propia).
+				.andExpect(jsonPath("$.paths['/api/v1/auth/me'].get.security").doesNotExist());
+	}
 }
