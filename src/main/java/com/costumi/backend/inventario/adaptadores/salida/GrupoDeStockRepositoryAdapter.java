@@ -29,6 +29,11 @@ class GrupoDeStockRepositoryAdapter implements GrupoDeStockRepository {
 	}
 
 	@Override
+	public void eliminar(UUID id) {
+		jpa.deleteById(id);
+	}
+
+	@Override
 	public Optional<GrupoDeStock> buscarPorId(UUID id) {
 		return jpa.findFirstById(id).map(GrupoDeStockRepositoryAdapter::aDominio);
 	}
