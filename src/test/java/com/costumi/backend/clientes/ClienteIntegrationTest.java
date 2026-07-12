@@ -18,6 +18,7 @@ import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -161,6 +162,50 @@ class ClienteIntegrationTest {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.contenido.length()").value(1))
 				.andExpect(jsonPath("$.pagina").value(1));
+	}
+
+	@Test
+	void editar_actualiza_los_datos_del_cliente() throws Exception {
+		UUID empresa = crearEmpresa("Cli Editar " + UUID.randomUUID());
+		String dueno = token(empresa, Rol.DUENO);
+		UUID cliente = crearCliente(dueno, "Nombre Viejo", "DOC-" + UUID.randomUUID());
+
+		mvc.perform(put("/api/v1/clientes/{id}", cliente).header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Nombre Nuevo\",\"telefono\":\"3001234567\"}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.nombre").value("Nombre Nuevo"))
+				.andExpect(jsonPath("$.telefono").value("3001234567"));
+	}
+
+	@Test
+	void archivar_lo_oculta_de_la_lista_e_incluir_archivados_lo_muestra_y_activar_lo_reincorpora() throws Exception {
+		UUID empresa = crearEmpresa("Cli Archivar " + UUID.randomUUID());
+		String dueno = token(empresa, Rol.DUENO);
+		UUID cliente = crearCliente(dueno, "Archivable", "DOC-" + UUID.randomUUID());
+
+		mvc.perform(post("/api/v1/clientes/{id}/archivar", cliente).header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.archivada").value(true));
+
+		// Ya no aparece en la lista activa por defecto.
+		mvc.perform(get("/api/v1/clientes").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.contenido[?(@.id == '" + cliente + "')]").doesNotExist());
+
+		// Pero sí con incluirArchivados=true (para poder reactivarlo).
+		mvc.perform(get("/api/v1/clientes").param("incluirArchivados", "true")
+						.header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.contenido[?(@.id == '" + cliente + "')]").exists());
+
+		// Activar lo reincorpora a la lista activa.
+		mvc.perform(post("/api/v1/clientes/{id}/activar", cliente).header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.archivada").value(false));
+		mvc.perform(get("/api/v1/clientes").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.contenido[?(@.id == '" + cliente + "')]").exists());
 	}
 
 	@Test

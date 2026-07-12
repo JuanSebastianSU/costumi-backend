@@ -1,11 +1,14 @@
 package com.costumi.backend.clientes.adaptadores.entrada;
 
+import com.costumi.backend.clientes.aplicacion.CambiarEstadoCliente;
 import com.costumi.backend.clientes.aplicacion.CambiarListaNegra;
 import com.costumi.backend.clientes.aplicacion.CambiarListaNegraComando;
 import com.costumi.backend.clientes.aplicacion.ConsultarClientes;
 import com.costumi.backend.clientes.aplicacion.ConsultarHistorial;
 import com.costumi.backend.clientes.aplicacion.CrearCliente;
 import com.costumi.backend.clientes.aplicacion.CrearClienteComando;
+import com.costumi.backend.clientes.aplicacion.EditarCliente;
+import com.costumi.backend.clientes.aplicacion.EditarClienteComando;
 import com.costumi.backend.clientes.aplicacion.RegistrarDeviceToken;
 import com.costumi.backend.clientes.dominio.Cliente;
 import com.costumi.backend.clientes.dominio.HistorialItem;
@@ -35,15 +38,20 @@ import java.util.UUID;
 class ClienteController {
 
 	private final CrearCliente crearCliente;
+	private final EditarCliente editarCliente;
+	private final CambiarEstadoCliente cambiarEstadoCliente;
 	private final ConsultarClientes consultarClientes;
 	private final CambiarListaNegra cambiarListaNegra;
 	private final ConsultarHistorial consultarHistorial;
 	private final RegistrarDeviceToken registrarDeviceToken;
 
-	ClienteController(CrearCliente crearCliente, ConsultarClientes consultarClientes,
+	ClienteController(CrearCliente crearCliente, EditarCliente editarCliente,
+			CambiarEstadoCliente cambiarEstadoCliente, ConsultarClientes consultarClientes,
 			CambiarListaNegra cambiarListaNegra, ConsultarHistorial consultarHistorial,
 			RegistrarDeviceToken registrarDeviceToken) {
 		this.crearCliente = crearCliente;
+		this.editarCliente = editarCliente;
+		this.cambiarEstadoCliente = cambiarEstadoCliente;
 		this.consultarClientes = consultarClientes;
 		this.cambiarListaNegra = cambiarListaNegra;
 		this.consultarHistorial = consultarHistorial;
@@ -69,9 +77,34 @@ class ClienteController {
 		return ResponseEntity.created(location).body(ClienteResponse.desde(cliente));
 	}
 
+	/** Edita los datos de contacto/identidad de una ficha (RF-7). DUENO/ENCARGADO/MOSTRADOR/ATENCION. */
+	@PutMapping("/{id}")
+	ClienteResponse editar(@PathVariable UUID id, @Valid @RequestBody EditarClienteRequest request,
+			@AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		Cliente cliente = editarCliente.ejecutar(new EditarClienteComando(empresaId, id, request.nombre(),
+				request.telefono(), request.email(), request.documento(), request.direccion()));
+		return ClienteResponse.desde(cliente);
+	}
+
+	/** Archiva una ficha: la retira de la lista activa y de nuevas rentas/ventas del personal, sin borrarla. */
+	@PostMapping("/{id}/archivar")
+	ClienteResponse archivar(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		return ClienteResponse.desde(cambiarEstadoCliente.archivar(empresaId, id));
+	}
+
+	/** Reactiva una ficha archivada. */
+	@PostMapping("/{id}/activar")
+	ClienteResponse activar(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		return ClienteResponse.desde(cambiarEstadoCliente.activar(empresaId, id));
+	}
+
 	@GetMapping
 	RespuestaPaginada<ClienteResponse> listar(@RequestParam(required = false) String buscar,
 			@RequestParam(required = false, defaultValue = "false") boolean conPendientes,
+			@RequestParam(required = false, defaultValue = "false") boolean incluirArchivados,
 			@RequestParam(required = false) Integer pagina, @RequestParam(required = false) Integer tamano,
 			@AuthenticationPrincipal Jwt jwt) {
 		String empresaIdClaim = jwt.getClaimAsString("empresa_id");
@@ -82,7 +115,8 @@ class ClienteController {
 		// RF-11.5/11.6: con pendientes, restringe la página a los clientes con rentas activas por devolver.
 		List<UUID> idsFiltro = conPendientes ? consultarHistorial.clientesConPendientes(empresaId) : null;
 		return RespuestaPaginada.desde(
-				consultarClientes.listar(empresaId, buscar, idsFiltro, SolicitudDePagina.de(pagina, tamano)),
+				consultarClientes.listar(empresaId, buscar, idsFiltro, incluirArchivados,
+						SolicitudDePagina.de(pagina, tamano)),
 				ClienteResponse::desde);
 	}
 

@@ -40,6 +40,9 @@ class ClienteJpaEntity {
 	@Column(name = "en_lista_negra", nullable = false)
 	private boolean enListaNegra;
 
+	@Column(nullable = false)
+	private boolean archivada;
+
 	@Column(name = "device_token", length = 300)
 	private String deviceToken;
 
@@ -51,7 +54,7 @@ class ClienteJpaEntity {
 	}
 
 	ClienteJpaEntity(UUID id, UUID empresaId, String nombre, String telefono, String email, String documento,
-			String direccion, boolean enListaNegra, String deviceToken, UUID usuarioId) {
+			String direccion, boolean enListaNegra, boolean archivada, String deviceToken, UUID usuarioId) {
 		this.id = id;
 		this.empresaId = empresaId;
 		this.nombre = nombre;
@@ -60,6 +63,7 @@ class ClienteJpaEntity {
 		this.documento = documento;
 		this.direccion = direccion;
 		this.enListaNegra = enListaNegra;
+		this.archivada = archivada;
 		this.deviceToken = deviceToken;
 		this.usuarioId = usuarioId;
 	}
@@ -102,5 +106,9 @@ class ClienteJpaEntity {
 
 	boolean isEnListaNegra() {
 		return enListaNegra;
+	}
+
+	boolean isArchivada() {
+		return archivada;
 	}
 }

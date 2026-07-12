@@ -65,6 +65,10 @@ class RentaService implements CrearRenta, ConsultarRentas, GestionarRenta, Consu
 		if (!clientes.existe(comando.empresaId(), comando.clienteId())) {
 			throw new IllegalArgumentException("El cliente no existe en esta empresa");
 		}
+		// R-E: el personal no opera sobre una ficha archivada (retirada); hay que reactivarla primero.
+		if (clientes.estaArchivado(comando.empresaId(), comando.clienteId())) {
+			throw new com.costumi.backend.compartido.ClienteArchivado(comando.clienteId());
+		}
 		// B1 (RF-7.4): un cliente en lista negra no puede iniciar una renta.
 		if (clientes.estaEnListaNegra(comando.empresaId(), comando.clienteId())) {
 			throw new ClienteEnListaNegra(comando.clienteId());

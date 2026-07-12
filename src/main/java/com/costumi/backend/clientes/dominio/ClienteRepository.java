@@ -23,9 +23,11 @@ public interface ClienteRepository {
 	/**
 	 * Página de clientes de la empresa, en orden estable por nombre (C3). {@code texto} filtra por
 	 * nombre/documento/teléfono (null/vacío = sin filtro); {@code idsFiltro} restringe a esos ids
-	 * (null = sin restricción; vacío = página vacía), para vistas como "con pendientes".
+	 * (null = sin restricción; vacío = página vacía), para vistas como "con pendientes". Por defecto
+	 * excluye las fichas archivadas; {@code incluirArchivados=true} las incluye (R-E).
 	 */
-	Pagina<Cliente> listar(UUID empresaId, String texto, Collection<UUID> idsFiltro, SolicitudDePagina solicitud);
+	Pagina<Cliente> listar(UUID empresaId, String texto, Collection<UUID> idsFiltro, boolean incluirArchivados,
+			SolicitudDePagina solicitud);
 
 	/** Ficha de un usuario del marketplace en la empresa, si existe (RF-14.4). */
 	Optional<Cliente> buscarPorEmpresaYUsuario(UUID empresaId, UUID usuarioId);

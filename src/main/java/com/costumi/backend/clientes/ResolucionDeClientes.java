@@ -27,4 +27,11 @@ public interface ResolucionDeClientes {
 	 * cliente bloqueado inicie una nueva renta. {@code false} si el cliente no existe o no es de la empresa.
 	 */
 	boolean estaEnListaNegra(UUID empresaId, UUID clienteId);
+
+	/**
+	 * ¿La ficha del cliente (de la empresa) está <b>archivada</b>? (R-E). La usan Rentas/Ventas para que el
+	 * personal no opere sobre una ficha retirada (el auto-checkout del marketplace NO la consulta). {@code false}
+	 * si el cliente no existe o no es de la empresa.
+	 */
+	boolean estaArchivado(UUID empresaId, UUID clienteId);
 }
