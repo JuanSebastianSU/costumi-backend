@@ -56,6 +56,7 @@ class DevolucionIntegrationTest {
 				.andExpect(status().isOk());
 		this.dueno = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.DUENO);
 		UUID sucursal = postId("/api/v1/empresas/" + empresa + "/sucursales", dueno, "{\"nombre\":\"Centro\"}");
+		this.sucursal = sucursal;
 		UUID cliente = postId("/api/v1/clientes", dueno, "{\"nombre\":\"Cliente\"}");
 		UUID categoria = postId("/api/v1/categorias", dueno, "{\"nombre\":\"Camisa " + UUID.randomUUID() + "\"}");
 		UUID prenda = postId("/api/v1/prendas", dueno, "{\"categoriaId\":\"" + categoria
@@ -74,6 +75,7 @@ class DevolucionIntegrationTest {
 
 	private String dueno;
 	private UUID prenda;
+	private UUID sucursal;
 
 	/** Igual que rentaDePrueba pero con fechas pasadas (pactada 2020-01-05) para probar el retraso. */
 	private UUID rentaVencida() throws Exception {
@@ -376,6 +378,59 @@ class DevolucionIntegrationTest {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$[?(@.canal == 'WHATSAPP')].mensaje",
 						org.hamcrest.Matchers.hasItem(org.hamcrest.Matchers.containsString("tu renta quedó confirmada"))));
+	}
+
+	@Test
+	void pagar_una_renta_sin_multa_no_avisa_deuda_saldada() throws Exception {
+		UUID renta = rentaDePrueba();
+		// Devolución SIN multa (cargos 40 < depósito 100): no queda deuda por multa.
+		mvc.perform(post("/api/v1/devoluciones").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"rentaId\":\"" + renta + "\",\"deposito\":100.00,\"cargoPorDanos\":40.00,"
+								+ "\"cargoPorRetraso\":0,\"piezas\":[{\"prendaId\":\"" + prenda
+								+ "\",\"descripcion\":\"Camisa\",\"llego\":true,\"estado\":\"DANADA\"}]}"))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.multa").value(0));
+
+		mvc.perform(post("/api/v1/pagos").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + sucursal + "\",\"tipoConcepto\":\"RENTA\",\"conceptoId\":\"" + renta
+								+ "\",\"monto\":500.00,\"metodo\":\"EFECTIVO\"}"))
+				.andExpect(status().isCreated());
+
+		// Sin multa, no debe salir el aviso de "ya no adeudas nada".
+		mvc.perform(get("/api/v1/notificaciones").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.mensaje =~ /.*adeudas nada.*/i)]").doesNotExist());
+	}
+
+	@Test
+	void pagar_la_multa_avisa_al_cliente_que_ya_no_adeuda_nada() throws Exception {
+		UUID renta = rentaDePrueba(); // cliente "Cliente"; sucursal "Centro"
+
+		// Devolución con cargos 80 > depósito 50 -> multa 30 (deuda del cliente, RF-5.2).
+		mvc.perform(post("/api/v1/devoluciones").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"rentaId\":\"" + renta + "\",\"deposito\":50.00,\"cargoPorDanos\":60.00,"
+								+ "\"cargoPorRetraso\":20.00,\"piezas\":[{\"prendaId\":\"" + prenda
+								+ "\",\"descripcion\":\"Camisa\",\"llego\":true,\"estado\":\"DANADA\"}]}"))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.multa").value(30.00));
+
+		// El cliente paga lo que debe (importe de la renta + la multa) en un cobro que salda todo.
+		mvc.perform(post("/api/v1/pagos").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + sucursal + "\",\"tipoConcepto\":\"RENTA\",\"conceptoId\":\"" + renta
+								+ "\",\"monto\":500.00,\"metodo\":\"EFECTIVO\"}"))
+				.andExpect(status().isCreated());
+
+		// RF-11.1: al saldar la multa sale el aviso "ya no adeudas nada" por WhatsApp, con el monto.
+		mvc.perform(get("/api/v1/notificaciones").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.canal == 'WHATSAPP')].mensaje",
+						org.hamcrest.Matchers.hasItem(org.hamcrest.Matchers.containsString("Ya no adeudas nada"))))
+				.andExpect(jsonPath("$[?(@.canal == 'WHATSAPP')].mensaje",
+						org.hamcrest.Matchers.hasItem(org.hamcrest.Matchers.containsString("$30"))));
 	}
 
 	@Test
