@@ -34,6 +34,9 @@ class SucursalJpaEntity {
 	@Column(length = 300)
 	private String direccion;
 
+	@Column(name = "ubicacion_maps", length = 500)
+	private String ubicacionMaps;
+
 	@Column(nullable = false)
 	private boolean archivada;
 
@@ -41,11 +44,13 @@ class SucursalJpaEntity {
 		// requerido por JPA
 	}
 
-	SucursalJpaEntity(UUID id, UUID empresaId, String nombre, String direccion, boolean archivada) {
+	SucursalJpaEntity(UUID id, UUID empresaId, String nombre, String direccion, String ubicacionMaps,
+			boolean archivada) {
 		this.id = id;
 		this.empresaId = empresaId;
 		this.nombre = nombre;
 		this.direccion = direccion;
+		this.ubicacionMaps = ubicacionMaps;
 		this.archivada = archivada;
 	}
 
@@ -63,6 +68,10 @@ class SucursalJpaEntity {
 
 	String getDireccion() {
 		return direccion;
+	}
+
+	String getUbicacionMaps() {
+		return ubicacionMaps;
 	}
 
 	boolean isArchivada() {

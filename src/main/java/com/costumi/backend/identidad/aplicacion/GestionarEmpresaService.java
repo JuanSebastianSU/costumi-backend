@@ -50,7 +50,7 @@ class GestionarEmpresaService implements GestionarEmpresa {
 		if (solicitanteId == null) {
 			return; // registro clásico sin cliente: no se provisiona nada (comportamiento previo)
 		}
-		sucursales.guardar(Sucursal.crear(empresa.id(), "Casa Matriz", empresa.ubicacion()));
+		sucursales.guardar(Sucursal.crear(empresa.id(), "Casa Matriz", empresa.ubicacion(), null));
 		usuarios.buscarPorId(solicitanteId)
 				.filter(u -> u.rol().esCliente())
 				.ifPresent(cliente -> usuarios.guardar(cliente.promoverADueno(empresa.id())));

@@ -11,5 +11,8 @@ public record EditarSucursalRequest(
 		String nombre,
 
 		@Size(max = 300, message = "La dirección no puede exceder 300 caracteres")
-		String direccion) {
+		String direccion,
+
+		@Size(max = 500, message = "El enlace de ubicación no puede exceder 500 caracteres")
+		String ubicacionMaps) {
 }

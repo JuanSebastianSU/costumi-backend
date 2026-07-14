@@ -5,10 +5,11 @@ import com.costumi.backend.identidad.dominio.Sucursal;
 import java.util.UUID;
 
 /** DTO de salida de la Sucursal. */
-public record SucursalResponse(UUID id, UUID empresaId, String nombre, String direccion, boolean archivada) {
+public record SucursalResponse(UUID id, UUID empresaId, String nombre, String direccion, String ubicacionMaps,
+		boolean archivada) {
 
 	static SucursalResponse desde(Sucursal sucursal) {
 		return new SucursalResponse(sucursal.id(), sucursal.empresaId(), sucursal.nombre(), sucursal.direccion(),
-				sucursal.archivada());
+				sucursal.ubicacionMaps(), sucursal.archivada());
 	}
 }

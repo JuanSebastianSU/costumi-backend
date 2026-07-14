@@ -31,7 +31,7 @@ public enum TipoDeEvento {
 					+ "antes para evitar recargos."),
 
 	COMPRA_REALIZADA(
-			"¡Gracias por tu compra, {cliente}! Te esperamos en {tienda}. {maps}");
+			"¡Gracias por tu compra, {cliente}! Te esperamos de nuevo en {direccion}. {maps}");
 
 	private final String textoPorDefecto;
 

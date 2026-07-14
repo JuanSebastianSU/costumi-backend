@@ -28,17 +28,20 @@ class RentaService implements CrearRenta, ConsultarRentas, GestionarRenta, Consu
 	private final com.costumi.backend.identidad.ConsultaDeSucursales sucursales;
 	private final com.costumi.backend.identidad.ConsultaDeAsignaciones asignaciones;
 	private final com.costumi.backend.clientes.ResolucionDeClientes clientes;
+	private final org.springframework.context.ApplicationEventPublisher eventos;
 
 	RentaService(RentaRepository rentas, ConsultaDeInventario inventario, ConsultaDeConfiguracion configuracion,
 			com.costumi.backend.identidad.ConsultaDeSucursales sucursales,
 			com.costumi.backend.identidad.ConsultaDeAsignaciones asignaciones,
-			com.costumi.backend.clientes.ResolucionDeClientes clientes) {
+			com.costumi.backend.clientes.ResolucionDeClientes clientes,
+			org.springframework.context.ApplicationEventPublisher eventos) {
 		this.rentas = rentas;
 		this.inventario = inventario;
 		this.configuracion = configuracion;
 		this.sucursales = sucursales;
 		this.asignaciones = asignaciones;
 		this.clientes = clientes;
+		this.eventos = eventos;
 	}
 
 	@Override
@@ -216,7 +219,13 @@ class RentaService implements CrearRenta, ConsultarRentas, GestionarRenta, Consu
 	@Override
 	@Transactional
 	public Renta entregar(UUID empresaId, UUID rentaId) {
-		return aplicar(empresaId, rentaId, Renta::entregar);
+		Renta renta = aplicar(empresaId, rentaId, Renta::entregar);
+		// RF-11.1 (§5.5): al entregar, se avisa para la confirmación de renta con la fecha de devolución.
+		if (renta.clienteId() != null) {
+			eventos.publishEvent(new com.costumi.backend.rentas.RentaEntregada(renta.empresaId(),
+					renta.clienteId(), renta.sucursalId(), renta.id(), renta.fechaDevolucion()));
+		}
+		return renta;
 	}
 
 	@Override

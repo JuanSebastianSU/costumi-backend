@@ -85,7 +85,7 @@ class BootstrapDemo implements ApplicationRunner {
 		empresa.aprobar(); // PENDIENTE -> ACTIVA (puede operar)
 		empresa = empresas.guardar(empresa);
 		// Casa matriz: sin al menos una sucursal, la empresa no puede operar rentas/ventas (necesitan sucursalId).
-		Sucursal casaMatriz = sucursales.guardar(Sucursal.crear(empresa.id(), "Casa Matriz", null));
+		Sucursal casaMatriz = sucursales.guardar(Sucursal.crear(empresa.id(), "Casa Matriz", null, null));
 		usuarios.guardar(Usuario.crear(empresa.id(), email, passwordEncoder.encode(password), Rol.DUENO));
 		log.info("Empresa demo ACTIVA '{}' (sucursal '{}') y dueño de bootstrap creados: {}",
 				nombreEmpresa, casaMatriz.id(), email);

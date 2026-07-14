@@ -321,6 +321,26 @@ class VentaIntegrationTest {
 	}
 
 	@Test
+	void una_venta_a_nombre_de_un_cliente_dispara_el_agradecimiento_por_compra() throws Exception {
+		UUID[] ctx = montar();
+		UUID sucursal = ctx[0];
+		UUID prenda = ctx[1];
+		UUID cliente = postId("/api/v1/clientes", dueno, "{\"nombre\":\"Comprador\"}");
+
+		mvc.perform(post("/api/v1/ventas").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + sucursal + "\",\"clienteId\":\"" + cliente
+								+ "\",\"lineas\":[{\"prendaId\":\"" + prenda + "\",\"cantidad\":1,\"precioUnitario\":50.00}]}"))
+				.andExpect(status().isCreated());
+
+		// RF-11.1: la compra dispara el mensaje de agradecimiento por WhatsApp con la plantilla configurable.
+		mvc.perform(get("/api/v1/notificaciones").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.canal == 'WHATSAPP')].mensaje",
+						org.hamcrest.Matchers.hasItem(org.hamcrest.Matchers.containsString("Gracias por tu compra, Comprador"))));
+	}
+
+	@Test
 	void sin_token_devuelve_401() throws Exception {
 		mvc.perform(get("/api/v1/ventas")).andExpect(status().isUnauthorized());
 	}

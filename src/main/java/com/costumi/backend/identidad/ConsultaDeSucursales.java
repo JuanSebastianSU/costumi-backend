@@ -1,5 +1,6 @@
 package com.costumi.backend.identidad;
 
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -19,4 +20,12 @@ public interface ConsultaDeSucursales {
 	 * (p. ej. el CLIENTE del marketplace, cuyo token no lleva {@code empresa_id}).
 	 */
 	boolean existeActiva(UUID empresaId, UUID sucursalId);
+
+	/** Dirección de texto y enlace de Google Maps de una sucursal del tenant (para {@code {direccion}}/{@code {maps}}
+	 * en los mensajes automáticos, RF-11). Vacío si la sucursal no existe o no es de la empresa. */
+	Optional<UbicacionDeSucursal> ubicacion(UUID empresaId, UUID sucursalId);
+
+	/** Datos de ubicación de una sucursal para los mensajes; cualquiera de los dos puede ser null. */
+	record UbicacionDeSucursal(String direccion, String ubicacionMaps) {
+	}
 }
