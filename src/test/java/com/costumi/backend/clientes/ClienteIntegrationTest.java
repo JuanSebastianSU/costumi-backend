@@ -69,7 +69,8 @@ class ClienteIntegrationTest {
 
 	@Test
 	void historial_del_cliente_y_filtro_de_pendientes() throws Exception {
-		UUID empresa = crearEmpresa("Cli Hist " + UUID.randomUUID());
+		String nombreEmpresa = "Cli Hist " + UUID.randomUUID();
+		UUID empresa = crearEmpresa(nombreEmpresa);
 		String superAdmin = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, null, Rol.SUPERADMIN);
 		mvc.perform(post("/api/v1/empresas/{id}/aprobar", empresa).header("Authorization", "Bearer " + superAdmin))
 				.andExpect(status().isOk());
@@ -92,7 +93,10 @@ class ClienteIntegrationTest {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.length()").value(1))
 				.andExpect(jsonPath("$[0].tipo").value("RENTA"))
-				.andExpect(jsonPath("$[0].estado").value("ACTIVA"));
+				.andExpect(jsonPath("$[0].estado").value("ACTIVA"))
+				// La operación trae su tienda, para "Mis Pedidos" (cruza tiendas) y el reembolso.
+				.andExpect(jsonPath("$[0].empresaId").value(empresa.toString()))
+				.andExpect(jsonPath("$[0].empresaNombre").value(nombreEmpresa));
 
 		// RF-11.5/11.6: con la renta ACTIVA, el cliente sale en el filtro de pendientes.
 		mvc.perform(get("/api/v1/clientes").param("conPendientes", "true").header("Authorization", "Bearer " + dueno))

@@ -3,6 +3,7 @@ package com.costumi.backend.marketplace.aplicacion;
 import com.costumi.backend.marketplace.dominio.EmpresaEnVitrina;
 import com.costumi.backend.marketplace.dominio.MarketplaceReadRepository;
 import com.costumi.backend.marketplace.dominio.PrendaEnVitrina;
+import com.costumi.backend.marketplace.dominio.SucursalEnVitrina;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,5 +36,11 @@ class MarketplaceService implements DescubrirEmpresas {
 	@Transactional(readOnly = true)
 	public List<PrendaEnVitrina> catalogo(UUID empresaId) {
 		return marketplace.catalogoDe(empresaId);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<SucursalEnVitrina> sucursales(UUID empresaId) {
+		return marketplace.sucursalesActivasDe(empresaId);
 	}
 }

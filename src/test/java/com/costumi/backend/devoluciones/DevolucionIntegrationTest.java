@@ -345,6 +345,24 @@ class DevolucionIntegrationTest {
 	}
 
 	@Test
+	void la_devolucion_deja_una_traza_legible_en_auditoria_con_el_nombre_del_cliente() throws Exception {
+		UUID renta = rentaDePrueba(); // el cliente se llama "Cliente"
+
+		mvc.perform(post("/api/v1/devoluciones").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"rentaId\":\"" + renta + "\",\"deposito\":100.00,\"cargoPorDanos\":0,"
+								+ "\"cargoPorRetraso\":0,\"piezas\":[{\"prendaId\":\"" + prenda
+								+ "\",\"descripcion\":\"Camisa\",\"llego\":true,\"estado\":\"BIEN\"}]}"))
+				.andExpect(status().isCreated());
+
+		// RF-0.5: el detalle referencia al cliente por su nombre, no por un id opaco.
+		mvc.perform(get("/api/v1/auditoria").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.accion == 'DEVOLUCION_REGISTRADA')].detalle",
+						org.hamcrest.Matchers.hasItem(org.hamcrest.Matchers.containsString("«Cliente»"))));
+	}
+
+	@Test
 	void sin_token_devuelve_401() throws Exception {
 		mvc.perform(get("/api/v1/devoluciones")).andExpect(status().isUnauthorized());
 	}

@@ -34,4 +34,13 @@ class MarketplaceController {
 	List<PrendaVitrinaResponse> catalogo(@PathVariable UUID empresaId) {
 		return descubrirEmpresas.catalogo(empresaId).stream().map(PrendaVitrinaResponse::desde).toList();
 	}
+
+	/**
+	 * Sucursales (puntos de retiro) públicas de una tienda ACTIVA (RF-18.5): el cliente del
+	 * marketplace elige en cuál retirar antes de armar su carrito. Sin token, como el resto de la vitrina.
+	 */
+	@GetMapping("/empresas/{empresaId}/sucursales")
+	List<SucursalVitrinaResponse> sucursales(@PathVariable UUID empresaId) {
+		return descubrirEmpresas.sucursales(empresaId).stream().map(SucursalVitrinaResponse::desde).toList();
+	}
 }

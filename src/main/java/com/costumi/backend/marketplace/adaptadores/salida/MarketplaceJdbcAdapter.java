@@ -3,6 +3,7 @@ package com.costumi.backend.marketplace.adaptadores.salida;
 import com.costumi.backend.marketplace.dominio.EmpresaEnVitrina;
 import com.costumi.backend.marketplace.dominio.MarketplaceReadRepository;
 import com.costumi.backend.marketplace.dominio.PrendaEnVitrina;
+import com.costumi.backend.marketplace.dominio.SucursalEnVitrina;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
@@ -25,6 +26,12 @@ class MarketplaceJdbcAdapter implements MarketplaceReadRepository {
 			+ "from prenda p join categoria c on c.id = p.categoria_id join empresa e on e.id = p.empresa_id "
 			+ "where p.empresa_id = :empresaId and p.archivada = false and e.estado = 'ACTIVA' "
 			+ "order by p.nombre";
+
+	// Sucursales (puntos de retiro) no archivadas de una empresa, solo si la empresa está ACTIVA.
+	private static final String SUCURSALES = "select s.id, s.nombre, s.direccion "
+			+ "from sucursal s join empresa e on e.id = s.empresa_id "
+			+ "where s.empresa_id = :empresaId and s.archivada = false and e.estado = 'ACTIVA' "
+			+ "order by s.nombre";
 
 	private final JdbcClient jdbc;
 
@@ -50,6 +57,11 @@ class MarketplaceJdbcAdapter implements MarketplaceReadRepository {
 		return jdbc.sql(CATALOGO).param("empresaId", empresaId).query(MarketplaceJdbcAdapter::mapearPrenda).list();
 	}
 
+	@Override
+	public List<SucursalEnVitrina> sucursalesActivasDe(UUID empresaId) {
+		return jdbc.sql(SUCURSALES).param("empresaId", empresaId).query(MarketplaceJdbcAdapter::mapearSucursal).list();
+	}
+
 	private static EmpresaEnVitrina mapear(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
 		return EmpresaEnVitrina.de(rs.getObject("id", UUID.class), rs.getString("nombre"));
 	}
@@ -62,5 +74,12 @@ class MarketplaceJdbcAdapter implements MarketplaceReadRepository {
 				rs.getBigDecimal("precio_renta"),
 				rs.getBigDecimal("precio_venta"),
 				rs.getString("categoria"));
+	}
+
+	private static SucursalEnVitrina mapearSucursal(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
+		return new SucursalEnVitrina(
+				rs.getObject("id", UUID.class),
+				rs.getString("nombre"),
+				rs.getString("direccion"));
 	}
 }
