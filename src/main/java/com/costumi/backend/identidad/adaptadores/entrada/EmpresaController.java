@@ -1,5 +1,6 @@
 package com.costumi.backend.identidad.adaptadores.entrada;
 
+import com.costumi.backend.identidad.aplicacion.ConsultarEmpresas;
 import com.costumi.backend.identidad.aplicacion.ConsultarEmpresasPendientes;
 import com.costumi.backend.identidad.aplicacion.GestionarEmpresa;
 import com.costumi.backend.identidad.aplicacion.RegistrarEmpresa;
@@ -29,21 +30,31 @@ class EmpresaController {
 	private final RegistrarEmpresa registrarEmpresa;
 	private final GestionarEmpresa gestionarEmpresa;
 	private final ConsultarEmpresasPendientes consultarEmpresasPendientes;
+	private final ConsultarEmpresas consultarEmpresas;
 
 	EmpresaController(RegistrarEmpresa registrarEmpresa, GestionarEmpresa gestionarEmpresa,
-			ConsultarEmpresasPendientes consultarEmpresasPendientes) {
+			ConsultarEmpresasPendientes consultarEmpresasPendientes, ConsultarEmpresas consultarEmpresas) {
 		this.registrarEmpresa = registrarEmpresa;
 		this.gestionarEmpresa = gestionarEmpresa;
 		this.consultarEmpresasPendientes = consultarEmpresasPendientes;
+		this.consultarEmpresas = consultarEmpresas;
 	}
 
 	/**
 	 * Cola de solicitudes PENDIENTES para el SuperAdmin, con marca de vencidas (RF-15.3/15.4).
-	 * TODO: restringir a rol SuperAdmin cuando exista auth (RF-17.4).
 	 */
 	@GetMapping("/pendientes")
 	List<EmpresaPendienteResponse> pendientes() {
 		return consultarEmpresasPendientes.ejecutar().stream().map(EmpresaPendienteResponse::desde).toList();
+	}
+
+	/**
+	 * Listado de Empresas ACTIVAS y SUSPENDIDAS para el SuperAdmin (RF-15.3): la lista desde la que se
+	 * suspende o reactiva una empresa.
+	 */
+	@GetMapping
+	List<EmpresaResumenResponse> listar() {
+		return consultarEmpresas.ejecutar().stream().map(EmpresaResumenResponse::desde).toList();
 	}
 
 	/**
