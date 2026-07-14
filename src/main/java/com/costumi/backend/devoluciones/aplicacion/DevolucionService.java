@@ -23,7 +23,8 @@ import java.util.UUID;
 
 /** Casos de uso de Devoluciones, acotados a la empresa (tenant). Cierra el ciclo de la renta (RF-5). */
 @Service
-class DevolucionService implements RegistrarDevolucion, ConsultarDevoluciones {
+class DevolucionService implements RegistrarDevolucion, ConsultarDevoluciones,
+		com.costumi.backend.devoluciones.ConsultaDeMultas {
 
 	private final DevolucionRepository devoluciones;
 	private final ConsultaDeRentas rentas;
@@ -139,6 +140,14 @@ class DevolucionService implements RegistrarDevolucion, ConsultarDevoluciones {
 	@Transactional(readOnly = true)
 	public List<Devolucion> deEmpresa(UUID empresaId) {
 		return devoluciones.listarPorEmpresa(empresaId);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public BigDecimal totalMultaDeRenta(UUID empresaId, UUID rentaId) {
+		return devoluciones.listarPorRenta(empresaId, rentaId).stream()
+				.map(Devolucion::multa)
+				.reduce(BigDecimal.ZERO, BigDecimal::add);
 	}
 
 	/**

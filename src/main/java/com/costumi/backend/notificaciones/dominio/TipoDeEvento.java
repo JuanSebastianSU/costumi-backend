@@ -16,7 +16,7 @@ public enum TipoDeEvento {
 					+ "Por favor acércate a saldarla. ¡Gracias!"),
 
 	DEUDA_SALDADA(
-			"¡Listo {cliente}! Ya saldaste tu deuda. Gracias por ponerte al día."),
+			"¡Listo {cliente}! Saldaste tu deuda de {monto}. Ya no adeudas nada, gracias por ponerte al día."),
 
 	RENTA_CONFIRMADA(
 			"Hola {cliente}, tu renta quedó confirmada. Recordá devolverla el {fecha_devolucion} "

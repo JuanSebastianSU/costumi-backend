@@ -27,13 +27,18 @@ class PagoService implements RegistrarPago, ConsultarPagos, RegistrarCobroMixto 
 	private final ConsultaDeRentas rentas;
 	private final ConsultaDeVentas ventas;
 	private final ConsultaDeConfiguracion configuracion;
+	private final com.costumi.backend.devoluciones.ConsultaDeMultas multas;
+	private final org.springframework.context.ApplicationEventPublisher eventos;
 
 	PagoService(PagoRepository pagos, ConsultaDeRentas rentas, ConsultaDeVentas ventas,
-			ConsultaDeConfiguracion configuracion) {
+			ConsultaDeConfiguracion configuracion, com.costumi.backend.devoluciones.ConsultaDeMultas multas,
+			org.springframework.context.ApplicationEventPublisher eventos) {
 		this.pagos = pagos;
 		this.rentas = rentas;
 		this.ventas = ventas;
 		this.configuracion = configuracion;
+		this.multas = multas;
+		this.eventos = eventos;
 	}
 
 	@Override
@@ -45,9 +50,35 @@ class PagoService implements RegistrarPago, ConsultarPagos, RegistrarCobroMixto 
 				return existente.get(); // idempotente: no se duplica el cobro
 			}
 		}
-		return pagos.guardar(Pago.registrar(comando.empresaId(), comando.sucursalId(), comando.empleadoId(),
+		Pago guardado = pagos.guardar(Pago.registrar(comando.empresaId(), comando.sucursalId(), comando.empleadoId(),
 				comando.tipoConcepto(), comando.conceptoId(), comando.monto(), comando.tipoPago(), comando.metodo(),
 				comando.referencia(), comando.claveIdempotencia()));
+		avisarSiSeSaldoLaMulta(comando, guardado);
+		return guardado;
+	}
+
+	/**
+	 * RF-11.1 (§5.5): si este cobro llevó lo pagado de la renta a cubrir el importe + la multa (una deuda
+	 * que dejó una devolución), se avisa al cliente que ya no adeuda nada. Se dispara <b>solo</b> en el
+	 * cobro que cruza el umbral (antes por debajo, ahora en o por encima), así no reincide ni avisa en
+	 * ventas ni en rentas sin multa.
+	 */
+	private void avisarSiSeSaldoLaMulta(RegistrarPagoComando comando, Pago guardado) {
+		if (comando.tipoConcepto() != TipoConcepto.RENTA) {
+			return;
+		}
+		BigDecimal multa = multas.totalMultaDeRenta(comando.empresaId(), comando.conceptoId());
+		if (multa.signum() <= 0) {
+			return; // la renta no dejó deuda por multa: nada que avisar.
+		}
+		BigDecimal importe = rentas.importeDeRenta(comando.empresaId(), comando.conceptoId()).orElse(BigDecimal.ZERO);
+		BigDecimal umbral = importe.add(multa);
+		BigDecimal saldoDespues = pagos.saldoNetoPorConcepto(comando.empresaId(), comando.conceptoId());
+		BigDecimal saldoAntes = saldoDespues.subtract(guardado.montoNeto());
+		if (saldoAntes.compareTo(umbral) < 0 && saldoDespues.compareTo(umbral) >= 0) {
+			rentas.clienteDeRenta(comando.empresaId(), comando.conceptoId()).ifPresent(clienteId ->
+					eventos.publishEvent(new com.costumi.backend.pagos.SaldoSaldado(comando.empresaId(), clienteId, multa)));
+		}
 	}
 
 	@Override
