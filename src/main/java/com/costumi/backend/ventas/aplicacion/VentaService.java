@@ -31,11 +31,13 @@ class VentaService implements RegistrarVenta, ConsultarVentas, RegistroDeVentas,
 	private final com.costumi.backend.identidad.ConsultaDeSucursales sucursales;
 	private final com.costumi.backend.identidad.ConsultaDeAsignaciones asignaciones;
 	private final com.costumi.backend.clientes.ResolucionDeClientes clientes;
+	private final org.springframework.context.ApplicationEventPublisher eventos;
 
 	VentaService(VentaRepository ventas, ConsultaDeInventario inventario, AjusteDeInventario ajusteDeInventario,
 			ConsultaDeConfiguracion configuracion, com.costumi.backend.identidad.ConsultaDeSucursales sucursales,
 			com.costumi.backend.identidad.ConsultaDeAsignaciones asignaciones,
-			com.costumi.backend.clientes.ResolucionDeClientes clientes) {
+			com.costumi.backend.clientes.ResolucionDeClientes clientes,
+			org.springframework.context.ApplicationEventPublisher eventos) {
 		this.ventas = ventas;
 		this.inventario = inventario;
 		this.ajusteDeInventario = ajusteDeInventario;
@@ -43,6 +45,7 @@ class VentaService implements RegistrarVenta, ConsultarVentas, RegistroDeVentas,
 		this.sucursales = sucursales;
 		this.asignaciones = asignaciones;
 		this.clientes = clientes;
+		this.eventos = eventos;
 	}
 
 	@Override
@@ -88,7 +91,13 @@ class VentaService implements RegistrarVenta, ConsultarVentas, RegistroDeVentas,
 				ajusteDeInventario.descontarDisponibles(comando.empresaId(), comando.sucursalId(), linea.prendaId(), linea.cantidad());
 			}
 		}
-		return ventas.guardar(venta);
+		Venta guardada = ventas.guardar(venta);
+		// RF-11.1 (§5.5): si la venta es a nombre de un cliente, se avisa para el agradecimiento por compra.
+		if (guardada.clienteId() != null) {
+			eventos.publishEvent(new com.costumi.backend.ventas.VentaConfirmada(
+					guardada.empresaId(), guardada.clienteId(), guardada.sucursalId()));
+		}
+		return guardada;
 	}
 
 	@Override
