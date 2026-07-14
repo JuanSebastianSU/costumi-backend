@@ -35,7 +35,7 @@ class MantenimientoDeSucursalService implements EditarSucursal, GestionarEstadoD
 	@Transactional
 	public Sucursal ejecutar(EditarSucursalComando comando) {
 		Sucursal sucursal = sucursalDelTenant(comando.empresaId(), comando.sucursalId());
-		sucursal.editar(comando.nombre(), comando.direccion());
+		sucursal.editar(comando.nombre(), comando.direccion(), comando.ubicacionMaps());
 		return sucursales.guardar(sucursal);
 	}
 

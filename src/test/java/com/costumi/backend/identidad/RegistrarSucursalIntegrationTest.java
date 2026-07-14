@@ -259,6 +259,30 @@ class RegistrarSucursalIntegrationTest {
 				.andExpect(status().isForbidden());
 	}
 
+	@Test
+	void alta_y_edicion_guardan_la_ubicacion_de_google_maps() throws Exception {
+		UUID empresaId = registrarEmpresa("Maps Suc " + UUID.randomUUID());
+		aprobar(empresaId);
+		String dueno = tokenDueno(empresaId);
+
+		String body = mvc.perform(post("/api/v1/empresas/{empresaId}/sucursales", empresaId)
+						.header("Authorization", "Bearer " + dueno).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Centro\",\"direccion\":\"Calle 1\","
+								+ "\"ubicacionMaps\":\"https://maps.app.goo.gl/abc123\"}"))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.ubicacionMaps").value("https://maps.app.goo.gl/abc123"))
+				.andReturn().getResponse().getContentAsString();
+		UUID sucursal = UUID.fromString(json.readTree(body).get("id").asText());
+
+		mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+						.patch("/api/v1/empresas/{empresaId}/sucursales/{id}", empresaId, sucursal)
+						.header("Authorization", "Bearer " + dueno).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Centro\",\"direccion\":\"Calle 1\","
+								+ "\"ubicacionMaps\":\"https://maps.app.goo.gl/xyz789\"}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.ubicacionMaps").value("https://maps.app.goo.gl/xyz789"));
+	}
+
 	private UUID crearSucursal(String token, UUID empresaId, String nombre) throws Exception {
 		String body = mvc.perform(post("/api/v1/empresas/{empresaId}/sucursales", empresaId)
 						.header("Authorization", "Bearer " + token)

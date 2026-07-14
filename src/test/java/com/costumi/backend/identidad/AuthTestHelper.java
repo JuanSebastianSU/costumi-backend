@@ -49,6 +49,6 @@ public final class AuthTestHelper {
 	 * antes usaban un {@code UUID} inventado ahora anclan a una sucursal real.
 	 */
 	public static UUID sucursal(SucursalRepository sucursales, UUID empresaId) {
-		return sucursales.guardar(Sucursal.crear(empresaId, "Sucursal Test", null)).id();
+		return sucursales.guardar(Sucursal.crear(empresaId, "Sucursal Test", null, null)).id();
 	}
 }

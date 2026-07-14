@@ -177,10 +177,11 @@ class DevolucionIntegrationTest {
 				.andExpect(jsonPath("$.multa").value(0))
 				.andExpect(jsonPath("$.remanente").value(50.00));
 
-		// Con el switch apagado, no se generó notificación de multa.
+		// Con el switch apagado, no se generó notificación DE MULTA (sí puede haber otras, como la
+		// confirmación de renta al entregar).
 		mvc.perform(get("/api/v1/notificaciones").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.canal == 'WHATSAPP')]").doesNotExist());
+				.andExpect(jsonPath("$[?(@.mensaje =~ /.*multa.*/i)]").doesNotExist());
 	}
 
 	@Test
@@ -364,6 +365,17 @@ class DevolucionIntegrationTest {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$[?(@.accion == 'DEVOLUCION_REGISTRADA')].detalle",
 						org.hamcrest.Matchers.hasItem(org.hamcrest.Matchers.containsString("«Cliente»"))));
+	}
+
+	@Test
+	void entregar_una_renta_dispara_la_confirmacion_al_cliente() throws Exception {
+		rentaDePrueba(); // crea y ENTREGA una renta al cliente "Cliente"
+
+		// RF-11.1: al entregar, sale la confirmación de renta por WhatsApp con la plantilla configurable.
+		mvc.perform(get("/api/v1/notificaciones").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.canal == 'WHATSAPP')].mensaje",
+						org.hamcrest.Matchers.hasItem(org.hamcrest.Matchers.containsString("tu renta quedó confirmada"))));
 	}
 
 	@Test

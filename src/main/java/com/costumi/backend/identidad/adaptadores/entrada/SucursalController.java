@@ -67,7 +67,7 @@ class SucursalController {
 			@AuthenticationPrincipal Jwt jwt, UriComponentsBuilder uriBuilder) {
 		verificarDuenoDelTenant(jwt, empresaId);
 		Sucursal sucursal = registrarSucursal.ejecutar(
-				new RegistrarSucursalComando(empresaId, request.nombre(), request.direccion()));
+				new RegistrarSucursalComando(empresaId, request.nombre(), request.direccion(), request.ubicacionMaps()));
 		URI location = uriBuilder.path("/api/v1/empresas/{empresaId}/sucursales/{id}")
 				.buildAndExpand(empresaId, sucursal.id()).toUri();
 		return ResponseEntity.created(location).body(SucursalResponse.desde(sucursal));
@@ -79,7 +79,8 @@ class SucursalController {
 			@Valid @RequestBody EditarSucursalRequest request, @AuthenticationPrincipal Jwt jwt) {
 		verificarDuenoDelTenant(jwt, empresaId);
 		Sucursal sucursal = editarSucursal.ejecutar(
-				new EditarSucursalComando(empresaId, id, request.nombre(), request.direccion()));
+				new EditarSucursalComando(empresaId, id, request.nombre(), request.direccion(),
+						request.ubicacionMaps()));
 		return SucursalResponse.desde(sucursal);
 	}
 

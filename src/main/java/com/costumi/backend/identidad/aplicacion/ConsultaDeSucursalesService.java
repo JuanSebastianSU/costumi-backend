@@ -5,6 +5,7 @@ import com.costumi.backend.identidad.dominio.SucursalRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Optional;
 import java.util.UUID;
 
 /** Implementa la API pública {@link ConsultaDeSucursales}: valida referencias a sucursal por tenant. */
@@ -24,5 +25,13 @@ class ConsultaDeSucursalesService implements ConsultaDeSucursales {
 				.filter(sucursal -> empresaId.equals(sucursal.empresaId()))
 				.filter(sucursal -> !sucursal.archivada())
 				.isPresent();
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public Optional<UbicacionDeSucursal> ubicacion(UUID empresaId, UUID sucursalId) {
+		return sucursales.buscarPorId(sucursalId)
+				.filter(sucursal -> empresaId.equals(sucursal.empresaId()))
+				.map(sucursal -> new UbicacionDeSucursal(sucursal.direccion(), sucursal.ubicacionMaps()));
 	}
 }

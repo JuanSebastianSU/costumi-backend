@@ -39,7 +39,8 @@ class RegistrarSucursalService implements RegistrarSucursal {
 		if (!configuracion.multiSucursal(empresa.id()) && !sucursales.listarPorEmpresa(empresa.id()).isEmpty()) {
 			throw new LimiteDeSucursales(empresa.id());
 		}
-		Sucursal sucursal = Sucursal.crear(empresa.id(), comando.nombre(), comando.direccion());
+		Sucursal sucursal = Sucursal.crear(empresa.id(), comando.nombre(), comando.direccion(),
+				comando.ubicacionMaps());
 		return sucursales.guardar(sucursal);
 	}
 }
