@@ -145,9 +145,13 @@ class DevolucionIntegrationTest {
 				.andExpect(status().isCreated())
 				.andExpect(jsonPath("$.multa").value(30.00));
 
+		// La notificación sale por WhatsApp con la plantilla configurable, resolviendo cliente y monto.
 		mvc.perform(get("/api/v1/notificaciones").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.canal == 'EMAIL')]").exists());
+				.andExpect(jsonPath("$[?(@.canal == 'WHATSAPP')].mensaje",
+						org.hamcrest.Matchers.hasItem(org.hamcrest.Matchers.containsString("Hola Cliente"))))
+				.andExpect(jsonPath("$[?(@.canal == 'WHATSAPP')].mensaje",
+						org.hamcrest.Matchers.hasItem(org.hamcrest.Matchers.containsString("$30"))));
 	}
 
 	@Test
@@ -176,7 +180,7 @@ class DevolucionIntegrationTest {
 		// Con el switch apagado, no se generó notificación de multa.
 		mvc.perform(get("/api/v1/notificaciones").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.canal == 'EMAIL')]").doesNotExist());
+				.andExpect(jsonPath("$[?(@.canal == 'WHATSAPP')]").doesNotExist());
 	}
 
 	@Test
