@@ -6,8 +6,8 @@ package com.costumi.backend.notificaciones.dominio;
  * {@link PlantillaDeNotificacion#render}). No todas las variables aplican a todo tipo: el disparador
  * de cada evento sólo provee las que tiene a mano.
  *
- * <p>Variables reconocidas: {@code {cliente}}, {@code {tienda}}, {@code {direccion}}, {@code {maps}},
- * {@code {fecha_devolucion}}, {@code {horas_restantes}}, {@code {monto}}, {@code {articulo}}.
+ * <p>Variables reconocidas: {@code {cliente}}, {@code {direccion}}, {@code {maps}},
+ * {@code {fecha_devolucion}}, {@code {dias_restantes}}, {@code {monto}}.
  */
 public enum TipoDeEvento {
 
@@ -23,7 +23,7 @@ public enum TipoDeEvento {
 					+ "en {direccion}. {maps}"),
 
 	RECORDATORIO_DEVOLUCION(
-			"Hola {cliente}, te quedan {horas_restantes} para devolver tu renta (vence el "
+			"Hola {cliente}, te quedan {dias_restantes} día(s) para devolver tu renta (vence el "
 					+ "{fecha_devolucion}). Podés devolverla en {direccion}. {maps}"),
 
 	RENTA_VENCIDA(
