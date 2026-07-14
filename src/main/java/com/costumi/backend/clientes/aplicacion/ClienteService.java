@@ -167,4 +167,12 @@ class ClienteService implements CrearCliente, ConsultarClientes, CambiarListaNeg
 				.map(Cliente::archivada)
 				.orElse(false);
 	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public java.util.Optional<String> nombreDeCliente(UUID empresaId, UUID clienteId) {
+		return clientes.buscarPorId(clienteId)
+				.filter(cliente -> empresaId.equals(cliente.empresaId()))
+				.map(Cliente::nombre);
+	}
 }

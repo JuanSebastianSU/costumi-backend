@@ -40,4 +40,11 @@ public interface ResolucionDeClientes {
 	 * si el cliente no existe o no es de la empresa.
 	 */
 	boolean estaArchivado(UUID empresaId, UUID clienteId);
+
+	/**
+	 * Nombre de la ficha de cliente (de la empresa), si existe. Lo usa Auditoría para dejar una traza
+	 * legible ("Devolución de 'Ana Torres'") en vez de un id opaco (RF-0.5). Vacío si no existe o no es
+	 * de la empresa.
+	 */
+	java.util.Optional<String> nombreDeCliente(UUID empresaId, UUID clienteId);
 }
