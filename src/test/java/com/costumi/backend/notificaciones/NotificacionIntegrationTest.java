@@ -101,10 +101,10 @@ class NotificacionIntegrationTest {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.enviadas").value(1));
 
-		// Quedó registrada la notificación de recordatorio (canal EMAIL).
+		// Quedó registrada la notificación de recordatorio (canal WhatsApp, con la plantilla configurable).
 		mvc.perform(get("/api/v1/notificaciones").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.canal == 'EMAIL')]").exists());
+				.andExpect(jsonPath("$[?(@.canal == 'WHATSAPP')]").exists());
 	}
 
 	@Test
