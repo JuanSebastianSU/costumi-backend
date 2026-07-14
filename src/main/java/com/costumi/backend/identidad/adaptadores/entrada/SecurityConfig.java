@@ -61,6 +61,7 @@ class SecurityConfig {
 						.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/v1/marketplace/**").permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/v1/empresas/pendientes").hasRole("SUPERADMIN")
+						.requestMatchers(HttpMethod.GET, "/api/v1/empresas").hasRole("SUPERADMIN")
 						.requestMatchers(HttpMethod.POST,
 								"/api/v1/empresas/*/aprobar", "/api/v1/empresas/*/rechazar",
 								"/api/v1/empresas/*/suspender", "/api/v1/empresas/*/reactivar").hasRole("SUPERADMIN")
