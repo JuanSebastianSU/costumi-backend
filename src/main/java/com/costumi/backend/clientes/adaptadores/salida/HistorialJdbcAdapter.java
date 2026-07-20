@@ -3,16 +3,22 @@ package com.costumi.backend.clientes.adaptadores.salida;
 import com.costumi.backend.clientes.dominio.FiltroDeClientes;
 import com.costumi.backend.clientes.dominio.HistorialItem;
 import com.costumi.backend.clientes.dominio.HistorialReadRepository;
+import com.costumi.backend.clientes.dominio.LineaDeHistorial;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
- * Adaptador de lectura del historial de clientes (RF-7.2) con JdbcClient sobre {@code renta}/{@code venta}.
- * Es un modelo de lectura sobre el esquema compartido; no depende de otros módulos por código.
+ * Adaptador de lectura del historial de clientes (RF-7.2) con JdbcClient sobre {@code renta}/{@code venta}
+ * y sus líneas (con nombre y foto de la prenda), para que "Mis Pedidos" y el detalle muestren QUÉ se
+ * rentó/compró. Es un modelo de lectura sobre el esquema compartido; no depende de otros módulos por código.
  */
 @Repository
 class HistorialJdbcAdapter implements HistorialReadRepository {
@@ -30,16 +36,58 @@ class HistorialJdbcAdapter implements HistorialReadRepository {
 			order by fecha desc nulls last
 			""";
 
+	private static final String LINEAS_RENTA = """
+			select rl.renta_id as operacion_id, rl.prenda_id, p.nombre, p.foto_url, rl.cantidad,
+			       rl.precio_por_dia as precio_unitario
+			from renta_linea rl
+			join renta r on r.id = rl.renta_id
+			join prenda p on p.id = rl.prenda_id
+			where r.empresa_id = :empresaId and r.cliente_id = :clienteId
+			""";
+
+	private static final String LINEAS_VENTA = """
+			select lv.venta_id as operacion_id, lv.prenda_id, p.nombre, p.foto_url, lv.cantidad,
+			       lv.precio_unitario
+			from linea_de_venta lv
+			join venta v on v.id = lv.venta_id
+			join prenda p on p.id = lv.prenda_id
+			where v.empresa_id = :empresaId and v.cliente_id = :clienteId
+			""";
+
 	private final JdbcClient jdbc;
 
 	HistorialJdbcAdapter(JdbcClient jdbc) {
 		this.jdbc = jdbc;
 	}
 
+	/** Fila de línea con el id de su operación (renta o venta), para agrupar en memoria. */
+	private record LineaConOperacion(UUID operacionId, UUID prendaId, String nombre, String fotoUrl, int cantidad,
+			BigDecimal precioUnitario) {
+	}
+
 	@Override
 	public List<HistorialItem> deCliente(UUID empresaId, UUID clienteId) {
+		// Dos consultas (rentas y ventas) para todas las líneas del cliente; se agrupan por operación en memoria.
+		List<LineaConOperacion> rentaLineas = jdbc.sql(LINEAS_RENTA)
+				.param("empresaId", empresaId).param("clienteId", clienteId)
+				.query(LineaConOperacion.class).list();
+		List<LineaConOperacion> ventaLineas = jdbc.sql(LINEAS_VENTA)
+				.param("empresaId", empresaId).param("clienteId", clienteId)
+				.query(LineaConOperacion.class).list();
+		Map<UUID, List<LineaDeHistorial>> lineasPorOperacion = Stream.concat(rentaLineas.stream(), ventaLineas.stream())
+				.collect(Collectors.groupingBy(LineaConOperacion::operacionId,
+						Collectors.mapping(l -> new LineaDeHistorial(l.prendaId(), l.nombre(), l.fotoUrl(),
+								l.cantidad(), l.precioUnitario()), Collectors.toList())));
+
 		return jdbc.sql(HISTORIAL).param("empresaId", empresaId).param("clienteId", clienteId)
-				.query(HistorialItem.class).list();
+				.query((rs, rowNum) -> {
+					UUID operacionId = rs.getObject("operacion_id", UUID.class);
+					return new HistorialItem(rs.getString("tipo"), operacionId, rs.getBigDecimal("monto"),
+							rs.getString("estado"), rs.getObject("fecha", LocalDate.class),
+							rs.getObject("empresa_id", UUID.class), rs.getString("empresa_nombre"),
+							lineasPorOperacion.getOrDefault(operacionId, List.of()));
+				})
+				.list();
 	}
 
 	// --- Fragmentos de saldo reutilizados (RF-11.5/11.6), consistentes con Devoluciones y Pagos ---
