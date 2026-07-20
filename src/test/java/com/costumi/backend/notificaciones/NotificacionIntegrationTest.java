@@ -136,6 +136,47 @@ class NotificacionIntegrationTest {
 	}
 
 	@Test
+	void recordar_proximas_avisa_a_los_clientes_cuya_renta_vence_pronto() throws Exception {
+		String res = mvc.perform(post("/api/v1/empresas").contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Prox " + UUID.randomUUID() + "\"}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		UUID empresa = UUID.fromString(json.readTree(res).get("id").asText());
+		String superAdmin = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, null, Rol.SUPERADMIN);
+		mvc.perform(post("/api/v1/empresas/{id}/aprobar", empresa).header("Authorization", "Bearer " + superAdmin))
+				.andExpect(status().isOk());
+		String dueno = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.DUENO);
+		UUID sucursal = postId("/api/v1/empresas/" + empresa + "/sucursales", dueno,
+				"{\"nombre\":\"Centro\",\"direccion\":\"Av Central 100\",\"ubicacionMaps\":\"https://maps.app.goo.gl/x\"}");
+		UUID cliente = postId("/api/v1/clientes", dueno, "{\"nombre\":\"Ana\"}");
+		UUID categoria = postId("/api/v1/categorias", dueno, "{\"nombre\":\"Cat " + UUID.randomUUID() + "\"}");
+		UUID prenda = postId("/api/v1/prendas", dueno, "{\"categoriaId\":\"" + categoria
+				+ "\",\"nombre\":\"Traje\",\"tipoArticulo\":\"RENTA\",\"precioRenta\":20.00}");
+		postId("/api/v1/prendas/" + prenda + "/grupos-stock", dueno,
+				"{\"sucursalId\":\"" + sucursal + "\",\"combinacion\":[],\"cantidadInicial\":2}");
+		// La renta vence MAÑANA (dentro de la ventana por defecto de 1 día).
+		String hoy = java.time.LocalDate.now().toString();
+		String manana = java.time.LocalDate.now().plusDays(1).toString();
+		UUID renta = postId("/api/v1/rentas", dueno, "{\"sucursalId\":\"" + sucursal + "\",\"clienteId\":\"" + cliente
+				+ "\",\"prendaId\":\"" + prenda + "\",\"fechaRetiro\":\"" + hoy + "\",\"fechaDevolucion\":\"" + manana
+				+ "\",\"precioPorDia\":20.00,\"deposito\":100.00}");
+		mvc.perform(post("/api/v1/rentas/{id}/entregar", renta).header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk());
+
+		// RF-11.1: dispara el recordatorio anticipado -> 1 enviado.
+		mvc.perform(post("/api/v1/notificaciones/recordar-proximas").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.enviadas").value(1));
+
+		// El mensaje usa la plantilla configurable con cliente, días restantes y dirección/maps.
+		mvc.perform(get("/api/v1/notificaciones").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.canal == 'WHATSAPP')].mensaje",
+						org.hamcrest.Matchers.hasItem(org.hamcrest.Matchers.containsString("Hola Ana"))))
+				.andExpect(jsonPath("$[?(@.canal == 'WHATSAPP')].mensaje",
+						org.hamcrest.Matchers.hasItem(org.hamcrest.Matchers.containsString("Av Central 100"))));
+	}
+
+	@Test
 	void sin_token_devuelve_401() throws Exception {
 		mvc.perform(get("/api/v1/notificaciones")).andExpect(status().isUnauthorized());
 	}

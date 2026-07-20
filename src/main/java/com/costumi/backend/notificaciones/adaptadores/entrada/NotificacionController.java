@@ -3,6 +3,7 @@ package com.costumi.backend.notificaciones.adaptadores.entrada;
 import com.costumi.backend.notificaciones.aplicacion.ConsultarNotificaciones;
 import com.costumi.backend.notificaciones.aplicacion.EnviarNotificacion;
 import com.costumi.backend.notificaciones.aplicacion.EnviarNotificacionComando;
+import com.costumi.backend.notificaciones.aplicacion.RecordarProximas;
 import com.costumi.backend.notificaciones.aplicacion.RecordarVencidas;
 import com.costumi.backend.notificaciones.dominio.Notificacion;
 import jakarta.validation.Valid;
@@ -28,12 +29,14 @@ class NotificacionController {
 	private final EnviarNotificacion enviarNotificacion;
 	private final ConsultarNotificaciones consultarNotificaciones;
 	private final RecordarVencidas recordarVencidas;
+	private final RecordarProximas recordarProximas;
 
 	NotificacionController(EnviarNotificacion enviarNotificacion, ConsultarNotificaciones consultarNotificaciones,
-			RecordarVencidas recordarVencidas) {
+			RecordarVencidas recordarVencidas, RecordarProximas recordarProximas) {
 		this.enviarNotificacion = enviarNotificacion;
 		this.consultarNotificaciones = consultarNotificaciones;
 		this.recordarVencidas = recordarVencidas;
+		this.recordarProximas = recordarProximas;
 	}
 
 	@PostMapping
@@ -50,6 +53,13 @@ class NotificacionController {
 	RecordatorioResponse recordarVencidas(@AuthenticationPrincipal Jwt jwt) {
 		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
 		return new RecordatorioResponse(recordarVencidas.ejecutar(empresaId));
+	}
+
+	/** Dispara manualmente el recordatorio ANTICIPADO (rentas que vencen dentro de la ventana). */
+	@PostMapping("/recordar-proximas")
+	RecordatorioResponse recordarProximas(@AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		return new RecordatorioResponse(recordarProximas.ejecutar(empresaId));
 	}
 
 	record RecordatorioResponse(int enviadas) {
