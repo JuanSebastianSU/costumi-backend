@@ -66,6 +66,11 @@ class DisfrazController {
 		this.resolucionDeClientes = resolucionDeClientes;
 	}
 
+	/** Respuesta del disfraz con su precio de renta sugerido (suma de las prendas) calculado. */
+	private DisfrazResponse resp(UUID empresaId, Disfraz disfraz) {
+		return DisfrazResponse.desde(disfraz, consultarDisfraces.precioRentaSugerido(empresaId, disfraz));
+	}
+
 	@PostMapping
 	ResponseEntity<DisfrazResponse> crear(@Valid @RequestBody CrearDisfrazRequest request,
 			UriComponentsBuilder uriBuilder) {
@@ -74,7 +79,7 @@ class DisfrazController {
 		Disfraz disfraz = crearDisfraz.ejecutar(
 				new CrearDisfrazComando(empresaId, request.nombre(), slots, request.precioRentaGeneral()));
 		URI location = uriBuilder.path("/api/v1/disfraces/{id}").buildAndExpand(disfraz.id()).toUri();
-		return ResponseEntity.created(location).body(DisfrazResponse.desde(disfraz));
+		return ResponseEntity.created(location).body(resp(empresaId, disfraz));
 	}
 
 	/** Edita un disfraz: redefine nombre + slots (RF-2.3). */
@@ -84,25 +89,28 @@ class DisfrazController {
 		List<SlotComando> slots = request.slots().stream().map(DisfrazController::aSlotComando).toList();
 		Disfraz disfraz = editarDisfraz.ejecutar(
 				new EditarDisfrazComando(empresaId, disfrazId, request.nombre(), slots, request.precioRentaGeneral()));
-		return DisfrazResponse.desde(disfraz);
+		return resp(empresaId, disfraz);
 	}
 
 	/** Archiva un disfraz: lo retira de la vitrina y del alta de rentas, sin borrarlo. */
 	@PostMapping("/{disfrazId}/archivar")
 	DisfrazResponse archivar(@PathVariable UUID disfrazId) {
-		return DisfrazResponse.desde(cambiarEstadoDisfraz.archivar(tenant.empresaIdRequerida(), disfrazId));
+		UUID empresaId = tenant.empresaIdRequerida();
+		return resp(empresaId, cambiarEstadoDisfraz.archivar(empresaId, disfrazId));
 	}
 
 	/** Reactiva un disfraz archivado. */
 	@PostMapping("/{disfrazId}/activar")
 	DisfrazResponse activar(@PathVariable UUID disfrazId) {
-		return DisfrazResponse.desde(cambiarEstadoDisfraz.activar(tenant.empresaIdRequerida(), disfrazId));
+		UUID empresaId = tenant.empresaIdRequerida();
+		return resp(empresaId, cambiarEstadoDisfraz.activar(empresaId, disfrazId));
 	}
 
 	@GetMapping
 	List<DisfrazResponse> listar() {
 		return tenant.empresaId()
-				.map(empresaId -> consultarDisfraces.deEmpresa(empresaId).stream().map(DisfrazResponse::desde).toList())
+				.map(empresaId -> consultarDisfraces.deEmpresa(empresaId).stream()
+						.map(d -> resp(empresaId, d)).toList())
 				.orElseGet(List::of);
 	}
 

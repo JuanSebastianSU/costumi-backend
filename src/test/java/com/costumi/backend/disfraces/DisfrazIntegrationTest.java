@@ -91,6 +91,8 @@ class DisfrazIntegrationTest {
 				.andExpect(status().isCreated())
 				.andExpect(jsonPath("$.activo").value(true))
 				.andExpect(jsonPath("$.slots[0].ejePrenda").value("FIJA"))
+				// RF-2.10: el disfraz trae el precio de renta sugerido = suma de sus prendas (aquí, una de 40).
+				.andExpect(jsonPath("$.precioRentaSugerido").value(40.00))
 				.andReturn().getResponse().getContentAsString();
 		return UUID.fromString(json.readTree(body).get("id").asText());
 	}

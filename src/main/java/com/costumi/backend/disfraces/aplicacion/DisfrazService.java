@@ -123,6 +123,29 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 
 	@Override
 	@Transactional(readOnly = true)
+	public BigDecimal precioRentaSugerido(UUID empresaId, Disfraz disfraz) {
+		BigDecimal total = BigDecimal.ZERO;
+		for (Slot slot : disfraz.slots()) {
+			total = total.add(precioDeSlot(empresaId, slot));
+		}
+		return total;
+	}
+
+	/** Precio de renta de un slot: el de la prenda fija, o el mínimo ("desde") entre las opciones del pool. */
+	private BigDecimal precioDeSlot(UUID empresaId, Slot slot) {
+		if (slot.ejePrenda() == EjeDePrenda.FIJA) {
+			return inventario.precioRenta(empresaId, slot.prendaFijaId()).orElse(BigDecimal.ZERO);
+		}
+		PoolDeSlot pool = slot.pool();
+		return inventario.opcionesDelPool(empresaId, pool.categoriaId(), pool.etiquetasPermitidas()).stream()
+				.map(ConsultaDeInventario.OpcionDePool::precioRenta)
+				.filter(java.util.Objects::nonNull)
+				.min(BigDecimal::compareTo)
+				.orElse(BigDecimal.ZERO);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
 	public boolean estaDisponible(UUID empresaId, UUID disfrazId) {
 		Disfraz disfraz = exigirDelTenant(empresaId, disfrazId);
 		return disfraz.estaDisponible(consultaDeStockPara(empresaId));
