@@ -35,19 +35,21 @@ public final class Disfraz {
 	private List<Slot> slots;
 	private boolean activo;
 	private BigDecimal precioRentaGeneral;
+	private String fotoUrl;
 
 	private Disfraz(UUID id, UUID empresaId, String nombre, List<Slot> slots, boolean activo,
-			BigDecimal precioRentaGeneral) {
+			BigDecimal precioRentaGeneral, String fotoUrl) {
 		this.id = Objects.requireNonNull(id, "id");
 		this.empresaId = Objects.requireNonNull(empresaId, "empresaId");
 		this.nombre = exigirNombre(nombre);
 		this.slots = exigirSlots(slots);
 		this.activo = activo;
 		this.precioRentaGeneral = validarPrecio(precioRentaGeneral);
+		this.fotoUrl = fotoUrl;
 	}
 
 	public static Disfraz crear(UUID empresaId, String nombre, List<Slot> slots, BigDecimal precioRentaGeneral) {
-		return new Disfraz(UUID.randomUUID(), empresaId, nombre, slots, true, precioRentaGeneral);
+		return new Disfraz(UUID.randomUUID(), empresaId, nombre, slots, true, precioRentaGeneral, null);
 	}
 
 	/** Crea un disfraz que se cobra por prendas (sin precio general). */
@@ -56,8 +58,13 @@ public final class Disfraz {
 	}
 
 	public static Disfraz rehidratar(UUID id, UUID empresaId, String nombre, List<Slot> slots, boolean activo,
-			BigDecimal precioRentaGeneral) {
-		return new Disfraz(id, empresaId, nombre, slots, activo, precioRentaGeneral);
+			BigDecimal precioRentaGeneral, String fotoUrl) {
+		return new Disfraz(id, empresaId, nombre, slots, activo, precioRentaGeneral, fotoUrl);
+	}
+
+	/** Asigna/actualiza la foto del disfraz (la que sube el dueño, RF-2.9), tras subirla al almacén. */
+	public void asignarFoto(String url) {
+		this.fotoUrl = url;
 	}
 
 	/** Disponibilidad derivada (RF-2.4): se calcula a partir de los slots obligatorios. */
@@ -136,5 +143,10 @@ public final class Disfraz {
 	/** Precio de renta por día del conjunto que anula la suma por prendas; nulo = se cobra por prendas. */
 	public BigDecimal precioRentaGeneral() {
 		return precioRentaGeneral;
+	}
+
+	/** Foto del disfraz que subió el dueño (URL pública), o null si aún no tiene. */
+	public String fotoUrl() {
+		return fotoUrl;
 	}
 }

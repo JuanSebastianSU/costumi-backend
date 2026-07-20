@@ -9,6 +9,62 @@
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
 ## Fase actual
+**Fase 11 — Recorrido de compra + disfraz 100% + optimización con SigNoz (2026-07-19 → 07-20).**
+Sesión larga de mejoras iterativas. Cada rebanada con tests + ArchUnit + Modulith en verde, probada en Docker
+(la suite creció a ~460 tests). **OJO con el estado de `main`:** el usuario mergeó #107–#110; **quedan PENDIENTES
+de merge** el PR **#111** (`feat/mis-pedidos-y-tiendas-operables`) y la rama **`feat/codigo-de-retiro`** (que trae
+TODO el disfraz + código de retiro; se fue construyendo apilada para que entre como un bloque funcional). **Al
+mergear: regenerar `:api-client`.**
+
+**Hecho (mergeado, #107–#110):**
+- Perf: elimina el N+1 al listar `/disfraces` (batch fetch + `default_batch_fetch_size`).
+- RF-11.1: recordatorio de vencidas también al **dueño** (canal nuevo `IN_APP`).
+- RF-11.2: aviso proactivo de **stock bajo** al dueño (scheduler + endpoint).
+- RF-11.5/11.6: filtros de clientes por **PENDIENTES/VENCIDAS/MULTAS/SALDOS**.
+- RF-15.4: **escalación** de solicitudes de empresa vencidas (log operable).
+- Vitrina del marketplace expone la **fotoUrl** de la prenda.
+- **Desglose** de renta/venta con **nombre + foto** por artículo (API pública `ConsultaDeInventario.resumenDePrendas`).
+
+**Hecho (PENDIENTE de merge — #111):** "Mis Pedidos"/historial con **artículos + imagen** (líneas en `HistorialItem`);
+vitrina **solo lista tiendas operables** (activas y con sucursal). (Raíz de "esta tienda no puede recibir pedidos":
+la Casa Matriz solo se creaba al aprobar tiendas venidas de una SOLICITUD).
+
+**Hecho (PENDIENTE de merge — `feat/codigo-de-retiro`):**
+- **Código de retiro** (`R-XXXXXXXX`/`V-XXXXXXXX`, derivado del id) en renta y venta.
+- **Disfraz COMPLETO:** precio de **renta** sugerido + precio de **venta** sugerido (suma de prendas, "desde" en pools);
+  precios visibles en el **marketplace**; **foto propia** del disfraz (`POST /disfraces/{id}/foto`; API pública nueva
+  `inventario.AlmacenDeImagenesPublico` reutiliza el S3 sin romper fronteras); **venta** del disfraz
+  (`POST /disfraces/{id}/vender`, espejo de rentar, vía `ventas.RegistroDeVentas`).
+
+**Decisiones del usuario en esta sesión (IMPORTANTES):**
+- **Adelanto ELIMINADO:** todo se paga de golpe — **tarjeta → en línea el total; efectivo → todo en la tienda**. Sin pago
+  parcial ni límite de fecha por adelanto.
+- **Disfraz SIN depósito:** se paga por su **precio** (el que fija el dueño; la suma de prendas es solo la sugerencia). El
+  daño en la devolución se cubre con la **multa** que el dueño define por prenda (`valorDano`/`valorReposicion`), vía la
+  devolución normal (aplica al disfraz porque su renta es una renta común).
+
+**Verificado que YA funcionaba (no eran huecos; correcciones a diagnósticos míos errados):**
+- Los disfraces **sí** están en el marketplace (listar/detalle/ruleta/disponibilidad) y el cliente **sí** los renta
+  (`POST /disfraces/{id}/rentar` acepta CLIENTE).
+- La **devolución/multa por daño** aplica a la renta del disfraz.
+- **Rentar y vender prendas sueltas** desde el cliente funciona (carrito `checkout-renta`/`checkout`).
+
+**PENDIENTE (backend):**
+- **Pagos (sin adelanto):** la tarjeta debe cobrar el **total completo** (hoy el intento acepta cualquier monto); **validar**
+  el monto del intento vs el importe real; el **checkout** debe exigir el pago cuando corresponde. (Depósito con tarjeta por
+  pasarela: pendiente de decisión.)
+- Job que **expire reservas** RESERVADA no retiradas (hoy quedan indefinidas y ocupan calendario).
+- Código de retiro también en **"Mis Pedidos"**.
+- **Marketplace:** filtros por **categoría/cercanía** (RF-14.2/18.1); catálogo/disponibilidad a nivel **sucursal** (RF-14.1/18.2).
+- **Perf (acción del usuario):** verificar en Railway la **región** DB↔app (los ~222 ms uniformes por query lo sugieren).
+
+**PENDIENTE (app Android):** regenerar `:api-client` + todo lo listado en `AppCustomi2/ACTUALIZACION_FRONTEND.md`
+(pintar fotos con Coil, pantalla de pago tarjeta/efectivo, dos apartados tienda disfraces/prendas, mostrar código de retiro,
+filtros de clientes, foto del disfraz, etiqueta IN_APP).
+
+---
+
+### Fase 10 (historial — cierre de auditoría)
 **Fase 10 — Auditoría y cierre profesional del backend + verificación E2E en vivo (2026-07-09 → 07-12).** Tras el flujo del
 cliente (Fase 9), se hizo una **auditoría completa** y se cerraron **29 correcciones** por rebanadas (cada una PR + tests +
 ArchUnit + Modulith en verde), todas **mergeadas a `main`** (V49→V53). El backend quedó **funcionalmente completo y con la

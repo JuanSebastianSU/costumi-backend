@@ -105,7 +105,7 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.POST, "/api/v1/disfraces").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.PUT, "/api/v1/disfraces/*").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.POST, "/api/v1/disfraces/*/archivar",
-								"/api/v1/disfraces/*/activar").hasAnyRole("DUENO", "ENCARGADO")
+								"/api/v1/disfraces/*/activar", "/api/v1/disfraces/*/foto").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.POST, "/api/v1/clientes/*/lista-negra").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.POST, "/api/v1/clientes/*/archivar",
 								"/api/v1/clientes/*/activar").hasAnyRole("DUENO", "ENCARGADO")

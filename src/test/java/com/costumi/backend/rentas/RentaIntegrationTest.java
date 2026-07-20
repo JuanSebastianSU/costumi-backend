@@ -87,12 +87,14 @@ class RentaIntegrationTest {
 	@Test
 	void el_detalle_de_la_renta_trae_el_nombre_de_la_prenda_para_el_desglose() throws Exception {
 		Ctx c = montar(2);
-		// La línea del pedido viene enriquecida con el nombre de la prenda (para el desglose con imagen).
+		// La línea del pedido viene enriquecida con el nombre de la prenda (para el desglose con imagen),
+		// y la renta trae su código de retiro (que el cliente muestra en la tienda).
 		mvc.perform(post("/api/v1/rentas").header("Authorization", "Bearer " + c.dueno())
 						.contentType(MediaType.APPLICATION_JSON).content(rentaBody(c, "2026-08-01", "2026-08-04")))
 				.andExpect(status().isCreated())
 				.andExpect(jsonPath("$.lineas[0].nombre").value("Camisa"))
-				.andExpect(jsonPath("$.lineas[0].prendaId").value(c.prenda().toString()));
+				.andExpect(jsonPath("$.lineas[0].prendaId").value(c.prenda().toString()))
+				.andExpect(jsonPath("$.codigoRetiro", org.hamcrest.Matchers.startsWith("R-")));
 	}
 
 	@Test
