@@ -105,6 +105,23 @@ class DisfrazIntegrationTest {
 	}
 
 	@Test
+	void el_catalogo_publico_de_disfraces_los_muestra_con_su_precio_sin_token() throws Exception {
+		UUID empresa = crearEmpresa("Disfraz Vitrina " + UUID.randomUUID());
+		String dueno = duenoDe(empresa);
+		UUID categoria = crearCategoria(dueno, "Traje " + UUID.randomUUID());
+		UUID prenda = crearPrenda(dueno, categoria); // precioRenta 40
+		crearGrupo(dueno, empresa, prenda, 2);
+		UUID disfraz = crearUnaPieza(dueno, prenda);
+
+		// RF-18: endpoint público (SIN token) -> el cliente ve el disfraz con su precio de renta sugerido.
+		mvc.perform(get("/api/v1/marketplace/empresas/{empresaId}/disfraces", empresa))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.id == '" + disfraz + "')]").exists())
+				.andExpect(jsonPath("$[?(@.id == '" + disfraz + "')].precioRentaSugerido")
+						.value(org.hamcrest.Matchers.hasItem(40.00)));
+	}
+
+	@Test
 	void disponibilidad_de_una_pieza_deriva_del_stock() throws Exception {
 		UUID empresa = crearEmpresa("Disfraz Stock");
 		String dueno = duenoDe(empresa);

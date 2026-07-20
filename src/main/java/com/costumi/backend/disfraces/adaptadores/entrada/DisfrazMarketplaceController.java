@@ -39,13 +39,15 @@ class DisfrazMarketplaceController {
 		this.consultarOpcionesDeSlot = consultarOpcionesDeSlot;
 	}
 
-	/** Lista los disfraces activos de la tienda (con su estructura de slots para la ruleta). */
+	/** Lista los disfraces activos de la tienda (con su estructura de slots y su precio de renta sugerido). */
 	@GetMapping
 	List<DisfrazResponse> listar(@PathVariable UUID empresaId) {
-		return consultarDisfraces.activosDeEmpresa(empresaId).stream().map(DisfrazResponse::desde).toList();
+		return consultarDisfraces.activosDeEmpresa(empresaId).stream()
+				.map(d -> DisfrazResponse.desde(d, consultarDisfraces.precioRentaSugerido(empresaId, d)))
+				.toList();
 	}
 
-	/** Detalle de un disfraz activo: estructura completa + disponibilidad derivada (RF-2.4). */
+	/** Detalle de un disfraz activo: estructura completa + precio sugerido + disponibilidad derivada (RF-2.4). */
 	@GetMapping("/{disfrazId}")
 	DisfrazDetalleResponse detalle(@PathVariable UUID empresaId, @PathVariable UUID disfrazId) {
 		Disfraz disfraz = consultarDisfraces.activosDeEmpresa(empresaId).stream()
@@ -53,7 +55,8 @@ class DisfrazMarketplaceController {
 				.findFirst()
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Disfraz no encontrado"));
 		boolean disponible = consultarDisponibilidad.estaDisponible(empresaId, disfrazId);
-		return new DisfrazDetalleResponse(DisfrazResponse.desde(disfraz), disponible);
+		DisfrazResponse resp = DisfrazResponse.desde(disfraz, consultarDisfraces.precioRentaSugerido(empresaId, disfraz));
+		return new DisfrazDetalleResponse(resp, disponible);
 	}
 
 	/**
