@@ -241,13 +241,18 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 		if (items.isEmpty()) {
 			throw new IllegalArgumentException("El disfraz no resolvió ningún artículo para rentar");
 		}
+		// Depósito del disfraz: la suma de los depósitos sugeridos de sus prendas (por cantidad).
+		BigDecimal deposito = items.stream()
+				.map(it -> inventario.depositoSugerido(empresaId, it.prendaId()).orElse(BigDecimal.ZERO)
+						.multiply(BigDecimal.valueOf(it.cantidad())))
+				.reduce(BigDecimal.ZERO, BigDecimal::add);
 		// Precio general (RF-2.10): si el disfraz lo define, anula la suma por prendas repartiéndolo entre
 		// las líneas (proporcional a su precio) para que el total por día iguale el precio del conjunto.
 		if (disfraz.tienePrecioGeneral()) {
 			items = repartirPrecioGeneral(items, disfraz.precioRentaGeneral());
 		}
 		return rentas.registrar(empresaId, comando.sucursalId(), comando.clienteId(), comando.fechaRetiro(),
-				comando.fechaDevolucion(), null, items, comando.empleadoId());
+				comando.fechaDevolucion(), deposito, items, comando.empleadoId());
 	}
 
 	@Override
