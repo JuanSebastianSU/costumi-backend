@@ -14,6 +14,8 @@ import com.costumi.backend.disfraces.aplicacion.PoolComando;
 import com.costumi.backend.disfraces.aplicacion.RentarDisfraz;
 import com.costumi.backend.disfraces.aplicacion.RentarDisfrazComando;
 import com.costumi.backend.disfraces.aplicacion.SlotComando;
+import com.costumi.backend.disfraces.aplicacion.VenderDisfraz;
+import com.costumi.backend.disfraces.aplicacion.VenderDisfrazComando;
 import com.costumi.backend.disfraces.dominio.Disfraz;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -52,6 +54,7 @@ class DisfrazController {
 	private final ConsultarDisfraces consultarDisfraces;
 	private final ConsultarDisponibilidadDeDisfraz consultarDisponibilidad;
 	private final RentarDisfraz rentarDisfraz;
+	private final VenderDisfraz venderDisfraz;
 	private final AsignarFotoDeDisfraz asignarFotoDeDisfraz;
 	private final ContextoDeTenant tenant;
 	private final ResolucionDeClientes resolucionDeClientes;
@@ -59,7 +62,7 @@ class DisfrazController {
 	DisfrazController(CrearDisfraz crearDisfraz, EditarDisfraz editarDisfraz,
 			CambiarEstadoDisfraz cambiarEstadoDisfraz, ConsultarDisfraces consultarDisfraces,
 			ConsultarDisponibilidadDeDisfraz consultarDisponibilidad, RentarDisfraz rentarDisfraz,
-			AsignarFotoDeDisfraz asignarFotoDeDisfraz, ContextoDeTenant tenant,
+			VenderDisfraz venderDisfraz, AsignarFotoDeDisfraz asignarFotoDeDisfraz, ContextoDeTenant tenant,
 			ResolucionDeClientes resolucionDeClientes) {
 		this.crearDisfraz = crearDisfraz;
 		this.editarDisfraz = editarDisfraz;
@@ -67,6 +70,7 @@ class DisfrazController {
 		this.consultarDisfraces = consultarDisfraces;
 		this.consultarDisponibilidad = consultarDisponibilidad;
 		this.rentarDisfraz = rentarDisfraz;
+		this.venderDisfraz = venderDisfraz;
 		this.asignarFotoDeDisfraz = asignarFotoDeDisfraz;
 		this.tenant = tenant;
 		this.resolucionDeClientes = resolucionDeClientes;
@@ -84,9 +88,10 @@ class DisfrazController {
 		return ResponseEntity.ok(resp(empresaId, disfraz));
 	}
 
-	/** Respuesta del disfraz con su precio de renta sugerido (suma de las prendas) calculado. */
+	/** Respuesta del disfraz con sus precios sugeridos (renta y venta, suma de las prendas) calculados. */
 	private DisfrazResponse resp(UUID empresaId, Disfraz disfraz) {
-		return DisfrazResponse.desde(disfraz, consultarDisfraces.precioRentaSugerido(empresaId, disfraz));
+		return DisfrazResponse.desde(disfraz, consultarDisfraces.precioRentaSugerido(empresaId, disfraz),
+				consultarDisfraces.precioVentaSugerido(empresaId, disfraz));
 	}
 
 	@PostMapping
@@ -155,6 +160,26 @@ class DisfrazController {
 		UUID rentaId = rentarDisfraz.ejecutar(new RentarDisfrazComando(empresaId, disfrazId, request.sucursalId(),
 				clienteId, request.fechaRetiro(), request.fechaDevolucion(), selecciones, actorId));
 		return new RentarDisfrazResponse(rentaId);
+	}
+
+	/** Vender un disfraz: lo resuelve a sus prendas y crea la venta con el precio de venta de cada una. */
+	@PostMapping("/{disfrazId}/vender")
+	VenderDisfrazResponse vender(@PathVariable UUID disfrazId, @Valid @RequestBody VenderDisfrazRequest request,
+			@AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = empresaDe(jwt, request.empresaId());
+		UUID clienteId = clienteDe(jwt, empresaId, request.clienteId());
+		UUID actorId = UUID.fromString(jwt.getSubject());
+		List<VenderDisfrazComando.SeleccionDeSlot> selecciones = (request.selecciones() == null
+				? List.<VenderDisfrazRequest.SeleccionSlotDto>of() : request.selecciones())
+				.stream()
+				.map(s -> new VenderDisfrazComando.SeleccionDeSlot(s.orden(), s.prendaId()))
+				.toList();
+		UUID ventaId = venderDisfraz.ejecutar(new VenderDisfrazComando(empresaId, disfrazId, request.sucursalId(),
+				clienteId, selecciones, actorId));
+		return new VenderDisfrazResponse(ventaId);
+	}
+
+	record VenderDisfrazResponse(UUID ventaId) {
 	}
 
 	/** Empresa según el actor: del token si es personal; del request/param si es CLIENTE (la tienda). */

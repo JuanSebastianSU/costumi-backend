@@ -10,6 +10,7 @@ import com.costumi.backend.catalogo.ConsultaDeTaxonomia;
 import com.costumi.backend.inventario.AlmacenDeImagenesPublico;
 import com.costumi.backend.inventario.ConsultaDeInventario;
 import com.costumi.backend.rentas.RegistroDeRentas;
+import com.costumi.backend.ventas.RegistroDeVentas;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,20 +29,22 @@ import java.util.UUID;
 /** Casos de uso de Disfraces (Capa 3), acotados a la empresa (tenant). */
 @Service
 class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfraz, ConsultarDisfraces,
-		ConsultarDisponibilidadDeDisfraz, ConsultarOpcionesDeSlot, RentarDisfraz, AsignarFotoDeDisfraz {
+		ConsultarDisponibilidadDeDisfraz, ConsultarOpcionesDeSlot, RentarDisfraz, VenderDisfraz, AsignarFotoDeDisfraz {
 
 	private final DisfrazRepository disfraces;
 	private final ConsultaDeInventario inventario;
 	private final ConsultaDeTaxonomia taxonomia;
 	private final RegistroDeRentas rentas;
+	private final RegistroDeVentas ventas;
 	private final AlmacenDeImagenesPublico almacenDeImagenes;
 
 	DisfrazService(DisfrazRepository disfraces, ConsultaDeInventario inventario, ConsultaDeTaxonomia taxonomia,
-			RegistroDeRentas rentas, AlmacenDeImagenesPublico almacenDeImagenes) {
+			RegistroDeRentas rentas, RegistroDeVentas ventas, AlmacenDeImagenesPublico almacenDeImagenes) {
 		this.disfraces = disfraces;
 		this.inventario = inventario;
 		this.taxonomia = taxonomia;
 		this.rentas = rentas;
+		this.ventas = ventas;
 		this.almacenDeImagenes = almacenDeImagenes;
 	}
 
@@ -158,6 +161,29 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 
 	@Override
 	@Transactional(readOnly = true)
+	public BigDecimal precioVentaSugerido(UUID empresaId, Disfraz disfraz) {
+		BigDecimal total = BigDecimal.ZERO;
+		for (Slot slot : disfraz.slots()) {
+			total = total.add(precioVentaDeSlot(empresaId, slot));
+		}
+		return total;
+	}
+
+	/** Precio de venta de un slot: el de la prenda fija, o el mínimo ("desde") entre las opciones del pool. */
+	private BigDecimal precioVentaDeSlot(UUID empresaId, Slot slot) {
+		if (slot.ejePrenda() == EjeDePrenda.FIJA) {
+			return inventario.precioVenta(empresaId, slot.prendaFijaId()).orElse(BigDecimal.ZERO);
+		}
+		PoolDeSlot pool = slot.pool();
+		return inventario.opcionesDelPool(empresaId, pool.categoriaId(), pool.etiquetasPermitidas()).stream()
+				.map(opcion -> inventario.precioVenta(empresaId, opcion.prendaId()).orElse(null))
+				.filter(java.util.Objects::nonNull)
+				.min(BigDecimal::compareTo)
+				.orElse(BigDecimal.ZERO);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
 	public boolean estaDisponible(UUID empresaId, UUID disfrazId) {
 		Disfraz disfraz = exigirDelTenant(empresaId, disfrazId);
 		return disfraz.estaDisponible(consultaDeStockPara(empresaId));
@@ -222,6 +248,41 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 		}
 		return rentas.registrar(empresaId, comando.sucursalId(), comando.clienteId(), comando.fechaRetiro(),
 				comando.fechaDevolucion(), null, items, comando.empleadoId());
+	}
+
+	@Override
+	@Transactional
+	public UUID ejecutar(VenderDisfrazComando comando) {
+		UUID empresaId = comando.empresaId();
+		Disfraz disfraz = exigirDelTenant(empresaId, comando.disfrazId());
+		if (!disfraz.activo()) {
+			throw new IllegalArgumentException("El disfraz está archivado y no se puede vender");
+		}
+		Map<Integer, UUID> seleccionPorOrden = new HashMap<>();
+		if (comando.selecciones() != null) {
+			for (VenderDisfrazComando.SeleccionDeSlot seleccion : comando.selecciones()) {
+				seleccionPorOrden.put(seleccion.orden(), seleccion.prendaId());
+			}
+		}
+		List<RegistroDeVentas.ItemDeVenta> items = new ArrayList<>();
+		for (Slot slot : disfraz.slots()) {
+			boolean elegido = seleccionPorOrden.containsKey(slot.orden());
+			// Los slots opcionales solo entran si el cliente los eligió; los obligatorios siempre.
+			if (!slot.esObligatorio() && !elegido) {
+				continue;
+			}
+			items.add(itemDeVenta(empresaId, resolverPrenda(empresaId, slot, seleccionPorOrden.get(slot.orden()))));
+		}
+		if (items.isEmpty()) {
+			throw new IllegalArgumentException("El disfraz no resolvió ningún artículo para vender");
+		}
+		return ventas.registrar(empresaId, comando.sucursalId(), comando.empleadoId(), comando.clienteId(), items);
+	}
+
+	private RegistroDeVentas.ItemDeVenta itemDeVenta(UUID empresaId, UUID prendaId) {
+		BigDecimal precio = inventario.precioVenta(empresaId, prendaId)
+				.orElseThrow(() -> new IllegalArgumentException("La prenda del disfraz no tiene precio de venta"));
+		return new RegistroDeVentas.ItemDeVenta(prendaId, 1, precio);
 	}
 
 	/**

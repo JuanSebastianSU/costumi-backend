@@ -105,6 +105,46 @@ class DisfrazIntegrationTest {
 	}
 
 	@Test
+	void el_disfraz_se_puede_vender_al_precio_de_venta_de_sus_prendas() throws Exception {
+		UUID empresa = crearEmpresa("DisfrazVenta " + UUID.randomUUID());
+		String dueno = duenoDe(empresa);
+		UUID categoria = crearCategoria(dueno, "Cat " + UUID.randomUUID());
+		// Prenda vendible (precio de venta 100) con stock.
+		UUID prenda = UUID.fromString(json.readTree(mvc.perform(post("/api/v1/prendas")
+						.header("Authorization", "Bearer " + dueno).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"categoriaId\":\"" + categoria + "\",\"nombre\":\"Traje\",\"tipoArticulo\":\"VENTA\","
+								+ "\"precioVenta\":100.00}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asText());
+		// Stock en UNA sucursal concreta (la misma que se usa para vender).
+		UUID sucursal = AuthTestHelper.sucursal(sucursales, empresa);
+		mvc.perform(post("/api/v1/prendas/{prendaId}/grupos-stock", prenda).header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + sucursal + "\",\"combinacion\":[],\"cantidadInicial\":3}"))
+				.andExpect(status().isCreated());
+
+		// Disfraz de una pieza fija -> su precio de VENTA sugerido = 100 (suma de sus prendas).
+		UUID disfraz = UUID.fromString(json.readTree(mvc.perform(post("/api/v1/disfraces")
+						.header("Authorization", "Bearer " + dueno).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Traje\",\"slots\":[{\"orden\":1,\"nombre\":\"Traje\","
+								+ "\"ejePrenda\":\"FIJA\",\"prendaFijaId\":\"" + prenda + "\",\"opcional\":false}]}"))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.precioVentaSugerido").value(100.00))
+				.andReturn().getResponse().getContentAsString()).get("id").asText());
+
+		UUID cliente = UUID.fromString(json.readTree(mvc.perform(post("/api/v1/clientes")
+						.header("Authorization", "Bearer " + dueno).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Cliente\"}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asText());
+
+		// Vender el disfraz -> crea una venta.
+		mvc.perform(post("/api/v1/disfraces/{id}/vender", disfraz).header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + sucursal + "\",\"clienteId\":\"" + cliente + "\"}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.ventaId").exists());
+	}
+
+	@Test
 	void el_catalogo_publico_de_disfraces_los_muestra_con_su_precio_sin_token() throws Exception {
 		UUID empresa = crearEmpresa("Disfraz Vitrina " + UUID.randomUUID());
 		String dueno = duenoDe(empresa);
