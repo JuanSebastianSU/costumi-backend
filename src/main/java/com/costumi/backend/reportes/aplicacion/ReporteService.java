@@ -45,14 +45,14 @@ class ReporteService
 
 	@Override
 	@Transactional(readOnly = true)
-	public ResumenDeIngresos deEmpresa(UUID empresaId) {
-		return ingresos.deEmpresa(empresaId);
+	public ResumenDeIngresos deEmpresa(UUID empresaId, UUID sucursalId) {
+		return ingresos.deEmpresa(empresaId, sucursalId);
 	}
 
 	@Override
 	@Transactional(readOnly = true)
-	public ResumenDeGanancia gananciaDeEmpresa(UUID empresaId) {
-		return ganancia.deEmpresa(empresaId);
+	public ResumenDeGanancia gananciaDeEmpresa(UUID empresaId, UUID sucursalId) {
+		return ganancia.deEmpresa(empresaId, sucursalId);
 	}
 
 	@Override
@@ -94,14 +94,14 @@ class ReporteService
 
 	@Override
 	@Transactional(readOnly = true)
-	public List<ValorEtiquetaRanking> ventasPorEtiqueta(UUID empresaId, UUID tipoEtiquetaId) {
-		return rankings.ventasPorEtiqueta(empresaId, tipoEtiquetaId);
+	public List<ValorEtiquetaRanking> ventasPorEtiqueta(UUID empresaId, UUID tipoEtiquetaId, UUID sucursalId) {
+		return rankings.ventasPorEtiqueta(empresaId, tipoEtiquetaId, sucursalId);
 	}
 
 	@Override
 	@Transactional(readOnly = true)
-	public List<GrupoInventario> tableroDeInventario(UUID empresaId) {
-		return inventario.tablero(empresaId);
+	public List<GrupoInventario> tableroDeInventario(UUID empresaId, UUID sucursalId) {
+		return inventario.tablero(empresaId, sucursalId);
 	}
 
 	@Override

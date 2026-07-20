@@ -25,15 +25,16 @@ class IngresosJdbcAdapter implements IngresosReadRepository {
 	}
 
 	@Override
-	public ResumenDeIngresos deEmpresa(UUID empresaId) {
-		return ResumenDeIngresos.de(suma(empresaId, "RENTA"), suma(empresaId, "VENTA"));
+	public ResumenDeIngresos deEmpresa(UUID empresaId, UUID sucursalId) {
+		return ResumenDeIngresos.de(suma(empresaId, "RENTA", sucursalId), suma(empresaId, "VENTA", sucursalId));
 	}
 
-	private BigDecimal suma(UUID empresaId, String tipo) {
-		return jdbc.sql(SUMA_POR_TIPO)
-				.param("empresaId", empresaId)
-				.param("tipo", tipo)
-				.query(BigDecimal.class)
-				.single();
+	private BigDecimal suma(UUID empresaId, String tipo, UUID sucursalId) {
+		String sql = SUMA_POR_TIPO + (sucursalId == null ? "" : " and sucursal_id = :sucursalId");
+		JdbcClient.StatementSpec spec = jdbc.sql(sql).param("empresaId", empresaId).param("tipo", tipo);
+		if (sucursalId != null) {
+			spec = spec.param("sucursalId", sucursalId);
+		}
+		return spec.query(BigDecimal.class).single();
 	}
 }

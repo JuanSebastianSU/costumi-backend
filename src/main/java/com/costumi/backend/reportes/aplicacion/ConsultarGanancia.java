@@ -7,5 +7,6 @@ import java.util.UUID;
 /** Puerto de entrada: consulta la ganancia de la empresa (ingreso − costo, RF-9). */
 public interface ConsultarGanancia {
 
-	ResumenDeGanancia gananciaDeEmpresa(UUID empresaId);
+	/** Ganancia de la empresa, o de una sola sucursal si {@code sucursalId} no es null. */
+	ResumenDeGanancia gananciaDeEmpresa(UUID empresaId, UUID sucursalId);
 }

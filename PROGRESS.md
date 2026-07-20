@@ -9,6 +9,25 @@
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
 ## Fase actual
+**Fase 16 — Reportes por sucursal + fix de esquema del estado de cuenta (2026-07-20).**
+
+Rama `feat/reportes-por-sucursal-y-estado-cuenta-fix` (desde `origin/main`, PENDIENTE de merge). Dos cosas:
+- **Reportes por sucursal (de verdad)**: se agregó `sucursalId` opcional a **ingresos, ganancia, tablero de inventario y
+  ventas-por-etiqueta** (antes eran siempre a nivel empresa, por eso "el filtro por sucursal no servía"). Se hiló por
+  las 5 capas (controller → puerto entrada → `ReporteService` → puerto salida → JdbcAdapter), siguiendo el patrón ya
+  existente de `ingresosPorMetodo` (se agrega `and X.sucursal_id = :sucursalId` solo cuando llega). Notas de query:
+  ingresos/ganancia filtran `pago.sucursal_id`; el costo de ganancia y ventas-por-etiqueta **unen a `venta`** (sus líneas
+  no llevan sucursal); el tablero ahora **agrega por prenda** (`sum(...)::int` + `group by`) y filtra `grupo_de_stock.sucursal_id`.
+  También los export CSV/PDF del tablero aceptan `sucursalId`.
+- **Fix de esquema**: el record anidado `EstadoDeCuentaResponse.LineaResponse` (Fase 15) colisionaba en OpenAPI con
+  `VentaResponse.LineaResponse` (springdoc los fusionaba → el desglose de deuda perdía sus campos). Renombrado a
+  `LineaEstadoResponse`. **Al mergear: regenerar `:api-client` y cablear la pantalla de desglose de deuda del cliente**
+  (que quedó pendiente en el front por esta colisión) + wire de reportes por sucursal en el front.
+- Tests: `ReporteIntegrationTest` **11/11** (nuevo `los_ingresos_se_filtran_por_sucursal`: renta en sucursal A + venta en B;
+  filtrar por A da 40, por B da 60, sin filtro 100). Suite completa en Docker (JDK21). Sin migración. Contrato OpenAPI cambia.
+
+---
+
 **Fase 15 — Desgloses, fotos en devolución, estado de cuenta del cliente y email inmutable (2026-07-20).**
 
 Rama `feat/desgloses-fotos-estado-cuenta` (desde `origin/main`, PENDIENTE de merge). Cinco cambios para cerrar huecos

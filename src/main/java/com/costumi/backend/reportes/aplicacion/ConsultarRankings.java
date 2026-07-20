@@ -17,5 +17,5 @@ public interface ConsultarRankings {
 
 	List<EmpleadoVentas> ventasPorEmpleado(UUID empresaId, UUID sucursalId);
 
-	List<ValorEtiquetaRanking> ventasPorEtiqueta(UUID empresaId, UUID tipoEtiquetaId);
+	List<ValorEtiquetaRanking> ventasPorEtiqueta(UUID empresaId, UUID tipoEtiquetaId, UUID sucursalId);
 }

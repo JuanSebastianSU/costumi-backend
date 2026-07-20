@@ -97,6 +97,51 @@ class ReporteIntegrationTest {
 				.andExpect(jsonPath("$.total").value(100.00));
 	}
 
+	/** Registra un pago en una sucursal concreta (no la de por defecto de la prueba). */
+	private void pagoEn(UUID suc, String token, String tipo, String monto) throws Exception {
+		mvc.perform(post("/api/v1/pagos").header("Authorization", "Bearer " + token)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + suc + "\",\"tipoConcepto\":\"" + tipo + "\",\"conceptoId\":\""
+								+ UUID.randomUUID() + "\",\"monto\":" + monto + ",\"metodo\":\"EFECTIVO\"}"))
+				.andExpect(status().isCreated());
+	}
+
+	@Test
+	void los_ingresos_se_filtran_por_sucursal() throws Exception {
+		montar(); // sucursal A = this.sucursal
+		String dueno = tokenRol(Rol.DUENO);
+		// Habilita multi-sucursal para poder operar en una segunda sucursal.
+		mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/configuracion")
+						.header("Authorization", "Bearer " + dueno).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"conteoStock\":true,\"multasActivo\":true,\"multiSucursal\":true,\"pagoEnLinea\":false}"))
+				.andExpect(status().isOk());
+		String resB = mvc.perform(post("/api/v1/empresas/" + empresa + "/sucursales")
+						.header("Authorization", "Bearer " + dueno).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Norte\"}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		UUID sucursalB = UUID.fromString(json.readTree(resB).get("id").asText());
+
+		pagoEn(sucursal, dueno, "RENTA", "40.00");
+		pagoEn(sucursalB, dueno, "VENTA", "60.00");
+
+		// Sin filtro: total de la empresa (ambas sucursales).
+		mvc.perform(get("/api/v1/reportes/ingresos").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk()).andExpect(jsonPath("$.total").value(100.00));
+		// Solo la sucursal A: su renta, sin la venta de B.
+		mvc.perform(get("/api/v1/reportes/ingresos").param("sucursalId", sucursal.toString())
+						.header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.ingresosPorRenta").value(40.00))
+				.andExpect(jsonPath("$.ingresosPorVenta").value(0))
+				.andExpect(jsonPath("$.total").value(40.00));
+		// Solo la sucursal B: su venta.
+		mvc.perform(get("/api/v1/reportes/ingresos").param("sucursalId", sucursalB.toString())
+						.header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.ingresosPorVenta").value(60.00))
+				.andExpect(jsonPath("$.total").value(60.00));
+	}
+
 	private UUID postId(String path, String token, String body) throws Exception {
 		String res = mvc.perform(post(path).header("Authorization", "Bearer " + token)
 						.contentType(MediaType.APPLICATION_JSON).content(body))

@@ -82,17 +82,22 @@ class RankingJdbcAdapter implements RankingReadRepository {
 	}
 
 	@Override
-	public List<ValorEtiquetaRanking> ventasPorEtiqueta(UUID empresaId, UUID tipoEtiquetaId) {
+	public List<ValorEtiquetaRanking> ventasPorEtiqueta(UUID empresaId, UUID tipoEtiquetaId, UUID sucursalId) {
 		String sql = "select ve.valor,"
 				+ " coalesce(sum(lv.cantidad), 0) as unidades,"
 				+ " coalesce(sum(lv.cantidad * lv.precio_unitario), 0) as monto"
 				+ " from linea_de_venta lv"
+				+ " join venta v on v.id = lv.venta_id"
 				+ " join prenda_valor_etiqueta pve"
 				+ "   on pve.prenda_id = lv.prenda_id and pve.tipo_etiqueta_id = :tipoEtiquetaId"
 				+ " join valor_etiqueta ve on ve.id = pve.valor_etiqueta_id"
 				+ " where lv.empresa_id = :empresaId"
+				+ (sucursalId == null ? "" : " and v.sucursal_id = :sucursalId")
 				+ " group by ve.valor order by unidades desc";
-		return jdbc.sql(sql).param("empresaId", empresaId).param("tipoEtiquetaId", tipoEtiquetaId)
-				.query(ValorEtiquetaRanking.class).list();
+		JdbcClient.StatementSpec spec = jdbc.sql(sql).param("empresaId", empresaId).param("tipoEtiquetaId", tipoEtiquetaId);
+		if (sucursalId != null) {
+			spec = spec.param("sucursalId", sucursalId);
+		}
+		return spec.query(ValorEtiquetaRanking.class).list();
 	}
 }

@@ -51,20 +51,20 @@ class ReporteController {
 	}
 
 	@GetMapping("/ingresos")
-	IngresosResponse ingresos(@AuthenticationPrincipal Jwt jwt) {
+	IngresosResponse ingresos(@RequestParam(required = false) UUID sucursalId, @AuthenticationPrincipal Jwt jwt) {
 		String empresaId = jwt.getClaimAsString("empresa_id");
 		ResumenDeIngresos resumen = (empresaId == null)
 				? ResumenDeIngresos.de(BigDecimal.ZERO, BigDecimal.ZERO)
-				: consultarIngresos.deEmpresa(UUID.fromString(empresaId));
+				: consultarIngresos.deEmpresa(UUID.fromString(empresaId), sucursalId);
 		return IngresosResponse.desde(resumen);
 	}
 
 	@GetMapping("/ganancia")
-	GananciaResponse ganancia(@AuthenticationPrincipal Jwt jwt) {
+	GananciaResponse ganancia(@RequestParam(required = false) UUID sucursalId, @AuthenticationPrincipal Jwt jwt) {
 		String empresaId = jwt.getClaimAsString("empresa_id");
 		ResumenDeGanancia resumen = (empresaId == null)
 				? ResumenDeGanancia.de(BigDecimal.ZERO, BigDecimal.ZERO)
-				: consultarGanancia.gananciaDeEmpresa(UUID.fromString(empresaId));
+				: consultarGanancia.gananciaDeEmpresa(UUID.fromString(empresaId), sucursalId);
 		return GananciaResponse.desde(resumen);
 	}
 
@@ -118,15 +118,16 @@ class ReporteController {
 
 	@GetMapping("/ventas-por-etiqueta")
 	List<ValorEtiquetaRanking> ventasPorEtiqueta(@RequestParam UUID tipoEtiquetaId,
-			@AuthenticationPrincipal Jwt jwt) {
+			@RequestParam(required = false) UUID sucursalId, @AuthenticationPrincipal Jwt jwt) {
 		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
-		return consultarRankings.ventasPorEtiqueta(empresaId, tipoEtiquetaId);
+		return consultarRankings.ventasPorEtiqueta(empresaId, tipoEtiquetaId, sucursalId);
 	}
 
 	@GetMapping("/inventario/tablero")
-	List<GrupoInventario> tableroDeInventario(@AuthenticationPrincipal Jwt jwt) {
+	List<GrupoInventario> tableroDeInventario(@RequestParam(required = false) UUID sucursalId,
+			@AuthenticationPrincipal Jwt jwt) {
 		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
-		return consultarInventario.tableroDeInventario(empresaId);
+		return consultarInventario.tableroDeInventario(empresaId, sucursalId);
 	}
 
 	@GetMapping("/inventario/resumen")
@@ -153,10 +154,11 @@ class ReporteController {
 	}
 
 	@GetMapping(value = "/export/inventario-tablero.csv", produces = "text/csv")
-	ResponseEntity<String> exportInventarioTablero(@AuthenticationPrincipal Jwt jwt) {
+	ResponseEntity<String> exportInventarioTablero(@RequestParam(required = false) UUID sucursalId,
+			@AuthenticationPrincipal Jwt jwt) {
 		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
 		StringBuilder csv = new StringBuilder("prendaId,prenda,disponibles,danadas,enLimpieza,perdidas\n");
-		for (GrupoInventario g : consultarInventario.tableroDeInventario(empresaId)) {
+		for (GrupoInventario g : consultarInventario.tableroDeInventario(empresaId, sucursalId)) {
 			csv.append(g.prendaId()).append(',').append(campo(g.prendaNombre())).append(',').append(g.disponibles())
 					.append(',').append(g.danadas()).append(',').append(g.enLimpieza()).append(',').append(g.perdidas())
 					.append('\n');
@@ -180,11 +182,12 @@ class ReporteController {
 	}
 
 	@GetMapping(value = "/export/inventario-tablero.pdf", produces = "application/pdf")
-	ResponseEntity<byte[]> exportInventarioTableroPdf(@AuthenticationPrincipal Jwt jwt) {
+	ResponseEntity<byte[]> exportInventarioTableroPdf(@RequestParam(required = false) UUID sucursalId,
+			@AuthenticationPrincipal Jwt jwt) {
 		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
 		String[] columnas = { "Prenda", "Disponibles", "Dañadas", "En limpieza", "Perdidas" };
 		java.util.List<String[]> filas = new java.util.ArrayList<>();
-		for (GrupoInventario g : consultarInventario.tableroDeInventario(empresaId)) {
+		for (GrupoInventario g : consultarInventario.tableroDeInventario(empresaId, sucursalId)) {
 			filas.add(new String[] { g.prendaNombre(), texto(g.disponibles()), texto(g.danadas()),
 					texto(g.enLimpieza()), texto(g.perdidas()) });
 		}
