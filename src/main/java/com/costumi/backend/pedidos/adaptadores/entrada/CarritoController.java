@@ -1,8 +1,10 @@
 package com.costumi.backend.pedidos.adaptadores.entrada;
 
 import com.costumi.backend.clientes.ResolucionDeClientes;
+import com.costumi.backend.inventario.ConsultaDeInventario;
 import com.costumi.backend.pedidos.aplicacion.AgregarItemAlCarrito;
 import com.costumi.backend.pedidos.aplicacion.AgregarItemAlCarritoComando;
+import com.costumi.backend.pedidos.aplicacion.CarritoValorizado;
 import com.costumi.backend.pedidos.aplicacion.ConsultarCarrito;
 import com.costumi.backend.pedidos.aplicacion.HacerCheckout;
 import com.costumi.backend.pedidos.aplicacion.HacerCheckoutDeRenta;
@@ -43,15 +45,17 @@ class CarritoController {
 	private final HacerCheckout hacerCheckout;
 	private final HacerCheckoutDeRenta hacerCheckoutDeRenta;
 	private final ResolucionDeClientes resolucionDeClientes;
+	private final ConsultaDeInventario inventario;
 
 	CarritoController(AgregarItemAlCarrito agregarItemAlCarrito, ConsultarCarrito consultarCarrito,
 			HacerCheckout hacerCheckout, HacerCheckoutDeRenta hacerCheckoutDeRenta,
-			ResolucionDeClientes resolucionDeClientes) {
+			ResolucionDeClientes resolucionDeClientes, ConsultaDeInventario inventario) {
 		this.agregarItemAlCarrito = agregarItemAlCarrito;
 		this.consultarCarrito = consultarCarrito;
 		this.hacerCheckout = hacerCheckout;
 		this.hacerCheckoutDeRenta = hacerCheckoutDeRenta;
 		this.resolucionDeClientes = resolucionDeClientes;
+		this.inventario = inventario;
 	}
 
 	@PostMapping("/items")
@@ -60,7 +64,8 @@ class CarritoController {
 		Carrito carrito = agregarItemAlCarrito.ejecutar(new AgregarItemAlCarritoComando(
 				actor.empresaId(), request.sucursalId(), actor.clienteId(), request.tipo(),
 				request.prendaId(), request.cantidad(), request.fechaRetiro(), request.fechaDevolucion()));
-		return CarritoResponse.desde(carrito);
+		List<UUID> prendaIds = carrito.lineas().stream().map(l -> l.prendaId()).toList();
+		return CarritoResponse.desde(carrito, inventario.resumenDePrendas(actor.empresaId(), prendaIds));
 	}
 
 	@GetMapping
@@ -68,7 +73,9 @@ class CarritoController {
 			@RequestParam(required = false) UUID clienteId, @RequestParam TipoPedido tipo,
 			@AuthenticationPrincipal Jwt jwt) {
 		Actor actor = resolver(jwt, empresaId, clienteId);
-		return CarritoResponse.desde(consultarCarrito.pendiente(actor.empresaId(), sucursalId, actor.clienteId(), tipo));
+		CarritoValorizado carrito = consultarCarrito.pendiente(actor.empresaId(), sucursalId, actor.clienteId(), tipo);
+		List<UUID> prendaIds = carrito.lineas().stream().map(l -> l.prendaId()).toList();
+		return CarritoResponse.desde(carrito, inventario.resumenDePrendas(actor.empresaId(), prendaIds));
 	}
 
 	@PostMapping("/checkout")
