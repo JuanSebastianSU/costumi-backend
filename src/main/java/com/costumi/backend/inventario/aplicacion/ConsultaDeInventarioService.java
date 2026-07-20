@@ -166,7 +166,7 @@ class ConsultaDeInventarioService implements ConsultaDeInventario {
 	}
 
 	private OpcionDePool aOpcion(Prenda prenda) {
-		return new OpcionDePool(prenda.id(), prenda.nombre(), prenda.precioRenta(),
+		return new OpcionDePool(prenda.id(), prenda.nombre(), prenda.fotoUrl(), prenda.precioRenta(),
 				unidadesDisponiblesTotales(prenda.id()), Map.copyOf(prenda.etiquetas().valores()));
 	}
 
