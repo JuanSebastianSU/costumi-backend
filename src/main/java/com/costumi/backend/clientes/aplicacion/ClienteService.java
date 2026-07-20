@@ -122,6 +122,13 @@ class ClienteService implements CrearCliente, ConsultarClientes, CambiarListaNeg
 
 	@Override
 	@Transactional(readOnly = true)
+	public java.util.Map<UUID, com.costumi.backend.clientes.dominio.CargaDeCliente> cargaDeClientes(
+			UUID empresaId, java.util.Collection<UUID> clienteIds) {
+		return historial.cargaDeClientes(empresaId, clienteIds);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
 	public List<HistorialItem> historialDeUsuario(UUID usuarioId) {
 		List<HistorialItem> todo = new java.util.ArrayList<>();
 		for (Cliente ficha : clientes.buscarPorUsuario(usuarioId)) {

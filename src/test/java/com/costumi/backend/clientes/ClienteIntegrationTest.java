@@ -151,17 +151,19 @@ class ClienteIntegrationTest {
 				.andExpect(jsonPath("$.contenido[?(@.id == '" + clienteVencido + "')]").exists())
 				.andExpect(jsonPath("$.contenido[?(@.id == '" + clienteMulta + "')]").doesNotExist());
 
-		// MULTAS: solo el cliente cuya devolución dejó multa.
+		// MULTAS: solo el cliente cuya devolución dejó multa; y su multaTotal viaja en el DTO (RF-7/11.5).
 		mvc.perform(get("/api/v1/clientes").param("filtro", "MULTAS").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.contenido[?(@.id == '" + clienteMulta + "')]").exists())
+				.andExpect(jsonPath("$.contenido[?(@.id == '" + clienteMulta + "' && @.multaTotal > 0)]").exists())
 				.andExpect(jsonPath("$.contenido[?(@.id == '" + clienteVencido + "')]").doesNotExist());
 
-		// SALDOS: ambos deben dinero (ninguno pagó).
+		// SALDOS: ambos deben dinero (ninguno pagó); el saldoPendiente viaja en el DTO.
 		mvc.perform(get("/api/v1/clientes").param("filtro", "SALDOS").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.contenido[?(@.id == '" + clienteVencido + "')]").exists())
-				.andExpect(jsonPath("$.contenido[?(@.id == '" + clienteMulta + "')]").exists());
+				.andExpect(jsonPath("$.contenido[?(@.id == '" + clienteMulta + "')]").exists())
+				.andExpect(jsonPath("$.contenido[?(@.id == '" + clienteMulta + "' && @.saldoPendiente > 0)]").exists());
 
 		// PENDIENTES (indicador general): ambos aparecen (activa por devolver ∪ saldos).
 		mvc.perform(get("/api/v1/clientes").param("filtro", "PENDIENTES").header("Authorization", "Bearer " + dueno))
