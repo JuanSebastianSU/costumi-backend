@@ -45,7 +45,20 @@ class DisfrazRepositoryAdapter implements DisfrazRepository {
 
 	@Override
 	public List<Disfraz> listarPorEmpresa(UUID empresaId) {
-		return cabeceras.findByEmpresaId(empresaId).stream().map(this::aDominio).toList();
+		List<DisfrazJpaEntity> lista = cabeceras.findByEmpresaId(empresaId);
+		if (lista.isEmpty()) {
+			return List.of();
+		}
+		// Una sola query para TODOS los slots de estos disfraces (evita el N+1 de un findByDisfrazId por cabecera).
+		List<UUID> ids = lista.stream().map(DisfrazJpaEntity::getId).toList();
+		Map<UUID, List<Slot>> slotsPorDisfraz = slots.findByDisfrazIdInOrderByDisfrazIdAscOrdenAsc(ids).stream()
+				.collect(Collectors.groupingBy(DisfrazSlotJpaEntity::getDisfrazId, LinkedHashMap::new,
+						Collectors.mapping(DisfrazRepositoryAdapter::aSlotDominio, Collectors.toList())));
+		return lista.stream()
+				.map(cabecera -> Disfraz.rehidratar(cabecera.getId(), cabecera.getEmpresaId(), cabecera.getNombre(),
+						slotsPorDisfraz.getOrDefault(cabecera.getId(), List.of()), cabecera.isActivo(),
+						cabecera.getPrecioRentaGeneral()))
+				.toList();
 	}
 
 	private static DisfrazSlotJpaEntity aEntidad(UUID disfrazId, Slot slot) {
