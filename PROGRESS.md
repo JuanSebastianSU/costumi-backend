@@ -9,6 +9,23 @@
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
 ## Fase actual
+**Fase 14 — Cartera de clientes: saldo + multa por cliente en el listado (2026-07-20).**
+
+Rama `feat/cliente-saldos` (desde `origin/main`, PENDIENTE de merge). El front de gestión ya filtra la cartera
+(PENDIENTES/VENCIDAS/MULTAS/SALDOS), pero `ClienteResponse` no traía las **cifras**, así que no se podía mostrar
+cuánto debe cada cliente. Ahora el DTO del **listado** incluye **`saldoPendiente`** (Σ de sus rentas activas/devueltas
+de `max(0, importe + multa − pagado)`) y **`multaTotal`** (Σ de multas), computados en un solo query agrupado por
+cliente que **reutiliza los mismos fragmentos SQL** que el filtro de cartera (`MULTA_DE_RENTA`, `PAGOS_NETOS_DE_RENTA`,
+consistentes con Devoluciones/Pagos). Nuevo record `dominio.CargaDeCliente`; puerto `HistorialReadRepository`/`ConsultarHistorial`
+gana `cargaDeClientes(empresaId, clienteIds)` (solo la página actual, sin N+1); `ClienteController.listar` enriquece cada
+`ClienteResponse`. Las respuestas de una sola ficha (crear/editar/estado) van con 0 (no se calcula ahí). Sin migración.
+Tests: `ClienteIntegrationTest` **9/9** (asertan `multaTotal>0` y `saldoPendiente>0` para el cliente con multa; multa=$30),
+ArchUnit 3/3, Modulith 1/1; suite completa en Docker. **Al mergear: regenerar `:api-client` y mostrar la cifra en la
+lista de clientes de gestión** (`ClienteAdapter`).
+
+---
+
+## Fase 13 (cerrada — mergeada, PR #122)
 **Fase 13 — Carrito con nombre + foto por línea (2026-07-20).**
 
 Rama `feat/carrito-nombre-foto` (desde `origin/main`, PENDIENTE de merge). El carrito pendiente/agregar sólo devolvía
