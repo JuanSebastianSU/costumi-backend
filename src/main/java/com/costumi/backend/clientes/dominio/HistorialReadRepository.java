@@ -1,5 +1,6 @@
 package com.costumi.backend.clientes.dominio;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -8,6 +9,9 @@ public interface HistorialReadRepository {
 
 	List<HistorialItem> deCliente(UUID empresaId, UUID clienteId);
 
-	/** Ids de clientes de la empresa con rentas ACTIVAS (pendientes de devolver), RF-11.5/11.6. */
-	List<UUID> clientesConPendientes(UUID empresaId);
+	/**
+	 * Ids de clientes de la empresa que caen en la categoría de pendiente indicada (RF-11.5/11.6).
+	 * {@code hoy} se usa para las rentas vencidas.
+	 */
+	List<UUID> clientesPorFiltro(UUID empresaId, FiltroDeClientes filtro, LocalDate hoy);
 }

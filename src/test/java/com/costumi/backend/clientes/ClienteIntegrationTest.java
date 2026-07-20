@@ -105,6 +105,67 @@ class ClienteIntegrationTest {
 	}
 
 	@Test
+	void filtros_de_pendientes_por_categoria_vencidas_multas_y_saldos() throws Exception {
+		UUID empresa = crearEmpresa("Cli Filtros " + UUID.randomUUID());
+		String superAdmin = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, null, Rol.SUPERADMIN);
+		mvc.perform(post("/api/v1/empresas/{id}/aprobar", empresa).header("Authorization", "Bearer " + superAdmin))
+				.andExpect(status().isOk());
+		String dueno = token(empresa, Rol.DUENO);
+		UUID sucursal = postId("/api/v1/empresas/" + empresa + "/sucursales", dueno, "{\"nombre\":\"Centro\"}");
+		UUID categoria = postId("/api/v1/categorias", dueno, "{\"nombre\":\"Cat " + UUID.randomUUID() + "\"}");
+		UUID prenda = postId("/api/v1/prendas", dueno, "{\"categoriaId\":\"" + categoria
+				+ "\",\"nombre\":\"Traje\",\"tipoArticulo\":\"RENTA\",\"precioRenta\":20.00}");
+		postId("/api/v1/prendas/" + prenda + "/grupos-stock", dueno,
+				"{\"sucursalId\":\"" + sucursal + "\",\"combinacion\":[],\"cantidadInicial\":5}");
+
+		// Cliente A: renta con fecha de devolución en el pasado -> ACTIVA y VENCIDA; sin pagar -> con SALDO.
+		UUID clienteVencido = crearCliente(dueno, "Vencido", "DOC-V-" + UUID.randomUUID());
+		UUID rentaVencida = postId("/api/v1/rentas", dueno, "{\"sucursalId\":\"" + sucursal + "\",\"clienteId\":\""
+				+ clienteVencido + "\",\"prendaId\":\"" + prenda + "\",\"fechaRetiro\":\"2020-01-01\","
+				+ "\"fechaDevolucion\":\"2020-01-05\",\"precioPorDia\":20.00,\"deposito\":50.00}");
+		mvc.perform(post("/api/v1/rentas/{id}/entregar", rentaVencida).header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk());
+
+		// Cliente B: renta entregada y devuelta con multa (daños+retraso > depósito) -> con MULTA y con SALDO.
+		UUID clienteMulta = crearCliente(dueno, "Multado", "DOC-M-" + UUID.randomUUID());
+		UUID rentaMulta = postId("/api/v1/rentas", dueno, "{\"sucursalId\":\"" + sucursal + "\",\"clienteId\":\""
+				+ clienteMulta + "\",\"prendaId\":\"" + prenda + "\",\"fechaRetiro\":\"2026-09-01\","
+				+ "\"fechaDevolucion\":\"2026-09-03\",\"precioPorDia\":20.00,\"deposito\":50.00}");
+		mvc.perform(post("/api/v1/rentas/{id}/entregar", rentaMulta).header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk());
+		mvc.perform(post("/api/v1/devoluciones").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"rentaId\":\"" + rentaMulta + "\",\"deposito\":50.00,\"cargoPorDanos\":60.00,"
+								+ "\"cargoPorRetraso\":20.00,\"piezas\":[{\"prendaId\":\"" + prenda
+								+ "\",\"descripcion\":\"Traje\",\"llego\":true,\"estado\":\"DANADA\",\"perdidaCobrada\":false}]}"))
+				.andExpect(status().isCreated());
+
+		// VENCIDAS: solo el cliente con renta activa fuera de plazo.
+		mvc.perform(get("/api/v1/clientes").param("filtro", "VENCIDAS").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.contenido[?(@.id == '" + clienteVencido + "')]").exists())
+				.andExpect(jsonPath("$.contenido[?(@.id == '" + clienteMulta + "')]").doesNotExist());
+
+		// MULTAS: solo el cliente cuya devolución dejó multa.
+		mvc.perform(get("/api/v1/clientes").param("filtro", "MULTAS").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.contenido[?(@.id == '" + clienteMulta + "')]").exists())
+				.andExpect(jsonPath("$.contenido[?(@.id == '" + clienteVencido + "')]").doesNotExist());
+
+		// SALDOS: ambos deben dinero (ninguno pagó).
+		mvc.perform(get("/api/v1/clientes").param("filtro", "SALDOS").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.contenido[?(@.id == '" + clienteVencido + "')]").exists())
+				.andExpect(jsonPath("$.contenido[?(@.id == '" + clienteMulta + "')]").exists());
+
+		// PENDIENTES (indicador general): ambos aparecen (activa por devolver ∪ saldos).
+		mvc.perform(get("/api/v1/clientes").param("filtro", "PENDIENTES").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.contenido[?(@.id == '" + clienteVencido + "')]").exists())
+				.andExpect(jsonPath("$.contenido[?(@.id == '" + clienteMulta + "')]").exists());
+	}
+
+	@Test
 	void crear_buscar_por_documento_y_ponerlo_en_lista_negra() throws Exception {
 		UUID empresa = crearEmpresa("Empresa Cli");
 		String mostrador = token(empresa, Rol.MOSTRADOR);

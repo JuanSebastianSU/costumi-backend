@@ -11,6 +11,7 @@ import com.costumi.backend.clientes.aplicacion.EditarCliente;
 import com.costumi.backend.clientes.aplicacion.EditarClienteComando;
 import com.costumi.backend.clientes.aplicacion.RegistrarDeviceToken;
 import com.costumi.backend.clientes.dominio.Cliente;
+import com.costumi.backend.clientes.dominio.FiltroDeClientes;
 import com.costumi.backend.clientes.dominio.HistorialItem;
 import com.costumi.backend.compartido.RespuestaPaginada;
 import com.costumi.backend.compartido.SolicitudDePagina;
@@ -104,6 +105,7 @@ class ClienteController {
 	@GetMapping
 	RespuestaPaginada<ClienteResponse> listar(@RequestParam(required = false) String buscar,
 			@RequestParam(required = false, defaultValue = "false") boolean conPendientes,
+			@RequestParam(required = false) String filtro,
 			@RequestParam(required = false, defaultValue = "false") boolean incluirArchivados,
 			@RequestParam(required = false) Integer pagina, @RequestParam(required = false) Integer tamano,
 			@AuthenticationPrincipal Jwt jwt) {
@@ -112,12 +114,28 @@ class ClienteController {
 			return new RespuestaPaginada<>(List.of(), 0, 0, 0, 0);
 		}
 		UUID empresaId = UUID.fromString(empresaIdClaim);
-		// RF-11.5/11.6: con pendientes, restringe la página a los clientes con rentas activas por devolver.
-		List<UUID> idsFiltro = conPendientes ? consultarHistorial.clientesConPendientes(empresaId) : null;
+		// RF-11.5/11.6: filtra la página por categoría de pendiente (PENDIENTES/VENCIDAS/MULTAS/SALDOS).
+		// 'filtro' manda; 'conPendientes=true' se mantiene por compatibilidad y equivale a PENDIENTES.
+		FiltroDeClientes categoria = resolverFiltro(filtro, conPendientes);
+		List<UUID> idsFiltro = categoria == null ? null
+				: consultarHistorial.clientesPorFiltro(empresaId, categoria);
 		return RespuestaPaginada.desde(
 				consultarClientes.listar(empresaId, buscar, idsFiltro, incluirArchivados,
 						SolicitudDePagina.de(pagina, tamano)),
 				ClienteResponse::desde);
+	}
+
+	/** Traduce el parámetro a la categoría de filtro; ignora un valor inválido (equivale a sin filtro). */
+	private static FiltroDeClientes resolverFiltro(String filtro, boolean conPendientes) {
+		if (filtro != null && !filtro.isBlank()) {
+			try {
+				return FiltroDeClientes.valueOf(filtro.trim().toUpperCase(java.util.Locale.ROOT));
+			}
+			catch (IllegalArgumentException e) {
+				return null; // valor desconocido: no se aplica filtro.
+			}
+		}
+		return conPendientes ? FiltroDeClientes.PENDIENTES : null;
 	}
 
 	@GetMapping("/{id}/historial")
