@@ -1,5 +1,6 @@
 package com.costumi.backend.ventas.adaptadores.entrada;
 
+import com.costumi.backend.compartido.CodigoDeRetiro;
 import com.costumi.backend.inventario.ConsultaDeInventario.ResumenDePrenda;
 import com.costumi.backend.ventas.dominio.LineaDeVenta;
 import com.costumi.backend.ventas.dominio.Venta;
@@ -10,9 +11,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-/** DTO de salida de la Venta con sus líneas (cada una con nombre y foto). {@code montoReembolsado} es el total ya devuelto (RF-4.5). */
-public record VentaResponse(UUID id, UUID sucursalId, UUID empleadoId, UUID clienteId, BigDecimal descuento,
-		BigDecimal total, String estado, BigDecimal montoReembolsado, List<LineaResponse> lineas) {
+/** DTO de salida de la Venta con sus líneas (cada una con nombre y foto) y el {@code codigoRetiro} para retirar. {@code montoReembolsado} es el total ya devuelto (RF-4.5). */
+public record VentaResponse(UUID id, String codigoRetiro, UUID sucursalId, UUID empleadoId, UUID clienteId,
+		BigDecimal descuento, BigDecimal total, String estado, BigDecimal montoReembolsado, List<LineaResponse> lineas) {
 
 	public record LineaResponse(UUID prendaId, String nombre, String fotoUrl, int cantidad, int cantidadDevuelta,
 			BigDecimal precioUnitario, BigDecimal subtotal) {
@@ -32,8 +33,8 @@ public record VentaResponse(UUID id, UUID sucursalId, UUID empleadoId, UUID clie
 							l.cantidad(), l.cantidadDevuelta(), l.precioUnitario(), l.subtotal());
 				})
 				.toList();
-		return new VentaResponse(v.id(), v.sucursalId(), v.empleadoId(), v.clienteId(), v.descuento(), v.total(),
-				v.estado().name(), montoReembolsado(v), lineas);
+		return new VentaResponse(v.id(), CodigoDeRetiro.de("V", v.id()), v.sucursalId(), v.empleadoId(), v.clienteId(),
+				v.descuento(), v.total(), v.estado().name(), montoReembolsado(v), lineas);
 	}
 
 	/** Dinero ya reembolsado: la porción del total que corresponde a las unidades devueltas (proporcional). */
