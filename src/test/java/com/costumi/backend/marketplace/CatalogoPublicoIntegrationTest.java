@@ -19,6 +19,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -88,6 +89,48 @@ class CatalogoPublicoIntegrationTest {
 		assertThat(vampiro.path("precioRenta").asDouble()).isEqualTo(25.0);
 		assertThat(vampiro.path("categoria").asText()).isEqualTo("Terror");
 		assertThat(vampiro.path("tipoArticulo").asText()).isEqualTo("RENTA");
+	}
+
+	@Test
+	void el_catalogo_se_puede_filtrar_por_categoria() throws Exception {
+		String correo = "duenofiltro-" + UUID.randomUUID() + "@correo.com";
+		String tokenCliente = accessToken(mvc.perform(post("/api/v1/auth/registro").contentType(MediaType.APPLICATION_JSON)
+				.content("{\"email\":\"" + correo + "\",\"password\":\"clave1234\"}")).andReturn().getResponse().getContentAsString());
+		UUID empresaId = UUID.fromString(json.readTree(mvc.perform(post("/api/v1/empresas")
+						.header("Authorization", "Bearer " + tokenCliente).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Filtro " + UUID.randomUUID() + "\"}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asText());
+		String superAdmin = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, null, Rol.SUPERADMIN);
+		mvc.perform(post("/api/v1/empresas/{id}/aprobar", empresaId).header("Authorization", "Bearer " + superAdmin))
+				.andExpect(status().isOk());
+		String dueno = accessToken(mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+				.content("{\"email\":\"" + correo + "\",\"password\":\"clave1234\"}")).andReturn().getResponse().getContentAsString());
+
+		UUID catTerror = crearCategoria(dueno, "Terror");
+		UUID catFantasia = crearCategoria(dueno, "Fantasia");
+		crearPrenda(dueno, catTerror, "Vampiro");
+		crearPrenda(dueno, catFantasia, "Hada");
+
+		// Filtrando por Terror, solo aparece Vampiro; no aparece Hada (RF-18.1).
+		mvc.perform(get("/api/v1/marketplace/empresas/{id}/catalogo", empresaId).param("categoria", catTerror.toString()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.nombre == 'Vampiro')]").exists())
+				.andExpect(jsonPath("$[?(@.nombre == 'Hada')]").doesNotExist());
+	}
+
+	private UUID crearCategoria(String dueno, String nombre) throws Exception {
+		return UUID.fromString(json.readTree(mvc.perform(post("/api/v1/categorias")
+						.header("Authorization", "Bearer " + dueno).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"" + nombre + " " + UUID.randomUUID() + "\"}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asText());
+	}
+
+	private void crearPrenda(String dueno, UUID categoriaId, String nombre) throws Exception {
+		mvc.perform(post("/api/v1/prendas").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"categoriaId\":\"" + categoriaId + "\",\"tipoArticulo\":\"RENTA\",\"nombre\":\""
+								+ nombre + "\",\"precioRenta\":25.00}"))
+				.andExpect(status().isCreated());
 	}
 
 	@Test

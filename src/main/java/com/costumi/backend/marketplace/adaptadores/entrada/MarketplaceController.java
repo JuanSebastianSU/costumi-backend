@@ -30,9 +30,11 @@ class MarketplaceController {
 	}
 
 	/** Catálogo público de una tienda: el cliente ve las prendas de cualquier empresa ACTIVA (RF-18). */
+	/** Catálogo público de una tienda; con {@code categoria} (id) filtra por esa categoría (RF-18.1). */
 	@GetMapping("/empresas/{empresaId}/catalogo")
-	List<PrendaVitrinaResponse> catalogo(@PathVariable UUID empresaId) {
-		return descubrirEmpresas.catalogo(empresaId).stream().map(PrendaVitrinaResponse::desde).toList();
+	List<PrendaVitrinaResponse> catalogo(@PathVariable UUID empresaId,
+			@RequestParam(name = "categoria", required = false) UUID categoria) {
+		return descubrirEmpresas.catalogo(empresaId, categoria).stream().map(PrendaVitrinaResponse::desde).toList();
 	}
 
 	/**

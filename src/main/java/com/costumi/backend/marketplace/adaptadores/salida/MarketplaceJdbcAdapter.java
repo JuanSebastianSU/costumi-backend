@@ -27,11 +27,11 @@ class MarketplaceJdbcAdapter implements MarketplaceReadRepository {
 			+ "order by nombre";
 
 	// Catálogo público: prendas no archivadas de una empresa, solo si la empresa está ACTIVA.
+	// Opcionalmente filtrado por categoría (RF-18.1); el ORDER BY se agrega al final en el método.
 	private static final String CATALOGO = "select p.id, p.nombre, p.tipo_articulo, p.precio_renta, "
 			+ "p.precio_venta, c.nombre as categoria, p.foto_url "
 			+ "from prenda p join categoria c on c.id = p.categoria_id join empresa e on e.id = p.empresa_id "
-			+ "where p.empresa_id = :empresaId and p.archivada = false and e.estado = 'ACTIVA' "
-			+ "order by p.nombre";
+			+ "where p.empresa_id = :empresaId and p.archivada = false and e.estado = 'ACTIVA'";
 
 	// Sucursales (puntos de retiro) no archivadas de una empresa, solo si la empresa está ACTIVA.
 	private static final String SUCURSALES = "select s.id, s.nombre, s.direccion "
@@ -59,8 +59,13 @@ class MarketplaceJdbcAdapter implements MarketplaceReadRepository {
 	}
 
 	@Override
-	public List<PrendaEnVitrina> catalogoDe(UUID empresaId) {
-		return jdbc.sql(CATALOGO).param("empresaId", empresaId).query(MarketplaceJdbcAdapter::mapearPrenda).list();
+	public List<PrendaEnVitrina> catalogoDe(UUID empresaId, UUID categoriaId) {
+		String sql = CATALOGO + (categoriaId != null ? " and p.categoria_id = :categoriaId" : "") + " order by p.nombre";
+		JdbcClient.StatementSpec spec = jdbc.sql(sql).param("empresaId", empresaId);
+		if (categoriaId != null) {
+			spec = spec.param("categoriaId", categoriaId);
+		}
+		return spec.query(MarketplaceJdbcAdapter::mapearPrenda).list();
 	}
 
 	@Override
