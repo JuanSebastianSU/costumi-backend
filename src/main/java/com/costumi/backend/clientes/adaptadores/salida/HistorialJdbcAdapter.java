@@ -4,6 +4,7 @@ import com.costumi.backend.clientes.dominio.FiltroDeClientes;
 import com.costumi.backend.clientes.dominio.HistorialItem;
 import com.costumi.backend.clientes.dominio.HistorialReadRepository;
 import com.costumi.backend.clientes.dominio.LineaDeHistorial;
+import com.costumi.backend.compartido.CodigoDeRetiro;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
@@ -82,7 +83,9 @@ class HistorialJdbcAdapter implements HistorialReadRepository {
 		return jdbc.sql(HISTORIAL).param("empresaId", empresaId).param("clienteId", clienteId)
 				.query((rs, rowNum) -> {
 					UUID operacionId = rs.getObject("operacion_id", UUID.class);
-					return new HistorialItem(rs.getString("tipo"), operacionId, rs.getBigDecimal("monto"),
+					String tipo = rs.getString("tipo");
+					String codigoRetiro = CodigoDeRetiro.de("RENTA".equals(tipo) ? "R" : "V", operacionId);
+					return new HistorialItem(tipo, operacionId, codigoRetiro, rs.getBigDecimal("monto"),
 							rs.getString("estado"), rs.getObject("fecha", LocalDate.class),
 							rs.getObject("empresa_id", UUID.class), rs.getString("empresa_nombre"),
 							lineasPorOperacion.getOrDefault(operacionId, List.of()));

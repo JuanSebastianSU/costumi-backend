@@ -97,9 +97,11 @@ class ClienteIntegrationTest {
 				// La operación trae su tienda, para "Mis Pedidos" (cruza tiendas) y el reembolso.
 				.andExpect(jsonPath("$[0].empresaId").value(empresa.toString()))
 				.andExpect(jsonPath("$[0].empresaNombre").value(nombreEmpresa))
-				// ...y el detalle de artículos con nombre (para mostrar QUÉ se rentó, con imagen).
+				// ...el detalle de artículos con nombre (para mostrar QUÉ se rentó, con imagen)...
 				.andExpect(jsonPath("$[0].lineas[0].nombre").value("Traje"))
-				.andExpect(jsonPath("$[0].lineas[0].cantidad").value(1));
+				.andExpect(jsonPath("$[0].lineas[0].cantidad").value(1))
+				// ...y el código de retiro (que el cliente muestra en la tienda).
+				.andExpect(jsonPath("$[0].codigoRetiro").value(org.hamcrest.Matchers.startsWith("R-")));
 
 		// RF-11.5/11.6: con la renta ACTIVA, el cliente sale en el filtro de pendientes.
 		mvc.perform(get("/api/v1/clientes").param("conPendientes", "true").header("Authorization", "Bearer " + dueno))

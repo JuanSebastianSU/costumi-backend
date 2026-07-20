@@ -12,6 +12,6 @@ import java.util.UUID;
  * (RF-18.9) y para poder solicitar el reembolso de esa operación, y el detalle de artículos
  * ({@code lineas}, cada uno con nombre y foto) para mostrar QUÉ se rentó/compró. Modelo de lectura.
  */
-public record HistorialItem(String tipo, UUID operacionId, BigDecimal monto, String estado, LocalDate fecha,
-		UUID empresaId, String empresaNombre, List<LineaDeHistorial> lineas) {
+public record HistorialItem(String tipo, UUID operacionId, String codigoRetiro, BigDecimal monto, String estado,
+		LocalDate fecha, UUID empresaId, String empresaNombre, List<LineaDeHistorial> lineas) {
 }
