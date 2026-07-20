@@ -9,6 +9,33 @@
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
 ## Fase actual
+**Fase 13 — Carrito con nombre + foto por línea (2026-07-20).**
+
+Rama `feat/carrito-nombre-foto` (desde `origin/main`, PENDIENTE de merge). El carrito pendiente/agregar sólo devolvía
+`prendaId` por línea → la app mostraba "Articulo xN" sin nombre ni imagen. Ahora `LineaDeCarritoResponse` gana
+**`nombre`** y **`fotoUrl`**, poblados con `ConsultaDeInventario.resumenDePrendas(empresaId, prendaIds)` (mismo patrón
+que las líneas de "Mis Pedidos"). `CarritoController` inyecta `ConsultaDeInventario`; sin migración (no toca esquema).
+Tests: `CarritoIntegrationTest` **7/7** (aserción nueva: la línea trae `nombre`), ArchUnit 3/3 (edge pedidos→inventario
+ya existía), Modulith 1/1; suite completa en Docker antes de subir. **Al mergear: regenerar `:api-client` y cablear el
+adapter del carrito (`CarritoLineaAdapter`) para pintar nombre + foto (ya hay helper `cargarFoto`).**
+
+### Deuda técnica / pendientes a futuro (documentado a pedido del usuario)
+- **Push al cliente (notificaciones):** bloqueado en dos frentes. (a) Backend: `PUT /clientes/{id}/device-token` es
+  **solo-staff** (`hasAnyRole(DUENO,ENCARGADO,MOSTRADOR,ATENCION)`) → el cliente no puede registrar su token; haría
+  falta abrir una vía self-service (patrón del pago del cliente). (b) Infra: falta un **proyecto Firebase/FCM**
+  (`google-services.json` + credenciales) que sólo puede crear el usuario. Sin push la app funciona; sólo faltan avisos
+  con la app cerrada.
+- **Credenciales de producción por aplicar en Railway (env vars):** hoy varias integraciones quedan "listas para
+  credencial" y sin ellas el flujo real no cierra:
+  - **MercadoPago (pasarela):** sin credencial, `POST /pagos/intento[/cliente]` no crea un checkout real (la app abre la
+    URL pero no hay cobro). El **pago con tarjeta del cliente** depende de esto. (S3 de fotos ya está configurado.)
+  - **WhatsApp (Meta/Twilio):** el canal registra el mensaje pero no lo envía; los mensajes automáticos ya están cableados.
+  - **SMTP (email)** y **FCM (push)**: idem, listos para credencial.
+  → Acción del usuario: setear esas env vars en Railway. Nada de código pendiente para estas (salvo push, ver arriba).
+
+---
+
+## Fase 12 (cerrada — mergeada a `main`)
 **Fase 12 — Auditoría front↔backend + cierre del pago en línea del cliente (2026-07-20).**
 
 **Contexto:** las 6 ramas de la Fase 11 ya están **mergeadas** en `main` (verificado: `origin/main` en `4ba7166`,
