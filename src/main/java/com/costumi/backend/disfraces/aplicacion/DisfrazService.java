@@ -7,6 +7,7 @@ import com.costumi.backend.disfraces.dominio.EjeDePrenda;
 import com.costumi.backend.disfraces.dominio.PoolDeSlot;
 import com.costumi.backend.disfraces.dominio.Slot;
 import com.costumi.backend.catalogo.ConsultaDeTaxonomia;
+import com.costumi.backend.inventario.AlmacenDeImagenesPublico;
 import com.costumi.backend.inventario.ConsultaDeInventario;
 import com.costumi.backend.rentas.RegistroDeRentas;
 import org.springframework.stereotype.Service;
@@ -27,19 +28,30 @@ import java.util.UUID;
 /** Casos de uso de Disfraces (Capa 3), acotados a la empresa (tenant). */
 @Service
 class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfraz, ConsultarDisfraces,
-		ConsultarDisponibilidadDeDisfraz, ConsultarOpcionesDeSlot, RentarDisfraz {
+		ConsultarDisponibilidadDeDisfraz, ConsultarOpcionesDeSlot, RentarDisfraz, AsignarFotoDeDisfraz {
 
 	private final DisfrazRepository disfraces;
 	private final ConsultaDeInventario inventario;
 	private final ConsultaDeTaxonomia taxonomia;
 	private final RegistroDeRentas rentas;
+	private final AlmacenDeImagenesPublico almacenDeImagenes;
 
 	DisfrazService(DisfrazRepository disfraces, ConsultaDeInventario inventario, ConsultaDeTaxonomia taxonomia,
-			RegistroDeRentas rentas) {
+			RegistroDeRentas rentas, AlmacenDeImagenesPublico almacenDeImagenes) {
 		this.disfraces = disfraces;
 		this.inventario = inventario;
 		this.taxonomia = taxonomia;
 		this.rentas = rentas;
+		this.almacenDeImagenes = almacenDeImagenes;
+	}
+
+	@Override
+	@Transactional
+	public Disfraz ejecutar(UUID empresaId, UUID disfrazId, byte[] contenido) {
+		Disfraz disfraz = exigirDelTenant(empresaId, disfrazId);
+		String url = almacenDeImagenes.subir(contenido, "disfraces/" + empresaId + "/" + disfrazId + "/");
+		disfraz.asignarFoto(url);
+		return disfraces.guardar(disfraz);
 	}
 
 	@Override

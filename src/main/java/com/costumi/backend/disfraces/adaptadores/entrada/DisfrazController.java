@@ -2,6 +2,7 @@ package com.costumi.backend.disfraces.adaptadores.entrada;
 
 import com.costumi.backend.clientes.ResolucionDeClientes;
 import com.costumi.backend.compartido.ContextoDeTenant;
+import com.costumi.backend.disfraces.aplicacion.AsignarFotoDeDisfraz;
 import com.costumi.backend.disfraces.aplicacion.CambiarEstadoDisfraz;
 import com.costumi.backend.disfraces.aplicacion.ConsultarDisfraces;
 import com.costumi.backend.disfraces.aplicacion.ConsultarDisponibilidadDeDisfraz;
@@ -27,9 +28,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.io.IOException;
 import java.net.URI;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -49,21 +52,36 @@ class DisfrazController {
 	private final ConsultarDisfraces consultarDisfraces;
 	private final ConsultarDisponibilidadDeDisfraz consultarDisponibilidad;
 	private final RentarDisfraz rentarDisfraz;
+	private final AsignarFotoDeDisfraz asignarFotoDeDisfraz;
 	private final ContextoDeTenant tenant;
 	private final ResolucionDeClientes resolucionDeClientes;
 
 	DisfrazController(CrearDisfraz crearDisfraz, EditarDisfraz editarDisfraz,
 			CambiarEstadoDisfraz cambiarEstadoDisfraz, ConsultarDisfraces consultarDisfraces,
 			ConsultarDisponibilidadDeDisfraz consultarDisponibilidad, RentarDisfraz rentarDisfraz,
-			ContextoDeTenant tenant, ResolucionDeClientes resolucionDeClientes) {
+			AsignarFotoDeDisfraz asignarFotoDeDisfraz, ContextoDeTenant tenant,
+			ResolucionDeClientes resolucionDeClientes) {
 		this.crearDisfraz = crearDisfraz;
 		this.editarDisfraz = editarDisfraz;
 		this.cambiarEstadoDisfraz = cambiarEstadoDisfraz;
 		this.consultarDisfraces = consultarDisfraces;
 		this.consultarDisponibilidad = consultarDisponibilidad;
 		this.rentarDisfraz = rentarDisfraz;
+		this.asignarFotoDeDisfraz = asignarFotoDeDisfraz;
 		this.tenant = tenant;
 		this.resolucionDeClientes = resolucionDeClientes;
+	}
+
+	/** Sube/actualiza la foto del disfraz (RF-2.9, multipart) — la que sube el dueño para la vitrina. */
+	@PostMapping("/{disfrazId}/foto")
+	ResponseEntity<DisfrazResponse> subirFoto(@PathVariable UUID disfrazId,
+			@RequestParam("archivo") MultipartFile archivo) throws IOException {
+		UUID empresaId = tenant.empresaIdRequerida();
+		if (archivo == null || archivo.isEmpty()) {
+			throw new IllegalArgumentException("El archivo de la foto es obligatorio");
+		}
+		Disfraz disfraz = asignarFotoDeDisfraz.ejecutar(empresaId, disfrazId, archivo.getBytes());
+		return ResponseEntity.ok(resp(empresaId, disfraz));
 	}
 
 	/** Respuesta del disfraz con su precio de renta sugerido (suma de las prendas) calculado. */

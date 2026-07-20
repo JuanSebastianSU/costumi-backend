@@ -13,7 +13,7 @@ import java.util.UUID;
  * que fija el dueño, o null si cobra por la suma). La disponibilidad se consulta aparte (derivada).
  */
 public record DisfrazResponse(UUID id, UUID empresaId, String nombre, boolean activo, BigDecimal precioRentaGeneral,
-		BigDecimal precioRentaSugerido, List<SlotDto> slots) {
+		BigDecimal precioRentaSugerido, String fotoUrl, List<SlotDto> slots) {
 
 	/** Sin precio sugerido calculado (usos internos). */
 	static DisfrazResponse desde(Disfraz d) {
@@ -23,7 +23,7 @@ public record DisfrazResponse(UUID id, UUID empresaId, String nombre, boolean ac
 	static DisfrazResponse desde(Disfraz d, BigDecimal precioRentaSugerido) {
 		List<SlotDto> slots = d.slots().stream().map(DisfrazResponse::aSlotDto).toList();
 		return new DisfrazResponse(d.id(), d.empresaId(), d.nombre(), d.activo(), d.precioRentaGeneral(),
-				precioRentaSugerido, slots);
+				precioRentaSugerido, d.fotoUrl(), slots);
 	}
 
 	private static SlotDto aSlotDto(Slot s) {
