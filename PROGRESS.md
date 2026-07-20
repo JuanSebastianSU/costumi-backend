@@ -49,13 +49,22 @@ la Casa Matriz solo se creaba al aprobar tiendas venidas de una SOLICITUD).
 - La **devolución/multa por daño** aplica a la renta del disfraz.
 - **Rentar y vender prendas sueltas** desde el cliente funciona (carrito `checkout-renta`/`checkout`).
 
-**PENDIENTE (backend):**
-- **Pagos (sin adelanto):** la tarjeta debe cobrar el **total completo** (hoy el intento acepta cualquier monto); **validar**
-  el monto del intento vs el importe real; el **checkout** debe exigir el pago cuando corresponde. (Depósito con tarjeta por
-  pasarela: pendiente de decisión.)
-- Job que **expire reservas** RESERVADA no retiradas (hoy quedan indefinidas y ocupan calendario).
-- Código de retiro también en **"Mis Pedidos"**.
-- **Marketplace:** filtros por **categoría/cercanía** (RF-14.2/18.1); catálogo/disponibilidad a nivel **sucursal** (RF-14.1/18.2).
+**Hecho (PENDIENTE de merge — 4 ramas nuevas, cada una desde main actualizado, sin apilar, sin conflictos):**
+- `feat/pagos-total-de-golpe`: **el pago en línea cobra el total pendiente y valida el monto** (sin adelanto). El intento
+  ya no confía en el monto del cliente: calcula `importe/total − ya pagado` y exige que el monto lo cubra exacto (si no, 400).
+- `feat/codigo-en-mis-pedidos`: **código de retiro también en "Mis Pedidos"** (`HistorialItem.codigoRetiro`).
+- `feat/expirar-reservas`: **migración V57 `renta.creada_en`** (default now(), sin tocar dominio) + **job horario** que cancela
+  las reservas RESERVADA que a las 24 h siguen **sin pagar** (cubre efectivo no retirado y tarjeta no pagada; respeta las pagadas).
+- `feat/marketplace-filtro-categoria`: **`GET /marketplace/.../catalogo?categoria=<id>`** filtra el catálogo por categoría.
+
+**Decisiones del usuario que cerraron el diseño de pagos:** **ADELANTO ELIMINADO** — todo se paga de golpe (tarjeta→en línea el
+total; efectivo→todo en la tienda). El "checkout debe exigir el pago" se cumple **vía la expiración** (un pedido sin pagar
+expira a las 24 h) + la **validación del monto**; NO hace falta forzar el pago síncrono en el checkout. Se descartó el catálogo
+a nivel sucursal (RF-14.1/18.2) por decisión del usuario (no aporta lo suficiente).
+
+**PENDIENTE (backend) — lo único que queda:**
+- **Filtro por CERCANÍA** del marketplace (RF-18.1): requiere **coordenadas (lat/lng)** que hoy no se guardan (la sucursal tiene
+  dirección y link de Maps, no geolocalización). Diferido: necesita un dato nuevo.
 - **Perf (acción del usuario):** verificar en Railway la **región** DB↔app (los ~222 ms uniformes por query lo sugieren).
 
 **PENDIENTE (app Android):** regenerar `:api-client` + todo lo listado en `AppCustomi2/ACTUALIZACION_FRONTEND.md`
