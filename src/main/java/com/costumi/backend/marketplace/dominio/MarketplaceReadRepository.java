@@ -12,7 +12,7 @@ public interface MarketplaceReadRepository {
 	List<EmpresaEnVitrina> buscarEmpresas(String texto);
 
 	/** Catálogo público (prendas no archivadas) de una empresa ACTIVA. Vacío si no está activa. */
-	List<PrendaEnVitrina> catalogoDe(UUID empresaId);
+	List<PrendaEnVitrina> catalogoDe(UUID empresaId, UUID categoriaId);
 
 	/**
 	 * Sucursales ACTIVAS (puntos de retiro) de una empresa ACTIVA, para que el cliente elija dónde
