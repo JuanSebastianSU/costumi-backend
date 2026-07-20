@@ -116,6 +116,22 @@ class ConsultaDeInventarioService implements ConsultaDeInventario {
 
 	@Override
 	@Transactional(readOnly = true)
+	public Map<UUID, ResumenDePrenda> resumenDePrendas(UUID empresaId, java.util.Collection<UUID> prendaIds) {
+		Map<UUID, ResumenDePrenda> resumen = new java.util.LinkedHashMap<>();
+		for (UUID prendaId : prendaIds) {
+			if (prendaId == null || resumen.containsKey(prendaId)) {
+				continue;
+			}
+			prendas.buscarPorId(prendaId)
+					.filter(prenda -> prenda.empresaId().equals(empresaId))
+					.ifPresent(prenda -> resumen.put(prenda.id(),
+							new ResumenDePrenda(prenda.id(), prenda.nombre(), prenda.fotoUrl())));
+		}
+		return resumen;
+	}
+
+	@Override
+	@Transactional(readOnly = true)
 	public int contarPrendasEnCategoria(UUID empresaId, UUID categoriaId) {
 		return (int) prendas.listarPorEmpresa(empresaId).stream()
 				.filter(prenda -> !prenda.archivada())

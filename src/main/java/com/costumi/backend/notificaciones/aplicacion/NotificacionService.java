@@ -69,7 +69,9 @@ class NotificacionService implements EnviarNotificacion, ConsultarNotificaciones
 			return 0; // la empresa apagó el recordatorio de vencidas.
 		}
 		int enviadas = 0;
+		int totalVencidas = 0;
 		for (RentaVencidaAviso aviso : vencidas.vencidas(empresaId, LocalDate.now())) {
+			totalVencidas++;
 			if (aviso.clienteId() == null) {
 				continue;
 			}
@@ -78,6 +80,14 @@ class NotificacionService implements EnviarNotificacion, ConsultarNotificaciones
 					"cliente", cliente,
 					"fecha_devolucion", String.valueOf(aviso.fechaDevolucion())));
 			ejecutar(new EnviarNotificacionComando(empresaId, aviso.clienteId(), CanalNotificacion.WHATSAPP, mensaje));
+			enviadas++;
+		}
+		// RF-11.1: además del cliente, avisar al dueño. Un único resumen in-app por empresa (no spam por renta).
+		if (totalVencidas > 0) {
+			String resumen = totalVencidas == 1
+					? "Hoy hay 1 devolución vencida sin resolver."
+					: "Hoy hay " + totalVencidas + " devoluciones vencidas sin resolver.";
+			ejecutar(new EnviarNotificacionComando(empresaId, null, CanalNotificacion.IN_APP, resumen));
 			enviadas++;
 		}
 		return enviadas;

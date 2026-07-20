@@ -1,5 +1,6 @@
 package com.costumi.backend.clientes.aplicacion;
 
+import com.costumi.backend.clientes.dominio.FiltroDeClientes;
 import com.costumi.backend.clientes.dominio.HistorialItem;
 
 import java.util.List;
@@ -13,6 +14,6 @@ public interface ConsultarHistorial {
 	/** Historial del usuario del marketplace, uniendo sus fichas en todas las tiendas (RF-14.4/18.9). */
 	List<HistorialItem> historialDeUsuario(UUID usuarioId);
 
-	/** Ids de clientes de la empresa con rentas activas pendientes de devolver. */
-	List<UUID> clientesConPendientes(UUID empresaId);
+	/** Ids de clientes de la empresa que caen en la categoría de pendiente indicada (RF-11.5/11.6). */
+	List<UUID> clientesPorFiltro(UUID empresaId, FiltroDeClientes filtro);
 }

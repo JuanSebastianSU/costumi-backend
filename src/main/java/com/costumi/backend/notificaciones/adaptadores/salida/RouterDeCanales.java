@@ -30,6 +30,7 @@ class RouterDeCanales implements CanalDeNotificacion {
 			case WHATSAPP -> whatsApp.enviar(notificacion);
 			case FCM -> fcm.enviar(notificacion);
 			case EMAIL -> false; // notificación por email: no hay canal externo aún, va al log
+			case IN_APP -> false; // aviso in-app para el dueño: sin canal externo, solo se persiste (log)
 		};
 		return enviado || registroEnLog.enviar(notificacion);
 	}

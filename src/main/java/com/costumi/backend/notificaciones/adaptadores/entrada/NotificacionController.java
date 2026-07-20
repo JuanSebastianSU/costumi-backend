@@ -1,5 +1,6 @@
 package com.costumi.backend.notificaciones.adaptadores.entrada;
 
+import com.costumi.backend.notificaciones.aplicacion.AvisarStockBajo;
 import com.costumi.backend.notificaciones.aplicacion.ConsultarNotificaciones;
 import com.costumi.backend.notificaciones.aplicacion.EnviarNotificacion;
 import com.costumi.backend.notificaciones.aplicacion.EnviarNotificacionComando;
@@ -30,13 +31,15 @@ class NotificacionController {
 	private final ConsultarNotificaciones consultarNotificaciones;
 	private final RecordarVencidas recordarVencidas;
 	private final RecordarProximas recordarProximas;
+	private final AvisarStockBajo avisarStockBajo;
 
 	NotificacionController(EnviarNotificacion enviarNotificacion, ConsultarNotificaciones consultarNotificaciones,
-			RecordarVencidas recordarVencidas, RecordarProximas recordarProximas) {
+			RecordarVencidas recordarVencidas, RecordarProximas recordarProximas, AvisarStockBajo avisarStockBajo) {
 		this.enviarNotificacion = enviarNotificacion;
 		this.consultarNotificaciones = consultarNotificaciones;
 		this.recordarVencidas = recordarVencidas;
 		this.recordarProximas = recordarProximas;
+		this.avisarStockBajo = avisarStockBajo;
 	}
 
 	@PostMapping
@@ -60,6 +63,13 @@ class NotificacionController {
 	RecordatorioResponse recordarProximas(@AuthenticationPrincipal Jwt jwt) {
 		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
 		return new RecordatorioResponse(recordarProximas.ejecutar(empresaId));
+	}
+
+	/** Dispara manualmente el aviso proactivo de stock bajo al dueño (RF-11.2). */
+	@PostMapping("/avisar-stock-bajo")
+	RecordatorioResponse avisarStockBajo(@AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		return new RecordatorioResponse(avisarStockBajo.ejecutar(empresaId));
 	}
 
 	record RecordatorioResponse(int enviadas) {

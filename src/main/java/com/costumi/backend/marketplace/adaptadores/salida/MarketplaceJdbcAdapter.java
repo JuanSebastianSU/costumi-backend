@@ -14,15 +14,21 @@ import java.util.UUID;
 @Repository
 class MarketplaceJdbcAdapter implements MarketplaceReadRepository {
 
+	// Solo tiendas que PUEDEN operar: ACTIVA y con al menos un punto de retiro (sucursal no archivada).
+	// Así el cliente no entra a una tienda sin sucursal, que no le dejaría armar el pedido.
 	private static final String EMPRESAS_ACTIVAS =
-			"select id, nombre from empresa where estado = 'ACTIVA' order by nombre";
+			"select id, nombre from empresa e where e.estado = 'ACTIVA' "
+			+ "and exists (select 1 from sucursal s where s.empresa_id = e.id and s.archivada = false) "
+			+ "order by nombre";
 
-	private static final String BUSCAR_EMPRESAS = "select id, nombre from empresa "
-			+ "where estado = 'ACTIVA' and lower(nombre) like lower('%' || :texto || '%') order by nombre";
+	private static final String BUSCAR_EMPRESAS = "select id, nombre from empresa e "
+			+ "where e.estado = 'ACTIVA' and lower(e.nombre) like lower('%' || :texto || '%') "
+			+ "and exists (select 1 from sucursal s where s.empresa_id = e.id and s.archivada = false) "
+			+ "order by nombre";
 
 	// Catálogo público: prendas no archivadas de una empresa, solo si la empresa está ACTIVA.
 	private static final String CATALOGO = "select p.id, p.nombre, p.tipo_articulo, p.precio_renta, "
-			+ "p.precio_venta, c.nombre as categoria "
+			+ "p.precio_venta, c.nombre as categoria, p.foto_url "
 			+ "from prenda p join categoria c on c.id = p.categoria_id join empresa e on e.id = p.empresa_id "
 			+ "where p.empresa_id = :empresaId and p.archivada = false and e.estado = 'ACTIVA' "
 			+ "order by p.nombre";
@@ -73,7 +79,8 @@ class MarketplaceJdbcAdapter implements MarketplaceReadRepository {
 				rs.getString("tipo_articulo"),
 				rs.getBigDecimal("precio_renta"),
 				rs.getBigDecimal("precio_venta"),
-				rs.getString("categoria"));
+				rs.getString("categoria"),
+				rs.getString("foto_url"));
 	}
 
 	private static SucursalEnVitrina mapearSucursal(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
