@@ -13,19 +13,23 @@ import java.util.UUID;
 
 /** DTO de salida de la Venta con sus líneas (cada una con nombre y foto) y el {@code codigoRetiro} para retirar. {@code montoReembolsado} es el total ya devuelto (RF-4.5). */
 public record VentaResponse(UUID id, String codigoRetiro, UUID sucursalId, UUID empleadoId, UUID clienteId,
-		BigDecimal descuento, BigDecimal total, String estado, BigDecimal montoReembolsado, List<LineaResponse> lineas) {
+		String clienteNombre, BigDecimal descuento, BigDecimal total, String estado, BigDecimal montoReembolsado,
+		List<LineaResponse> lineas) {
 
 	public record LineaResponse(UUID prendaId, String nombre, String fotoUrl, int cantidad, int cantidadDevuelta,
 			BigDecimal precioUnitario, BigDecimal subtotal) {
 	}
 
-	/** Sin resumen de prendas: líneas sin nombre/foto (usos internos). */
+	/** Sin resumen de prendas ni nombre: líneas sin nombre/foto (usos internos). */
 	static VentaResponse desde(Venta v) {
-		return desde(v, Map.of());
+		return desde(v, Map.of(), null);
 	}
 
-	/** Enriquecida: cada línea toma nombre y foto de {@code resumenes} (por prendaId), para el desglose visual. */
-	static VentaResponse desde(Venta v, Map<UUID, ResumenDePrenda> resumenes) {
+	/**
+	 * Enriquecida: cada línea toma nombre y foto de {@code resumenes} (por prendaId) y {@code clienteNombre}
+	 * es el nombre de la ficha del cliente, para que el listado lo muestre sin abrir el detalle.
+	 */
+	static VentaResponse desde(Venta v, Map<UUID, ResumenDePrenda> resumenes, String clienteNombre) {
 		List<LineaResponse> lineas = v.lineas().stream()
 				.map(l -> {
 					ResumenDePrenda r = resumenes.get(l.prendaId());
@@ -34,7 +38,7 @@ public record VentaResponse(UUID id, String codigoRetiro, UUID sucursalId, UUID 
 				})
 				.toList();
 		return new VentaResponse(v.id(), CodigoDeRetiro.de("V", v.id()), v.sucursalId(), v.empleadoId(), v.clienteId(),
-				v.descuento(), v.total(), v.estado().name(), montoReembolsado(v), lineas);
+				clienteNombre, v.descuento(), v.total(), v.estado().name(), montoReembolsado(v), lineas);
 	}
 
 	/** Dinero ya reembolsado: la porción del total que corresponde a las unidades devueltas (proporcional). */
