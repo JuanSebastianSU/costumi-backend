@@ -66,6 +66,34 @@ class NotificacionIntegrationTest {
 				.andExpect(jsonPath("$.length()").value(1));
 	}
 
+	@Test
+	void avisar_stock_bajo_deja_un_resumen_in_app_al_dueno() throws Exception {
+		String res = mvc.perform(post("/api/v1/empresas").contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Stock " + UUID.randomUUID() + "\"}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		UUID empresa = UUID.fromString(json.readTree(res).get("id").asText());
+		String superAdmin = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, null, Rol.SUPERADMIN);
+		mvc.perform(post("/api/v1/empresas/{id}/aprobar", empresa).header("Authorization", "Bearer " + superAdmin))
+				.andExpect(status().isOk());
+		String dueno = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.DUENO);
+		UUID sucursal = postId("/api/v1/empresas/" + empresa + "/sucursales", dueno, "{\"nombre\":\"Centro\"}");
+		UUID categoria = postId("/api/v1/categorias", dueno, "{\"nombre\":\"Cat " + UUID.randomUUID() + "\"}");
+		UUID prenda = postId("/api/v1/prendas", dueno, "{\"categoriaId\":\"" + categoria
+				+ "\",\"nombre\":\"Traje\",\"tipoArticulo\":\"RENTA\",\"precioRenta\":20.00}");
+		// Grupo con 0 unidades disponibles: queda por debajo del umbral por defecto (1).
+		postId("/api/v1/prendas/" + prenda + "/grupos-stock", dueno,
+				"{\"sucursalId\":\"" + sucursal + "\",\"combinacion\":[],\"cantidadInicial\":0}");
+
+		// RF-11.2: dispara el aviso proactivo -> un resumen in-app para el dueño.
+		mvc.perform(post("/api/v1/notificaciones/avisar-stock-bajo").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.enviadas").value(1));
+
+		mvc.perform(get("/api/v1/notificaciones").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.canal == 'IN_APP')]").exists());
+	}
+
 	private UUID postId(String path, String tk, String body) throws Exception {
 		String res = mvc.perform(post(path).header("Authorization", "Bearer " + tk)
 						.contentType(MediaType.APPLICATION_JSON).content(body))

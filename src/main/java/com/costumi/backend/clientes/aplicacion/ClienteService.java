@@ -3,6 +3,7 @@ package com.costumi.backend.clientes.aplicacion;
 import com.costumi.backend.clientes.ResolucionDeClientes;
 import com.costumi.backend.clientes.dominio.Cliente;
 import com.costumi.backend.clientes.dominio.ClienteRepository;
+import com.costumi.backend.clientes.dominio.FiltroDeClientes;
 import com.costumi.backend.clientes.dominio.HistorialItem;
 import com.costumi.backend.clientes.dominio.HistorialReadRepository;
 import com.costumi.backend.compartido.Pagina;
@@ -10,6 +11,7 @@ import com.costumi.backend.compartido.SolicitudDePagina;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
@@ -114,8 +116,8 @@ class ClienteService implements CrearCliente, ConsultarClientes, CambiarListaNeg
 
 	@Override
 	@Transactional(readOnly = true)
-	public List<UUID> clientesConPendientes(UUID empresaId) {
-		return historial.clientesConPendientes(empresaId);
+	public List<UUID> clientesPorFiltro(UUID empresaId, FiltroDeClientes filtro) {
+		return historial.clientesPorFiltro(empresaId, filtro, LocalDate.now());
 	}
 
 	@Override

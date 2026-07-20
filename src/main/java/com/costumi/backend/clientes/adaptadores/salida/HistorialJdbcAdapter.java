@@ -1,10 +1,12 @@
 package com.costumi.backend.clientes.adaptadores.salida;
 
+import com.costumi.backend.clientes.dominio.FiltroDeClientes;
 import com.costumi.backend.clientes.dominio.HistorialItem;
 import com.costumi.backend.clientes.dominio.HistorialReadRepository;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -40,9 +42,57 @@ class HistorialJdbcAdapter implements HistorialReadRepository {
 				.query(HistorialItem.class).list();
 	}
 
+	// --- Fragmentos de saldo reutilizados (RF-11.5/11.6), consistentes con Devoluciones y Pagos ---
+	// Multa de una renta = Σ max(0, daños + retraso − depósito) de sus devoluciones (Devolucion.multa()).
+	private static final String MULTA_DE_RENTA = """
+			coalesce((select sum(greatest(d.cargo_por_danos + d.cargo_por_retraso - d.deposito, 0))
+			          from devolucion d where d.renta_id = r.id and d.empresa_id = r.empresa_id), 0)""";
+	// Pagos netos de ingreso de la renta = COBRO (+) − REEMBOLSO (−); depósito y su devolución no cuentan
+	// (Pago.montoNeto()).
+	private static final String PAGOS_NETOS_DE_RENTA = """
+			coalesce((select sum(case p.tipo_pago when 'COBRO' then p.monto when 'REEMBOLSO' then -p.monto else 0 end)
+			          from pago p where p.empresa_id = r.empresa_id and p.tipo_concepto = 'RENTA'
+			                        and p.concepto_id = r.id), 0)""";
+
+	// SALDOS: rentas activas o devueltas donde lo pagado no cubre importe + multa (aún debe dinero).
+	private static final String SALDOS = """
+			select distinct r.cliente_id
+			from renta r
+			where r.empresa_id = :empresaId and r.estado in ('ACTIVA', 'DEVUELTA')
+			  and r.importe + %s - %s > 0
+			""".formatted(MULTA_DE_RENTA, PAGOS_NETOS_DE_RENTA);
+
+	// MULTAS: incurrió en alguna multa (daños/retraso que superaron el depósito), esté pagada o no.
+	private static final String MULTAS = """
+			select distinct r.cliente_id
+			from renta r
+			where r.empresa_id = :empresaId and %s > 0
+			""".formatted(MULTA_DE_RENTA);
+
+	// VENCIDAS: renta activa cuya fecha de devolución ya pasó.
+	private static final String VENCIDAS = """
+			select distinct cliente_id from renta
+			where empresa_id = :empresaId and estado = 'ACTIVA' and fecha_devolucion < :hoy
+			""";
+
+	// PENDIENTES (indicador general): rentas activas por devolver ∪ saldos por cobrar.
+	private static final String PENDIENTES = """
+			select distinct cliente_id from renta where empresa_id = :empresaId and estado = 'ACTIVA'
+			union
+			""" + SALDOS;
+
 	@Override
-	public List<UUID> clientesConPendientes(UUID empresaId) {
-		return jdbc.sql("select distinct cliente_id from renta where empresa_id = :empresaId and estado = 'ACTIVA'")
-				.param("empresaId", empresaId).query(UUID.class).list();
+	public List<UUID> clientesPorFiltro(UUID empresaId, FiltroDeClientes filtro, LocalDate hoy) {
+		String sql = switch (filtro) {
+			case PENDIENTES -> PENDIENTES;
+			case VENCIDAS -> VENCIDAS;
+			case MULTAS -> MULTAS;
+			case SALDOS -> SALDOS;
+		};
+		JdbcClient.StatementSpec spec = jdbc.sql(sql).param("empresaId", empresaId);
+		if (filtro == FiltroDeClientes.VENCIDAS) {
+			spec = spec.param("hoy", hoy);
+		}
+		return spec.query(UUID.class).list();
 	}
 }
