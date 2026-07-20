@@ -22,7 +22,7 @@ class MarketplaceJdbcAdapter implements MarketplaceReadRepository {
 
 	// Catálogo público: prendas no archivadas de una empresa, solo si la empresa está ACTIVA.
 	private static final String CATALOGO = "select p.id, p.nombre, p.tipo_articulo, p.precio_renta, "
-			+ "p.precio_venta, c.nombre as categoria "
+			+ "p.precio_venta, c.nombre as categoria, p.foto_url "
 			+ "from prenda p join categoria c on c.id = p.categoria_id join empresa e on e.id = p.empresa_id "
 			+ "where p.empresa_id = :empresaId and p.archivada = false and e.estado = 'ACTIVA' "
 			+ "order by p.nombre";
@@ -73,7 +73,8 @@ class MarketplaceJdbcAdapter implements MarketplaceReadRepository {
 				rs.getString("tipo_articulo"),
 				rs.getBigDecimal("precio_renta"),
 				rs.getBigDecimal("precio_venta"),
-				rs.getString("categoria"));
+				rs.getString("categoria"),
+				rs.getString("foto_url"));
 	}
 
 	private static SucursalEnVitrina mapearSucursal(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {

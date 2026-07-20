@@ -1,6 +1,7 @@
 package com.costumi.backend.inventario;
 
 import java.math.BigDecimal;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -61,6 +62,17 @@ public interface ConsultaDeInventario {
 
 	/** La opción concreta de una prenda fija (nombre, precio, stock y etiquetas), si existe en la empresa. */
 	Optional<OpcionDePool> opcionDePrenda(UUID empresaId, UUID prendaId);
+
+	/** Resumen mínimo de una prenda para pintar el desglose de un pedido/renta/venta: nombre y foto. */
+	record ResumenDePrenda(UUID prendaId, String nombre, String fotoUrl) {
+	}
+
+	/**
+	 * Resumen (nombre + foto) de varias prendas de la empresa, indexado por id. Sirve para que Rentas,
+	 * Ventas y "Mis Pedidos" muestren QUÉ se rentó/compró, con imagen, sin conocer las clases de Inventario.
+	 * Ignora ids que no existan o no sean de la empresa (aislamiento por tenant, §5.4).
+	 */
+	Map<UUID, ResumenDePrenda> resumenDePrendas(UUID empresaId, Collection<UUID> prendaIds);
 
 	/**
 	 * Cuántas prendas <b>activas</b> (no archivadas) de la empresa pertenecen a la categoría. Sirve para

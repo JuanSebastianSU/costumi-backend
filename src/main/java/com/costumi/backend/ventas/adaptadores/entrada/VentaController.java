@@ -2,6 +2,7 @@ package com.costumi.backend.ventas.adaptadores.entrada;
 
 import com.costumi.backend.compartido.RespuestaPaginada;
 import com.costumi.backend.compartido.SolicitudDePagina;
+import com.costumi.backend.inventario.ConsultaDeInventario;
 import com.costumi.backend.ventas.aplicacion.ConsultarVentas;
 import com.costumi.backend.ventas.aplicacion.DevolverVenta;
 import com.costumi.backend.ventas.aplicacion.RegistrarVenta;
@@ -35,11 +36,20 @@ class VentaController {
 	private final RegistrarVenta registrarVenta;
 	private final ConsultarVentas consultarVentas;
 	private final DevolverVenta devolverVenta;
+	private final ConsultaDeInventario inventario;
 
-	VentaController(RegistrarVenta registrarVenta, ConsultarVentas consultarVentas, DevolverVenta devolverVenta) {
+	VentaController(RegistrarVenta registrarVenta, ConsultarVentas consultarVentas, DevolverVenta devolverVenta,
+			ConsultaDeInventario inventario) {
 		this.registrarVenta = registrarVenta;
 		this.consultarVentas = consultarVentas;
 		this.devolverVenta = devolverVenta;
+		this.inventario = inventario;
+	}
+
+	/** Respuesta con las líneas enriquecidas (nombre + foto de cada prenda) para el desglose. */
+	private VentaResponse resp(UUID empresaId, Venta v) {
+		List<UUID> prendaIds = v.lineas().stream().map(LineaDeVenta::prendaId).toList();
+		return VentaResponse.desde(v, inventario.resumenDePrendas(empresaId, prendaIds));
 	}
 
 	/**
@@ -56,7 +66,7 @@ class VentaController {
 				cantidades.merge(linea.prendaId(), linea.cantidad(), Integer::sum);
 			}
 		}
-		return VentaResponse.desde(devolverVenta.devolver(empresaId, id, cantidades));
+		return resp(empresaId, devolverVenta.devolver(empresaId, id, cantidades));
 	}
 
 	@PostMapping
@@ -70,7 +80,7 @@ class VentaController {
 		Venta venta = registrarVenta.ejecutar(new RegistrarVentaComando(empresaId, request.sucursalId(),
 				empleadoId, request.clienteId(), request.descuento(), lineas, request.claveIdempotencia()));
 		URI location = uriBuilder.path("/api/v1/ventas/{id}").buildAndExpand(venta.id()).toUri();
-		return ResponseEntity.created(location).body(VentaResponse.desde(venta));
+		return ResponseEntity.created(location).body(resp(empresaId, venta));
 	}
 
 	@GetMapping
@@ -80,8 +90,9 @@ class VentaController {
 		if (empresaId == null) {
 			return new RespuestaPaginada<>(List.of(), 0, 0, 0, 0);
 		}
+		UUID empresa = UUID.fromString(empresaId);
 		return RespuestaPaginada.desde(
-				consultarVentas.listar(UUID.fromString(empresaId), SolicitudDePagina.de(pagina, tamano)),
-				VentaResponse::desde);
+				consultarVentas.listar(empresa, SolicitudDePagina.de(pagina, tamano)),
+				v -> resp(empresa, v));
 	}
 }

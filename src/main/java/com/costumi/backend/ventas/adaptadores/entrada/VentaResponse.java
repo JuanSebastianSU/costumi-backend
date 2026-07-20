@@ -1,25 +1,36 @@
 package com.costumi.backend.ventas.adaptadores.entrada;
 
+import com.costumi.backend.inventario.ConsultaDeInventario.ResumenDePrenda;
 import com.costumi.backend.ventas.dominio.LineaDeVenta;
 import com.costumi.backend.ventas.dominio.Venta;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
-/** DTO de salida de la Venta con sus líneas. {@code montoReembolsado} es el total ya devuelto (RF-4.5). */
+/** DTO de salida de la Venta con sus líneas (cada una con nombre y foto). {@code montoReembolsado} es el total ya devuelto (RF-4.5). */
 public record VentaResponse(UUID id, UUID sucursalId, UUID empleadoId, UUID clienteId, BigDecimal descuento,
 		BigDecimal total, String estado, BigDecimal montoReembolsado, List<LineaResponse> lineas) {
 
-	public record LineaResponse(UUID prendaId, int cantidad, int cantidadDevuelta, BigDecimal precioUnitario,
-			BigDecimal subtotal) {
+	public record LineaResponse(UUID prendaId, String nombre, String fotoUrl, int cantidad, int cantidadDevuelta,
+			BigDecimal precioUnitario, BigDecimal subtotal) {
 	}
 
+	/** Sin resumen de prendas: líneas sin nombre/foto (usos internos). */
 	static VentaResponse desde(Venta v) {
+		return desde(v, Map.of());
+	}
+
+	/** Enriquecida: cada línea toma nombre y foto de {@code resumenes} (por prendaId), para el desglose visual. */
+	static VentaResponse desde(Venta v, Map<UUID, ResumenDePrenda> resumenes) {
 		List<LineaResponse> lineas = v.lineas().stream()
-				.map(l -> new LineaResponse(l.prendaId(), l.cantidad(), l.cantidadDevuelta(), l.precioUnitario(),
-						l.subtotal()))
+				.map(l -> {
+					ResumenDePrenda r = resumenes.get(l.prendaId());
+					return new LineaResponse(l.prendaId(), r == null ? null : r.nombre(), r == null ? null : r.fotoUrl(),
+							l.cantidad(), l.cantidadDevuelta(), l.precioUnitario(), l.subtotal());
+				})
 				.toList();
 		return new VentaResponse(v.id(), v.sucursalId(), v.empleadoId(), v.clienteId(), v.descuento(), v.total(),
 				v.estado().name(), montoReembolsado(v), lineas);

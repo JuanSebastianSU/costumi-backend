@@ -8,5 +8,5 @@ import java.util.UUID;
  * (RF-18). Solo datos que el cliente puede ver; nada privado del negocio.
  */
 public record PrendaEnVitrina(UUID id, String nombre, String tipoArticulo, BigDecimal precioRenta,
-		BigDecimal precioVenta, String categoria) {
+		BigDecimal precioVenta, String categoria, String fotoUrl) {
 }
