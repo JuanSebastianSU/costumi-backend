@@ -2,12 +2,14 @@ package com.costumi.backend.rentas.adaptadores.entrada;
 
 import com.costumi.backend.compartido.RespuestaPaginada;
 import com.costumi.backend.compartido.SolicitudDePagina;
+import com.costumi.backend.inventario.ConsultaDeInventario;
 import com.costumi.backend.rentas.aplicacion.ConsultarRentas;
 import com.costumi.backend.rentas.aplicacion.CrearRenta;
 import com.costumi.backend.rentas.aplicacion.CrearRentaComando;
 import com.costumi.backend.rentas.aplicacion.GestionarRenta;
 import com.costumi.backend.rentas.aplicacion.LineaDeRentaComando;
 import com.costumi.backend.rentas.dominio.Renta;
+import com.costumi.backend.rentas.dominio.RentaLinea;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
 import jakarta.validation.Valid;
@@ -35,30 +37,39 @@ class RentaController {
 	private final CrearRenta crearRenta;
 	private final ConsultarRentas consultarRentas;
 	private final GestionarRenta gestionarRenta;
+	private final ConsultaDeInventario inventario;
 	private final com.costumi.backend.compartido.GeneradorDePdf pdf;
 
 	RentaController(CrearRenta crearRenta, ConsultarRentas consultarRentas, GestionarRenta gestionarRenta,
-			com.costumi.backend.compartido.GeneradorDePdf pdf) {
+			ConsultaDeInventario inventario, com.costumi.backend.compartido.GeneradorDePdf pdf) {
 		this.crearRenta = crearRenta;
 		this.consultarRentas = consultarRentas;
 		this.gestionarRenta = gestionarRenta;
+		this.inventario = inventario;
 		this.pdf = pdf;
+	}
+
+	/** Construye la respuesta con las líneas enriquecidas (nombre + foto de cada prenda) para el desglose. */
+	private RentaResponse resp(UUID empresaId, Renta r) {
+		List<UUID> prendaIds = r.lineas().stream().map(RentaLinea::prendaId).toList();
+		return RentaResponse.desde(r, inventario.resumenDePrendas(empresaId, prendaIds));
 	}
 
 	/** Contrato de renta en PDF (RF-3.4). */
 	@GetMapping(value = "/{id}/contrato.pdf", produces = "application/pdf")
 	ResponseEntity<byte[]> contrato(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
 		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
-		RentaResponse r = consultarRentas.buscarPorId(empresaId, id).map(RentaResponse::desde)
+		Renta renta = consultarRentas.buscarPorId(empresaId, id)
 				.orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
 						org.springframework.http.HttpStatus.NOT_FOUND, "Renta no encontrada"));
+		RentaResponse r = resp(empresaId, renta);
 		java.util.List<String> lineas = new java.util.ArrayList<>();
 		lineas.add("Renta: " + r.id());
 		lineas.add("Cliente: " + r.clienteId());
 		lineas.add("Artículos:");
 		for (LineaRentaResponse linea : r.lineas()) {
-			lineas.add("  - Prenda " + linea.prendaId() + " x" + linea.cantidad() + " ($" + linea.precioPorDia()
-					+ "/día)");
+			String articulo = linea.nombre() != null ? linea.nombre() : "Prenda " + linea.prendaId();
+			lineas.add("  - " + articulo + " x" + linea.cantidad() + " ($" + linea.precioPorDia() + "/día)");
 		}
 		lineas.add("Fecha de retiro: " + r.fechaRetiro());
 		lineas.add("Fecha de devolución: " + r.fechaDevolucion());
@@ -83,7 +94,7 @@ class RentaController {
 				lineasDe(request), request.fechaRetiro(), request.fechaDevolucion(), request.deposito(),
 				request.claveIdempotencia(), empleadoId));
 		URI location = uriBuilder.path("/api/v1/rentas/{id}").buildAndExpand(renta.id()).toUri();
-		return ResponseEntity.created(location).body(RentaResponse.desde(renta));
+		return ResponseEntity.created(location).body(resp(empresaId, renta));
 	}
 
 	/**
@@ -111,30 +122,35 @@ class RentaController {
 		if (empresaId == null) {
 			return new RespuestaPaginada<>(List.of(), 0, 0, 0, 0);
 		}
+		UUID empresa = UUID.fromString(empresaId);
 		return RespuestaPaginada.desde(
-				consultarRentas.listar(UUID.fromString(empresaId), clienteId, SolicitudDePagina.de(pagina, tamano)),
-				RentaResponse::desde);
+				consultarRentas.listar(empresa, clienteId, SolicitudDePagina.de(pagina, tamano)),
+				r -> resp(empresa, r));
 	}
 
 	@PostMapping("/{id}/entregar")
 	RentaResponse entregar(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
-		return RentaResponse.desde(gestionarRenta.entregar(empresa(jwt), id));
+		UUID empresa = empresa(jwt);
+		return resp(empresa, gestionarRenta.entregar(empresa, id));
 	}
 
 	@PostMapping("/{id}/devolver")
 	RentaResponse devolver(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
-		return RentaResponse.desde(gestionarRenta.devolver(empresa(jwt), id));
+		UUID empresa = empresa(jwt);
+		return resp(empresa, gestionarRenta.devolver(empresa, id));
 	}
 
 	@PostMapping("/{id}/cerrar")
 	RentaResponse cerrar(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
-		return RentaResponse.desde(gestionarRenta.cerrar(empresa(jwt), id));
+		UUID empresa = empresa(jwt);
+		return resp(empresa, gestionarRenta.cerrar(empresa, id));
 	}
 
 	@PostMapping("/{id}/extender")
 	RentaResponse extender(@PathVariable UUID id, @RequestBody ExtenderRentaRequest request,
 			@AuthenticationPrincipal Jwt jwt) {
-		return RentaResponse.desde(gestionarRenta.extender(empresa(jwt), id, request.nuevaFechaDevolucion()));
+		UUID empresa = empresa(jwt);
+		return resp(empresa, gestionarRenta.extender(empresa, id, request.nuevaFechaDevolucion()));
 	}
 
 	record ExtenderRentaRequest(java.time.LocalDate nuevaFechaDevolucion) {
@@ -142,7 +158,8 @@ class RentaController {
 
 	@PostMapping("/{id}/cancelar")
 	RentaResponse cancelar(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
-		return RentaResponse.desde(gestionarRenta.cancelar(empresa(jwt), id));
+		UUID empresa = empresa(jwt);
+		return resp(empresa, gestionarRenta.cancelar(empresa, id));
 	}
 
 	private static UUID empresa(Jwt jwt) {
