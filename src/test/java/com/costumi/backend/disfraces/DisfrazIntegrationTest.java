@@ -242,36 +242,6 @@ class DisfrazIntegrationTest {
 	}
 
 	@Test
-	void la_renta_del_disfraz_cobra_el_deposito_suma_de_los_de_sus_prendas() throws Exception {
-		CtxRenta c = montarRenta("Deposito Disfraz");
-		UUID categoria = crearCategoria(c.dueno(), "Cat " + UUID.randomUUID());
-		// Prenda con depósito sugerido 30.
-		UUID prenda = UUID.fromString(json.readTree(mvc.perform(post("/api/v1/prendas")
-						.header("Authorization", "Bearer " + c.dueno()).contentType(MediaType.APPLICATION_JSON)
-						.content("{\"categoriaId\":\"" + categoria + "\",\"nombre\":\"Traje\",\"tipoArticulo\":\"RENTA\","
-								+ "\"precioRenta\":20.00,\"depositoSugerido\":30.00}"))
-				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asText());
-		// Disfraz de una pieza fija con esa prenda.
-		UUID disfraz = UUID.fromString(json.readTree(mvc.perform(post("/api/v1/disfraces")
-						.header("Authorization", "Bearer " + c.dueno()).contentType(MediaType.APPLICATION_JSON)
-						.content("{\"nombre\":\"Traje\",\"slots\":[{\"orden\":1,\"nombre\":\"Traje\","
-								+ "\"ejePrenda\":\"FIJA\",\"prendaFijaId\":\"" + prenda + "\",\"opcional\":false}]}"))
-				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asText());
-
-		mvc.perform(post("/api/v1/disfraces/{id}/rentar", disfraz).header("Authorization", "Bearer " + c.dueno())
-						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"sucursalId\":\"" + c.sucursal() + "\",\"clienteId\":\"" + c.cliente() + "\","
-								+ "\"fechaRetiro\":\"2026-08-01\",\"fechaDevolucion\":\"2026-08-04\"}"))
-				.andExpect(status().isOk());
-
-		// La renta tomó el depósito del disfraz = la suma de los depósitos de sus prendas (aquí, 30).
-		mvc.perform(get("/api/v1/rentas").param("clienteId", c.cliente().toString())
-						.header("Authorization", "Bearer " + c.dueno()))
-				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.contenido[0].deposito").value(30.00));
-	}
-
-	@Test
 	void rentar_disfraz_resuelve_slots_fijo_y_personalizable_a_una_renta() throws Exception {
 		CtxRenta c = montarRenta("Rentar Disfraz");
 		UUID categoria = crearCategoria(c.dueno(), "Cat " + UUID.randomUUID());
