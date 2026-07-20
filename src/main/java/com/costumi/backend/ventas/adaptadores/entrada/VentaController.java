@@ -88,6 +88,16 @@ class VentaController {
 		return ResponseEntity.created(location).body(resp(empresaId, venta));
 	}
 
+	/** Una venta por id, con sus líneas (nombre + foto), para el detalle de cobros/reembolsos. */
+	@GetMapping("/{id}")
+	VentaResponse porId(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		Venta venta = consultarVentas.buscarPorId(empresaId, id)
+				.orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+						org.springframework.http.HttpStatus.NOT_FOUND, "Venta no encontrada"));
+		return resp(empresaId, venta);
+	}
+
 	@GetMapping
 	RespuestaPaginada<VentaResponse> listar(@RequestParam(required = false) Integer pagina,
 			@RequestParam(required = false) Integer tamano, @AuthenticationPrincipal Jwt jwt) {

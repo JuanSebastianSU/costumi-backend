@@ -5,6 +5,7 @@ import com.costumi.backend.compartido.SolicitudDePagina;
 import com.costumi.backend.ventas.dominio.Venta;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /** Puerto de entrada: lista las Ventas de una empresa (scoped por tenant). */
@@ -14,4 +15,7 @@ public interface ConsultarVentas {
 
 	/** Página de ventas de la empresa, más recientes primero (C3). */
 	Pagina<Venta> listar(UUID empresaId, SolicitudDePagina solicitud);
+
+	/** Una venta del tenant por id (para su detalle con líneas y foto). */
+	Optional<Venta> buscarPorId(UUID empresaId, UUID ventaId);
 }

@@ -58,6 +58,7 @@ class DevolucionIntegrationTest {
 		UUID sucursal = postId("/api/v1/empresas/" + empresa + "/sucursales", dueno, "{\"nombre\":\"Centro\"}");
 		this.sucursal = sucursal;
 		UUID cliente = postId("/api/v1/clientes", dueno, "{\"nombre\":\"Cliente\"}");
+		this.cliente = cliente;
 		UUID categoria = postId("/api/v1/categorias", dueno, "{\"nombre\":\"Camisa " + UUID.randomUUID() + "\"}");
 		UUID prenda = postId("/api/v1/prendas", dueno, "{\"categoriaId\":\"" + categoria
 				+ "\",\"nombre\":\"Camisa\",\"tipoArticulo\":\"RENTA\",\"precioRenta\":20.00}");
@@ -76,6 +77,7 @@ class DevolucionIntegrationTest {
 	private String dueno;
 	private UUID prenda;
 	private UUID sucursal;
+	private UUID cliente;
 
 	/** Igual que rentaDePrueba pero con fechas pasadas (pactada 2020-01-05) para probar el retraso. */
 	private UUID rentaVencida() throws Exception {
@@ -431,6 +433,64 @@ class DevolucionIntegrationTest {
 						org.hamcrest.Matchers.hasItem(org.hamcrest.Matchers.containsString("Ya no adeudas nada"))))
 				.andExpect(jsonPath("$[?(@.canal == 'WHATSAPP')].mensaje",
 						org.hamcrest.Matchers.hasItem(org.hamcrest.Matchers.containsString("$30"))));
+	}
+
+	@Test
+	void cada_pieza_de_la_devolucion_trae_el_nombre_de_la_prenda() throws Exception {
+		UUID renta = rentaDePrueba();
+
+		// RF-5: al ver la devolución, cada pieza se enriquece con el nombre (y foto) de la prenda.
+		mvc.perform(post("/api/v1/devoluciones").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"rentaId\":\"" + renta + "\",\"deposito\":100.00,\"cargoPorDanos\":0,"
+								+ "\"cargoPorRetraso\":0,\"piezas\":[{\"prendaId\":\"" + prenda
+								+ "\",\"descripcion\":\"Camisa\",\"llego\":true,\"estado\":\"BIEN\"}]}"))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.piezas[0].nombre").value("Camisa"));
+
+		mvc.perform(get("/api/v1/devoluciones").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.rentaId == '" + renta + "')].piezas[0].nombre",
+						org.hamcrest.Matchers.hasItem("Camisa")));
+	}
+
+	@Test
+	void estado_de_cuenta_desglosa_el_saldo_y_la_multa_por_renta() throws Exception {
+		UUID renta = rentaDePrueba(); // importe = 20/día × 3 días = 60; cliente "Cliente"
+
+		// Devolución con multa 30 (cargos 80 > depósito 50). La renta queda DEVUELTA.
+		mvc.perform(post("/api/v1/devoluciones").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"rentaId\":\"" + renta + "\",\"deposito\":50.00,\"cargoPorDanos\":60.00,"
+								+ "\"cargoPorRetraso\":20.00,\"piezas\":[{\"prendaId\":\"" + prenda
+								+ "\",\"descripcion\":\"Camisa\",\"llego\":true,\"estado\":\"DANADA\"}]}"))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.multa").value(30.00));
+
+		// Estado de cuenta: la renta explica el saldo = importe 60 + multa 30 − pagado 0 = 90.
+		mvc.perform(get("/api/v1/clientes/{id}/estado-cuenta", cliente).header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.saldoTotal").value(90.00))
+				.andExpect(jsonPath("$.multaTotal").value(30.00))
+				.andExpect(jsonPath("$.lineas.length()").value(1))
+				.andExpect(jsonPath("$.lineas[0].importe").value(60.00))
+				.andExpect(jsonPath("$.lineas[0].multa").value(30.00))
+				.andExpect(jsonPath("$.lineas[0].pagado").value(0))
+				.andExpect(jsonPath("$.lineas[0].saldo").value(90.00))
+				.andExpect(jsonPath("$.lineas[0].codigoRetiro").exists());
+
+		// Un cobro parcial de 40 baja el saldo a 50 y se refleja en 'pagado'.
+		mvc.perform(post("/api/v1/pagos").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + sucursal + "\",\"tipoConcepto\":\"RENTA\",\"conceptoId\":\"" + renta
+								+ "\",\"monto\":40.00,\"metodo\":\"EFECTIVO\"}"))
+				.andExpect(status().isCreated());
+
+		mvc.perform(get("/api/v1/clientes/{id}/estado-cuenta", cliente).header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.saldoTotal").value(50.00))
+				.andExpect(jsonPath("$.lineas[0].pagado").value(40.00))
+				.andExpect(jsonPath("$.lineas[0].saldo").value(50.00));
 	}
 
 	@Test

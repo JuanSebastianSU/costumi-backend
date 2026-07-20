@@ -5,6 +5,7 @@ import com.costumi.backend.devoluciones.aplicacion.RegistrarDevolucion;
 import com.costumi.backend.devoluciones.aplicacion.RegistrarDevolucionComando;
 import com.costumi.backend.devoluciones.dominio.Devolucion;
 import com.costumi.backend.devoluciones.dominio.PiezaRevisada;
+import com.costumi.backend.inventario.ConsultaDeInventario;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -27,10 +28,19 @@ class DevolucionController {
 
 	private final RegistrarDevolucion registrarDevolucion;
 	private final ConsultarDevoluciones consultarDevoluciones;
+	private final ConsultaDeInventario inventario;
 
-	DevolucionController(RegistrarDevolucion registrarDevolucion, ConsultarDevoluciones consultarDevoluciones) {
+	DevolucionController(RegistrarDevolucion registrarDevolucion, ConsultarDevoluciones consultarDevoluciones,
+			ConsultaDeInventario inventario) {
 		this.registrarDevolucion = registrarDevolucion;
 		this.consultarDevoluciones = consultarDevoluciones;
+		this.inventario = inventario;
+	}
+
+	/** Respuesta con piezas enriquecidas (nombre + foto) resolviendo cada prendaId contra el inventario. */
+	private DevolucionResponse resp(UUID empresaId, Devolucion d) {
+		List<UUID> prendaIds = d.piezas().stream().map(p -> p.prendaId()).toList();
+		return DevolucionResponse.desde(d, inventario.resumenDePrendas(empresaId, prendaIds));
 	}
 
 	@PostMapping
@@ -48,7 +58,7 @@ class DevolucionController {
 				request.rentaId(), request.deposito(), request.cargoPorDanos(), request.cargoPorRetraso(),
 				fechaReal, piezas));
 		URI location = uriBuilder.path("/api/v1/devoluciones/{id}").buildAndExpand(devolucion.id()).toUri();
-		return ResponseEntity.created(location).body(DevolucionResponse.desde(devolucion));
+		return ResponseEntity.created(location).body(resp(empresaId, devolucion));
 	}
 
 	@GetMapping
@@ -57,7 +67,8 @@ class DevolucionController {
 		if (empresaId == null) {
 			return List.of();
 		}
-		return consultarDevoluciones.deEmpresa(UUID.fromString(empresaId)).stream()
-				.map(DevolucionResponse::desde).toList();
+		UUID empresa = UUID.fromString(empresaId);
+		return consultarDevoluciones.deEmpresa(empresa).stream()
+				.map(d -> resp(empresa, d)).toList();
 	}
 }

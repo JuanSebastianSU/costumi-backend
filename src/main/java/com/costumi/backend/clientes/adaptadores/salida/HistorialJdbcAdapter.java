@@ -4,6 +4,7 @@ import com.costumi.backend.clientes.dominio.CargaDeCliente;
 import com.costumi.backend.clientes.dominio.FiltroDeClientes;
 import com.costumi.backend.clientes.dominio.HistorialItem;
 import com.costumi.backend.clientes.dominio.HistorialReadRepository;
+import com.costumi.backend.clientes.dominio.LineaDeEstadoDeCuenta;
 import com.costumi.backend.clientes.dominio.LineaDeHistorial;
 import com.costumi.backend.compartido.CodigoDeRetiro;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -160,6 +161,41 @@ class HistorialJdbcAdapter implements HistorialReadRepository {
 			where r.empresa_id = :empresaId and r.cliente_id in (:ids)
 			group by r.cliente_id
 			""".formatted(MULTA_DE_RENTA, PAGOS_NETOS_DE_RENTA);
+
+	// Estado de cuenta: por cada renta del cliente, sus componentes (reusando los mismos fragmentos que CARGA
+	// para que la suma de las líneas cuadre exactamente con el saldo/multa agregados).
+	private static final String ESTADO_DE_CUENTA = """
+			select r.id as renta_id, r.estado, r.fecha_retiro, r.fecha_devolucion, r.importe,
+			       coalesce((select sum(d.cargo_por_danos) from devolucion d
+			                 where d.renta_id = r.id and d.empresa_id = r.empresa_id), 0) as danos,
+			       coalesce((select sum(d.cargo_por_retraso) from devolucion d
+			                 where d.renta_id = r.id and d.empresa_id = r.empresa_id), 0) as retraso,
+			       coalesce((select sum(d.deposito) from devolucion d
+			                 where d.renta_id = r.id and d.empresa_id = r.empresa_id), 0) as deposito,
+			       %1$s as multa,
+			       %2$s as pagado,
+			       case when r.estado in ('ACTIVA','DEVUELTA') then greatest(r.importe + %1$s - %2$s, 0)
+			            else 0 end as saldo
+			from renta r
+			where r.empresa_id = :empresaId and r.cliente_id = :clienteId
+			order by r.fecha_retiro desc nulls last
+			""".formatted(MULTA_DE_RENTA, PAGOS_NETOS_DE_RENTA);
+
+	@Override
+	public List<LineaDeEstadoDeCuenta> estadoDeCuenta(UUID empresaId, UUID clienteId) {
+		return jdbc.sql(ESTADO_DE_CUENTA).param("empresaId", empresaId).param("clienteId", clienteId)
+				.query((rs, rowNum) -> {
+					UUID rentaId = rs.getObject("renta_id", UUID.class);
+					return new LineaDeEstadoDeCuenta(rentaId, CodigoDeRetiro.de("R", rentaId), rs.getString("estado"),
+							rs.getObject("fecha_retiro", LocalDate.class),
+							rs.getObject("fecha_devolucion", LocalDate.class), rs.getBigDecimal("importe"),
+							rs.getBigDecimal("danos"), rs.getBigDecimal("retraso"), rs.getBigDecimal("deposito"),
+							rs.getBigDecimal("multa"), rs.getBigDecimal("pagado"), rs.getBigDecimal("saldo"));
+				})
+				.list().stream()
+				.filter(l -> l.saldo().signum() > 0 || l.multa().signum() > 0)
+				.toList();
+	}
 
 	@Override
 	public Map<UUID, CargaDeCliente> cargaDeClientes(UUID empresaId, Collection<UUID> clienteIds) {

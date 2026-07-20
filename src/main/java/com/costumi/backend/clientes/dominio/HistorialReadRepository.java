@@ -12,6 +12,12 @@ public interface HistorialReadRepository {
 	List<HistorialItem> deCliente(UUID empresaId, UUID clienteId);
 
 	/**
+	 * Estado de cuenta del cliente (RF-7/11.5): una línea por renta con saldo o multa, con el desglose
+	 * (importe, daños, retraso, depósito, multa, pagado, saldo) que explica cuánto debe y por qué.
+	 */
+	List<LineaDeEstadoDeCuenta> estadoDeCuenta(UUID empresaId, UUID clienteId);
+
+	/**
 	 * Ids de clientes de la empresa que caen en la categoría de pendiente indicada (RF-11.5/11.6).
 	 * {@code hoy} se usa para las rentas vencidas.
 	 */
