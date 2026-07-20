@@ -1,5 +1,6 @@
 package com.costumi.backend.clientes.adaptadores.salida;
 
+import com.costumi.backend.clientes.dominio.CargaDeCliente;
 import com.costumi.backend.clientes.dominio.FiltroDeClientes;
 import com.costumi.backend.clientes.dominio.HistorialItem;
 import com.costumi.backend.clientes.dominio.HistorialReadRepository;
@@ -10,6 +11,8 @@ import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -145,5 +148,32 @@ class HistorialJdbcAdapter implements HistorialReadRepository {
 			spec = spec.param("hoy", hoy);
 		}
 		return spec.query(UUID.class).list();
+	}
+
+	// Saldo + multa por cliente: sobre sus rentas de la empresa, reusando los mismos fragmentos que el filtro.
+	private static final String CARGA = """
+			select r.cliente_id,
+			       coalesce(sum(case when r.estado in ('ACTIVA','DEVUELTA')
+			                         then greatest(r.importe + %1$s - %2$s, 0) else 0 end), 0) as saldo_pendiente,
+			       coalesce(sum(%1$s), 0) as multa_total
+			from renta r
+			where r.empresa_id = :empresaId and r.cliente_id in (:ids)
+			group by r.cliente_id
+			""".formatted(MULTA_DE_RENTA, PAGOS_NETOS_DE_RENTA);
+
+	@Override
+	public Map<UUID, CargaDeCliente> cargaDeClientes(UUID empresaId, Collection<UUID> clienteIds) {
+		if (clienteIds == null || clienteIds.isEmpty()) {
+			return Map.of();
+		}
+		Map<UUID, CargaDeCliente> out = new HashMap<>();
+		jdbc.sql(CARGA).param("empresaId", empresaId).param("ids", clienteIds)
+				.query((rs, rowNum) -> {
+					out.put(rs.getObject("cliente_id", UUID.class),
+							new CargaDeCliente(rs.getBigDecimal("saldo_pendiente"), rs.getBigDecimal("multa_total")));
+					return null;
+				})
+				.list();
+		return out;
 	}
 }

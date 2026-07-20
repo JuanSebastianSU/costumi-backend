@@ -119,10 +119,13 @@ class ClienteController {
 		FiltroDeClientes categoria = resolverFiltro(filtro, conPendientes);
 		List<UUID> idsFiltro = categoria == null ? null
 				: consultarHistorial.clientesPorFiltro(empresaId, categoria);
-		return RespuestaPaginada.desde(
+		com.costumi.backend.compartido.Pagina<com.costumi.backend.clientes.dominio.Cliente> pagados =
 				consultarClientes.listar(empresaId, buscar, idsFiltro, incluirArchivados,
-						SolicitudDePagina.de(pagina, tamano)),
-				ClienteResponse::desde);
+						SolicitudDePagina.de(pagina, tamano));
+		List<UUID> idsPagina = pagados.contenido().stream()
+				.map(com.costumi.backend.clientes.dominio.Cliente::id).toList();
+		var carga = consultarHistorial.cargaDeClientes(empresaId, idsPagina);
+		return RespuestaPaginada.desde(pagados, c -> ClienteResponse.desde(c, carga.get(c.id())));
 	}
 
 	/** Traduce el parámetro a la categoría de filtro; ignora un valor inválido (equivale a sin filtro). */

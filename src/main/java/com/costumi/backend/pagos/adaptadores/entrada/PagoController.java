@@ -3,6 +3,8 @@ package com.costumi.backend.pagos.adaptadores.entrada;
 import com.costumi.backend.pagos.aplicacion.ConfirmarPagoEnLinea;
 import com.costumi.backend.pagos.aplicacion.ConsultarPagos;
 import com.costumi.backend.pagos.aplicacion.CrearIntentoDePago;
+import com.costumi.backend.pagos.aplicacion.CrearIntentoDePagoDeCliente;
+import com.costumi.backend.pagos.aplicacion.CrearIntentoDePagoDeClienteComando;
 import com.costumi.backend.pagos.aplicacion.RegistrarCobroMixto;
 import com.costumi.backend.pagos.aplicacion.RegistrarCobroMixtoComando;
 import com.costumi.backend.pagos.aplicacion.RegistrarPago;
@@ -37,17 +39,20 @@ class PagoController {
 	private final RegistrarCobroMixto registrarCobroMixto;
 	private final com.costumi.backend.compartido.GeneradorDePdf pdf;
 	private final CrearIntentoDePago crearIntentoDePago;
+	private final CrearIntentoDePagoDeCliente crearIntentoDePagoDeCliente;
 	private final ConfirmarPagoEnLinea confirmarPagoEnLinea;
 	private final VerificadorDeFirmaDeWebhook verificadorDeFirma;
 
 	PagoController(RegistrarPago registrarPago, ConsultarPagos consultarPagos, RegistrarCobroMixto registrarCobroMixto,
 			com.costumi.backend.compartido.GeneradorDePdf pdf, CrearIntentoDePago crearIntentoDePago,
-			ConfirmarPagoEnLinea confirmarPagoEnLinea, VerificadorDeFirmaDeWebhook verificadorDeFirma) {
+			CrearIntentoDePagoDeCliente crearIntentoDePagoDeCliente, ConfirmarPagoEnLinea confirmarPagoEnLinea,
+			VerificadorDeFirmaDeWebhook verificadorDeFirma) {
 		this.registrarPago = registrarPago;
 		this.consultarPagos = consultarPagos;
 		this.registrarCobroMixto = registrarCobroMixto;
 		this.pdf = pdf;
 		this.crearIntentoDePago = crearIntentoDePago;
+		this.crearIntentoDePagoDeCliente = crearIntentoDePagoDeCliente;
 		this.confirmarPagoEnLinea = confirmarPagoEnLinea;
 		this.verificadorDeFirma = verificadorDeFirma;
 	}
@@ -59,6 +64,21 @@ class PagoController {
 		UUID empleadoId = UUID.fromString(jwt.getSubject());
 		CrearIntentoDePago.Resultado r = crearIntentoDePago.ejecutar(empresaId, request.sucursalId(), empleadoId,
 				request.tipoConcepto(), request.conceptoId(), request.monto(), request.moneda());
+		return new IntentoDePagoResponse(r.intentoId(), r.urlCheckout());
+	}
+
+	/**
+	 * Inicia un pago en línea que paga el propio CLIENTE del marketplace por su operación (RF-6.11/14.4). La
+	 * empresa (tienda) la indica el cliente; su ficha y la propiedad de la venta/renta salen de su token. El
+	 * backend valida que el monto cubra el total pendiente (pago total de golpe) y devuelve la URL del checkout.
+	 */
+	@PostMapping("/intento/cliente")
+	IntentoDePagoResponse intentoDeCliente(@Valid @RequestBody IntentoDePagoDeClienteRequest request,
+			@AuthenticationPrincipal Jwt jwt) {
+		UUID usuarioId = UUID.fromString(jwt.getSubject());
+		CrearIntentoDePago.Resultado r = crearIntentoDePagoDeCliente.ejecutar(new CrearIntentoDePagoDeClienteComando(
+				request.empresaId(), usuarioId, jwt.getClaimAsString("email"), request.sucursalId(),
+				request.tipoConcepto(), request.conceptoId(), request.monto(), request.moneda()));
 		return new IntentoDePagoResponse(r.intentoId(), r.urlCheckout());
 	}
 

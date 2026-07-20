@@ -244,6 +244,10 @@ class CarritoIntegrationTest {
 		org.assertj.core.api.Assertions.assertThat(
 				json.readTree(venta).get("lineas").get(0).get("subtotal").decimalValue())
 				.isEqualByComparingTo("180.00");
+		// La línea trae el nombre de la prenda para mostrar QUÉ se agregó (con imagen si tiene).
+		org.assertj.core.api.Assertions.assertThat(
+				json.readTree(venta).get("lineas").get(0).get("nombre").asText())
+				.isEqualTo("Camisa");
 
 		// RENTA x2, periodo 01→04 ago (3 días) -> 30 × 2 × 3 = 180.
 		agregar(c, "RENTA", 2);

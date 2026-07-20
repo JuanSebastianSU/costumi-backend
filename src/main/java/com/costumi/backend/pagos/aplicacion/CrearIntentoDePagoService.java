@@ -1,5 +1,6 @@
 package com.costumi.backend.pagos.aplicacion;
 
+import com.costumi.backend.clientes.ResolucionDeClientes;
 import com.costumi.backend.configuracion.ConsultaDeConfiguracion;
 import com.costumi.backend.pagos.dominio.IntentoDePago;
 import com.costumi.backend.pagos.dominio.IntentoDePagoRepository;
@@ -21,7 +22,7 @@ import java.util.UUID;
  * enviado no lo cubre, se rechaza (C-pagos: el monto se valida contra el importe real, no se confía en el cliente).
  */
 @Service
-class CrearIntentoDePagoService implements CrearIntentoDePago {
+class CrearIntentoDePagoService implements CrearIntentoDePago, CrearIntentoDePagoDeCliente {
 
 	private final IntentoDePagoRepository intentos;
 	private final PasarelaDePago pasarela;
@@ -29,16 +30,18 @@ class CrearIntentoDePagoService implements CrearIntentoDePago {
 	private final ConsultaDeRentas rentas;
 	private final ConsultaDeVentas ventas;
 	private final PagoRepository pagos;
+	private final ResolucionDeClientes clientes;
 
 	CrearIntentoDePagoService(IntentoDePagoRepository intentos, PasarelaDePago pasarela,
 			ConsultaDeConfiguracion configuracion, ConsultaDeRentas rentas, ConsultaDeVentas ventas,
-			PagoRepository pagos) {
+			PagoRepository pagos, ResolucionDeClientes clientes) {
 		this.intentos = intentos;
 		this.pasarela = pasarela;
 		this.configuracion = configuracion;
 		this.rentas = rentas;
 		this.ventas = ventas;
 		this.pagos = pagos;
+		this.clientes = clientes;
 	}
 
 	@Override
@@ -64,6 +67,28 @@ class CrearIntentoDePagoService implements CrearIntentoDePago {
 		intento.asignarReferenciaExterna(checkout.idExterno());
 		intentos.guardar(intento);
 		return new Resultado(intento.id(), checkout.urlCheckout());
+	}
+
+	/**
+	 * Intento de pago iniciado por el propio cliente del marketplace (RF-14.4): resuelve su ficha en la tienda
+	 * y verifica que la operación sea suya antes de crear el checkout (no revela pedidos ajenos, 403). El resto
+	 * (validación de monto contra el total pendiente, switch de pago en línea) es idéntico al del personal.
+	 */
+	@Override
+	@Transactional
+	public Resultado ejecutar(CrearIntentoDePagoDeClienteComando comando) {
+		UUID ficha = clientes.fichaDeUsuarioSiExiste(comando.empresaId(), comando.usuarioId())
+				.orElseThrow(PagoEnLineaNoAutorizado::new);
+		UUID clienteDelConcepto = switch (comando.tipoConcepto()) {
+			case VENTA -> ventas.clienteDeVenta(comando.empresaId(), comando.conceptoId()).orElse(null);
+			case RENTA -> rentas.clienteDeRenta(comando.empresaId(), comando.conceptoId()).orElse(null);
+		};
+		if (clienteDelConcepto == null || !clienteDelConcepto.equals(ficha)) {
+			throw new PagoEnLineaNoAutorizado();
+		}
+		// El cliente que inicia el pago se atribuye como quien lo confirma (no hay staff en el flujo del marketplace).
+		return ejecutar(comando.empresaId(), comando.sucursalId(), comando.usuarioId(), comando.tipoConcepto(),
+				comando.conceptoId(), comando.monto(), comando.moneda());
 	}
 
 	/** Monto total a cobrar del concepto (importe de la renta o total de la venta); falla si no existe. */

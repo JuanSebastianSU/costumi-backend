@@ -9,6 +9,85 @@
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
 ## Fase actual
+**Fase 14 — Cartera de clientes: saldo + multa por cliente en el listado (2026-07-20).**
+
+Rama `feat/cliente-saldos` (desde `origin/main`, PENDIENTE de merge). El front de gestión ya filtra la cartera
+(PENDIENTES/VENCIDAS/MULTAS/SALDOS), pero `ClienteResponse` no traía las **cifras**, así que no se podía mostrar
+cuánto debe cada cliente. Ahora el DTO del **listado** incluye **`saldoPendiente`** (Σ de sus rentas activas/devueltas
+de `max(0, importe + multa − pagado)`) y **`multaTotal`** (Σ de multas), computados en un solo query agrupado por
+cliente que **reutiliza los mismos fragmentos SQL** que el filtro de cartera (`MULTA_DE_RENTA`, `PAGOS_NETOS_DE_RENTA`,
+consistentes con Devoluciones/Pagos). Nuevo record `dominio.CargaDeCliente`; puerto `HistorialReadRepository`/`ConsultarHistorial`
+gana `cargaDeClientes(empresaId, clienteIds)` (solo la página actual, sin N+1); `ClienteController.listar` enriquece cada
+`ClienteResponse`. Las respuestas de una sola ficha (crear/editar/estado) van con 0 (no se calcula ahí). Sin migración.
+Tests: `ClienteIntegrationTest` **9/9** (asertan `multaTotal>0` y `saldoPendiente>0` para el cliente con multa; multa=$30),
+ArchUnit 3/3, Modulith 1/1; suite completa en Docker. **Al mergear: regenerar `:api-client` y mostrar la cifra en la
+lista de clientes de gestión** (`ClienteAdapter`).
+
+---
+
+## Fase 13 (cerrada — mergeada, PR #122)
+**Fase 13 — Carrito con nombre + foto por línea (2026-07-20).**
+
+Rama `feat/carrito-nombre-foto` (desde `origin/main`, PENDIENTE de merge). El carrito pendiente/agregar sólo devolvía
+`prendaId` por línea → la app mostraba "Articulo xN" sin nombre ni imagen. Ahora `LineaDeCarritoResponse` gana
+**`nombre`** y **`fotoUrl`**, poblados con `ConsultaDeInventario.resumenDePrendas(empresaId, prendaIds)` (mismo patrón
+que las líneas de "Mis Pedidos"). `CarritoController` inyecta `ConsultaDeInventario`; sin migración (no toca esquema).
+Tests: `CarritoIntegrationTest` **7/7** (aserción nueva: la línea trae `nombre`), ArchUnit 3/3 (edge pedidos→inventario
+ya existía), Modulith 1/1; suite completa en Docker antes de subir. **Al mergear: regenerar `:api-client` y cablear el
+adapter del carrito (`CarritoLineaAdapter`) para pintar nombre + foto (ya hay helper `cargarFoto`).**
+
+### Deuda técnica / pendientes a futuro (documentado a pedido del usuario)
+- **Push al cliente (notificaciones):** bloqueado en dos frentes. (a) Backend: `PUT /clientes/{id}/device-token` es
+  **solo-staff** (`hasAnyRole(DUENO,ENCARGADO,MOSTRADOR,ATENCION)`) → el cliente no puede registrar su token; haría
+  falta abrir una vía self-service (patrón del pago del cliente). (b) Infra: falta un **proyecto Firebase/FCM**
+  (`google-services.json` + credenciales) que sólo puede crear el usuario. Sin push la app funciona; sólo faltan avisos
+  con la app cerrada.
+- **Credenciales de producción por aplicar en Railway (env vars):** hoy varias integraciones quedan "listas para
+  credencial" y sin ellas el flujo real no cierra:
+  - **MercadoPago (pasarela):** sin credencial, `POST /pagos/intento[/cliente]` no crea un checkout real (la app abre la
+    URL pero no hay cobro). El **pago con tarjeta del cliente** depende de esto. (S3 de fotos ya está configurado.)
+  - **WhatsApp (Meta/Twilio):** el canal registra el mensaje pero no lo envía; los mensajes automáticos ya están cableados.
+  - **SMTP (email)** y **FCM (push)**: idem, listos para credencial.
+  → Acción del usuario: setear esas env vars en Railway. Nada de código pendiente para estas (salvo push, ver arriba).
+
+---
+
+## Fase 12 (cerrada — mergeada a `main`)
+**Fase 12 — Auditoría front↔backend + cierre del pago en línea del cliente (2026-07-20).**
+
+**Contexto:** las 6 ramas de la Fase 11 ya están **mergeadas** en `main` (verificado: `origin/main` en `4ba7166`,
+PRs #114–#119). Se hizo una **revisión completa de la app Android (`AppCustomi2`) contra la superficie real del
+backend** (147 endpoints). Resultado:
+- **Gestión ~90% + SuperAdmin + Auth: completos.** El **cliente** solo tiene un marketplace de **prendas sueltas**
+  (explorar→catálogo→detalle→carrito→reserva→historial); **falta TODO el recorrido del disfraz** (tienda con 2
+  apartados, detalle de disfraz, **ruleta**, rentar/comprar disfraz), la **pantalla de pago**, el **código de retiro**,
+  las **imágenes** (Coil está en el build pero **sin usar**), y `device-token` (push del cliente) nunca se llama.
+- El `:api-client` de la app está generado del contrato **viejo (Jul 14)**: no tiene fotoUrl del disfraz/prenda,
+  vender/foto de disfraz, `?categoria`, `codigoRetiro`/`lineas` del historial, ni la ruleta con foto. **Regenerar.**
+
+**Hueco de BACKEND encontrado al verificar (y cerrado en esta fase):** el **pago con tarjeta en línea del cliente**
+no estaba soportado. `POST /pagos/intento` sacaba la empresa del **token** (`empresa_id`), pero el token de un
+CLIENTE del marketplace **no** lo lleva → reventaba/era solo modo asistido por personal (regla de seguridad lo
+restringía a DUENO/ENCARGADO/MOSTRADOR/ATENCION).
+
+**Hecho — rama `feat/pago-en-linea-cliente` (PENDIENTE de merge, desde `origin/main`):**
+- Nuevo endpoint **`POST /api/v1/pagos/intento/cliente`** (rol **CLIENTE**): el cliente indica `empresaId` (la tienda);
+  su ficha y la **propiedad** de la venta/renta salen de su token. Verifica que la operación sea suya
+  (`ResolucionDeClientes.fichaDeUsuarioSiExiste` + `clienteDeVenta`/`clienteDeRenta`) → si no, **403**
+  (`PagoEnLineaNoAutorizado`, paralelo a `ReembolsoNoAutorizado`). Reutiliza el **mismo** cálculo de "total de golpe"
+  (valida el monto contra el total pendiente; parcial → 400) y el switch `pagoEnLinea` de la empresa.
+- Patrón calcado del **hermano** `POST /reembolsos/cliente`. Sin migración (no toca esquema). Regla de negocio en la
+  **capa de aplicación** (`CrearIntentoDePagoDeCliente`), no en el controller.
+- Tests: `IntentoDePagoDeClienteIntegrationTest` **4/4** (paga su propia venta→URL checkout con stub de pasarela;
+  parcial→400; venta ajena→403; staff en el endpoint del cliente→403). **ArchUnit 3/3 y Modulith 1/1 en verde.**
+  (Suite completa corrida en Docker antes de subir.)
+
+**Falta (lo grande):** **toda la app Android del recorrido del cliente** (mañana). Backend: solo queda **diferido** el
+filtro por **cercanía** del marketplace (necesita lat/lng que hoy no se guardan).
+
+---
+
+## Fase 11 (cerrada — todo mergeado a `main`)
 **Fase 11 — Recorrido de compra + disfraz 100% + optimización con SigNoz (2026-07-19 → 07-20).**
 Sesión larga de mejoras iterativas. Cada rebanada con tests + ArchUnit + Modulith en verde, probada en Docker
 (la suite creció a ~460 tests). **OJO con el estado de `main`:** el usuario mergeó #107–#110; **quedan PENDIENTES
@@ -49,13 +128,22 @@ la Casa Matriz solo se creaba al aprobar tiendas venidas de una SOLICITUD).
 - La **devolución/multa por daño** aplica a la renta del disfraz.
 - **Rentar y vender prendas sueltas** desde el cliente funciona (carrito `checkout-renta`/`checkout`).
 
-**PENDIENTE (backend):**
-- **Pagos (sin adelanto):** la tarjeta debe cobrar el **total completo** (hoy el intento acepta cualquier monto); **validar**
-  el monto del intento vs el importe real; el **checkout** debe exigir el pago cuando corresponde. (Depósito con tarjeta por
-  pasarela: pendiente de decisión.)
-- Job que **expire reservas** RESERVADA no retiradas (hoy quedan indefinidas y ocupan calendario).
-- Código de retiro también en **"Mis Pedidos"**.
-- **Marketplace:** filtros por **categoría/cercanía** (RF-14.2/18.1); catálogo/disponibilidad a nivel **sucursal** (RF-14.1/18.2).
+**Hecho (PENDIENTE de merge — 4 ramas nuevas, cada una desde main actualizado, sin apilar, sin conflictos):**
+- `feat/pagos-total-de-golpe`: **el pago en línea cobra el total pendiente y valida el monto** (sin adelanto). El intento
+  ya no confía en el monto del cliente: calcula `importe/total − ya pagado` y exige que el monto lo cubra exacto (si no, 400).
+- `feat/codigo-en-mis-pedidos`: **código de retiro también en "Mis Pedidos"** (`HistorialItem.codigoRetiro`).
+- `feat/expirar-reservas`: **migración V57 `renta.creada_en`** (default now(), sin tocar dominio) + **job horario** que cancela
+  las reservas RESERVADA que a las 24 h siguen **sin pagar** (cubre efectivo no retirado y tarjeta no pagada; respeta las pagadas).
+- `feat/marketplace-filtro-categoria`: **`GET /marketplace/.../catalogo?categoria=<id>`** filtra el catálogo por categoría.
+
+**Decisiones del usuario que cerraron el diseño de pagos:** **ADELANTO ELIMINADO** — todo se paga de golpe (tarjeta→en línea el
+total; efectivo→todo en la tienda). El "checkout debe exigir el pago" se cumple **vía la expiración** (un pedido sin pagar
+expira a las 24 h) + la **validación del monto**; NO hace falta forzar el pago síncrono en el checkout. Se descartó el catálogo
+a nivel sucursal (RF-14.1/18.2) por decisión del usuario (no aporta lo suficiente).
+
+**PENDIENTE (backend) — lo único que queda:**
+- **Filtro por CERCANÍA** del marketplace (RF-18.1): requiere **coordenadas (lat/lng)** que hoy no se guardan (la sucursal tiene
+  dirección y link de Maps, no geolocalización). Diferido: necesita un dato nuevo.
 - **Perf (acción del usuario):** verificar en Railway la **región** DB↔app (los ~222 ms uniformes por query lo sugieren).
 
 **PENDIENTE (app Android):** regenerar `:api-client` + todo lo listado en `AppCustomi2/ACTUALIZACION_FRONTEND.md`

@@ -45,12 +45,12 @@ public interface ConsultaDeInventario {
 	boolean prendaEnPool(UUID empresaId, UUID prendaId, UUID categoriaId, Map<UUID, Set<UUID>> etiquetasPermitidas);
 
 	/**
-	 * Una prenda concreta elegible en la "ruleta" de un slot: su nombre, precio de renta, unidades
+	 * Una prenda concreta elegible en la "ruleta" de un slot: su nombre, foto, precio de renta, unidades
 	 * disponibles (a nivel empresa) y sus valores de etiqueta ({@code tipoEtiquetaId -> valorEtiquetaId})
-	 * para que el cliente pueda filtrar por talla/color/modelo.
+	 * para que el cliente pueda ver la imagen y filtrar por talla/color/modelo.
 	 */
-	record OpcionDePool(UUID prendaId, String nombre, BigDecimal precioRenta, int unidadesDisponibles,
-			Map<UUID, UUID> etiquetas) {
+	record OpcionDePool(UUID prendaId, String nombre, String fotoUrl, BigDecimal precioRenta,
+			int unidadesDisponibles, Map<UUID, UUID> etiquetas) {
 	}
 
 	/**

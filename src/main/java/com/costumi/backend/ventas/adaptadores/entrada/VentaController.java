@@ -38,18 +38,23 @@ class VentaController {
 	private final DevolverVenta devolverVenta;
 	private final ConsultaDeInventario inventario;
 
+	private final com.costumi.backend.clientes.ResolucionDeClientes clientes;
+
 	VentaController(RegistrarVenta registrarVenta, ConsultarVentas consultarVentas, DevolverVenta devolverVenta,
-			ConsultaDeInventario inventario) {
+			ConsultaDeInventario inventario, com.costumi.backend.clientes.ResolucionDeClientes clientes) {
 		this.registrarVenta = registrarVenta;
 		this.consultarVentas = consultarVentas;
 		this.devolverVenta = devolverVenta;
 		this.inventario = inventario;
+		this.clientes = clientes;
 	}
 
-	/** Respuesta con las líneas enriquecidas (nombre + foto de cada prenda) para el desglose. */
+	/** Respuesta con líneas enriquecidas (nombre + foto) y el nombre del cliente, para el listado. */
 	private VentaResponse resp(UUID empresaId, Venta v) {
 		List<UUID> prendaIds = v.lineas().stream().map(LineaDeVenta::prendaId).toList();
-		return VentaResponse.desde(v, inventario.resumenDePrendas(empresaId, prendaIds));
+		String clienteNombre = v.clienteId() == null ? null
+				: clientes.nombreDeCliente(empresaId, v.clienteId()).orElse(null);
+		return VentaResponse.desde(v, inventario.resumenDePrendas(empresaId, prendaIds), clienteNombre);
 	}
 
 	/**
