@@ -9,7 +9,7 @@ import java.util.UUID;
 /** Puerto de entrada: reportes de inventario (tablero de estado y resumen), RF-9.1/9.3. */
 public interface ConsultarInventario {
 
-	List<GrupoInventario> tableroDeInventario(UUID empresaId);
+	List<GrupoInventario> tableroDeInventario(UUID empresaId, UUID sucursalId);
 
 	ResumenInventario resumenDeInventario(UUID empresaId);
 }

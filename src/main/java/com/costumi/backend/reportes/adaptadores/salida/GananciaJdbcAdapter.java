@@ -18,9 +18,11 @@ class GananciaJdbcAdapter implements GananciaReadRepository {
 	private static final String INGRESOS =
 			"select coalesce(sum(monto), 0) from pago where empresa_id = :empresaId";
 
+	// El costo se acota por sucursal uniendo a la venta (linea_de_venta no lleva sucursal_id).
 	private static final String COSTO_DE_VENTAS = """
 			select coalesce(sum(lv.cantidad * coalesce(p.costo_adquisicion, 0)), 0)
 			from linea_de_venta lv
+			join venta v on v.id = lv.venta_id
 			join prenda p on p.id = lv.prenda_id
 			where lv.empresa_id = :empresaId
 			""";
@@ -32,9 +34,17 @@ class GananciaJdbcAdapter implements GananciaReadRepository {
 	}
 
 	@Override
-	public ResumenDeGanancia deEmpresa(UUID empresaId) {
-		BigDecimal ingresos = jdbc.sql(INGRESOS).param("empresaId", empresaId).query(BigDecimal.class).single();
-		BigDecimal costo = jdbc.sql(COSTO_DE_VENTAS).param("empresaId", empresaId).query(BigDecimal.class).single();
+	public ResumenDeGanancia deEmpresa(UUID empresaId, UUID sucursalId) {
+		String ingresosSql = INGRESOS + (sucursalId == null ? "" : " and sucursal_id = :sucursalId");
+		String costoSql = COSTO_DE_VENTAS + (sucursalId == null ? "" : " and v.sucursal_id = :sucursalId");
+		BigDecimal ingresos = conSucursal(jdbc.sql(ingresosSql).param("empresaId", empresaId), sucursalId)
+				.query(BigDecimal.class).single();
+		BigDecimal costo = conSucursal(jdbc.sql(costoSql).param("empresaId", empresaId), sucursalId)
+				.query(BigDecimal.class).single();
 		return ResumenDeGanancia.de(ingresos, costo);
+	}
+
+	private static JdbcClient.StatementSpec conSucursal(JdbcClient.StatementSpec spec, UUID sucursalId) {
+		return sucursalId == null ? spec : spec.param("sucursalId", sucursalId);
 	}
 }

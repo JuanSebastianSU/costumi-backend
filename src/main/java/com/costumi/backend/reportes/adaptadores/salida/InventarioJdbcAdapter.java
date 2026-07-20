@@ -15,12 +15,15 @@ import java.util.UUID;
 @Repository
 class InventarioJdbcAdapter implements InventarioReadRepository {
 
+	// Agrega por prenda (una prenda puede tener stock en varias sucursales); el filtro de sucursal es opcional.
 	private static final String TABLERO = """
 			select g.prenda_id, p.nombre as prenda_nombre,
-			       g.disponibles, g.danadas, g.en_limpieza, g.perdidas
+			       sum(g.disponibles)::int as disponibles, sum(g.danadas)::int as danadas,
+			       sum(g.en_limpieza)::int as en_limpieza, sum(g.perdidas)::int as perdidas
 			from grupo_de_stock g
 			join prenda p on p.id = g.prenda_id
-			where g.empresa_id = :empresaId
+			where g.empresa_id = :empresaId%s
+			group by g.prenda_id, p.nombre
 			order by p.nombre
 			""";
 
@@ -31,8 +34,13 @@ class InventarioJdbcAdapter implements InventarioReadRepository {
 	}
 
 	@Override
-	public List<GrupoInventario> tablero(UUID empresaId) {
-		return jdbc.sql(TABLERO).param("empresaId", empresaId).query(GrupoInventario.class).list();
+	public List<GrupoInventario> tablero(UUID empresaId, UUID sucursalId) {
+		String sql = TABLERO.formatted(sucursalId == null ? "" : " and g.sucursal_id = :sucursalId");
+		JdbcClient.StatementSpec spec = jdbc.sql(sql).param("empresaId", empresaId);
+		if (sucursalId != null) {
+			spec = spec.param("sucursalId", sucursalId);
+		}
+		return spec.query(GrupoInventario.class).list();
 	}
 
 	@Override

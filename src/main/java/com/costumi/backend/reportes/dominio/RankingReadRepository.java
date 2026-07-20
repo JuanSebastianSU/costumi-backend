@@ -16,6 +16,6 @@ public interface RankingReadRepository {
 	/** Ventas agregadas por empleado (opcionalmente por sucursal). */
 	List<EmpleadoVentas> ventasPorEmpleado(UUID empresaId, UUID sucursalId);
 
-	/** Desglose de ventas por valor de una dimensión de etiqueta (p. ej. por color), RF-9.1. */
-	List<ValorEtiquetaRanking> ventasPorEtiqueta(UUID empresaId, UUID tipoEtiquetaId);
+	/** Desglose de ventas por valor de una dimensión de etiqueta (p. ej. por color); sucursal opcional, RF-9.1. */
+	List<ValorEtiquetaRanking> ventasPorEtiqueta(UUID empresaId, UUID tipoEtiquetaId, UUID sucursalId);
 }
