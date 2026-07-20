@@ -3,6 +3,7 @@ package com.costumi.backend.clientes.aplicacion;
 import com.costumi.backend.clientes.dominio.CargaDeCliente;
 import com.costumi.backend.clientes.dominio.FiltroDeClientes;
 import com.costumi.backend.clientes.dominio.HistorialItem;
+import com.costumi.backend.clientes.dominio.LineaDeEstadoDeCuenta;
 
 import java.util.Collection;
 import java.util.List;
@@ -13,6 +14,9 @@ import java.util.UUID;
 public interface ConsultarHistorial {
 
 	List<HistorialItem> historialDeCliente(UUID empresaId, UUID clienteId);
+
+	/** Estado de cuenta del cliente: desglose por renta de cuánto debe y por qué (RF-7/11.5). */
+	List<LineaDeEstadoDeCuenta> estadoDeCuenta(UUID empresaId, UUID clienteId);
 
 	/** Historial del usuario del marketplace, uniendo sus fichas en todas las tiendas (RF-14.4/18.9). */
 	List<HistorialItem> historialDeUsuario(UUID usuarioId);

@@ -134,6 +134,15 @@ class RentaController {
 				r -> resp(empresa, r));
 	}
 
+	/** Una renta por id, con sus líneas (nombre + foto), para el detalle de cobros/reembolsos. */
+	@GetMapping("/{id}")
+	RentaResponse porId(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+		UUID empresa = empresa(jwt);
+		Renta renta = consultarRentas.buscarPorId(empresa, id)
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Renta no encontrada"));
+		return resp(empresa, renta);
+	}
+
 	@PostMapping("/{id}/entregar")
 	RentaResponse entregar(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
 		UUID empresa = empresa(jwt);

@@ -60,11 +60,13 @@ public class Cliente {
 		return cliente;
 	}
 
-	/** Actualiza los datos de contacto/identidad de la ficha (RF-7). El nombre sigue siendo obligatorio. */
-	public void editar(String nombre, String telefono, String email, String documento, String direccion) {
+	/**
+	 * Actualiza los datos de contacto/identidad de la ficha (RF-7). El nombre sigue siendo obligatorio.
+	 * El correo es inmutable: identifica al cliente y se fija al crear la ficha, por lo que no se edita aquí.
+	 */
+	public void editar(String nombre, String telefono, String documento, String direccion) {
 		this.nombre = exigirNombre(nombre);
 		this.telefono = limpiar(telefono);
-		this.email = limpiar(email);
 		this.documento = limpiar(documento);
 		this.direccion = limpiar(direccion);
 	}

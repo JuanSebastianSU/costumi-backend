@@ -251,6 +251,27 @@ class ClienteIntegrationTest {
 	}
 
 	@Test
+	void editar_no_cambia_el_email_del_cliente_es_inmutable_tras_crear() throws Exception {
+		UUID empresa = crearEmpresa("Cli Email " + UUID.randomUUID());
+		String dueno = token(empresa, Rol.DUENO);
+		String creado = mvc.perform(post("/api/v1/clientes").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Con Correo\",\"email\":\"original@correo.com\"}"))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.email").value("original@correo.com"))
+				.andReturn().getResponse().getContentAsString();
+		UUID cliente = UUID.fromString(json.readTree(creado).get("id").asText());
+
+		// Aunque el body traiga un correo distinto, se ignora: el correo identifica la ficha y no se edita.
+		mvc.perform(put("/api/v1/clientes/{id}", cliente).header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Con Correo Editado\",\"email\":\"otro@correo.com\"}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.nombre").value("Con Correo Editado"))
+				.andExpect(jsonPath("$.email").value("original@correo.com"));
+	}
+
+	@Test
 	void archivar_lo_oculta_de_la_lista_e_incluir_archivados_lo_muestra_y_activar_lo_reincorpora() throws Exception {
 		UUID empresa = crearEmpresa("Cli Archivar " + UUID.randomUUID());
 		String dueno = token(empresa, Rol.DUENO);

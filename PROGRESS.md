@@ -9,6 +9,30 @@
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
 ## Fase actual
+**Fase 15 — Desgloses, fotos en devolución, estado de cuenta del cliente y email inmutable (2026-07-20).**
+
+Rama `feat/desgloses-fotos-estado-cuenta` (desde `origin/main`, PENDIENTE de merge). Cinco cambios para cerrar huecos
+de gestión que el dueño reportó:
+- **Fotos en devolución**: `DevolucionResponse.PiezaResponse` gana `nombre`+`fotoUrl` resolviendo cada `prendaId` contra
+  `ConsultaDeInventario.resumenDePrendas` (igual que renta/venta); `DevolucionController` inyecta `ConsultaDeInventario`.
+- **Estado de cuenta del cliente** (explica "por qué debe $X"): nuevo `GET /api/v1/clientes/{id}/estado-cuenta` →
+  `EstadoDeCuentaResponse` (totales + una línea por renta con importe, daños, retraso, depósito, multa, pagado, saldo).
+  Read-model `HistorialJdbcAdapter.estadoDeCuenta` **reutiliza** `MULTA_DE_RENTA`/`PAGOS_NETOS_DE_RENTA` para cuadrar
+  exacto con el saldo agregado de `CargaDeCliente`. Dominio `LineaDeEstadoDeCuenta`; puerto en `ConsultarHistorial`.
+- **Email inmutable**: `Cliente.editar` deja de aceptar email; se quita de `EditarClienteComando`/`EditarClienteRequest`;
+  el `PUT /clientes/{id}` ignora cualquier email del body (el correo identifica la ficha y se fija al crear).
+- **GET renta/venta por id**: `GET /api/v1/rentas/{id}` y `GET /api/v1/ventas/{id}` devuelven el DTO con líneas
+  (nombre+foto) para pintar los artículos con imagen en pagos/cobros/reembolsos. `ConsultarVentas` gana `buscarPorId`.
+- Tests: `DevolucionIntegrationTest` **16/16** (pieza trae nombre; estado de cuenta desglosa saldo 90 = importe 60 +
+  multa 30, y baja a 50 tras cobro 40), `ClienteIntegrationTest` **10/10** (email inmutable), suite completa **471/471**
+  en Docker (JDK21). **Al mergear: regenerar `:api-client` y cablear front**: pantalla de desglose de deuda, fotos en
+  devolución/pagos/cobros/reembolsos. Sin migración. Contrato OpenAPI cambia (nuevos endpoints + `PiezaResponse`).
+
+> Nota app (no backend): en la misma sesión se arreglaron 2 crashes de la app Android (ViewBinding: id compartido con
+> StateView y `android:id` en TabItem), verificados en emulador. No tocan el backend.
+
+---
+
 **Fase 14 — Cartera de clientes: saldo + multa por cliente en el listado (2026-07-20).**
 
 Rama `feat/cliente-saldos` (desde `origin/main`, PENDIENTE de merge). El front de gestión ya filtra la cartera

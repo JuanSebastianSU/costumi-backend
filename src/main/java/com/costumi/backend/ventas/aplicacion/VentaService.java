@@ -137,6 +137,12 @@ class VentaService implements RegistrarVenta, ConsultarVentas, RegistroDeVentas,
 
 	@Override
 	@Transactional(readOnly = true)
+	public Optional<Venta> buscarPorId(UUID empresaId, UUID ventaId) {
+		return ventas.buscarPorId(ventaId).filter(venta -> venta.empresaId().equals(empresaId));
+	}
+
+	@Override
+	@Transactional(readOnly = true)
 	public Optional<BigDecimal> totalDeVenta(UUID empresaId, UUID ventaId) {
 		return ventas.buscarPorId(ventaId)
 				.filter(venta -> venta.empresaId().equals(empresaId))

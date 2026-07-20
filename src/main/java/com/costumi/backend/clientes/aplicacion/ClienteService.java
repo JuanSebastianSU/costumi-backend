@@ -57,8 +57,7 @@ class ClienteService implements CrearCliente, ConsultarClientes, CambiarListaNeg
 	@Transactional
 	public Cliente ejecutar(EditarClienteComando comando) {
 		Cliente cliente = exigirDelTenant(comando.empresaId(), comando.clienteId());
-		cliente.editar(comando.nombre(), comando.telefono(), comando.email(), comando.documento(),
-				comando.direccion());
+		cliente.editar(comando.nombre(), comando.telefono(), comando.documento(), comando.direccion());
 		return clientes.guardar(cliente);
 	}
 
@@ -112,6 +111,13 @@ class ClienteService implements CrearCliente, ConsultarClientes, CambiarListaNeg
 	@Transactional(readOnly = true)
 	public List<HistorialItem> historialDeCliente(UUID empresaId, UUID clienteId) {
 		return historial.deCliente(empresaId, clienteId);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<com.costumi.backend.clientes.dominio.LineaDeEstadoDeCuenta> estadoDeCuenta(UUID empresaId,
+			UUID clienteId) {
+		return historial.estadoDeCuenta(empresaId, clienteId);
 	}
 
 	@Override

@@ -84,7 +84,7 @@ class ClienteController {
 			@AuthenticationPrincipal Jwt jwt) {
 		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
 		Cliente cliente = editarCliente.ejecutar(new EditarClienteComando(empresaId, id, request.nombre(),
-				request.telefono(), request.email(), request.documento(), request.direccion()));
+				request.telefono(), request.documento(), request.direccion()));
 		return ClienteResponse.desde(cliente);
 	}
 
@@ -145,6 +145,13 @@ class ClienteController {
 	List<HistorialItem> historial(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
 		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
 		return consultarHistorial.historialDeCliente(empresaId, id);
+	}
+
+	/** Estado de cuenta del cliente (RF-7/11.5): desglose por renta de cuánto debe y por qué. */
+	@GetMapping("/{id}/estado-cuenta")
+	EstadoDeCuentaResponse estadoCuenta(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		return EstadoDeCuentaResponse.desde(id, consultarHistorial.estadoDeCuenta(empresaId, id));
 	}
 
 	/** "Mis Pedidos" del CLIENTE del marketplace: su historial en todas las tiendas (RF-14.4/18.9). */
