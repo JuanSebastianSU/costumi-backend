@@ -96,15 +96,17 @@ class NotificacionIntegrationTest {
 		mvc.perform(post("/api/v1/rentas/{id}/entregar", renta).header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk());
 
-		// RF-11.1: dispara los recordatorios -> 1 enviado.
+		// RF-11.1: dispara los recordatorios -> avisa al cliente (WhatsApp) Y al dueño (resumen in-app) = 2.
 		mvc.perform(post("/api/v1/notificaciones/recordar-vencidas").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.enviadas").value(1));
+				.andExpect(jsonPath("$.enviadas").value(2));
 
-		// Quedó registrada la notificación de recordatorio (canal WhatsApp, con la plantilla configurable).
+		// Quedó registrada la notificación al cliente (WhatsApp, plantilla configurable)...
 		mvc.perform(get("/api/v1/notificaciones").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.canal == 'WHATSAPP')]").exists());
+				.andExpect(jsonPath("$[?(@.canal == 'WHATSAPP')]").exists())
+				// ...y el resumen in-app para el dueño (sin cliente asociado).
+				.andExpect(jsonPath("$[?(@.canal == 'IN_APP')]").exists());
 	}
 
 	@Test

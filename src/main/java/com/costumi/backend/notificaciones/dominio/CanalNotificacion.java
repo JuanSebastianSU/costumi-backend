@@ -5,5 +5,7 @@ public enum CanalNotificacion {
 
 	WHATSAPP,
 	FCM,
-	EMAIL
+	EMAIL,
+	/** Aviso in-app para el equipo del negocio (dueño): se persiste y aparece en la app, sin canal externo. */
+	IN_APP
 }
