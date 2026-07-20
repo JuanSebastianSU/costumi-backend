@@ -14,11 +14,17 @@ import java.util.UUID;
 @Repository
 class MarketplaceJdbcAdapter implements MarketplaceReadRepository {
 
+	// Solo tiendas que PUEDEN operar: ACTIVA y con al menos un punto de retiro (sucursal no archivada).
+	// Así el cliente no entra a una tienda sin sucursal, que no le dejaría armar el pedido.
 	private static final String EMPRESAS_ACTIVAS =
-			"select id, nombre from empresa where estado = 'ACTIVA' order by nombre";
+			"select id, nombre from empresa e where e.estado = 'ACTIVA' "
+			+ "and exists (select 1 from sucursal s where s.empresa_id = e.id and s.archivada = false) "
+			+ "order by nombre";
 
-	private static final String BUSCAR_EMPRESAS = "select id, nombre from empresa "
-			+ "where estado = 'ACTIVA' and lower(nombre) like lower('%' || :texto || '%') order by nombre";
+	private static final String BUSCAR_EMPRESAS = "select id, nombre from empresa e "
+			+ "where e.estado = 'ACTIVA' and lower(e.nombre) like lower('%' || :texto || '%') "
+			+ "and exists (select 1 from sucursal s where s.empresa_id = e.id and s.archivada = false) "
+			+ "order by nombre";
 
 	// Catálogo público: prendas no archivadas de una empresa, solo si la empresa está ACTIVA.
 	private static final String CATALOGO = "select p.id, p.nombre, p.tipo_articulo, p.precio_renta, "
