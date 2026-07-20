@@ -34,8 +34,8 @@ class MarketplaceService implements DescubrirEmpresas {
 
 	@Override
 	@Transactional(readOnly = true)
-	public List<PrendaEnVitrina> catalogo(UUID empresaId) {
-		return marketplace.catalogoDe(empresaId);
+	public List<PrendaEnVitrina> catalogo(UUID empresaId, UUID categoriaId) {
+		return marketplace.catalogoDe(empresaId, categoriaId);
 	}
 
 	@Override

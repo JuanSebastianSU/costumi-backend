@@ -16,7 +16,8 @@ public interface DescubrirEmpresas {
 	List<EmpresaEnVitrina> buscar(String texto);
 
 	/** Catálogo público de una tienda (empresa ACTIVA). Vacío si no existe o no está activa. */
-	List<PrendaEnVitrina> catalogo(UUID empresaId);
+	/** Catálogo público de una tienda; si {@code categoriaId} no es null, filtra por esa categoría (RF-18.1). */
+	List<PrendaEnVitrina> catalogo(UUID empresaId, UUID categoriaId);
 
 	/**
 	 * Sucursales (puntos de retiro) de una tienda ACTIVA, para que el cliente elija dónde retirar
