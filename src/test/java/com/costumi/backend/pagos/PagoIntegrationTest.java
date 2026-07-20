@@ -310,6 +310,26 @@ class PagoIntegrationTest {
 	}
 
 	@Test
+	void el_pago_en_linea_rechaza_un_monto_que_no_cubre_el_total_pendiente() throws Exception {
+		UUID sucursal = sucursalDePrueba();
+		// Habilitar pago en línea en la empresa.
+		mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/configuracion")
+						.header("Authorization", "Bearer " + dueno).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"conteoStock\":true,\"multasActivo\":true,\"multiSucursal\":false,"
+								+ "\"pagoEnLinea\":true,\"tasaImpuesto\":0}"))
+				.andExpect(status().isOk());
+		// Venta real de total 200 (100 × 2).
+		UUID venta = ventaReal(sucursal, 100, 2);
+
+		// Con tarjeta se paga TODO de golpe: un intento por menos del total pendiente (150 de 200) -> 400.
+		mvc.perform(post("/api/v1/pagos/intento").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + sucursal + "\",\"tipoConcepto\":\"VENTA\",\"conceptoId\":\""
+								+ venta + "\",\"monto\":150.00,\"moneda\":\"COP\"}"))
+				.andExpect(status().isBadRequest());
+	}
+
+	@Test
 	void sin_token_devuelve_401() throws Exception {
 		mvc.perform(get("/api/v1/pagos").param("conceptoId", UUID.randomUUID().toString()))
 				.andExpect(status().isUnauthorized());
