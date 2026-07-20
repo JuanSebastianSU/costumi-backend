@@ -40,19 +40,25 @@ class RentaController {
 	private final ConsultaDeInventario inventario;
 	private final com.costumi.backend.compartido.GeneradorDePdf pdf;
 
+	private final com.costumi.backend.clientes.ResolucionDeClientes clientes;
+
 	RentaController(CrearRenta crearRenta, ConsultarRentas consultarRentas, GestionarRenta gestionarRenta,
-			ConsultaDeInventario inventario, com.costumi.backend.compartido.GeneradorDePdf pdf) {
+			ConsultaDeInventario inventario, com.costumi.backend.compartido.GeneradorDePdf pdf,
+			com.costumi.backend.clientes.ResolucionDeClientes clientes) {
 		this.crearRenta = crearRenta;
 		this.consultarRentas = consultarRentas;
 		this.gestionarRenta = gestionarRenta;
 		this.inventario = inventario;
 		this.pdf = pdf;
+		this.clientes = clientes;
 	}
 
-	/** Construye la respuesta con las líneas enriquecidas (nombre + foto de cada prenda) para el desglose. */
+	/** Construye la respuesta con líneas enriquecidas (nombre + foto) y el nombre del cliente, para el listado. */
 	private RentaResponse resp(UUID empresaId, Renta r) {
 		List<UUID> prendaIds = r.lineas().stream().map(RentaLinea::prendaId).toList();
-		return RentaResponse.desde(r, inventario.resumenDePrendas(empresaId, prendaIds));
+		String clienteNombre = r.clienteId() == null ? null
+				: clientes.nombreDeCliente(empresaId, r.clienteId()).orElse(null);
+		return RentaResponse.desde(r, inventario.resumenDePrendas(empresaId, prendaIds), clienteNombre);
 	}
 
 	/** Contrato de renta en PDF (RF-3.4). */
