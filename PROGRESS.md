@@ -9,6 +9,41 @@
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
 ## Fase actual
+**Fase 12 — Auditoría front↔backend + cierre del pago en línea del cliente (2026-07-20).**
+
+**Contexto:** las 6 ramas de la Fase 11 ya están **mergeadas** en `main` (verificado: `origin/main` en `4ba7166`,
+PRs #114–#119). Se hizo una **revisión completa de la app Android (`AppCustomi2`) contra la superficie real del
+backend** (147 endpoints). Resultado:
+- **Gestión ~90% + SuperAdmin + Auth: completos.** El **cliente** solo tiene un marketplace de **prendas sueltas**
+  (explorar→catálogo→detalle→carrito→reserva→historial); **falta TODO el recorrido del disfraz** (tienda con 2
+  apartados, detalle de disfraz, **ruleta**, rentar/comprar disfraz), la **pantalla de pago**, el **código de retiro**,
+  las **imágenes** (Coil está en el build pero **sin usar**), y `device-token` (push del cliente) nunca se llama.
+- El `:api-client` de la app está generado del contrato **viejo (Jul 14)**: no tiene fotoUrl del disfraz/prenda,
+  vender/foto de disfraz, `?categoria`, `codigoRetiro`/`lineas` del historial, ni la ruleta con foto. **Regenerar.**
+
+**Hueco de BACKEND encontrado al verificar (y cerrado en esta fase):** el **pago con tarjeta en línea del cliente**
+no estaba soportado. `POST /pagos/intento` sacaba la empresa del **token** (`empresa_id`), pero el token de un
+CLIENTE del marketplace **no** lo lleva → reventaba/era solo modo asistido por personal (regla de seguridad lo
+restringía a DUENO/ENCARGADO/MOSTRADOR/ATENCION).
+
+**Hecho — rama `feat/pago-en-linea-cliente` (PENDIENTE de merge, desde `origin/main`):**
+- Nuevo endpoint **`POST /api/v1/pagos/intento/cliente`** (rol **CLIENTE**): el cliente indica `empresaId` (la tienda);
+  su ficha y la **propiedad** de la venta/renta salen de su token. Verifica que la operación sea suya
+  (`ResolucionDeClientes.fichaDeUsuarioSiExiste` + `clienteDeVenta`/`clienteDeRenta`) → si no, **403**
+  (`PagoEnLineaNoAutorizado`, paralelo a `ReembolsoNoAutorizado`). Reutiliza el **mismo** cálculo de "total de golpe"
+  (valida el monto contra el total pendiente; parcial → 400) y el switch `pagoEnLinea` de la empresa.
+- Patrón calcado del **hermano** `POST /reembolsos/cliente`. Sin migración (no toca esquema). Regla de negocio en la
+  **capa de aplicación** (`CrearIntentoDePagoDeCliente`), no en el controller.
+- Tests: `IntentoDePagoDeClienteIntegrationTest` **4/4** (paga su propia venta→URL checkout con stub de pasarela;
+  parcial→400; venta ajena→403; staff en el endpoint del cliente→403). **ArchUnit 3/3 y Modulith 1/1 en verde.**
+  (Suite completa corrida en Docker antes de subir.)
+
+**Falta (lo grande):** **toda la app Android del recorrido del cliente** (mañana). Backend: solo queda **diferido** el
+filtro por **cercanía** del marketplace (necesita lat/lng que hoy no se guardan).
+
+---
+
+## Fase 11 (cerrada — todo mergeado a `main`)
 **Fase 11 — Recorrido de compra + disfraz 100% + optimización con SigNoz (2026-07-19 → 07-20).**
 Sesión larga de mejoras iterativas. Cada rebanada con tests + ArchUnit + Modulith en verde, probada en Docker
 (la suite creció a ~460 tests). **OJO con el estado de `main`:** el usuario mergeó #107–#110; **quedan PENDIENTES
