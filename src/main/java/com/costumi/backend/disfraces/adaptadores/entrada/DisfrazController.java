@@ -12,6 +12,8 @@ import com.costumi.backend.disfraces.aplicacion.EditarDisfraz;
 import com.costumi.backend.disfraces.aplicacion.EditarDisfrazComando;
 import com.costumi.backend.disfraces.aplicacion.PoolComando;
 import com.costumi.backend.disfraces.aplicacion.RentarDisfraz;
+import com.costumi.backend.disfraces.aplicacion.RentarVariosDisfracesComando;
+import com.costumi.backend.disfraces.aplicacion.VenderVariosDisfracesComando;
 import com.costumi.backend.disfraces.aplicacion.RentarDisfrazComando;
 import com.costumi.backend.disfraces.aplicacion.SlotComando;
 import com.costumi.backend.disfraces.aplicacion.VenderDisfraz;
@@ -55,6 +57,8 @@ class DisfrazController {
 	private final ConsultarDisponibilidadDeDisfraz consultarDisponibilidad;
 	private final RentarDisfraz rentarDisfraz;
 	private final VenderDisfraz venderDisfraz;
+	private final com.costumi.backend.disfraces.aplicacion.RentarVariosDisfraces rentarVariosDisfraces;
+	private final com.costumi.backend.disfraces.aplicacion.VenderVariosDisfraces venderVariosDisfraces;
 	private final AsignarFotoDeDisfraz asignarFotoDeDisfraz;
 	private final ContextoDeTenant tenant;
 	private final ResolucionDeClientes resolucionDeClientes;
@@ -62,7 +66,10 @@ class DisfrazController {
 	DisfrazController(CrearDisfraz crearDisfraz, EditarDisfraz editarDisfraz,
 			CambiarEstadoDisfraz cambiarEstadoDisfraz, ConsultarDisfraces consultarDisfraces,
 			ConsultarDisponibilidadDeDisfraz consultarDisponibilidad, RentarDisfraz rentarDisfraz,
-			VenderDisfraz venderDisfraz, AsignarFotoDeDisfraz asignarFotoDeDisfraz, ContextoDeTenant tenant,
+			VenderDisfraz venderDisfraz,
+			com.costumi.backend.disfraces.aplicacion.RentarVariosDisfraces rentarVariosDisfraces,
+			com.costumi.backend.disfraces.aplicacion.VenderVariosDisfraces venderVariosDisfraces,
+			AsignarFotoDeDisfraz asignarFotoDeDisfraz, ContextoDeTenant tenant,
 			ResolucionDeClientes resolucionDeClientes) {
 		this.crearDisfraz = crearDisfraz;
 		this.editarDisfraz = editarDisfraz;
@@ -71,6 +78,8 @@ class DisfrazController {
 		this.consultarDisponibilidad = consultarDisponibilidad;
 		this.rentarDisfraz = rentarDisfraz;
 		this.venderDisfraz = venderDisfraz;
+		this.rentarVariosDisfraces = rentarVariosDisfraces;
+		this.venderVariosDisfraces = venderVariosDisfraces;
 		this.asignarFotoDeDisfraz = asignarFotoDeDisfraz;
 		this.tenant = tenant;
 		this.resolucionDeClientes = resolucionDeClientes;
@@ -178,6 +187,46 @@ class DisfrazController {
 		int cantidad = (request.cantidad() == null || request.cantidad() < 1) ? 1 : request.cantidad();
 		UUID ventaId = venderDisfraz.ejecutar(new VenderDisfrazComando(empresaId, disfrazId, request.sucursalId(),
 				clienteId, cantidad, selecciones, actorId));
+		return new VenderDisfrazResponse(ventaId);
+	}
+
+	/** Rentar VARIOS disfraces distintos al mismo cliente en una sola renta (RF-3.1). Personal o CLIENTE. */
+	@PostMapping("/rentar-varios")
+	RentarDisfrazResponse rentarVarios(@Valid @RequestBody RentarVariosDisfracesRequest request,
+			@AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = empresaDe(jwt, request.empresaId());
+		UUID clienteId = clienteDe(jwt, empresaId, request.clienteId());
+		UUID actorId = UUID.fromString(jwt.getSubject());
+		List<RentarVariosDisfracesComando.ItemDeDisfraz> items = request.items().stream()
+				.map(it -> new RentarVariosDisfracesComando.ItemDeDisfraz(it.disfrazId(),
+						(it.cantidad() == null || it.cantidad() < 1) ? 1 : it.cantidad(),
+						(it.selecciones() == null ? List.<RentarVariosDisfracesRequest.SeleccionSlotDto>of()
+								: it.selecciones()).stream()
+								.map(s -> new RentarVariosDisfracesComando.SeleccionDeSlot(s.orden(), s.prendaId()))
+								.toList()))
+				.toList();
+		UUID rentaId = rentarVariosDisfraces.ejecutar(new RentarVariosDisfracesComando(empresaId, request.sucursalId(),
+				clienteId, request.fechaRetiro(), request.fechaDevolucion(), items, actorId));
+		return new RentarDisfrazResponse(rentaId);
+	}
+
+	/** Vender VARIOS disfraces distintos al mismo cliente en una sola venta. Personal o CLIENTE. */
+	@PostMapping("/vender-varios")
+	VenderDisfrazResponse venderVarios(@Valid @RequestBody VenderVariosDisfracesRequest request,
+			@AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = empresaDe(jwt, request.empresaId());
+		UUID clienteId = clienteDe(jwt, empresaId, request.clienteId());
+		UUID actorId = UUID.fromString(jwt.getSubject());
+		List<VenderVariosDisfracesComando.ItemDeDisfraz> items = request.items().stream()
+				.map(it -> new VenderVariosDisfracesComando.ItemDeDisfraz(it.disfrazId(),
+						(it.cantidad() == null || it.cantidad() < 1) ? 1 : it.cantidad(),
+						(it.selecciones() == null ? List.<VenderVariosDisfracesRequest.SeleccionSlotDto>of()
+								: it.selecciones()).stream()
+								.map(s -> new VenderVariosDisfracesComando.SeleccionDeSlot(s.orden(), s.prendaId()))
+								.toList()))
+				.toList();
+		UUID ventaId = venderVariosDisfraces.ejecutar(new VenderVariosDisfracesComando(empresaId, request.sucursalId(),
+				clienteId, items, actorId));
 		return new VenderDisfrazResponse(ventaId);
 	}
 

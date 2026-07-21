@@ -280,6 +280,39 @@ class DisfrazIntegrationTest {
 	}
 
 	@Test
+	void rentar_varios_disfraces_distintos_crea_una_sola_renta_con_todas_las_lineas() throws Exception {
+		CtxRenta c = montarRenta("Varios");
+		UUID categoria = crearCategoria(c.dueno(), "Cat " + UUID.randomUUID());
+		UUID base1 = crearPrenda(c.dueno(), categoria);
+		UUID acc1 = crearPrenda(c.dueno(), categoria);
+		UUID base2 = crearPrenda(c.dueno(), categoria);
+		UUID acc2 = crearPrenda(c.dueno(), categoria);
+		UUID disfraz1 = crearDisfrazConPrecioGeneral(c.dueno(), base1, categoria, "100.00");
+		UUID disfraz2 = crearDisfrazConPrecioGeneral(c.dueno(), base2, categoria, "50.00");
+
+		// Pedido: 1× disfraz1 (100/día) + 2× disfraz2 (50/día) por 3 días = (100 + 100) × 3 = 600, en UNA renta.
+		String body = "{\"sucursalId\":\"" + c.sucursal() + "\",\"clienteId\":\"" + c.cliente() + "\","
+				+ "\"fechaRetiro\":\"2026-08-01\",\"fechaDevolucion\":\"2026-08-04\",\"items\":["
+				+ "{\"disfrazId\":\"" + disfraz1 + "\",\"cantidad\":1,\"selecciones\":[{\"orden\":2,\"prendaId\":\""
+				+ acc1 + "\"}]},"
+				+ "{\"disfrazId\":\"" + disfraz2 + "\",\"cantidad\":2,\"selecciones\":[{\"orden\":2,\"prendaId\":\""
+				+ acc2 + "\"}]}]}";
+		mvc.perform(post("/api/v1/disfraces/rentar-varios").header("Authorization", "Bearer " + c.dueno())
+						.contentType(MediaType.APPLICATION_JSON).content(body))
+				.andExpect(status().isOk());
+
+		String lista = mvc.perform(get("/api/v1/rentas").param("clienteId", c.cliente().toString())
+						.header("Authorization", "Bearer " + c.dueno()))
+				.andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+		var contenido = json.readTree(lista).get("contenido");
+		org.assertj.core.api.Assertions.assertThat(contenido.size()).isEqualTo(1); // una sola renta
+		var renta = contenido.get(0);
+		org.assertj.core.api.Assertions.assertThat(new java.math.BigDecimal(renta.get("importe").asText()))
+				.isEqualByComparingTo("600.00");
+		org.assertj.core.api.Assertions.assertThat(renta.get("lineas").size()).isEqualTo(4); // 2 piezas × 2 disfraces
+	}
+
+	@Test
 	void rentar_varias_unidades_del_mismo_disfraz_escala_el_importe_y_las_cantidades() throws Exception {
 		CtxRenta c = montarRenta("Cantidad");
 		UUID categoria = crearCategoria(c.dueno(), "Cat " + UUID.randomUUID());
