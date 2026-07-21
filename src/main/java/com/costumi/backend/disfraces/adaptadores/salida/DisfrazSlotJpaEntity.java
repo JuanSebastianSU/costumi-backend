@@ -50,13 +50,19 @@ class DisfrazSlotJpaEntity {
 	@CollectionTable(name = "disfraz_slot_etiqueta", joinColumns = @JoinColumn(name = "slot_id"))
 	private Set<EtiquetaDeSlotEmbeddable> etiquetasPermitidas = new LinkedHashSet<>();
 
+	/** Opciones de prenda explícitas del slot personalizable (vacío si se define por pool o es fijo). */
+	@ElementCollection(fetch = FetchType.EAGER)
+	@CollectionTable(name = "disfraz_slot_prenda_opcion", joinColumns = @JoinColumn(name = "slot_id"))
+	@Column(name = "prenda_id", nullable = false)
+	private Set<UUID> prendasOpcion = new LinkedHashSet<>();
+
 	protected DisfrazSlotJpaEntity() {
 		// requerido por JPA
 	}
 
 	DisfrazSlotJpaEntity(UUID id, UUID disfrazId, int orden, String nombre, EjeDePrenda ejePrenda,
 			UUID prendaFijaId, UUID categoriaId, boolean opcional,
-			Set<EtiquetaDeSlotEmbeddable> etiquetasPermitidas) {
+			Set<EtiquetaDeSlotEmbeddable> etiquetasPermitidas, Set<UUID> prendasOpcion) {
 		this.id = id;
 		this.disfrazId = disfrazId;
 		this.orden = orden;
@@ -66,6 +72,7 @@ class DisfrazSlotJpaEntity {
 		this.categoriaId = categoriaId;
 		this.opcional = opcional;
 		this.etiquetasPermitidas = etiquetasPermitidas;
+		this.prendasOpcion = prendasOpcion;
 	}
 
 	UUID getId() {
@@ -102,5 +109,9 @@ class DisfrazSlotJpaEntity {
 
 	Set<EtiquetaDeSlotEmbeddable> getEtiquetasPermitidas() {
 		return etiquetasPermitidas;
+	}
+
+	Set<UUID> getPrendasOpcion() {
+		return prendasOpcion;
 	}
 }

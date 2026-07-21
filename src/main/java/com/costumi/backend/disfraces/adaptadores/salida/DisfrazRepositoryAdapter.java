@@ -68,8 +68,9 @@ class DisfrazRepositoryAdapter implements DisfrazRepository {
 			slot.pool().etiquetasPermitidas().forEach((tipo, valores) ->
 					valores.forEach(valor -> etiquetas.add(new EtiquetaDeSlotEmbeddable(tipo, valor))));
 		}
+		Set<UUID> prendasOpcion = new LinkedHashSet<>(slot.prendasOpcion());
 		return new DisfrazSlotJpaEntity(UUID.randomUUID(), disfrazId, slot.orden(), slot.nombre(),
-				slot.ejePrenda(), slot.prendaFijaId(), categoriaId, slot.opcional(), etiquetas);
+				slot.ejePrenda(), slot.prendaFijaId(), categoriaId, slot.opcional(), etiquetas, prendasOpcion);
 	}
 
 	private Disfraz aDominio(DisfrazJpaEntity cabecera) {
@@ -88,7 +89,8 @@ class DisfrazRepositoryAdapter implements DisfrazRepository {
 					Collectors.mapping(EtiquetaDeSlotEmbeddable::getValorEtiquetaId, Collectors.toCollection(LinkedHashSet::new))));
 			pool = PoolDeSlot.de(e.getCategoriaId(), etiquetas);
 		}
+		List<UUID> prendasOpcion = List.copyOf(e.getPrendasOpcion());
 		return Slot.rehidratar(e.getOrden(), e.getNombre(), e.getEjePrenda(), e.getPrendaFijaId(), pool,
-				e.isOpcional());
+				prendasOpcion, e.isOpcional());
 	}
 }

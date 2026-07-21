@@ -34,6 +34,7 @@ public record DisfrazResponse(UUID id, UUID empresaId, String nombre, boolean ac
 					.toList();
 			pool = new PoolDto(s.pool().categoriaId(), etiquetas);
 		}
-		return new SlotDto(s.orden(), s.nombre(), s.ejePrenda(), s.prendaFijaId(), pool, s.opcional());
+		return new SlotDto(s.orden(), s.nombre(), s.ejePrenda(), s.prendaFijaId(), pool,
+				List.copyOf(s.prendasOpcion()), s.opcional());
 	}
 }

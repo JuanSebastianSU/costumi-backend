@@ -97,8 +97,13 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 	/** §5.4: toda referencia por id (prenda fija, categoría y valores del pool) debe ser del tenant. */
 	private void validarSlotDelTenant(UUID empresaId, SlotComando slot) {
 		switch (slot.ejePrenda()) {
-			case FIJA -> exigirPrendaDelTenant(empresaId, slot.prendaFijaId());
+			case FIJA -> exigirPrendaDelTenant(empresaId, slot.prendaFijaId(), "La prenda fija");
 			case PERSONALIZABLE -> {
+				// Opciones explícitas: cada prenda elegida debe ser del tenant. Es la forma preferida.
+				if (!slot.prendasOpcion().isEmpty()) {
+					slot.prendasOpcion().forEach(id -> exigirPrendaDelTenant(empresaId, id, "Una opción del slot"));
+					return;
+				}
 				PoolComando pool = slot.pool();
 				if (pool == null || pool.categoriaId() == null
 						|| !taxonomia.categoriaExiste(empresaId, pool.categoriaId())) {
@@ -113,9 +118,9 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 		}
 	}
 
-	private void exigirPrendaDelTenant(UUID empresaId, UUID prendaId) {
+	private void exigirPrendaDelTenant(UUID empresaId, UUID prendaId, String descripcion) {
 		if (prendaId == null || !inventario.prendaExiste(empresaId, prendaId)) {
-			throw new IllegalArgumentException("La prenda fija no existe en esta empresa");
+			throw new IllegalArgumentException(descripcion + " no existe en esta empresa");
 		}
 	}
 
@@ -147,17 +152,32 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 		return total;
 	}
 
-	/** Precio de renta de un slot: el de la prenda fija, o el mínimo ("desde") entre las opciones del pool. */
+	/** Precio de renta de un slot: el de la prenda fija, o el mínimo ("desde") entre las opciones elegibles. */
 	private BigDecimal precioDeSlot(UUID empresaId, Slot slot) {
 		if (slot.ejePrenda() == EjeDePrenda.FIJA) {
 			return inventario.precioRenta(empresaId, slot.prendaFijaId()).orElse(BigDecimal.ZERO);
 		}
-		PoolDeSlot pool = slot.pool();
-		return inventario.opcionesDelPool(empresaId, pool.categoriaId(), pool.etiquetasPermitidas()).stream()
+		return opcionesElegibles(empresaId, slot).stream()
 				.map(ConsultaDeInventario.OpcionDePool::precioRenta)
 				.filter(java.util.Objects::nonNull)
 				.min(BigDecimal::compareTo)
 				.orElse(BigDecimal.ZERO);
+	}
+
+	/**
+	 * Opciones elegibles de un slot personalizable como {@link ConsultaDeInventario.OpcionDePool}: las
+	 * prendas explícitas del slot (si las tiene) o las derivadas del pool. Las prendas explícitas que ya
+	 * no existan en el inventario se omiten (no rompen el cálculo).
+	 */
+	private List<ConsultaDeInventario.OpcionDePool> opcionesElegibles(UUID empresaId, Slot slot) {
+		if (slot.tieneOpcionesExplicitas()) {
+			return slot.prendasOpcion().stream()
+					.map(id -> inventario.opcionDePrenda(empresaId, id))
+					.flatMap(java.util.Optional::stream)
+					.toList();
+		}
+		PoolDeSlot pool = slot.pool();
+		return inventario.opcionesDelPool(empresaId, pool.categoriaId(), pool.etiquetasPermitidas());
 	}
 
 	@Override
@@ -170,13 +190,12 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 		return total;
 	}
 
-	/** Precio de venta de un slot: el de la prenda fija, o el mínimo ("desde") entre las opciones del pool. */
+	/** Precio de venta de un slot: el de la prenda fija, o el mínimo ("desde") entre las opciones elegibles. */
 	private BigDecimal precioVentaDeSlot(UUID empresaId, Slot slot) {
 		if (slot.ejePrenda() == EjeDePrenda.FIJA) {
 			return inventario.precioVenta(empresaId, slot.prendaFijaId()).orElse(BigDecimal.ZERO);
 		}
-		PoolDeSlot pool = slot.pool();
-		return inventario.opcionesDelPool(empresaId, pool.categoriaId(), pool.etiquetasPermitidas()).stream()
+		return opcionesElegibles(empresaId, slot).stream()
 				.map(opcion -> inventario.precioVenta(empresaId, opcion.prendaId()).orElse(null))
 				.filter(java.util.Objects::nonNull)
 				.min(BigDecimal::compareTo)
@@ -203,8 +222,7 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 		if (slot.ejePrenda() == EjeDePrenda.FIJA) {
 			opciones = inventario.opcionDePrenda(empresaId, slot.prendaFijaId()).map(List::of).orElseGet(List::of);
 		} else {
-			opciones = inventario.opcionesDelPool(empresaId, slot.pool().categoriaId(),
-					slot.pool().etiquetasPermitidas());
+			opciones = opcionesElegibles(empresaId, slot);
 		}
 		// Filtro adicional de la ruleta: la opción debe incluir TODOS los valores de etiqueta elegidos.
 		if (valoresFiltro != null && !valoresFiltro.isEmpty()) {
@@ -397,7 +415,7 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 		return resultado;
 	}
 
-	/** Prenda concreta de un slot: la fija, o la elegida por el cliente validada contra el pool (RF-2.3). */
+	/** Prenda concreta de un slot: la fija, o la elegida por el cliente validada contra sus opciones (RF-2.3). */
 	private UUID resolverPrenda(UUID empresaId, Slot slot, UUID prendaElegida) {
 		if (slot.ejePrenda() == EjeDePrenda.FIJA) {
 			return slot.prendaFijaId();
@@ -405,10 +423,13 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 		if (prendaElegida == null) {
 			throw new IllegalArgumentException("Falta elegir la prenda del slot '" + slot.nombre() + "'");
 		}
-		PoolDeSlot pool = slot.pool();
-		if (!inventario.prendaEnPool(empresaId, prendaElegida, pool.categoriaId(), pool.etiquetasPermitidas())) {
+		boolean valida = slot.tieneOpcionesExplicitas()
+				? slot.prendasOpcion().contains(prendaElegida)
+				: inventario.prendaEnPool(empresaId, prendaElegida, slot.pool().categoriaId(),
+						slot.pool().etiquetasPermitidas());
+		if (!valida) {
 			throw new IllegalArgumentException(
-					"La prenda elegida no pertenece al pool del slot '" + slot.nombre() + "'");
+					"La prenda elegida no es una opción del slot '" + slot.nombre() + "'");
 		}
 		return prendaElegida;
 	}
@@ -442,9 +463,14 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 		if (c.ejePrenda() == EjeDePrenda.FIJA) {
 			return Slot.conPrendaFija(c.orden(), c.nombre(), c.prendaFijaId(), c.opcional());
 		}
+		// Personalizable: opciones explícitas (preferido) o, por compatibilidad, un pool.
+		if (!c.prendasOpcion().isEmpty()) {
+			return Slot.personalizableConOpciones(c.orden(), c.nombre(), c.prendasOpcion(), c.opcional());
+		}
 		PoolComando pool = c.pool();
 		if (pool == null) {
-			throw new IllegalArgumentException("Un slot personalizable requiere pool");
+			throw new IllegalArgumentException(
+					"Un slot personalizable requiere opciones de prenda o un pool");
 		}
 		return Slot.personalizable(c.orden(), c.nombre(),
 				PoolDeSlot.de(pool.categoriaId(), pool.etiquetasPermitidas()), c.opcional());

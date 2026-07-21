@@ -290,6 +290,7 @@ class DisfrazController {
 					etiquetas.put(e.tipoEtiquetaId(), new LinkedHashSet<>(e.valores())));
 			pool = new PoolComando(s.pool().categoriaId(), etiquetas);
 		}
-		return new SlotComando(s.orden(), s.nombre(), s.ejePrenda(), s.prendaFijaId(), pool, s.opcional());
+		return new SlotComando(s.orden(), s.nombre(), s.ejePrenda(), s.prendaFijaId(), pool, s.prendasOpcion(),
+				s.opcional());
 	}
 }

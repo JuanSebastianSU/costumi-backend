@@ -15,6 +15,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.List;
 import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -534,6 +535,72 @@ class DisfrazIntegrationTest {
 						.content("{\"sucursalId\":\"" + c.sucursal() + "\",\"clienteId\":\"" + c.cliente() + "\","
 								+ "\"fechaRetiro\":\"2026-08-01\",\"fechaDevolucion\":\"2026-08-04\",\"selecciones\":["
 								+ "{\"orden\":2,\"prendaId\":\"" + prendaFuera + "\"}]}"))
+				.andExpect(status().isBadRequest());
+	}
+
+	private UUID crearDisfrazConOpcionesExplicitas(String dueno, UUID prendaFija, List<UUID> opciones)
+			throws Exception {
+		String ops = String.join(",", opciones.stream().map(o -> "\"" + o + "\"").toList());
+		String body = mvc.perform(post("/api/v1/disfraces").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Conjunto\",\"slots\":["
+								+ "{\"orden\":1,\"nombre\":\"Base\",\"ejePrenda\":\"FIJA\","
+								+ "\"prendaFijaId\":\"" + prendaFija + "\",\"opcional\":false},"
+								+ "{\"orden\":2,\"nombre\":\"Accesorio\",\"ejePrenda\":\"PERSONALIZABLE\","
+								+ "\"prendasOpcion\":[" + ops + "],\"opcional\":false}]}"))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.slots[1].ejePrenda").value("PERSONALIZABLE"))
+				.andExpect(jsonPath("$.slots[1].prendasOpcion.length()").value(opciones.size()))
+				.andReturn().getResponse().getContentAsString();
+		return UUID.fromString(json.readTree(body).get("id").asText());
+	}
+
+	@Test
+	void rentar_disfraz_con_opciones_explicitas_elegidas_a_mano_del_inventario() throws Exception {
+		CtxRenta c = montarRenta("Opciones Explicitas");
+		UUID catBase = crearCategoria(c.dueno(), "Base " + UUID.randomUUID());
+		// Las opciones se eligen a mano de CATEGORÍAS DISTINTAS: un pool por categoría no podría abarcarlas.
+		UUID catA = crearCategoria(c.dueno(), "A " + UUID.randomUUID());
+		UUID catB = crearCategoria(c.dueno(), "B " + UUID.randomUUID());
+		UUID prendaBase = crearPrenda(c.dueno(), catBase);
+		UUID opcion1 = crearPrenda(c.dueno(), catA);
+		UUID opcion2 = crearPrenda(c.dueno(), catB);
+		UUID ajena = crearPrenda(c.dueno(), catA); // existe en el inventario, pero NO es opción del slot
+		UUID disfraz = crearDisfrazConOpcionesExplicitas(c.dueno(), prendaBase, List.of(opcion1, opcion2));
+
+		// Elegir una de las opciones -> renta con 2 líneas (base fija + opción elegida).
+		mvc.perform(post("/api/v1/disfraces/{id}/rentar", disfraz)
+						.header("Authorization", "Bearer " + c.dueno()).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + c.sucursal() + "\",\"clienteId\":\"" + c.cliente() + "\","
+								+ "\"fechaRetiro\":\"2026-08-01\",\"fechaDevolucion\":\"2026-08-04\",\"selecciones\":["
+								+ "{\"orden\":2,\"prendaId\":\"" + opcion2 + "\"}]}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.rentaId").exists());
+
+		// Elegir una prenda que NO es una de las opciones del slot -> 400.
+		mvc.perform(post("/api/v1/disfraces/{id}/rentar", disfraz)
+						.header("Authorization", "Bearer " + c.dueno()).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + c.sucursal() + "\",\"clienteId\":\"" + c.cliente() + "\","
+								+ "\"fechaRetiro\":\"2026-08-01\",\"fechaDevolucion\":\"2026-08-04\",\"selecciones\":["
+								+ "{\"orden\":2,\"prendaId\":\"" + ajena + "\"}]}"))
+				.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	void crear_disfraz_con_opcion_de_otra_empresa_devuelve_400() throws Exception {
+		String duenoA = duenoDe(crearEmpresa("Opcion Cross A"));
+		UUID categoriaA = crearCategoria(duenoA, "Cat");
+		UUID prendaDeA = crearPrenda(duenoA, categoriaA);
+
+		String duenoB = duenoDe(crearEmpresa("Opcion Cross B"));
+		UUID categoriaB = crearCategoria(duenoB, "Cat");
+		UUID prendaDeB = crearPrenda(duenoB, categoriaB);
+		// B arma un slot personalizable cuya opción apunta a una prenda de A (cross-ref por tenant, §5.4).
+		mvc.perform(post("/api/v1/disfraces").header("Authorization", "Bearer " + duenoB)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Robo\",\"slots\":[{\"orden\":1,\"nombre\":\"S\","
+								+ "\"ejePrenda\":\"PERSONALIZABLE\",\"prendasOpcion\":[\"" + prendaDeB + "\",\""
+								+ prendaDeA + "\"],\"opcional\":false}]}"))
 				.andExpect(status().isBadRequest());
 	}
 
