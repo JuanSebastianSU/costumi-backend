@@ -64,7 +64,7 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 		validarCategoriaDelTenant(comando.empresaId(), comando.categoriaId());
 		comando.slots().forEach(slot -> validarSlotDelTenant(comando.empresaId(), slot));
 		Disfraz disfraz = Disfraz.crear(comando.empresaId(), comando.nombre(), comando.categoriaId(),
-				aSlots(comando.slots()), comando.precioRentaGeneral());
+				aSlots(comando.slots()), comando.precioRentaGeneral(), comando.precioVentaGeneral());
 		return disfraces.guardar(disfraz);
 	}
 
@@ -77,7 +77,7 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 		validarCategoriaDelTenant(comando.empresaId(), comando.categoriaId());
 		comando.slots().forEach(slot -> validarSlotDelTenant(comando.empresaId(), slot));
 		disfraz.redefinir(comando.nombre(), comando.categoriaId(), aSlots(comando.slots()),
-				comando.precioRentaGeneral());
+				comando.precioRentaGeneral(), comando.precioVentaGeneral());
 		return disfraces.guardar(disfraz);
 	}
 
@@ -258,6 +258,40 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 
 	@Override
 	@Transactional(readOnly = true)
+	public MultaSugerida multaSugerida(UUID empresaId, Disfraz disfraz) {
+		BigDecimal danoMin = BigDecimal.ZERO;
+		BigDecimal danoMax = BigDecimal.ZERO;
+		BigDecimal reposicionMin = BigDecimal.ZERO;
+		BigDecimal reposicionMax = BigDecimal.ZERO;
+		for (Slot slot : disfraz.slots()) {
+			danoMin = danoMin.add(valorDeSlot(empresaId, slot, true, false));
+			danoMax = danoMax.add(valorDeSlot(empresaId, slot, true, true));
+			reposicionMin = reposicionMin.add(valorDeSlot(empresaId, slot, false, false));
+			reposicionMax = reposicionMax.add(valorDeSlot(empresaId, slot, false, true));
+		}
+		return new MultaSugerida(danoMin, danoMax, reposicionMin, reposicionMax);
+	}
+
+	/**
+	 * Valor de multa de un slot ({@code dano} = valor de daño; si no, valor de reposición) en el extremo del
+	 * rango ({@code max} = el más caro; si no, el más barato): la prenda fija, o el mín/máx de las opciones.
+	 */
+	private BigDecimal valorDeSlot(UUID empresaId, Slot slot, boolean dano, boolean max) {
+		java.util.function.Function<UUID, java.util.Optional<BigDecimal>> valor = dano
+				? id -> inventario.valorDano(empresaId, id)
+				: id -> inventario.valorReposicion(empresaId, id);
+		if (slot.ejePrenda() == EjeDePrenda.FIJA) {
+			return valor.apply(slot.prendaFijaId()).orElse(BigDecimal.ZERO);
+		}
+		java.util.stream.Stream<BigDecimal> valores = opcionesElegibles(empresaId, slot).stream()
+				.map(opcion -> valor.apply(opcion.prendaId()).orElse(null))
+				.filter(java.util.Objects::nonNull);
+		return (max ? valores.max(BigDecimal::compareTo) : valores.min(BigDecimal::compareTo))
+				.orElse(BigDecimal.ZERO);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
 	public boolean estaDisponible(UUID empresaId, UUID disfrazId) {
 		Disfraz disfraz = exigirDelTenant(empresaId, disfrazId);
 		return disfraz.estaDisponible(consultaDeStockPara(empresaId));
@@ -410,7 +444,7 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 		return items;
 	}
 
-	/** Resuelve un disfraz a sus líneas de venta (una por pieza), con la cantidad. */
+	/** Resuelve un disfraz a sus líneas de venta (una por pieza), con la cantidad y el reparto de precio general. */
 	private List<RegistroDeVentas.ItemDeVenta> itemsVentaDe(UUID empresaId, UUID disfrazId, int cantidad,
 			Map<Integer, UUID> seleccionPorOrden) {
 		Disfraz disfraz = exigirDelTenant(empresaId, disfrazId);
@@ -429,7 +463,42 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 		if (items.isEmpty()) {
 			throw new IllegalArgumentException("El disfraz no resolvió ningún artículo para vender");
 		}
+		// Precio de venta general (RF-2.10) × cantidad: reparte el precio del conjunto entre las piezas.
+		if (disfraz.tienePrecioVentaGeneral()) {
+			items = repartirVenta(items, disfraz.precioVentaGeneral().multiply(BigDecimal.valueOf(cantidad)));
+		}
 		return items;
+	}
+
+	/**
+	 * Reparte el {@code precioGeneral} de venta entre las líneas proporcionalmente a su precio, de modo que
+	 * la suma iguale exactamente el precio del conjunto; la última línea absorbe el redondeo (idéntico al
+	 * reparto de renta, pero sobre líneas de venta).
+	 */
+	private static List<RegistroDeVentas.ItemDeVenta> repartirVenta(List<RegistroDeVentas.ItemDeVenta> items,
+			BigDecimal precioGeneral) {
+		BigDecimal base = items.stream()
+				.map(it -> it.precioUnitario().multiply(BigDecimal.valueOf(it.cantidad())))
+				.reduce(BigDecimal.ZERO, BigDecimal::add);
+		List<RegistroDeVentas.ItemDeVenta> resultado = new ArrayList<>();
+		BigDecimal acumulado = BigDecimal.ZERO;
+		for (int i = 0; i < items.size(); i++) {
+			RegistroDeVentas.ItemDeVenta it = items.get(i);
+			BigDecimal cantidad = BigDecimal.valueOf(it.cantidad());
+			BigDecimal precioUnitario;
+			if (i == items.size() - 1) {
+				precioUnitario = precioGeneral.subtract(acumulado).divide(cantidad, 2, RoundingMode.HALF_UP);
+			} else if (base.signum() == 0) {
+				precioUnitario = BigDecimal.ZERO;
+			} else {
+				BigDecimal lineaBase = it.precioUnitario().multiply(cantidad);
+				BigDecimal lineaTotal = precioGeneral.multiply(lineaBase).divide(base, 2, RoundingMode.HALF_UP);
+				precioUnitario = lineaTotal.divide(cantidad, 2, RoundingMode.HALF_UP);
+				acumulado = acumulado.add(precioUnitario.multiply(cantidad));
+			}
+			resultado.add(new RegistroDeVentas.ItemDeVenta(it.prendaId(), it.cantidad(), precioUnitario));
+		}
+		return resultado;
 	}
 
 	private RegistroDeVentas.ItemDeVenta itemDeVenta(UUID empresaId, UUID prendaId, int cantidad) {

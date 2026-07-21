@@ -131,7 +131,7 @@ class DisfrazTest {
 		UUID otra = UUID.randomUUID();
 		disfraz.redefinir("Nuevo", null, List.of(
 				Slot.conPrendaFija(1, "A", PRENDA_FIJA, false),
-				Slot.conPrendaFija(2, "B", otra, false)), null);
+				Slot.conPrendaFija(2, "B", otra, false)), null, null);
 
 		assertThat(disfraz.nombre()).isEqualTo("Nuevo");
 		assertThat(disfraz.slots()).hasSize(2);

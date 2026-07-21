@@ -94,6 +94,22 @@ class ConsultaDeInventarioService implements ConsultaDeInventario {
 
 	@Override
 	@Transactional(readOnly = true)
+	public java.util.Optional<java.math.BigDecimal> valorDano(UUID empresaId, UUID prendaId) {
+		return prendas.buscarPorId(prendaId)
+				.filter(prenda -> prenda.empresaId().equals(empresaId))
+				.map(com.costumi.backend.inventario.dominio.Prenda::valorDano);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public java.util.Optional<java.math.BigDecimal> valorReposicion(UUID empresaId, UUID prendaId) {
+		return prendas.buscarPorId(prendaId)
+				.filter(prenda -> prenda.empresaId().equals(empresaId))
+				.map(com.costumi.backend.inventario.dominio.Prenda::valorReposicion);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
 	public List<OpcionDePool> opcionesDelPool(UUID empresaId, UUID categoriaId,
 			Map<UUID, Set<UUID>> etiquetasPermitidas) {
 		return prendas.listarPorEmpresa(empresaId).stream()

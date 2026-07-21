@@ -9,7 +9,7 @@ import java.util.UUID;
  * un {@code precioRentaGeneral} por día que anula la suma por prendas.
  */
 public record CrearDisfrazComando(UUID empresaId, String nombre, UUID categoriaId, List<SlotComando> slots,
-		BigDecimal precioRentaGeneral) {
+		BigDecimal precioRentaGeneral, BigDecimal precioVentaGeneral) {
 
 	public CrearDisfrazComando {
 		slots = (slots == null) ? List.of() : List.copyOf(slots);
