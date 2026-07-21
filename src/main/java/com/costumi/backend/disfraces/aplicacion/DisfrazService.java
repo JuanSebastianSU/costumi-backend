@@ -230,16 +230,23 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 	@Transactional
 	public UUID ejecutar(RentarVariosDisfracesComando comando) {
 		UUID empresaId = comando.empresaId();
-		// Un pedido con varios disfraces distintos: se resuelve cada uno a sus piezas y se acumulan en UNA sola renta.
+		// Un pedido: se resuelve cada disfraz a sus piezas y se suman las prendas sueltas, todo en UNA sola renta.
 		List<RegistroDeRentas.ItemDeRenta> todos = new ArrayList<>();
-		for (RentarVariosDisfracesComando.ItemDeDisfraz item : comando.items()) {
-			Map<Integer, UUID> sel = new HashMap<>();
-			if (item.selecciones() != null) {
-				for (RentarVariosDisfracesComando.SeleccionDeSlot s : item.selecciones()) {
-					sel.put(s.orden(), s.prendaId());
+		if (comando.items() != null) {
+			for (RentarVariosDisfracesComando.ItemDeDisfraz item : comando.items()) {
+				Map<Integer, UUID> sel = new HashMap<>();
+				if (item.selecciones() != null) {
+					for (RentarVariosDisfracesComando.SeleccionDeSlot s : item.selecciones()) {
+						sel.put(s.orden(), s.prendaId());
+					}
 				}
+				todos.addAll(itemsRentaDe(empresaId, item.disfrazId(), Math.max(1, item.cantidad()), sel));
 			}
-			todos.addAll(itemsRentaDe(empresaId, item.disfrazId(), Math.max(1, item.cantidad()), sel));
+		}
+		if (comando.lineas() != null) {
+			for (RentarVariosDisfracesComando.LineaDePrenda l : comando.lineas()) {
+				todos.add(new RegistroDeRentas.ItemDeRenta(l.prendaId(), Math.max(1, l.cantidad()), l.precioPorDia()));
+			}
 		}
 		if (todos.isEmpty()) {
 			throw new IllegalArgumentException("El pedido no resolvió ningún artículo para rentar");
@@ -262,14 +269,21 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 	public UUID ejecutar(VenderVariosDisfracesComando comando) {
 		UUID empresaId = comando.empresaId();
 		List<RegistroDeVentas.ItemDeVenta> todos = new ArrayList<>();
-		for (VenderVariosDisfracesComando.ItemDeDisfraz item : comando.items()) {
-			Map<Integer, UUID> sel = new HashMap<>();
-			if (item.selecciones() != null) {
-				for (VenderVariosDisfracesComando.SeleccionDeSlot s : item.selecciones()) {
-					sel.put(s.orden(), s.prendaId());
+		if (comando.items() != null) {
+			for (VenderVariosDisfracesComando.ItemDeDisfraz item : comando.items()) {
+				Map<Integer, UUID> sel = new HashMap<>();
+				if (item.selecciones() != null) {
+					for (VenderVariosDisfracesComando.SeleccionDeSlot s : item.selecciones()) {
+						sel.put(s.orden(), s.prendaId());
+					}
 				}
+				todos.addAll(itemsVentaDe(empresaId, item.disfrazId(), Math.max(1, item.cantidad()), sel));
 			}
-			todos.addAll(itemsVentaDe(empresaId, item.disfrazId(), Math.max(1, item.cantidad()), sel));
+		}
+		if (comando.lineas() != null) {
+			for (VenderVariosDisfracesComando.LineaDePrenda l : comando.lineas()) {
+				todos.add(new RegistroDeVentas.ItemDeVenta(l.prendaId(), Math.max(1, l.cantidad()), l.precioUnitario()));
+			}
 		}
 		if (todos.isEmpty()) {
 			throw new IllegalArgumentException("El pedido no resolvió ningún artículo para vender");

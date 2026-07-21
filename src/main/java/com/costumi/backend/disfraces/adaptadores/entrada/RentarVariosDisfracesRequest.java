@@ -2,16 +2,16 @@ package com.costumi.backend.disfraces.adaptadores.entrada;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
 /**
- * DTO de entrada para rentar VARIOS disfraces distintos al mismo cliente en una sola operación. Cada
- * {@code item} es un disfraz con su cantidad y las prendas elegidas por slot.
+ * DTO de entrada para rentar un pedido al mismo cliente en una sola renta: {@code items} (disfraces) y/o
+ * {@code lineas} (prendas sueltas). Debe traer al menos uno de los dos (lo valida el controller).
  */
 public record RentarVariosDisfracesRequest(
 
@@ -27,7 +27,9 @@ public record RentarVariosDisfracesRequest(
 
 		@NotNull(message = "La fecha de devolución es obligatoria") LocalDate fechaDevolucion,
 
-		@NotEmpty(message = "El pedido debe tener al menos un disfraz") @Valid List<ItemDisfrazDto> items) {
+		@Valid List<ItemDisfrazDto> items,
+
+		@Valid List<LineaPrendaDto> lineas) {
 
 	/** Un disfraz del pedido: cuál, cuántas unidades (nulo/<1 = 1) y las prendas elegidas por slot. */
 	public record ItemDisfrazDto(
@@ -37,6 +39,16 @@ public record RentarVariosDisfracesRequest(
 			@Min(value = 1, message = "La cantidad debe ser mayor o igual a 1") Integer cantidad,
 
 			@Valid List<SeleccionSlotDto> selecciones) {
+	}
+
+	/** Una prenda suelta del pedido: cuál, cuántas y su precio por día. */
+	public record LineaPrendaDto(
+
+			@NotNull(message = "La prenda es obligatoria") UUID prendaId,
+
+			@Min(value = 1, message = "La cantidad debe ser mayor o igual a 1") Integer cantidad,
+
+			@NotNull(message = "El precio por día es obligatorio") BigDecimal precioPorDia) {
 	}
 
 	/** Elección de prenda para un slot, por su número de orden. */

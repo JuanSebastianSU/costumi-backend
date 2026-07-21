@@ -9,7 +9,22 @@
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
 ## Fase actual
-**Fase 19 — Pedido de VARIOS disfraces distintos en una operación (2026-07-21).**
+**Fase 20 — Pedido MIXTO: prendas + disfraces en una sola renta/venta (2026-07-21).**
+
+Rama `feat/pedido-mixto-prendas-disfraces` (desde `origin/main`, PENDIENTE de merge). El dueño quiere que desde los
+botones **Nueva renta** y **Nueva venta** se puedan rentar/vender **prendas Y disfraces** en la misma operación (antes
+esos botones eran solo-prendas, y el pedido de disfraces estaba en una pantalla aparte — mala ubicación). Los endpoints
+`POST /disfraces/rentar-varios` y `/vender-varios` ahora aceptan además de `items` (disfraces) una lista `lineas`
+(prendas sueltas: prendaId, cantidad, precio); `DisfrazService` resuelve los disfraces y suma las prendas en UNA sola
+renta/venta. `items` dejó de ser obligatorio; el controller valida que venga al menos uno de `items`/`lineas` (400 si no).
+Comandos/requests ganan `lineas`. Test nuevo `rentar_pedido_mixto_prendas_y_disfraces_en_una_sola_renta` (1 disfraz 100/día
++ 2 prendas 40/día × 3 días = 540, 3 líneas, 1 renta). Suite **478/478** en Docker (JDK21).
+**Al mergear: regenerar `:api-client` y en el FRONT meter "Agregar disfraz" en el form de Nueva renta y en el POS de
+Nueva venta (usando este endpoint cuando el pedido incluya disfraces), y quitar la entrada suelta "Pedido de varios" de
+la barra de Disfraces.**
+
+---
+
 
 Rama `feat/disfraz-varios` (desde `origin/main`, PENDIENTE de merge). Cierra el "carrito" que faltaba: rentar/vender
 **varios disfraces distintos** (cada uno con su cantidad y sus selecciones) al mismo cliente en **una sola** renta/venta.
