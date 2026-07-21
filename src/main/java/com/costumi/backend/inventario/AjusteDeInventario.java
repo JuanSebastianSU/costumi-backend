@@ -22,9 +22,22 @@ public interface AjusteDeInventario {
 	void reingresarDisponibles(UUID empresaId, UUID sucursalId, UUID prendaId, int cantidad);
 
 	/**
-	 * Procesa el retorno de una renta según el checklist de la devolución (RF-5.4/5.6): mueve unidades
-	 * de <b>disponible</b> a dañadas / en limpieza / perdidas. Las piezas que vuelven bien quedan
-	 * disponibles (no se mueven). Lanza {@link StockInsuficiente} si no hay disponibles suficientes.
+	 * Compromete {@code cantidad} unidades para una renta (RF-3): mueve de <b>disponible</b> a
+	 * <b>rentada</b>, de modo que bajan los disponibles sin cambiar el total del inventario. Lanza
+	 * {@link StockInsuficiente} si no hay suficientes unidades disponibles.
+	 */
+	void comprometerParaRenta(UUID empresaId, UUID sucursalId, UUID prendaId, int cantidad);
+
+	/**
+	 * Libera {@code cantidad} unidades de una renta y las vuelve <b>disponibles</b> (RF-3/5): al devolver
+	 * en buen estado, cancelar o expirar una reserva. Mueve de <b>rentada</b> a <b>disponible</b>.
+	 */
+	void liberarDeRenta(UUID empresaId, UUID sucursalId, UUID prendaId, int cantidad);
+
+	/**
+	 * Procesa el retorno de una renta con novedad según el checklist de la devolución (RF-5.4/5.6): mueve
+	 * unidades de <b>rentada</b> a dañadas / en limpieza / perdidas. Las piezas que vuelven bien se liberan
+	 * con {@link #liberarDeRenta}. Lanza {@link StockInsuficiente} si no hay rentadas suficientes.
 	 */
 	void procesarRetornoDeRenta(UUID empresaId, UUID sucursalId, UUID prendaId, int danadas, int enLimpieza,
 			int perdidas);

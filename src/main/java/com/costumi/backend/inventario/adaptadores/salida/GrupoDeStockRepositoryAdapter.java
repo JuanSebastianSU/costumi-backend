@@ -66,14 +66,14 @@ class GrupoDeStockRepositoryAdapter implements GrupoDeStockRepository {
 				.map(e -> new ValorDeVarianteEmbeddable(e.getKey(), e.getValue()))
 				.collect(Collectors.toCollection(java.util.LinkedHashSet::new));
 		return new GrupoDeStockJpaEntity(g.id(), g.empresaId(), g.sucursalId(), g.prendaId(), combinacion,
-				g.disponibles(), g.danadas(), g.enLimpieza(), g.perdidas());
+				g.disponibles(), g.rentadas(), g.danadas(), g.enLimpieza(), g.perdidas());
 	}
 
 	private static GrupoDeStock aDominio(GrupoDeStockJpaEntity e) {
 		Map<UUID, UUID> valores = new LinkedHashMap<>();
 		e.getCombinacion().forEach(v -> valores.put(v.getTipoEtiquetaId(), v.getValorEtiquetaId()));
 		return GrupoDeStock.rehidratar(e.getId(), e.getEmpresaId(), e.getSucursalId(), e.getPrendaId(),
-				CombinacionDeVariante.de(valores), e.getDisponibles(), e.getDanadas(), e.getEnLimpieza(),
-				e.getPerdidas());
+				CombinacionDeVariante.de(valores), e.getDisponibles(), e.getRentadas(), e.getDanadas(),
+				e.getEnLimpieza(), e.getPerdidas());
 	}
 }

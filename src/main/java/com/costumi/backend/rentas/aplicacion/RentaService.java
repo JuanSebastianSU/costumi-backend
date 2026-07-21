@@ -1,7 +1,9 @@
 package com.costumi.backend.rentas.aplicacion;
 
 import com.costumi.backend.configuracion.ConsultaDeConfiguracion;
+import com.costumi.backend.inventario.AjusteDeInventario;
 import com.costumi.backend.inventario.ConsultaDeInventario;
+import com.costumi.backend.inventario.StockInsuficiente;
 import com.costumi.backend.rentas.ConsultaDeRentas;
 import com.costumi.backend.rentas.RegistroDeRentas;
 import com.costumi.backend.rentas.dominio.EstadoRenta;
@@ -24,19 +26,21 @@ class RentaService implements CrearRenta, ConsultarRentas, GestionarRenta, Consu
 
 	private final RentaRepository rentas;
 	private final ConsultaDeInventario inventario;
+	private final AjusteDeInventario ajusteDeInventario;
 	private final ConsultaDeConfiguracion configuracion;
 	private final com.costumi.backend.identidad.ConsultaDeSucursales sucursales;
 	private final com.costumi.backend.identidad.ConsultaDeAsignaciones asignaciones;
 	private final com.costumi.backend.clientes.ResolucionDeClientes clientes;
 	private final org.springframework.context.ApplicationEventPublisher eventos;
 
-	RentaService(RentaRepository rentas, ConsultaDeInventario inventario, ConsultaDeConfiguracion configuracion,
-			com.costumi.backend.identidad.ConsultaDeSucursales sucursales,
+	RentaService(RentaRepository rentas, ConsultaDeInventario inventario, AjusteDeInventario ajusteDeInventario,
+			ConsultaDeConfiguracion configuracion, com.costumi.backend.identidad.ConsultaDeSucursales sucursales,
 			com.costumi.backend.identidad.ConsultaDeAsignaciones asignaciones,
 			com.costumi.backend.clientes.ResolucionDeClientes clientes,
 			org.springframework.context.ApplicationEventPublisher eventos) {
 		this.rentas = rentas;
 		this.inventario = inventario;
+		this.ajusteDeInventario = ajusteDeInventario;
 		this.configuracion = configuracion;
 		this.sucursales = sucursales;
 		this.asignaciones = asignaciones;
@@ -86,16 +90,15 @@ class RentaService implements CrearRenta, ConsultarRentas, GestionarRenta, Consu
 				throw new IllegalArgumentException("La prenda no existe en esta empresa");
 			}
 		}
-		// RF-12.4: la disponibilidad por fechas solo se controla si la empresa cuenta stock.
+		// RF-3/12.4: si la empresa cuenta stock, rentar COMPROMETE las unidades (disponible -> rentada): bajan
+		// los disponibles sin cambiar el total del inventario. Si no hay suficientes, no se puede rentar.
 		if (configuracion.conteoStock(comando.empresaId())) {
 			for (Map.Entry<UUID, Integer> pedido : cantidadPorPrenda.entrySet()) {
-				UUID prendaId = pedido.getKey();
-				// Serializa las reservas de esta prenda (evita doble asignación) antes de contar disponibilidad.
-				rentas.bloquearReservaDePrenda(prendaId);
-				int disponibles = inventario.unidadesDisponibles(comando.empresaId(), comando.sucursalId(), prendaId);
-				long ocupadas = rentas.cantidadSolapada(comando.empresaId(), prendaId,
-						comando.fechaRetiro(), comando.fechaDevolucion());
-				if (ocupadas + pedido.getValue() > disponibles) {
+				try {
+					ajusteDeInventario.comprometerParaRenta(comando.empresaId(), comando.sucursalId(),
+							pedido.getKey(), pedido.getValue());
+				}
+				catch (StockInsuficiente e) {
 					throw new SinDisponibilidad();
 				}
 			}
@@ -231,7 +234,10 @@ class RentaService implements CrearRenta, ConsultarRentas, GestionarRenta, Consu
 	@Override
 	@Transactional
 	public Renta devolver(UUID empresaId, UUID rentaId) {
-		return aplicar(empresaId, rentaId, Renta::devolver);
+		// Devolución rápida (todo en buen estado): la renta pasa a DEVUELTA y sus unidades vuelven a disponibles.
+		Renta renta = aplicar(empresaId, rentaId, Renta::devolver);
+		liberarStock(renta);
+		return renta;
 	}
 
 	@Override
@@ -243,7 +249,29 @@ class RentaService implements CrearRenta, ConsultarRentas, GestionarRenta, Consu
 	@Override
 	@Transactional
 	public Renta cancelar(UUID empresaId, UUID rentaId) {
-		return aplicar(empresaId, rentaId, Renta::cancelar);
+		// Cancelar una reserva (solo desde RESERVADA): las unidades comprometidas vuelven a disponibles.
+		Renta renta = aplicar(empresaId, rentaId, Renta::cancelar);
+		liberarStock(renta);
+		return renta;
+	}
+
+	/**
+	 * Si la empresa cuenta stock, devuelve al inventario las unidades de la renta (rentada -> disponible).
+	 * Best-effort: una inconsistencia puntual de stock no debe impedir cerrar/cancelar la renta.
+	 */
+	private void liberarStock(Renta renta) {
+		if (!configuracion.conteoStock(renta.empresaId())) {
+			return;
+		}
+		for (RentaLinea linea : renta.lineas()) {
+			try {
+				ajusteDeInventario.liberarDeRenta(renta.empresaId(), renta.sucursalId(), linea.prendaId(),
+						linea.cantidad());
+			}
+			catch (StockInsuficiente ignorado) {
+				// La unidad ya no estaba en 'rentada' (p. ej. devuelta con novedad o config cambiada): se omite.
+			}
+		}
 	}
 
 	@Override

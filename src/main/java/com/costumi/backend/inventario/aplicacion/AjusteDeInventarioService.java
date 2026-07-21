@@ -92,21 +92,50 @@ class AjusteDeInventarioService implements AjusteDeInventario {
 
 	@Override
 	@Transactional
+	public void comprometerParaRenta(UUID empresaId, UUID sucursalId, UUID prendaId, int cantidad) {
+		if (cantidad <= 0) {
+			throw new IllegalArgumentException("La cantidad a comprometer debe ser mayor a 0");
+		}
+		List<GrupoDeStock> deLaPrenda = gruposDelTenant(empresaId, sucursalId, prendaId);
+		int totalDisponible = deLaPrenda.stream().mapToInt(GrupoDeStock::disponibles).sum();
+		if (totalDisponible < cantidad) {
+			throw new StockInsuficiente(prendaId);
+		}
+		mover(deLaPrenda, prendaId, EstadoUnidad.DISPONIBLE, EstadoUnidad.RENTADA, cantidad);
+	}
+
+	@Override
+	@Transactional
+	public void liberarDeRenta(UUID empresaId, UUID sucursalId, UUID prendaId, int cantidad) {
+		if (cantidad <= 0) {
+			throw new IllegalArgumentException("La cantidad a liberar debe ser mayor a 0");
+		}
+		List<GrupoDeStock> deLaPrenda = gruposDelTenant(empresaId, sucursalId, prendaId);
+		mover(deLaPrenda, prendaId, EstadoUnidad.RENTADA, EstadoUnidad.DISPONIBLE, cantidad);
+	}
+
+	@Override
+	@Transactional
 	public void procesarRetornoDeRenta(UUID empresaId, UUID sucursalId, UUID prendaId, int danadas, int enLimpieza,
 			int perdidas) {
+		List<GrupoDeStock> deLaPrenda = gruposDelTenant(empresaId, sucursalId, prendaId);
+		mover(deLaPrenda, prendaId, EstadoUnidad.RENTADA, EstadoUnidad.DANADA, danadas);
+		mover(deLaPrenda, prendaId, EstadoUnidad.RENTADA, EstadoUnidad.EN_LIMPIEZA, enLimpieza);
+		mover(deLaPrenda, prendaId, EstadoUnidad.RENTADA, EstadoUnidad.PERDIDA, perdidas);
+	}
+
+	/** Bloquea la prenda (anti-sobreventa), verifica el tenant y devuelve sus grupos en la sucursal. */
+	private List<GrupoDeStock> gruposDelTenant(UUID empresaId, UUID sucursalId, UUID prendaId) {
 		bloquearPrenda(prendaId);
 		boolean delTenant = prendas.buscarPorId(prendaId).filter(p -> p.empresaId().equals(empresaId)).isPresent();
 		if (!delTenant) {
 			throw new StockInsuficiente(prendaId);
 		}
-		List<GrupoDeStock> deLaPrenda = grupos.listarPorPrendaYSucursal(prendaId, sucursalId);
-		moverDesdeDisponible(deLaPrenda, prendaId, EstadoUnidad.DANADA, danadas);
-		moverDesdeDisponible(deLaPrenda, prendaId, EstadoUnidad.EN_LIMPIEZA, enLimpieza);
-		moverDesdeDisponible(deLaPrenda, prendaId, EstadoUnidad.PERDIDA, perdidas);
+		return grupos.listarPorPrendaYSucursal(prendaId, sucursalId);
 	}
 
-	/** Mueve {@code cantidad} unidades de DISPONIBLE al estado destino, repartiendo entre los grupos. */
-	private void moverDesdeDisponible(List<GrupoDeStock> grupos, UUID prendaId, EstadoUnidad destino, int cantidad) {
+	/** Mueve {@code cantidad} unidades del estado {@code desde} al {@code hacia}, repartiendo entre los grupos. */
+	private void mover(List<GrupoDeStock> grupos, UUID prendaId, EstadoUnidad desde, EstadoUnidad hacia, int cantidad) {
 		if (cantidad <= 0) {
 			return;
 		}
@@ -115,9 +144,9 @@ class AjusteDeInventarioService implements AjusteDeInventario {
 			if (restante == 0) {
 				break;
 			}
-			int aMover = Math.min(grupo.disponibles(), restante);
+			int aMover = Math.min(grupo.contar(desde), restante);
 			if (aMover > 0) {
-				grupo.mover(EstadoUnidad.DISPONIBLE, destino, aMover);
+				grupo.mover(desde, hacia, aMover);
 				this.grupos.guardar(grupo);
 				restante -= aMover;
 			}

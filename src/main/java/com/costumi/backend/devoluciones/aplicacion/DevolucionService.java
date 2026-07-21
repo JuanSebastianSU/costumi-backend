@@ -99,13 +99,20 @@ class DevolucionService implements RegistrarDevolucion, ConsultarDevoluciones,
 			}
 		}
 
-		// Actualiza el inventario por artículo (RF-5.4/5.6): dañadas/limpieza/perdidas salen de disponible.
-		for (UUID prendaId : ahoraPorPrenda.keySet()) {
-			int danadas = contar(comando.piezas(), prendaId, EstadoPieza.DANADA);
-			int enLimpieza = contar(comando.piezas(), prendaId, EstadoPieza.EN_LIMPIEZA);
-			int perdidas = contar(comando.piezas(), prendaId, EstadoPieza.PERDIDA);
-			if (danadas + enLimpieza + perdidas > 0) {
-				inventario.procesarRetornoDeRenta(empresaId, sucursalId, prendaId, danadas, enLimpieza, perdidas);
+		// Actualiza el inventario por artículo (RF-5.4/5.6), solo si la empresa cuenta stock: las piezas que
+		// vuelven BIEN se liberan (rentada -> disponible); dañadas/limpieza/perdidas van de rentada a ese estado.
+		if (configuracion.conteoStock(empresaId)) {
+			for (UUID prendaId : ahoraPorPrenda.keySet()) {
+				int bien = contar(comando.piezas(), prendaId, EstadoPieza.BIEN);
+				int danadas = contar(comando.piezas(), prendaId, EstadoPieza.DANADA);
+				int enLimpieza = contar(comando.piezas(), prendaId, EstadoPieza.EN_LIMPIEZA);
+				int perdidas = contar(comando.piezas(), prendaId, EstadoPieza.PERDIDA);
+				if (bien > 0) {
+					inventario.liberarDeRenta(empresaId, sucursalId, prendaId, bien);
+				}
+				if (danadas + enLimpieza + perdidas > 0) {
+					inventario.procesarRetornoDeRenta(empresaId, sucursalId, prendaId, danadas, enLimpieza, perdidas);
+				}
 			}
 		}
 

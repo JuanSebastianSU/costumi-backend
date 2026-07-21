@@ -21,18 +21,20 @@ public class GrupoDeStock {
 	private final UUID prendaId;
 	private final CombinacionDeVariante combinacion;
 	private int disponibles;
+	private int rentadas;
 	private int danadas;
 	private int enLimpieza;
 	private int perdidas;
 
 	private GrupoDeStock(UUID id, UUID empresaId, UUID sucursalId, UUID prendaId, CombinacionDeVariante combinacion,
-			int disponibles, int danadas, int enLimpieza, int perdidas) {
+			int disponibles, int rentadas, int danadas, int enLimpieza, int perdidas) {
 		this.id = Objects.requireNonNull(id, "id");
 		this.empresaId = Objects.requireNonNull(empresaId, "empresaId");
 		this.sucursalId = Objects.requireNonNull(sucursalId, "sucursalId");
 		this.prendaId = Objects.requireNonNull(prendaId, "prendaId");
 		this.combinacion = Objects.requireNonNull(combinacion, "combinacion");
 		this.disponibles = exigirNoNegativo(disponibles);
+		this.rentadas = exigirNoNegativo(rentadas);
 		this.danadas = exigirNoNegativo(danadas);
 		this.enLimpieza = exigirNoNegativo(enLimpieza);
 		this.perdidas = exigirNoNegativo(perdidas);
@@ -41,13 +43,14 @@ public class GrupoDeStock {
 	public static GrupoDeStock crear(UUID empresaId, UUID sucursalId, UUID prendaId, CombinacionDeVariante combinacion,
 			int cantidadInicial) {
 		return new GrupoDeStock(UUID.randomUUID(), empresaId, sucursalId, prendaId, combinacion, cantidadInicial,
-				0, 0, 0);
+				0, 0, 0, 0);
 	}
 
 	public static GrupoDeStock rehidratar(UUID id, UUID empresaId, UUID sucursalId, UUID prendaId,
-			CombinacionDeVariante combinacion, int disponibles, int danadas, int enLimpieza, int perdidas) {
-		return new GrupoDeStock(id, empresaId, sucursalId, prendaId, combinacion, disponibles, danadas, enLimpieza,
-				perdidas);
+			CombinacionDeVariante combinacion, int disponibles, int rentadas, int danadas, int enLimpieza,
+			int perdidas) {
+		return new GrupoDeStock(id, empresaId, sucursalId, prendaId, combinacion, disponibles, rentadas, danadas,
+				enLimpieza, perdidas);
 	}
 
 	public UUID sucursalId() {
@@ -107,12 +110,13 @@ public class GrupoDeStock {
 	}
 
 	public int total() {
-		return disponibles + danadas + enLimpieza + perdidas;
+		return disponibles + rentadas + danadas + enLimpieza + perdidas;
 	}
 
 	public int contar(EstadoUnidad estado) {
 		return switch (estado) {
 			case DISPONIBLE -> disponibles;
+			case RENTADA -> rentadas;
 			case DANADA -> danadas;
 			case EN_LIMPIEZA -> enLimpieza;
 			case PERDIDA -> perdidas;
@@ -122,6 +126,7 @@ public class GrupoDeStock {
 	private void fijar(EstadoUnidad estado, int valor) {
 		switch (estado) {
 			case DISPONIBLE -> disponibles = valor;
+			case RENTADA -> rentadas = valor;
 			case DANADA -> danadas = valor;
 			case EN_LIMPIEZA -> enLimpieza = valor;
 			case PERDIDA -> perdidas = valor;
@@ -153,6 +158,10 @@ public class GrupoDeStock {
 
 	public int disponibles() {
 		return disponibles;
+	}
+
+	public int rentadas() {
+		return rentadas;
 	}
 
 	public int danadas() {

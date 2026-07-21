@@ -262,14 +262,48 @@ class RentaIntegrationTest {
 	}
 
 	@Test
-	void se_puede_rentar_en_fechas_que_no_se_traslapan() throws Exception {
+	void no_se_puede_rentar_la_misma_unidad_hasta_devolverla() throws Exception {
 		Ctx c = montar(1);
-		crearRenta(c); // 08-01..08-04
+		UUID renta = crearRenta(c); // la única unidad queda comprometida (disponible -> rentada)
 
-		// Fechas disjuntas -> disponible -> 201.
+		// Con la unidad ya rentada NO se puede volver a rentar, aunque las fechas no se traslapen -> 409.
+		mvc.perform(post("/api/v1/rentas").header("Authorization", "Bearer " + c.dueno())
+						.contentType(MediaType.APPLICATION_JSON).content(rentaBody(c, "2026-08-10", "2026-08-12")))
+				.andExpect(status().isConflict());
+
+		// Al cancelar la reserva, la unidad vuelve a disponible y ya se puede rentar de nuevo -> 201.
+		mvc.perform(post("/api/v1/rentas/{id}/cancelar", renta).header("Authorization", "Bearer " + c.dueno()))
+				.andExpect(status().isOk());
 		mvc.perform(post("/api/v1/rentas").header("Authorization", "Bearer " + c.dueno())
 						.contentType(MediaType.APPLICATION_JSON).content(rentaBody(c, "2026-08-10", "2026-08-12")))
 				.andExpect(status().isCreated());
+	}
+
+	@Test
+	void rentar_baja_disponibles_y_devolver_los_restaura() throws Exception {
+		Ctx c = montar(3); // 3 unidades disponibles
+
+		mvc.perform(get("/api/v1/prendas/{id}/grupos-stock", c.prenda()).header("Authorization", "Bearer " + c.dueno()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[0].disponibles").value(3))
+				.andExpect(jsonPath("$[0].rentadas").value(0));
+
+		UUID renta = crearRenta(c); // renta de 1 unidad: disponible -> rentada
+
+		// Baja disponibles, sube rentadas, y el TOTAL de unidades NO cambia (el disfraz sigue siendo del local).
+		mvc.perform(get("/api/v1/prendas/{id}/grupos-stock", c.prenda()).header("Authorization", "Bearer " + c.dueno()))
+				.andExpect(jsonPath("$[0].disponibles").value(2))
+				.andExpect(jsonPath("$[0].rentadas").value(1))
+				.andExpect(jsonPath("$[0].total").value(3));
+
+		// Entregar y devolver (rápido): la unidad vuelve a disponibles.
+		mvc.perform(post("/api/v1/rentas/{id}/entregar", renta).header("Authorization", "Bearer " + c.dueno()))
+				.andExpect(status().isOk());
+		mvc.perform(post("/api/v1/rentas/{id}/devolver", renta).header("Authorization", "Bearer " + c.dueno()))
+				.andExpect(status().isOk());
+		mvc.perform(get("/api/v1/prendas/{id}/grupos-stock", c.prenda()).header("Authorization", "Bearer " + c.dueno()))
+				.andExpect(jsonPath("$[0].disponibles").value(3))
+				.andExpect(jsonPath("$[0].rentadas").value(0));
 	}
 
 	@Test

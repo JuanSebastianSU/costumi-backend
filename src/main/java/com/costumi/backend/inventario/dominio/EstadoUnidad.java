@@ -4,6 +4,7 @@ package com.costumi.backend.inventario.dominio;
 public enum EstadoUnidad {
 
 	DISPONIBLE,
+	RENTADA,
 	DANADA,
 	EN_LIMPIEZA,
 	PERDIDA
