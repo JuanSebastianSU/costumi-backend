@@ -99,8 +99,11 @@ class DisfrazController {
 
 	/** Respuesta del disfraz con sus precios sugeridos (renta y venta, suma de las prendas) calculados. */
 	private DisfrazResponse resp(UUID empresaId, Disfraz disfraz) {
-		return DisfrazResponse.desde(disfraz, consultarDisfraces.precioRentaSugerido(empresaId, disfraz),
-				consultarDisfraces.precioVentaSugerido(empresaId, disfraz));
+		return DisfrazResponse.desde(disfraz,
+				consultarDisfraces.precioRentaSugerido(empresaId, disfraz),
+				consultarDisfraces.precioRentaSugeridoMax(empresaId, disfraz),
+				consultarDisfraces.precioVentaSugerido(empresaId, disfraz),
+				consultarDisfraces.precioVentaSugeridoMax(empresaId, disfraz));
 	}
 
 	@PostMapping

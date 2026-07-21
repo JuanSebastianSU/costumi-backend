@@ -604,6 +604,36 @@ class DisfrazIntegrationTest {
 				.andExpect(status().isBadRequest());
 	}
 
+	private UUID crearPrendaVenta(String dueno, UUID categoria, String nombre, String precioVenta) throws Exception {
+		String body = mvc.perform(post("/api/v1/prendas").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"categoriaId\":\"" + categoria + "\",\"nombre\":\"" + nombre + "\","
+								+ "\"tipoArticulo\":\"VENTA\",\"precioVenta\":" + precioVenta + "}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		return UUID.fromString(json.readTree(body).get("id").asText());
+	}
+
+	@Test
+	void el_precio_de_venta_sugerido_es_un_rango_cuando_la_parte_tiene_opciones() throws Exception {
+		UUID empresa = crearEmpresa("Rango " + UUID.randomUUID());
+		String dueno = duenoDe(empresa);
+		UUID cat = crearCategoria(dueno, "Cat " + UUID.randomUUID());
+		// Dos opciones de venta con precios distintos: 50 y 90 -> el sugerido va de 50 a 90.
+		UUID barata = crearPrendaVenta(dueno, cat, "Barata", "50.00");
+		crearGrupo(dueno, empresa, barata, 3);
+		UUID cara = crearPrendaVenta(dueno, cat, "Cara", "90.00");
+		crearGrupo(dueno, empresa, cara, 3);
+
+		mvc.perform(post("/api/v1/disfraces").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Rango\",\"slots\":[{\"orden\":1,\"nombre\":\"Cuerpo\","
+								+ "\"ejePrenda\":\"PERSONALIZABLE\",\"prendasOpcion\":[\"" + barata + "\",\"" + cara
+								+ "\"],\"opcional\":false}]}"))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.precioVentaSugerido").value(50.00))
+				.andExpect(jsonPath("$.precioVentaSugeridoMax").value(90.00));
+	}
+
 	@Test
 	void disfraz_con_categoria_se_lista_por_categoria() throws Exception {
 		UUID empresa = crearEmpresa("Disfraz Categoria " + UUID.randomUUID());

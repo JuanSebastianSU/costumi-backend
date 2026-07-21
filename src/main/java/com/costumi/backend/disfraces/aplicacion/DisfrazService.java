@@ -214,6 +214,50 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 
 	@Override
 	@Transactional(readOnly = true)
+	public BigDecimal precioRentaSugeridoMax(UUID empresaId, Disfraz disfraz) {
+		BigDecimal total = BigDecimal.ZERO;
+		for (Slot slot : disfraz.slots()) {
+			total = total.add(precioMaxDeSlot(empresaId, slot));
+		}
+		return total;
+	}
+
+	/** Renta de un slot en el tope del rango: la fija, o el máximo entre las opciones elegibles. */
+	private BigDecimal precioMaxDeSlot(UUID empresaId, Slot slot) {
+		if (slot.ejePrenda() == EjeDePrenda.FIJA) {
+			return inventario.precioRenta(empresaId, slot.prendaFijaId()).orElse(BigDecimal.ZERO);
+		}
+		return opcionesElegibles(empresaId, slot).stream()
+				.map(ConsultaDeInventario.OpcionDePool::precioRenta)
+				.filter(java.util.Objects::nonNull)
+				.max(BigDecimal::compareTo)
+				.orElse(BigDecimal.ZERO);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public BigDecimal precioVentaSugeridoMax(UUID empresaId, Disfraz disfraz) {
+		BigDecimal total = BigDecimal.ZERO;
+		for (Slot slot : disfraz.slots()) {
+			total = total.add(precioVentaMaxDeSlot(empresaId, slot));
+		}
+		return total;
+	}
+
+	/** Venta de un slot en el tope del rango: la fija, o el máximo entre las opciones elegibles. */
+	private BigDecimal precioVentaMaxDeSlot(UUID empresaId, Slot slot) {
+		if (slot.ejePrenda() == EjeDePrenda.FIJA) {
+			return inventario.precioVenta(empresaId, slot.prendaFijaId()).orElse(BigDecimal.ZERO);
+		}
+		return opcionesElegibles(empresaId, slot).stream()
+				.map(opcion -> inventario.precioVenta(empresaId, opcion.prendaId()).orElse(null))
+				.filter(java.util.Objects::nonNull)
+				.max(BigDecimal::compareTo)
+				.orElse(BigDecimal.ZERO);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
 	public boolean estaDisponible(UUID empresaId, UUID disfrazId) {
 		Disfraz disfraz = exigirDelTenant(empresaId, disfrazId);
 		return disfraz.estaDisponible(consultaDeStockPara(empresaId));

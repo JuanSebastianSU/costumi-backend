@@ -13,18 +13,26 @@ import java.util.UUID;
  * que fija el dueño, o null si cobra por la suma). La disponibilidad se consulta aparte (derivada).
  */
 public record DisfrazResponse(UUID id, UUID empresaId, String nombre, UUID categoriaId, boolean activo,
-		BigDecimal precioRentaGeneral, BigDecimal precioRentaSugerido, BigDecimal precioVentaSugerido, String fotoUrl,
-		List<SlotDto> slots) {
+		BigDecimal precioRentaGeneral, BigDecimal precioRentaSugerido, BigDecimal precioRentaSugeridoMax,
+		BigDecimal precioVentaSugerido, BigDecimal precioVentaSugeridoMax, String fotoUrl, List<SlotDto> slots) {
 
 	/** Sin precios sugeridos calculados (usos internos). */
 	static DisfrazResponse desde(Disfraz d) {
-		return desde(d, null, null);
+		return desde(d, null, null, null, null);
 	}
 
+	/** Con los precios "desde" (mínimo); sin el tope del rango (usos de vitrina). */
 	static DisfrazResponse desde(Disfraz d, BigDecimal precioRentaSugerido, BigDecimal precioVentaSugerido) {
+		return desde(d, precioRentaSugerido, null, precioVentaSugerido, null);
+	}
+
+	/** Con el rango sugerido completo (mínimo–máximo) de renta y de venta, para el armado del dueño. */
+	static DisfrazResponse desde(Disfraz d, BigDecimal precioRentaSugerido, BigDecimal precioRentaSugeridoMax,
+			BigDecimal precioVentaSugerido, BigDecimal precioVentaSugeridoMax) {
 		List<SlotDto> slots = d.slots().stream().map(DisfrazResponse::aSlotDto).toList();
 		return new DisfrazResponse(d.id(), d.empresaId(), d.nombre(), d.categoriaId(), d.activo(),
-				d.precioRentaGeneral(), precioRentaSugerido, precioVentaSugerido, d.fotoUrl(), slots);
+				d.precioRentaGeneral(), precioRentaSugerido, precioRentaSugeridoMax, precioVentaSugerido,
+				precioVentaSugeridoMax, d.fotoUrl(), slots);
 	}
 
 	private static SlotDto aSlotDto(Slot s) {

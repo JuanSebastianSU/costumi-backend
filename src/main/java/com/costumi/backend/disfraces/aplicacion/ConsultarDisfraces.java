@@ -28,4 +28,14 @@ public interface ConsultarDisfraces {
 	 * al dueño/cliente si el disfraz se vende (aparte de rentarse).
 	 */
 	BigDecimal precioVentaSugerido(UUID empresaId, Disfraz disfraz);
+
+	/**
+	 * Tope del rango de renta sugerido: la suma del precio de renta MÁS caro de cada slot. Con slots fijos
+	 * coincide con {@link #precioRentaSugerido} (precio directo); con personalizables abre un rango
+	 * mínimo–máximo según qué opción elija el cliente.
+	 */
+	BigDecimal precioRentaSugeridoMax(UUID empresaId, Disfraz disfraz);
+
+	/** Tope del rango de venta sugerido (la opción más cara de cada slot); igual al mínimo si todo es fijo. */
+	BigDecimal precioVentaSugeridoMax(UUID empresaId, Disfraz disfraz);
 }
