@@ -27,6 +27,9 @@ public record RentarDisfrazRequest(
 
 		@NotNull(message = "La fecha de devolución es obligatoria") LocalDate fechaDevolucion,
 
+		/** Cuántas unidades del disfraz se rentan (para "N iguales" en una operación). Nulo o < 1 = 1. */
+		@Min(value = 1, message = "La cantidad debe ser mayor o igual a 1") Integer cantidad,
+
 		@Valid List<SeleccionSlotDto> selecciones) {
 
 	/** Elección de prenda para un slot, por su número de orden. */

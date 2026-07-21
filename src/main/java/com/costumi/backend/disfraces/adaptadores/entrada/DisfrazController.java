@@ -157,8 +157,9 @@ class DisfrazController {
 				.stream()
 				.map(s -> new RentarDisfrazComando.SeleccionDeSlot(s.orden(), s.prendaId()))
 				.toList();
+		int cantidad = (request.cantidad() == null || request.cantidad() < 1) ? 1 : request.cantidad();
 		UUID rentaId = rentarDisfraz.ejecutar(new RentarDisfrazComando(empresaId, disfrazId, request.sucursalId(),
-				clienteId, request.fechaRetiro(), request.fechaDevolucion(), selecciones, actorId));
+				clienteId, request.fechaRetiro(), request.fechaDevolucion(), cantidad, selecciones, actorId));
 		return new RentarDisfrazResponse(rentaId);
 	}
 
@@ -174,8 +175,9 @@ class DisfrazController {
 				.stream()
 				.map(s -> new VenderDisfrazComando.SeleccionDeSlot(s.orden(), s.prendaId()))
 				.toList();
+		int cantidad = (request.cantidad() == null || request.cantidad() < 1) ? 1 : request.cantidad();
 		UUID ventaId = venderDisfraz.ejecutar(new VenderDisfrazComando(empresaId, disfrazId, request.sucursalId(),
-				clienteId, selecciones, actorId));
+				clienteId, cantidad, selecciones, actorId));
 		return new VenderDisfrazResponse(ventaId);
 	}
 
