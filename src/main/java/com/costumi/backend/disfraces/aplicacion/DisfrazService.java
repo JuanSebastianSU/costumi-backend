@@ -61,9 +61,10 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 	@Override
 	@Transactional
 	public Disfraz ejecutar(CrearDisfrazComando comando) {
+		validarCategoriaDelTenant(comando.empresaId(), comando.categoriaId());
 		comando.slots().forEach(slot -> validarSlotDelTenant(comando.empresaId(), slot));
-		Disfraz disfraz = Disfraz.crear(comando.empresaId(), comando.nombre(), aSlots(comando.slots()),
-				comando.precioRentaGeneral());
+		Disfraz disfraz = Disfraz.crear(comando.empresaId(), comando.nombre(), comando.categoriaId(),
+				aSlots(comando.slots()), comando.precioRentaGeneral());
 		return disfraces.guardar(disfraz);
 	}
 
@@ -73,9 +74,18 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 		Disfraz disfraz = disfraces.buscarPorId(comando.disfrazId())
 				.filter(d -> d.empresaId().equals(comando.empresaId()))
 				.orElseThrow(() -> new DisfrazNoEncontrado(comando.disfrazId()));
+		validarCategoriaDelTenant(comando.empresaId(), comando.categoriaId());
 		comando.slots().forEach(slot -> validarSlotDelTenant(comando.empresaId(), slot));
-		disfraz.redefinir(comando.nombre(), aSlots(comando.slots()), comando.precioRentaGeneral());
+		disfraz.redefinir(comando.nombre(), comando.categoriaId(), aSlots(comando.slots()),
+				comando.precioRentaGeneral());
 		return disfraces.guardar(disfraz);
+	}
+
+	/** La categoría del disfraz, si se indica, debe existir en la empresa (§5.4, cross-ref por tenant). */
+	private void validarCategoriaDelTenant(UUID empresaId, UUID categoriaId) {
+		if (categoriaId != null && !taxonomia.categoriaExiste(empresaId, categoriaId)) {
+			throw new IllegalArgumentException("La categoría del disfraz no existe en esta empresa");
+		}
 	}
 
 	@Override

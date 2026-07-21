@@ -29,8 +29,8 @@ class DisfrazRepositoryAdapter implements DisfrazRepository {
 
 	@Override
 	public Disfraz guardar(Disfraz disfraz) {
-		cabeceras.save(new DisfrazJpaEntity(disfraz.id(), disfraz.empresaId(), disfraz.nombre(), disfraz.activo(),
-				disfraz.precioRentaGeneral(), disfraz.fotoUrl()));
+		cabeceras.save(new DisfrazJpaEntity(disfraz.id(), disfraz.empresaId(), disfraz.nombre(), disfraz.categoriaId(),
+				disfraz.activo(), disfraz.precioRentaGeneral(), disfraz.fotoUrl()));
 		slots.deleteByDisfrazId(disfraz.id());
 		for (Slot slot : disfraz.slots()) {
 			slots.save(aEntidad(disfraz.id(), slot));
@@ -56,8 +56,8 @@ class DisfrazRepositoryAdapter implements DisfrazRepository {
 						Collectors.mapping(DisfrazRepositoryAdapter::aSlotDominio, Collectors.toList())));
 		return lista.stream()
 				.map(cabecera -> Disfraz.rehidratar(cabecera.getId(), cabecera.getEmpresaId(), cabecera.getNombre(),
-						slotsPorDisfraz.getOrDefault(cabecera.getId(), List.of()), cabecera.isActivo(),
-						cabecera.getPrecioRentaGeneral(), cabecera.getFotoUrl()))
+						cabecera.getCategoriaId(), slotsPorDisfraz.getOrDefault(cabecera.getId(), List.of()),
+						cabecera.isActivo(), cabecera.getPrecioRentaGeneral(), cabecera.getFotoUrl()))
 				.toList();
 	}
 
@@ -78,7 +78,8 @@ class DisfrazRepositoryAdapter implements DisfrazRepository {
 				.map(DisfrazRepositoryAdapter::aSlotDominio)
 				.toList();
 		return Disfraz.rehidratar(cabecera.getId(), cabecera.getEmpresaId(), cabecera.getNombre(),
-				slotsDominio, cabecera.isActivo(), cabecera.getPrecioRentaGeneral(), cabecera.getFotoUrl());
+				cabecera.getCategoriaId(), slotsDominio, cabecera.isActivo(), cabecera.getPrecioRentaGeneral(),
+				cabecera.getFotoUrl());
 	}
 
 	private static Slot aSlotDominio(DisfrazSlotJpaEntity e) {

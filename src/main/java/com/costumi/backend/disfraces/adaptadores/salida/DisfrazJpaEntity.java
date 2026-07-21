@@ -26,6 +26,9 @@ class DisfrazJpaEntity {
 	@Column(nullable = false, length = 160)
 	private String nombre;
 
+	@Column(name = "categoria_id")
+	private UUID categoriaId;
+
 	@Column(nullable = false)
 	private boolean activo;
 
@@ -39,11 +42,12 @@ class DisfrazJpaEntity {
 		// requerido por JPA
 	}
 
-	DisfrazJpaEntity(UUID id, UUID empresaId, String nombre, boolean activo, BigDecimal precioRentaGeneral,
-			String fotoUrl) {
+	DisfrazJpaEntity(UUID id, UUID empresaId, String nombre, UUID categoriaId, boolean activo,
+			BigDecimal precioRentaGeneral, String fotoUrl) {
 		this.id = id;
 		this.empresaId = empresaId;
 		this.nombre = nombre;
+		this.categoriaId = categoriaId;
 		this.activo = activo;
 		this.precioRentaGeneral = precioRentaGeneral;
 		this.fotoUrl = fotoUrl;
@@ -59,6 +63,10 @@ class DisfrazJpaEntity {
 
 	String getNombre() {
 		return nombre;
+	}
+
+	UUID getCategoriaId() {
+		return categoriaId;
 	}
 
 	boolean isActivo() {

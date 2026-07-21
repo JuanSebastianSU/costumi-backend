@@ -108,8 +108,8 @@ class DisfrazController {
 			UriComponentsBuilder uriBuilder) {
 		UUID empresaId = tenant.empresaIdRequerida();
 		List<SlotComando> slots = request.slots().stream().map(DisfrazController::aSlotComando).toList();
-		Disfraz disfraz = crearDisfraz.ejecutar(
-				new CrearDisfrazComando(empresaId, request.nombre(), slots, request.precioRentaGeneral()));
+		Disfraz disfraz = crearDisfraz.ejecutar(new CrearDisfrazComando(empresaId, request.nombre(),
+				request.categoriaId(), slots, request.precioRentaGeneral()));
 		URI location = uriBuilder.path("/api/v1/disfraces/{id}").buildAndExpand(disfraz.id()).toUri();
 		return ResponseEntity.created(location).body(resp(empresaId, disfraz));
 	}
@@ -119,8 +119,8 @@ class DisfrazController {
 	DisfrazResponse editar(@PathVariable UUID disfrazId, @Valid @RequestBody CrearDisfrazRequest request) {
 		UUID empresaId = tenant.empresaIdRequerida();
 		List<SlotComando> slots = request.slots().stream().map(DisfrazController::aSlotComando).toList();
-		Disfraz disfraz = editarDisfraz.ejecutar(
-				new EditarDisfrazComando(empresaId, disfrazId, request.nombre(), slots, request.precioRentaGeneral()));
+		Disfraz disfraz = editarDisfraz.ejecutar(new EditarDisfrazComando(empresaId, disfrazId, request.nombre(),
+				request.categoriaId(), slots, request.precioRentaGeneral()));
 		return resp(empresaId, disfraz);
 	}
 
@@ -138,10 +138,12 @@ class DisfrazController {
 		return resp(empresaId, cambiarEstadoDisfraz.activar(empresaId, disfrazId));
 	}
 
+	/** Lista los disfraces del tenant; con {@code categoriaId} filtra por esa categoría (RF-2.3). */
 	@GetMapping
-	List<DisfrazResponse> listar() {
+	List<DisfrazResponse> listar(@RequestParam(required = false) UUID categoriaId) {
 		return tenant.empresaId()
 				.map(empresaId -> consultarDisfraces.deEmpresa(empresaId).stream()
+						.filter(d -> categoriaId == null || categoriaId.equals(d.categoriaId()))
 						.map(d -> resp(empresaId, d)).toList())
 				.orElseGet(List::of);
 	}

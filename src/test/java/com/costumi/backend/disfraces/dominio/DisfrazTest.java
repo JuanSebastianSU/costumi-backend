@@ -129,7 +129,7 @@ class DisfrazTest {
 		Disfraz disfraz = Disfraz.crear(EMPRESA, "Viejo", List.of(Slot.conPrendaFija(1, "A", PRENDA_FIJA, false)));
 
 		UUID otra = UUID.randomUUID();
-		disfraz.redefinir("Nuevo", List.of(
+		disfraz.redefinir("Nuevo", null, List.of(
 				Slot.conPrendaFija(1, "A", PRENDA_FIJA, false),
 				Slot.conPrendaFija(2, "B", otra, false)), null);
 
