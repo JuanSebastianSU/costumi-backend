@@ -69,6 +69,22 @@ public interface ConsultaDeInventario {
 	/** La opción concreta de una prenda fija (nombre, precio, stock y etiquetas), si existe en la empresa. */
 	Optional<OpcionDePool> opcionDePrenda(UUID empresaId, UUID prendaId);
 
+	/**
+	 * Prenda valuada para calcular precios/multa <b>sugeridos</b> del disfraz: sus precios (renta, venta) y
+	 * valores de multa (daño, reposición) junto a su categoría y valores de etiqueta, SIN consultar stock.
+	 * Es lo que basta para el rango sugerido (una pista, no un checkout); el stock se valida aparte.
+	 */
+	record PrendaValuada(UUID prendaId, UUID categoriaId, Map<UUID, UUID> etiquetas, BigDecimal precioRenta,
+			BigDecimal precioVenta, BigDecimal valorDano, BigDecimal valorReposicion) {
+	}
+
+	/**
+	 * Todas las prendas activas (no archivadas) de la empresa, valuadas, en <b>una sola consulta</b> (sin
+	 * tocar stock). Sirve para calcular los sugeridos de muchos disfraces a la vez sin caer en N+1: se carga
+	 * el catálogo una vez y se resuelve cada slot en memoria.
+	 */
+	List<PrendaValuada> prendasValuadasDeEmpresa(UUID empresaId);
+
 	/** Resumen mínimo de una prenda para pintar el desglose de un pedido/renta/venta: nombre y foto. */
 	record ResumenDePrenda(UUID prendaId, String nombre, String fotoUrl) {
 	}

@@ -28,9 +28,12 @@ public record DisfrazResponse(UUID id, UUID empresaId, String nombre, UUID categ
 		return desde(d, null, null, null, null, null);
 	}
 
-	/** Con los precios "desde" (mínimo); sin el tope del rango ni la multa (usos de vitrina). */
-	static DisfrazResponse desde(Disfraz d, BigDecimal precioRentaSugerido, BigDecimal precioVentaSugerido) {
-		return desde(d, precioRentaSugerido, null, precioVentaSugerido, null, null);
+	/** Con el rango sugerido completo (mín–máx de renta/venta + multa), calculado en un solo paso. */
+	static DisfrazResponse desde(Disfraz d, ConsultarDisfraces.Sugeridos s) {
+		if (s == null) {
+			return desde(d);
+		}
+		return desde(d, s.rentaMin(), s.rentaMax(), s.ventaMin(), s.ventaMax(), s.multa());
 	}
 
 	/** Con el rango sugerido completo (mín–máx) de renta y venta + multa por tipo, para el armado del dueño. */

@@ -155,24 +155,93 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 
 	@Override
 	@Transactional(readOnly = true)
-	public BigDecimal precioRentaSugerido(UUID empresaId, Disfraz disfraz) {
-		BigDecimal total = BigDecimal.ZERO;
-		for (Slot slot : disfraz.slots()) {
-			total = total.add(precioDeSlot(empresaId, slot));
-		}
-		return total;
+	public ConsultarDisfraces.Sugeridos sugeridosDe(UUID empresaId, Disfraz disfraz) {
+		return calcularSugeridos(disfraz, inventario.prendasValuadasDeEmpresa(empresaId));
 	}
 
-	/** Precio de renta de un slot: el de la prenda fija, o el mínimo ("desde") entre las opciones elegibles. */
-	private BigDecimal precioDeSlot(UUID empresaId, Slot slot) {
-		if (slot.ejePrenda() == EjeDePrenda.FIJA) {
-			return inventario.precioRenta(empresaId, slot.prendaFijaId()).orElse(BigDecimal.ZERO);
+	@Override
+	@Transactional(readOnly = true)
+	public Map<UUID, ConsultarDisfraces.Sugeridos> sugeridosDe(UUID empresaId, List<Disfraz> disfraces) {
+		// Catálogo de la empresa UNA sola vez: los sugeridos de todos los disfraces se calculan en memoria.
+		List<ConsultaDeInventario.PrendaValuada> catalogo = inventario.prendasValuadasDeEmpresa(empresaId);
+		Map<UUID, ConsultarDisfraces.Sugeridos> resultado = new java.util.LinkedHashMap<>();
+		for (Disfraz disfraz : disfraces) {
+			resultado.put(disfraz.id(), calcularSugeridos(disfraz, catalogo));
 		}
-		return opcionesElegibles(empresaId, slot).stream()
-				.map(ConsultaDeInventario.OpcionDePool::precioRenta)
-				.filter(java.util.Objects::nonNull)
-				.min(BigDecimal::compareTo)
+		return resultado;
+	}
+
+	/**
+	 * Suma, slot por slot, los precios/valores mínimos y máximos de sus opciones elegibles resueltas sobre el
+	 * {@code catalogo} ya cargado (sin más consultas). Slot fijo → su prenda; personalizable → sus opciones
+	 * explícitas o las del pool (categoría + etiquetas), filtradas en memoria.
+	 */
+	private static ConsultarDisfraces.Sugeridos calcularSugeridos(Disfraz disfraz,
+			List<ConsultaDeInventario.PrendaValuada> catalogo) {
+		Map<UUID, ConsultaDeInventario.PrendaValuada> porId = new java.util.HashMap<>();
+		for (ConsultaDeInventario.PrendaValuada p : catalogo) {
+			porId.put(p.prendaId(), p);
+		}
+		BigDecimal rentaMin = BigDecimal.ZERO;
+		BigDecimal rentaMax = BigDecimal.ZERO;
+		BigDecimal ventaMin = BigDecimal.ZERO;
+		BigDecimal ventaMax = BigDecimal.ZERO;
+		BigDecimal danoMin = BigDecimal.ZERO;
+		BigDecimal danoMax = BigDecimal.ZERO;
+		BigDecimal reposicionMin = BigDecimal.ZERO;
+		BigDecimal reposicionMax = BigDecimal.ZERO;
+		for (Slot slot : disfraz.slots()) {
+			List<ConsultaDeInventario.PrendaValuada> opciones = opcionesValuadas(slot, catalogo, porId);
+			rentaMin = rentaMin.add(extremo(opciones, ConsultaDeInventario.PrendaValuada::precioRenta, false));
+			rentaMax = rentaMax.add(extremo(opciones, ConsultaDeInventario.PrendaValuada::precioRenta, true));
+			ventaMin = ventaMin.add(extremo(opciones, ConsultaDeInventario.PrendaValuada::precioVenta, false));
+			ventaMax = ventaMax.add(extremo(opciones, ConsultaDeInventario.PrendaValuada::precioVenta, true));
+			danoMin = danoMin.add(extremo(opciones, ConsultaDeInventario.PrendaValuada::valorDano, false));
+			danoMax = danoMax.add(extremo(opciones, ConsultaDeInventario.PrendaValuada::valorDano, true));
+			reposicionMin = reposicionMin.add(extremo(opciones, ConsultaDeInventario.PrendaValuada::valorReposicion, false));
+			reposicionMax = reposicionMax.add(extremo(opciones, ConsultaDeInventario.PrendaValuada::valorReposicion, true));
+		}
+		return new ConsultarDisfraces.Sugeridos(rentaMin, rentaMax, ventaMin, ventaMax,
+				new ConsultarDisfraces.MultaSugerida(danoMin, danoMax, reposicionMin, reposicionMax));
+	}
+
+	/** Opciones elegibles de un slot resueltas sobre el catálogo: la fija, las explícitas o las del pool. */
+	private static List<ConsultaDeInventario.PrendaValuada> opcionesValuadas(Slot slot,
+			List<ConsultaDeInventario.PrendaValuada> catalogo,
+			Map<UUID, ConsultaDeInventario.PrendaValuada> porId) {
+		if (slot.ejePrenda() == EjeDePrenda.FIJA) {
+			ConsultaDeInventario.PrendaValuada fija = porId.get(slot.prendaFijaId());
+			return fija == null ? List.of() : List.of(fija);
+		}
+		if (slot.tieneOpcionesExplicitas()) {
+			return slot.prendasOpcion().stream().map(porId::get)
+					.filter(java.util.Objects::nonNull).toList();
+		}
+		PoolDeSlot pool = slot.pool();
+		return catalogo.stream()
+				.filter(p -> pool.categoriaId().equals(p.categoriaId()))
+				.filter(p -> cumpleEtiquetas(p.etiquetas(), pool.etiquetasPermitidas()))
+				.toList();
+	}
+
+	/** El extremo (máx si {@code max}; si no, mín) de un valor entre las opciones; 0 si no hay ninguno. */
+	private static BigDecimal extremo(List<ConsultaDeInventario.PrendaValuada> opciones,
+			java.util.function.Function<ConsultaDeInventario.PrendaValuada, BigDecimal> valor, boolean max) {
+		java.util.stream.Stream<BigDecimal> valores = opciones.stream().map(valor)
+				.filter(java.util.Objects::nonNull);
+		return (max ? valores.max(BigDecimal::compareTo) : valores.min(BigDecimal::compareTo))
 				.orElse(BigDecimal.ZERO);
+	}
+
+	/** ¿Los valores de etiqueta de la prenda satisfacen los permitidos del pool por dimensión? (vacío = cualquiera). */
+	private static boolean cumpleEtiquetas(Map<UUID, UUID> valoresDeLaPrenda, Map<UUID, Set<UUID>> permitidas) {
+		for (Map.Entry<UUID, Set<UUID>> exigencia : permitidas.entrySet()) {
+			UUID valor = valoresDeLaPrenda.get(exigencia.getKey());
+			if (valor == null || !exigencia.getValue().contains(valor)) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	/**
@@ -189,106 +258,6 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 		}
 		PoolDeSlot pool = slot.pool();
 		return inventario.opcionesDelPool(empresaId, pool.categoriaId(), pool.etiquetasPermitidas());
-	}
-
-	@Override
-	@Transactional(readOnly = true)
-	public BigDecimal precioVentaSugerido(UUID empresaId, Disfraz disfraz) {
-		BigDecimal total = BigDecimal.ZERO;
-		for (Slot slot : disfraz.slots()) {
-			total = total.add(precioVentaDeSlot(empresaId, slot));
-		}
-		return total;
-	}
-
-	/** Precio de venta de un slot: el de la prenda fija, o el mínimo ("desde") entre las opciones elegibles. */
-	private BigDecimal precioVentaDeSlot(UUID empresaId, Slot slot) {
-		if (slot.ejePrenda() == EjeDePrenda.FIJA) {
-			return inventario.precioVenta(empresaId, slot.prendaFijaId()).orElse(BigDecimal.ZERO);
-		}
-		return opcionesElegibles(empresaId, slot).stream()
-				.map(opcion -> inventario.precioVenta(empresaId, opcion.prendaId()).orElse(null))
-				.filter(java.util.Objects::nonNull)
-				.min(BigDecimal::compareTo)
-				.orElse(BigDecimal.ZERO);
-	}
-
-	@Override
-	@Transactional(readOnly = true)
-	public BigDecimal precioRentaSugeridoMax(UUID empresaId, Disfraz disfraz) {
-		BigDecimal total = BigDecimal.ZERO;
-		for (Slot slot : disfraz.slots()) {
-			total = total.add(precioMaxDeSlot(empresaId, slot));
-		}
-		return total;
-	}
-
-	/** Renta de un slot en el tope del rango: la fija, o el máximo entre las opciones elegibles. */
-	private BigDecimal precioMaxDeSlot(UUID empresaId, Slot slot) {
-		if (slot.ejePrenda() == EjeDePrenda.FIJA) {
-			return inventario.precioRenta(empresaId, slot.prendaFijaId()).orElse(BigDecimal.ZERO);
-		}
-		return opcionesElegibles(empresaId, slot).stream()
-				.map(ConsultaDeInventario.OpcionDePool::precioRenta)
-				.filter(java.util.Objects::nonNull)
-				.max(BigDecimal::compareTo)
-				.orElse(BigDecimal.ZERO);
-	}
-
-	@Override
-	@Transactional(readOnly = true)
-	public BigDecimal precioVentaSugeridoMax(UUID empresaId, Disfraz disfraz) {
-		BigDecimal total = BigDecimal.ZERO;
-		for (Slot slot : disfraz.slots()) {
-			total = total.add(precioVentaMaxDeSlot(empresaId, slot));
-		}
-		return total;
-	}
-
-	/** Venta de un slot en el tope del rango: la fija, o el máximo entre las opciones elegibles. */
-	private BigDecimal precioVentaMaxDeSlot(UUID empresaId, Slot slot) {
-		if (slot.ejePrenda() == EjeDePrenda.FIJA) {
-			return inventario.precioVenta(empresaId, slot.prendaFijaId()).orElse(BigDecimal.ZERO);
-		}
-		return opcionesElegibles(empresaId, slot).stream()
-				.map(opcion -> inventario.precioVenta(empresaId, opcion.prendaId()).orElse(null))
-				.filter(java.util.Objects::nonNull)
-				.max(BigDecimal::compareTo)
-				.orElse(BigDecimal.ZERO);
-	}
-
-	@Override
-	@Transactional(readOnly = true)
-	public MultaSugerida multaSugerida(UUID empresaId, Disfraz disfraz) {
-		BigDecimal danoMin = BigDecimal.ZERO;
-		BigDecimal danoMax = BigDecimal.ZERO;
-		BigDecimal reposicionMin = BigDecimal.ZERO;
-		BigDecimal reposicionMax = BigDecimal.ZERO;
-		for (Slot slot : disfraz.slots()) {
-			danoMin = danoMin.add(valorDeSlot(empresaId, slot, true, false));
-			danoMax = danoMax.add(valorDeSlot(empresaId, slot, true, true));
-			reposicionMin = reposicionMin.add(valorDeSlot(empresaId, slot, false, false));
-			reposicionMax = reposicionMax.add(valorDeSlot(empresaId, slot, false, true));
-		}
-		return new MultaSugerida(danoMin, danoMax, reposicionMin, reposicionMax);
-	}
-
-	/**
-	 * Valor de multa de un slot ({@code dano} = valor de daño; si no, valor de reposición) en el extremo del
-	 * rango ({@code max} = el más caro; si no, el más barato): la prenda fija, o el mín/máx de las opciones.
-	 */
-	private BigDecimal valorDeSlot(UUID empresaId, Slot slot, boolean dano, boolean max) {
-		java.util.function.Function<UUID, java.util.Optional<BigDecimal>> valor = dano
-				? id -> inventario.valorDano(empresaId, id)
-				: id -> inventario.valorReposicion(empresaId, id);
-		if (slot.ejePrenda() == EjeDePrenda.FIJA) {
-			return valor.apply(slot.prendaFijaId()).orElse(BigDecimal.ZERO);
-		}
-		java.util.stream.Stream<BigDecimal> valores = opcionesElegibles(empresaId, slot).stream()
-				.map(opcion -> valor.apply(opcion.prendaId()).orElse(null))
-				.filter(java.util.Objects::nonNull);
-		return (max ? valores.max(BigDecimal::compareTo) : valores.min(BigDecimal::compareTo))
-				.orElse(BigDecimal.ZERO);
 	}
 
 	@Override

@@ -4,6 +4,7 @@ import com.costumi.backend.disfraces.dominio.Disfraz;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /** Puerto de entrada: listado de disfraces de la empresa (tenant). */
@@ -16,35 +17,25 @@ public interface ConsultarDisfraces {
 	List<Disfraz> activosDeEmpresa(UUID empresaId);
 
 	/**
-	 * Precio de renta SUGERIDO (por día) del disfraz: la suma del precio de renta de sus prendas (RF-2.10).
-	 * Para slots personalizables (pool) toma el precio "desde" (el mínimo de las opciones). Es lo que se le
-	 * muestra al dueño al armarlo; él puede fijar un {@code precioRentaGeneral} que lo anule.
+	 * Todos los valores SUGERIDOS de un disfraz en un solo cálculo: rango (mín–máx) de renta y venta y multa
+	 * por tipo (daño/reposición), a partir de los precios/valores de sus elementos (RF-2.10). Con slots fijos
+	 * mín == máx (precio directo); con personalizables el rango se abre según qué opción se elija. Son una
+	 * pista para el dueño al armar el disfraz; él puede fijar {@code precioRentaGeneral}/{@code precioVentaGeneral}
+	 * que la anulen. Carga el catálogo de la empresa UNA vez (sin consultar stock por pieza).
 	 */
-	BigDecimal precioRentaSugerido(UUID empresaId, Disfraz disfraz);
+	Sugeridos sugeridosDe(UUID empresaId, Disfraz disfraz);
 
 	/**
-	 * Precio de VENTA sugerido del disfraz: la suma del precio de venta de sus prendas. Slot fijo → precio de
-	 * venta de su prenda; slot personalizable → "desde" (el mínimo de las opciones). Es lo que se le muestra
-	 * al dueño/cliente si el disfraz se vende (aparte de rentarse).
+	 * Los {@link Sugeridos} de varios disfraces cargando el catálogo de la empresa <b>una sola vez</b> y
+	 * resolviendo cada slot en memoria. Es la vía para listas (gestión y vitrina): evita el N+1 de recalcular
+	 * precios prenda por prenda. Devuelve un mapa {@code disfrazId -> Sugeridos}.
 	 */
-	BigDecimal precioVentaSugerido(UUID empresaId, Disfraz disfraz);
+	Map<UUID, Sugeridos> sugeridosDe(UUID empresaId, List<Disfraz> disfraces);
 
-	/**
-	 * Tope del rango de renta sugerido: la suma del precio de renta MÁS caro de cada slot. Con slots fijos
-	 * coincide con {@link #precioRentaSugerido} (precio directo); con personalizables abre un rango
-	 * mínimo–máximo según qué opción elija el cliente.
-	 */
-	BigDecimal precioRentaSugeridoMax(UUID empresaId, Disfraz disfraz);
-
-	/** Tope del rango de venta sugerido (la opción más cara de cada slot); igual al mínimo si todo es fijo. */
-	BigDecimal precioVentaSugeridoMax(UUID empresaId, Disfraz disfraz);
-
-	/**
-	 * Multa sugerida del disfraz por tipo, como rango (mín–máx) según los elementos que lo componen: por
-	 * DAÑO (suma de {@code valorDano} de las piezas) y por REPOSICIÓN/pérdida (suma de {@code valorReposicion}).
-	 * Con slots fijos mín == máx; con personalizables abre rango según la opción elegida. Es una sugerencia.
-	 */
-	MultaSugerida multaSugerida(UUID empresaId, Disfraz disfraz);
+	/** Rango (mín–máx) de renta y venta sugeridos + multa sugerida por tipo del disfraz. */
+	record Sugeridos(BigDecimal rentaMin, BigDecimal rentaMax, BigDecimal ventaMin, BigDecimal ventaMax,
+			MultaSugerida multa) {
+	}
 
 	/** Rango de multa sugerido del disfraz por tipo (daño y reposición/pérdida). */
 	record MultaSugerida(BigDecimal danoMin, BigDecimal danoMax, BigDecimal reposicionMin, BigDecimal reposicionMax) {
