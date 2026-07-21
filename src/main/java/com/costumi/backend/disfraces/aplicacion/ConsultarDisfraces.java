@@ -38,4 +38,15 @@ public interface ConsultarDisfraces {
 
 	/** Tope del rango de venta sugerido (la opción más cara de cada slot); igual al mínimo si todo es fijo. */
 	BigDecimal precioVentaSugeridoMax(UUID empresaId, Disfraz disfraz);
+
+	/**
+	 * Multa sugerida del disfraz por tipo, como rango (mín–máx) según los elementos que lo componen: por
+	 * DAÑO (suma de {@code valorDano} de las piezas) y por REPOSICIÓN/pérdida (suma de {@code valorReposicion}).
+	 * Con slots fijos mín == máx; con personalizables abre rango según la opción elegida. Es una sugerencia.
+	 */
+	MultaSugerida multaSugerida(UUID empresaId, Disfraz disfraz);
+
+	/** Rango de multa sugerido del disfraz por tipo (daño y reposición/pérdida). */
+	record MultaSugerida(BigDecimal danoMin, BigDecimal danoMax, BigDecimal reposicionMin, BigDecimal reposicionMax) {
+	}
 }

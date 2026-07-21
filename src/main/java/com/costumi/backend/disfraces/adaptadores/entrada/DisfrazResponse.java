@@ -1,5 +1,6 @@
 package com.costumi.backend.disfraces.adaptadores.entrada;
 
+import com.costumi.backend.disfraces.aplicacion.ConsultarDisfraces;
 import com.costumi.backend.disfraces.dominio.Disfraz;
 import com.costumi.backend.disfraces.dominio.Slot;
 
@@ -13,26 +14,35 @@ import java.util.UUID;
  * que fija el dueño, o null si cobra por la suma). La disponibilidad se consulta aparte (derivada).
  */
 public record DisfrazResponse(UUID id, UUID empresaId, String nombre, UUID categoriaId, boolean activo,
-		BigDecimal precioRentaGeneral, BigDecimal precioRentaSugerido, BigDecimal precioRentaSugeridoMax,
-		BigDecimal precioVentaSugerido, BigDecimal precioVentaSugeridoMax, String fotoUrl, List<SlotDto> slots) {
+		BigDecimal precioRentaGeneral, BigDecimal precioVentaGeneral, BigDecimal precioRentaSugerido,
+		BigDecimal precioRentaSugeridoMax, BigDecimal precioVentaSugerido, BigDecimal precioVentaSugeridoMax,
+		MultaSugeridaDto multaSugerida, String fotoUrl, List<SlotDto> slots) {
 
-	/** Sin precios sugeridos calculados (usos internos). */
+	/** Rango de multa sugerido por tipo (daño y reposición/pérdida), según los elementos del disfraz. */
+	record MultaSugeridaDto(BigDecimal danoMin, BigDecimal danoMax, BigDecimal reposicionMin,
+			BigDecimal reposicionMax) {
+	}
+
+	/** Sin precios ni multa sugeridos calculados (usos internos). */
 	static DisfrazResponse desde(Disfraz d) {
-		return desde(d, null, null, null, null);
+		return desde(d, null, null, null, null, null);
 	}
 
-	/** Con los precios "desde" (mínimo); sin el tope del rango (usos de vitrina). */
+	/** Con los precios "desde" (mínimo); sin el tope del rango ni la multa (usos de vitrina). */
 	static DisfrazResponse desde(Disfraz d, BigDecimal precioRentaSugerido, BigDecimal precioVentaSugerido) {
-		return desde(d, precioRentaSugerido, null, precioVentaSugerido, null);
+		return desde(d, precioRentaSugerido, null, precioVentaSugerido, null, null);
 	}
 
-	/** Con el rango sugerido completo (mínimo–máximo) de renta y de venta, para el armado del dueño. */
+	/** Con el rango sugerido completo (mín–máx) de renta y venta + multa por tipo, para el armado del dueño. */
 	static DisfrazResponse desde(Disfraz d, BigDecimal precioRentaSugerido, BigDecimal precioRentaSugeridoMax,
-			BigDecimal precioVentaSugerido, BigDecimal precioVentaSugeridoMax) {
+			BigDecimal precioVentaSugerido, BigDecimal precioVentaSugeridoMax,
+			ConsultarDisfraces.MultaSugerida multa) {
 		List<SlotDto> slots = d.slots().stream().map(DisfrazResponse::aSlotDto).toList();
+		MultaSugeridaDto multaDto = multa == null ? null
+				: new MultaSugeridaDto(multa.danoMin(), multa.danoMax(), multa.reposicionMin(), multa.reposicionMax());
 		return new DisfrazResponse(d.id(), d.empresaId(), d.nombre(), d.categoriaId(), d.activo(),
-				d.precioRentaGeneral(), precioRentaSugerido, precioRentaSugeridoMax, precioVentaSugerido,
-				precioVentaSugeridoMax, d.fotoUrl(), slots);
+				d.precioRentaGeneral(), d.precioVentaGeneral(), precioRentaSugerido, precioRentaSugeridoMax,
+				precioVentaSugerido, precioVentaSugeridoMax, multaDto, d.fotoUrl(), slots);
 	}
 
 	private static SlotDto aSlotDto(Slot s) {

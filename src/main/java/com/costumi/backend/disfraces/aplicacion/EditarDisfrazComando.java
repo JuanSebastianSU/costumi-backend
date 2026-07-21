@@ -9,7 +9,7 @@ import java.util.UUID;
  * {@code precioRentaGeneral} (nulo = vuelve a cobrarse por prendas).
  */
 public record EditarDisfrazComando(UUID empresaId, UUID disfrazId, String nombre, UUID categoriaId,
-		List<SlotComando> slots, BigDecimal precioRentaGeneral) {
+		List<SlotComando> slots, BigDecimal precioRentaGeneral, BigDecimal precioVentaGeneral) {
 
 	public EditarDisfrazComando {
 		slots = (slots == null) ? List.of() : List.copyOf(slots);

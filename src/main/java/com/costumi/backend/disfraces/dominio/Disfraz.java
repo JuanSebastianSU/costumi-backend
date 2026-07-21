@@ -36,10 +36,11 @@ public final class Disfraz {
 	private List<Slot> slots;
 	private boolean activo;
 	private BigDecimal precioRentaGeneral;
+	private BigDecimal precioVentaGeneral;
 	private String fotoUrl;
 
 	private Disfraz(UUID id, UUID empresaId, String nombre, UUID categoriaId, List<Slot> slots, boolean activo,
-			BigDecimal precioRentaGeneral, String fotoUrl) {
+			BigDecimal precioRentaGeneral, BigDecimal precioVentaGeneral, String fotoUrl) {
 		this.id = Objects.requireNonNull(id, "id");
 		this.empresaId = Objects.requireNonNull(empresaId, "empresaId");
 		this.nombre = exigirNombre(nombre);
@@ -47,27 +48,36 @@ public final class Disfraz {
 		this.slots = exigirSlots(slots);
 		this.activo = activo;
 		this.precioRentaGeneral = validarPrecio(precioRentaGeneral);
+		this.precioVentaGeneral = validarPrecio(precioVentaGeneral);
 		this.fotoUrl = fotoUrl;
 	}
 
 	public static Disfraz crear(UUID empresaId, String nombre, UUID categoriaId, List<Slot> slots,
+			BigDecimal precioRentaGeneral, BigDecimal precioVentaGeneral) {
+		return new Disfraz(UUID.randomUUID(), empresaId, nombre, categoriaId, slots, true, precioRentaGeneral,
+				precioVentaGeneral, null);
+	}
+
+	/** Crea un disfraz con categoría y solo override de renta (sin override de venta). */
+	public static Disfraz crear(UUID empresaId, String nombre, UUID categoriaId, List<Slot> slots,
 			BigDecimal precioRentaGeneral) {
-		return new Disfraz(UUID.randomUUID(), empresaId, nombre, categoriaId, slots, true, precioRentaGeneral, null);
+		return crear(empresaId, nombre, categoriaId, slots, precioRentaGeneral, null);
 	}
 
 	/** Crea un disfraz sin categoría (compatibilidad); se cobra por prendas si no hay precio general. */
 	public static Disfraz crear(UUID empresaId, String nombre, List<Slot> slots, BigDecimal precioRentaGeneral) {
-		return crear(empresaId, nombre, null, slots, precioRentaGeneral);
+		return crear(empresaId, nombre, null, slots, precioRentaGeneral, null);
 	}
 
-	/** Crea un disfraz que se cobra por prendas (sin categoría ni precio general). */
+	/** Crea un disfraz que se cobra por prendas (sin categoría ni precios generales). */
 	public static Disfraz crear(UUID empresaId, String nombre, List<Slot> slots) {
-		return crear(empresaId, nombre, null, slots, null);
+		return crear(empresaId, nombre, null, slots, null, null);
 	}
 
 	public static Disfraz rehidratar(UUID id, UUID empresaId, String nombre, UUID categoriaId, List<Slot> slots,
-			boolean activo, BigDecimal precioRentaGeneral, String fotoUrl) {
-		return new Disfraz(id, empresaId, nombre, categoriaId, slots, activo, precioRentaGeneral, fotoUrl);
+			boolean activo, BigDecimal precioRentaGeneral, BigDecimal precioVentaGeneral, String fotoUrl) {
+		return new Disfraz(id, empresaId, nombre, categoriaId, slots, activo, precioRentaGeneral, precioVentaGeneral,
+				fotoUrl);
 	}
 
 	/** Asigna/actualiza la foto del disfraz (la que sube el dueño, RF-2.9), tras subirla al almacén. */
@@ -85,18 +95,24 @@ public final class Disfraz {
 		this.nombre = exigirNombre(nuevoNombre);
 	}
 
-	/** Redefine el disfraz completo (nombre + categoría + slots + precio general) al editarlo (RF-2.3). */
+	/** Redefine el disfraz completo (nombre + categoría + slots + precios generales) al editarlo (RF-2.3). */
 	public void redefinir(String nuevoNombre, UUID nuevaCategoriaId, List<Slot> nuevosSlots,
-			BigDecimal precioRentaGeneral) {
+			BigDecimal precioRentaGeneral, BigDecimal precioVentaGeneral) {
 		this.nombre = exigirNombre(nuevoNombre);
 		this.categoriaId = nuevaCategoriaId;
 		this.slots = exigirSlots(nuevosSlots);
 		this.precioRentaGeneral = validarPrecio(precioRentaGeneral);
+		this.precioVentaGeneral = validarPrecio(precioVentaGeneral);
 	}
 
-	/** ¿El disfraz cobra un precio general (que anula la suma por prendas)? */
+	/** ¿El disfraz cobra un precio de RENTA general (que anula la suma por prendas)? */
 	public boolean tienePrecioGeneral() {
 		return precioRentaGeneral != null;
+	}
+
+	/** ¿El disfraz cobra un precio de VENTA general (que anula la suma de venta por prendas)? */
+	public boolean tienePrecioVentaGeneral() {
+		return precioVentaGeneral != null;
 	}
 
 	/** Lo retira de la vitrina y del alta de rentas, sin borrarlo (conserva historial). */
@@ -158,6 +174,11 @@ public final class Disfraz {
 	/** Precio de renta por día del conjunto que anula la suma por prendas; nulo = se cobra por prendas. */
 	public BigDecimal precioRentaGeneral() {
 		return precioRentaGeneral;
+	}
+
+	/** Precio de venta del conjunto que anula la suma de venta por prendas; nulo = se cobra por prendas. */
+	public BigDecimal precioVentaGeneral() {
+		return precioVentaGeneral;
 	}
 
 	/** Foto del disfraz que subió el dueño (URL pública), o null si aún no tiene. */

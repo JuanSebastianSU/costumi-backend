@@ -103,7 +103,8 @@ class DisfrazController {
 				consultarDisfraces.precioRentaSugerido(empresaId, disfraz),
 				consultarDisfraces.precioRentaSugeridoMax(empresaId, disfraz),
 				consultarDisfraces.precioVentaSugerido(empresaId, disfraz),
-				consultarDisfraces.precioVentaSugeridoMax(empresaId, disfraz));
+				consultarDisfraces.precioVentaSugeridoMax(empresaId, disfraz),
+				consultarDisfraces.multaSugerida(empresaId, disfraz));
 	}
 
 	@PostMapping
@@ -112,7 +113,7 @@ class DisfrazController {
 		UUID empresaId = tenant.empresaIdRequerida();
 		List<SlotComando> slots = request.slots().stream().map(DisfrazController::aSlotComando).toList();
 		Disfraz disfraz = crearDisfraz.ejecutar(new CrearDisfrazComando(empresaId, request.nombre(),
-				request.categoriaId(), slots, request.precioRentaGeneral()));
+				request.categoriaId(), slots, request.precioRentaGeneral(), request.precioVentaGeneral()));
 		URI location = uriBuilder.path("/api/v1/disfraces/{id}").buildAndExpand(disfraz.id()).toUri();
 		return ResponseEntity.created(location).body(resp(empresaId, disfraz));
 	}
@@ -123,7 +124,7 @@ class DisfrazController {
 		UUID empresaId = tenant.empresaIdRequerida();
 		List<SlotComando> slots = request.slots().stream().map(DisfrazController::aSlotComando).toList();
 		Disfraz disfraz = editarDisfraz.ejecutar(new EditarDisfrazComando(empresaId, disfrazId, request.nombre(),
-				request.categoriaId(), slots, request.precioRentaGeneral()));
+				request.categoriaId(), slots, request.precioRentaGeneral(), request.precioVentaGeneral()));
 		return resp(empresaId, disfraz);
 	}
 
