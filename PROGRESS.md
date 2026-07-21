@@ -9,7 +9,23 @@
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
 ## Fase actual
-**Fase 16 — Stock unificado renta/venta: estado RENTADA (2026-07-21).**
+**Fase 17 — Multa en el pendiente de cobros + "por etiqueta" cuenta rentas (2026-07-21).**
+
+Rama `fix/multa-pendiente-etiqueta-rentas-push-cliente` (desde `origin/main`, PENDIENTE de merge). Dos arreglos que el
+dueño reportó:
+- **Multa en el comprobante (RF-6.6/11.5):** `ComprobanteResponse` gana `multa` (Σ multa de la renta; 0 en ventas o
+  rentas sin multa), resuelto con `ConsultaDeMultas.totalMultaDeRenta`. Así el front puede sumar la multa al
+  "Pendiente" de la pantalla de cobros (antes solo mostraba el importe de la renta, por eso la multa "no aparecía" ahí).
+  El PDF del comprobante también la lista.
+- **"Por etiqueta" cuenta ventas Y rentas (RF-8/9.1):** `RankingJdbcAdapter.ventasPorEtiqueta` ahora hace UNION de
+  `linea_de_venta` + `renta_linea`; en un negocio que renta, antes salía siempre vacío. Respeta el filtro de sucursal.
+- Tests: nuevo `el_comprobante_de_cobros_expone_la_multa_de_la_renta` (multa 30 en el comprobante) y
+  `por_etiqueta_tambien_cuenta_las_rentas_no_solo_las_ventas` (renta de 3 → Azul con 3 unidades). Suite **475/475** en
+  Docker (JDK21). **Al mergear: regenerar `:api-client`, sumar la multa al pendiente en la pantalla de cobros, y poner
+  mensaje "sin datos" en la sección por-etiqueta.** Nota: push al cliente (device-token) sigue bloqueado por Firebase.
+
+---
+
 
 Rama `fix/stock-unificado-renta-venta` (desde `origin/main`, PENDIENTE de merge). El dueño reportó que **rentar no
 bajaba el stock** y que las operaciones se bloqueaban sin explicación. Antes, las rentas se contabilizaban por un

@@ -343,6 +343,38 @@ class ReporteIntegrationTest {
 	}
 
 	@Test
+	void por_etiqueta_tambien_cuenta_las_rentas_no_solo_las_ventas() throws Exception {
+		montar();
+		String dueno = tokenRol(Rol.DUENO);
+		UUID tipoColor = postId("/api/v1/tipos-etiqueta", dueno, "{\"nombre\":\"Color " + UUID.randomUUID()
+				+ "\",\"defineVariante\":true,\"seleccionablePorCliente\":false,\"categoriasQueAplica\":[]}");
+		UUID azul = postId("/api/v1/tipos-etiqueta/" + tipoColor + "/valores", dueno, "{\"valor\":\"Azul\"}");
+		UUID categoria = postId("/api/v1/categorias", dueno, "{\"nombre\":\"Cat " + UUID.randomUUID() + "\"}");
+		UUID prenda = postId("/api/v1/prendas", dueno, "{\"categoriaId\":\"" + categoria
+				+ "\",\"nombre\":\"Capa\",\"tipoArticulo\":\"RENTA\",\"precioRenta\":20.00,\"etiquetas\":[{"
+				+ "\"tipoEtiquetaId\":\"" + tipoColor + "\",\"valorEtiquetaId\":\"" + azul + "\"}]}");
+		postId("/api/v1/prendas/" + prenda + "/grupos-stock", dueno,
+				"{\"sucursalId\":\"" + sucursal + "\",\"combinacion\":[],\"cantidadInicial\":5}");
+		UUID cliente = postId("/api/v1/clientes", dueno, "{\"nombre\":\"Cliente\"}");
+
+		// Renta de 3 unidades de la prenda Azul (el negocio es de venta y renta).
+		mvc.perform(post("/api/v1/rentas").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + sucursal + "\",\"clienteId\":\"" + cliente + "\","
+								+ "\"fechaRetiro\":\"2026-08-01\",\"fechaDevolucion\":\"2026-08-04\",\"lineas\":[{"
+								+ "\"prendaId\":\"" + prenda + "\",\"cantidad\":3,\"precioPorDia\":20.00}]}"))
+				.andExpect(status().isCreated());
+
+		// El reporte por etiqueta incluye la renta: Azul con 3 unidades (antes solo contaba ventas -> salía vacío).
+		mvc.perform(get("/api/v1/reportes/ventas-por-etiqueta").param("tipoEtiquetaId", tipoColor.toString())
+						.header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(1))
+				.andExpect(jsonPath("$[0].valor").value("Azul"))
+				.andExpect(jsonPath("$[0].unidades").value(3));
+	}
+
+	@Test
 	void exporta_el_tablero_de_inventario_en_csv() throws Exception {
 		montar();
 		String dueno = tokenRol(Rol.DUENO);

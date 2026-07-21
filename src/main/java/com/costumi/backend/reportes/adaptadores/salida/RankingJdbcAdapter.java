@@ -83,16 +83,25 @@ class RankingJdbcAdapter implements RankingReadRepository {
 
 	@Override
 	public List<ValorEtiquetaRanking> ventasPorEtiqueta(UUID empresaId, UUID tipoEtiquetaId, UUID sucursalId) {
+		// Movimientos por etiqueta: cuenta VENTAS y RENTAS de prendas con ese valor de etiqueta (el negocio es
+		// de venta y renta). El monto de la venta es su subtotal; el de la renta, su importe por unidad × día.
+		String filtroVenta = sucursalId == null ? "" : " and v.sucursal_id = :sucursalId";
+		String filtroRenta = sucursalId == null ? "" : " and r.sucursal_id = :sucursalId";
 		String sql = "select ve.valor,"
-				+ " coalesce(sum(lv.cantidad), 0) as unidades,"
-				+ " coalesce(sum(lv.cantidad * lv.precio_unitario), 0) as monto"
-				+ " from linea_de_venta lv"
-				+ " join venta v on v.id = lv.venta_id"
+				+ " coalesce(sum(m.unidades), 0) as unidades,"
+				+ " coalesce(sum(m.monto), 0) as monto"
+				+ " from ("
+				+ "   select lv.prenda_id, lv.cantidad as unidades, lv.cantidad * lv.precio_unitario as monto"
+				+ "   from linea_de_venta lv join venta v on v.id = lv.venta_id"
+				+ "   where lv.empresa_id = :empresaId" + filtroVenta
+				+ "   union all"
+				+ "   select rl.prenda_id, rl.cantidad as unidades, rl.cantidad * rl.precio_por_dia as monto"
+				+ "   from renta_linea rl join renta r on r.id = rl.renta_id"
+				+ "   where r.empresa_id = :empresaId" + filtroRenta
+				+ " ) m"
 				+ " join prenda_valor_etiqueta pve"
-				+ "   on pve.prenda_id = lv.prenda_id and pve.tipo_etiqueta_id = :tipoEtiquetaId"
+				+ "   on pve.prenda_id = m.prenda_id and pve.tipo_etiqueta_id = :tipoEtiquetaId"
 				+ " join valor_etiqueta ve on ve.id = pve.valor_etiqueta_id"
-				+ " where lv.empresa_id = :empresaId"
-				+ (sucursalId == null ? "" : " and v.sucursal_id = :sucursalId")
 				+ " group by ve.valor order by unidades desc";
 		JdbcClient.StatementSpec spec = jdbc.sql(sql).param("empresaId", empresaId).param("tipoEtiquetaId", tipoEtiquetaId);
 		if (sucursalId != null) {

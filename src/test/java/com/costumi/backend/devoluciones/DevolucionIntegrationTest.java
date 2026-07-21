@@ -494,6 +494,27 @@ class DevolucionIntegrationTest {
 	}
 
 	@Test
+	void el_comprobante_de_cobros_expone_la_multa_de_la_renta() throws Exception {
+		UUID renta = rentaDePrueba();
+
+		// Devolución con multa 30 (cargos 80 > depósito 50).
+		mvc.perform(post("/api/v1/devoluciones").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"rentaId\":\"" + renta + "\",\"deposito\":50.00,\"cargoPorDanos\":60.00,"
+								+ "\"cargoPorRetraso\":20.00,\"piezas\":[{\"prendaId\":\"" + prenda
+								+ "\",\"descripcion\":\"Camisa\",\"llego\":true,\"estado\":\"DANADA\"}]}"))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.multa").value(30.00));
+
+		// RF-6.6/11.5: el comprobante de cobros de la renta expone la multa, para que la pantalla de cobros
+		// la sume al pendiente (antes solo mostraba el importe de la renta).
+		mvc.perform(get("/api/v1/pagos/comprobante").param("conceptoId", renta.toString())
+						.header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.multa").value(30.00));
+	}
+
+	@Test
 	void sin_token_devuelve_401() throws Exception {
 		mvc.perform(get("/api/v1/devoluciones")).andExpect(status().isUnauthorized());
 	}
