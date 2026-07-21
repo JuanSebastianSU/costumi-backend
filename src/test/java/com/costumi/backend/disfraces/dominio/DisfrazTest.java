@@ -89,6 +89,30 @@ class DisfrazTest {
 	}
 
 	@Test
+	void un_slot_con_opciones_explicitas_se_cubre_si_alguna_opcion_tiene_stock() {
+		UUID opcionA = UUID.randomUUID();
+		UUID opcionB = UUID.randomUUID();
+		Slot slot = Slot.personalizableConOpciones(1, "Sombrero", List.of(opcionA, opcionB), false);
+		Disfraz disfraz = Disfraz.crear(EMPRESA, "Con opciones", List.of(slot));
+
+		// Ninguna opción con stock -> no disponible (poolTieneStock no aplica a opciones explícitas).
+		assertThat(disfraz.estaDisponible(stock(Set.of(), true))).isFalse();
+		// Una de las opciones tiene stock -> disponible.
+		assertThat(disfraz.estaDisponible(stock(Set.of(opcionB), false))).isTrue();
+		assertThat(slot.tieneOpcionesExplicitas()).isTrue();
+	}
+
+	@Test
+	void un_slot_personalizable_no_admite_pool_y_opciones_a_la_vez() {
+		// Exactamente una fuente de opciones: ni ambas ni ninguna.
+		assertThatThrownBy(() -> Slot.personalizableConOpciones(1, "X", List.of(), false))
+				.isInstanceOf(IllegalArgumentException.class);
+		assertThatThrownBy(() -> Slot.rehidratar(1, "X", EjeDePrenda.PERSONALIZABLE, null,
+				PoolDeSlot.de(CATEGORIA, Map.of()), List.of(PRENDA_FIJA), false))
+				.isInstanceOf(IllegalArgumentException.class);
+	}
+
+	@Test
 	void archivar_y_activar_cambia_el_estado() {
 		Disfraz disfraz = Disfraz.crear(EMPRESA, "Traje", List.of(Slot.conPrendaFija(1, "Traje", PRENDA_FIJA, false)));
 		assertThat(disfraz.activo()).isTrue();
