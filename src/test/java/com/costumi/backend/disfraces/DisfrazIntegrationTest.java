@@ -280,6 +280,35 @@ class DisfrazIntegrationTest {
 	}
 
 	@Test
+	void rentar_pedido_mixto_prendas_y_disfraces_en_una_sola_renta() throws Exception {
+		CtxRenta c = montarRenta("Mixto");
+		UUID categoria = crearCategoria(c.dueno(), "Cat " + UUID.randomUUID());
+		UUID base = crearPrenda(c.dueno(), categoria);
+		UUID acc = crearPrenda(c.dueno(), categoria);
+		UUID prendaSuelta = crearPrenda(c.dueno(), categoria); // 40/día
+		UUID disfraz = crearDisfrazConPrecioGeneral(c.dueno(), base, categoria, "100.00");
+
+		// 1 disfraz (100/día) + 2 prendas sueltas a 40/día = (100 + 80) × 3 días = 540, en UNA renta.
+		String body = "{\"sucursalId\":\"" + c.sucursal() + "\",\"clienteId\":\"" + c.cliente() + "\","
+				+ "\"fechaRetiro\":\"2026-08-01\",\"fechaDevolucion\":\"2026-08-04\","
+				+ "\"items\":[{\"disfrazId\":\"" + disfraz + "\",\"cantidad\":1,\"selecciones\":[{\"orden\":2,"
+				+ "\"prendaId\":\"" + acc + "\"}]}],"
+				+ "\"lineas\":[{\"prendaId\":\"" + prendaSuelta + "\",\"cantidad\":2,\"precioPorDia\":40.00}]}";
+		mvc.perform(post("/api/v1/disfraces/rentar-varios").header("Authorization", "Bearer " + c.dueno())
+						.contentType(MediaType.APPLICATION_JSON).content(body))
+				.andExpect(status().isOk());
+
+		String lista = mvc.perform(get("/api/v1/rentas").param("clienteId", c.cliente().toString())
+						.header("Authorization", "Bearer " + c.dueno()))
+				.andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+		var renta = json.readTree(lista).get("contenido").get(0);
+		org.assertj.core.api.Assertions.assertThat(new java.math.BigDecimal(renta.get("importe").asText()))
+				.isEqualByComparingTo("540.00");
+		// 2 líneas del disfraz (base + accesorio) + 1 prenda suelta = 3 líneas en una sola renta.
+		org.assertj.core.api.Assertions.assertThat(renta.get("lineas").size()).isEqualTo(3);
+	}
+
+	@Test
 	void rentar_varios_disfraces_distintos_crea_una_sola_renta_con_todas_las_lineas() throws Exception {
 		CtxRenta c = montarRenta("Varios");
 		UUID categoria = crearCategoria(c.dueno(), "Cat " + UUID.randomUUID());

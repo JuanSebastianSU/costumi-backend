@@ -197,7 +197,11 @@ class DisfrazController {
 		UUID empresaId = empresaDe(jwt, request.empresaId());
 		UUID clienteId = clienteDe(jwt, empresaId, request.clienteId());
 		UUID actorId = UUID.fromString(jwt.getSubject());
-		List<RentarVariosDisfracesComando.ItemDeDisfraz> items = request.items().stream()
+		if (vacio(request.items()) && vacio(request.lineas())) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El pedido debe tener al menos un artículo");
+		}
+		List<RentarVariosDisfracesComando.ItemDeDisfraz> items = (request.items() == null ? List
+				.<RentarVariosDisfracesRequest.ItemDisfrazDto>of() : request.items()).stream()
 				.map(it -> new RentarVariosDisfracesComando.ItemDeDisfraz(it.disfrazId(),
 						(it.cantidad() == null || it.cantidad() < 1) ? 1 : it.cantidad(),
 						(it.selecciones() == null ? List.<RentarVariosDisfracesRequest.SeleccionSlotDto>of()
@@ -205,8 +209,13 @@ class DisfrazController {
 								.map(s -> new RentarVariosDisfracesComando.SeleccionDeSlot(s.orden(), s.prendaId()))
 								.toList()))
 				.toList();
+		List<RentarVariosDisfracesComando.LineaDePrenda> lineas = (request.lineas() == null ? List
+				.<RentarVariosDisfracesRequest.LineaPrendaDto>of() : request.lineas()).stream()
+				.map(l -> new RentarVariosDisfracesComando.LineaDePrenda(l.prendaId(),
+						(l.cantidad() == null || l.cantidad() < 1) ? 1 : l.cantidad(), l.precioPorDia()))
+				.toList();
 		UUID rentaId = rentarVariosDisfraces.ejecutar(new RentarVariosDisfracesComando(empresaId, request.sucursalId(),
-				clienteId, request.fechaRetiro(), request.fechaDevolucion(), items, actorId));
+				clienteId, request.fechaRetiro(), request.fechaDevolucion(), items, lineas, actorId));
 		return new RentarDisfrazResponse(rentaId);
 	}
 
@@ -217,7 +226,11 @@ class DisfrazController {
 		UUID empresaId = empresaDe(jwt, request.empresaId());
 		UUID clienteId = clienteDe(jwt, empresaId, request.clienteId());
 		UUID actorId = UUID.fromString(jwt.getSubject());
-		List<VenderVariosDisfracesComando.ItemDeDisfraz> items = request.items().stream()
+		if (vacio(request.items()) && vacio(request.lineas())) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El pedido debe tener al menos un artículo");
+		}
+		List<VenderVariosDisfracesComando.ItemDeDisfraz> items = (request.items() == null ? List
+				.<VenderVariosDisfracesRequest.ItemDisfrazDto>of() : request.items()).stream()
 				.map(it -> new VenderVariosDisfracesComando.ItemDeDisfraz(it.disfrazId(),
 						(it.cantidad() == null || it.cantidad() < 1) ? 1 : it.cantidad(),
 						(it.selecciones() == null ? List.<VenderVariosDisfracesRequest.SeleccionSlotDto>of()
@@ -225,12 +238,21 @@ class DisfrazController {
 								.map(s -> new VenderVariosDisfracesComando.SeleccionDeSlot(s.orden(), s.prendaId()))
 								.toList()))
 				.toList();
+		List<VenderVariosDisfracesComando.LineaDePrenda> lineas = (request.lineas() == null ? List
+				.<VenderVariosDisfracesRequest.LineaPrendaDto>of() : request.lineas()).stream()
+				.map(l -> new VenderVariosDisfracesComando.LineaDePrenda(l.prendaId(),
+						(l.cantidad() == null || l.cantidad() < 1) ? 1 : l.cantidad(), l.precioUnitario()))
+				.toList();
 		UUID ventaId = venderVariosDisfraces.ejecutar(new VenderVariosDisfracesComando(empresaId, request.sucursalId(),
-				clienteId, items, actorId));
+				clienteId, items, lineas, actorId));
 		return new VenderDisfrazResponse(ventaId);
 	}
 
 	record VenderDisfrazResponse(UUID ventaId) {
+	}
+
+	private static boolean vacio(List<?> lista) {
+		return lista == null || lista.isEmpty();
 	}
 
 	/** Empresa según el actor: del token si es personal; del request/param si es CLIENTE (la tienda). */
