@@ -4,6 +4,7 @@ import com.costumi.backend.compartido.RespuestaPaginada;
 import com.costumi.backend.compartido.SolicitudDePagina;
 import com.costumi.backend.inventario.aplicacion.AsignarFotoDePrenda;
 import com.costumi.backend.inventario.aplicacion.CambiarEstadoPrenda;
+import com.costumi.backend.inventario.aplicacion.ConsultarCatalogo;
 import com.costumi.backend.inventario.aplicacion.ConsultarPrendas;
 import com.costumi.backend.inventario.aplicacion.CrearPrenda;
 import com.costumi.backend.inventario.aplicacion.CrearPrendaComando;
@@ -28,7 +29,11 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
 import java.net.URI;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /** Biblioteca de prendas del inventario, acotada al tenant del token (RF-2). */
@@ -40,14 +45,17 @@ class PrendaController {
 	private final EditarPrenda editarPrenda;
 	private final CambiarEstadoPrenda cambiarEstadoPrenda;
 	private final ConsultarPrendas consultarPrendas;
+	private final ConsultarCatalogo consultarCatalogo;
 	private final AsignarFotoDePrenda asignarFotoDePrenda;
 
 	PrendaController(CrearPrenda crearPrenda, EditarPrenda editarPrenda, CambiarEstadoPrenda cambiarEstadoPrenda,
-			ConsultarPrendas consultarPrendas, AsignarFotoDePrenda asignarFotoDePrenda) {
+			ConsultarPrendas consultarPrendas, ConsultarCatalogo consultarCatalogo,
+			AsignarFotoDePrenda asignarFotoDePrenda) {
 		this.crearPrenda = crearPrenda;
 		this.editarPrenda = editarPrenda;
 		this.cambiarEstadoPrenda = cambiarEstadoPrenda;
 		this.consultarPrendas = consultarPrendas;
+		this.consultarCatalogo = consultarCatalogo;
 		this.asignarFotoDePrenda = asignarFotoDePrenda;
 	}
 
@@ -116,5 +124,43 @@ class PrendaController {
 		return RespuestaPaginada.desde(
 				consultarPrendas.listar(UUID.fromString(empresaId), SolicitudDePagina.de(pagina, tamano)),
 				PrendaResponse::desde);
+	}
+
+	/**
+	 * Catálogo del dueño para verlo por categoría y filtrar (RF-2/RF-13), y para elegir opciones de una
+	 * parte de un disfraz. {@code categoriaId} filtra por categoría; {@code etiqueta} es una lista de pares
+	 * {@code "tipoEtiquetaId:valorEtiquetaId"} (repetible): AND entre dimensiones, OR entre valores de la
+	 * misma dimensión. Cada prenda vuelve con su stock disponible y sus etiquetas.
+	 */
+	@GetMapping("/catalogo")
+	List<PrendaDeCatalogoResponse> catalogo(@RequestParam(required = false) UUID categoriaId,
+			@RequestParam(name = "etiqueta", required = false) List<String> etiquetas,
+			@AuthenticationPrincipal Jwt jwt) {
+		String empresaId = jwt.getClaimAsString("empresa_id");
+		if (empresaId == null) {
+			return List.of();
+		}
+		return consultarCatalogo.ejecutar(UUID.fromString(empresaId), categoriaId, parsearEtiquetas(etiquetas))
+				.stream().map(PrendaDeCatalogoResponse::desde).toList();
+	}
+
+	/** Convierte los pares "tipo:valor" del query a un mapa {@code tipoEtiquetaId -> valores permitidos}. */
+	private static Map<UUID, Set<UUID>> parsearEtiquetas(List<String> etiquetas) {
+		Map<UUID, Set<UUID>> filtros = new LinkedHashMap<>();
+		if (etiquetas != null) {
+			for (String par : etiquetas) {
+				String[] partes = par.split(":", 2);
+				if (partes.length == 2) {
+					try {
+						UUID tipo = UUID.fromString(partes[0].trim());
+						UUID valor = UUID.fromString(partes[1].trim());
+						filtros.computeIfAbsent(tipo, k -> new LinkedHashSet<>()).add(valor);
+					} catch (IllegalArgumentException ignorado) {
+						// Par mal formado: se ignora en vez de romper la consulta.
+					}
+				}
+			}
+		}
+		return filtros;
 	}
 }
