@@ -21,6 +21,8 @@ public record CrearDisfrazRequest(
 
 		BigDecimal precioRentaGeneral,
 
+		BigDecimal precioVentaGeneral,
+
 		@Valid
 		List<SlotDto> slots) {
 

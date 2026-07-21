@@ -30,6 +30,12 @@ public interface ConsultaDeInventario {
 	/** Precio de renta por día de la prenda (de la empresa), si la prenda existe y lo tiene (RF-16 checkout de renta). */
 	Optional<BigDecimal> precioRenta(UUID empresaId, UUID prendaId);
 
+	/** Valor de daño de la prenda (multa sugerida si vuelve dañada, RF-2.10), si existe y lo tiene. */
+	Optional<BigDecimal> valorDano(UUID empresaId, UUID prendaId);
+
+	/** Valor de reposición de la prenda (multa sugerida si se pierde, RF-2.10), si existe y lo tiene. */
+	Optional<BigDecimal> valorReposicion(UUID empresaId, UUID prendaId);
+
 	/**
 	 * ¿Hay al menos una prenda disponible en el pool? El pool son las prendas de la {@code categoria}
 	 * cuyas etiquetas satisfacen los valores permitidos por dimensión ({@code etiquetasPermitidas}

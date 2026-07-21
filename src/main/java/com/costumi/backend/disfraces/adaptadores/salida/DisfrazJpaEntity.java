@@ -35,6 +35,9 @@ class DisfrazJpaEntity {
 	@Column(name = "precio_renta_general", precision = 12, scale = 2)
 	private BigDecimal precioRentaGeneral;
 
+	@Column(name = "precio_venta_general", precision = 12, scale = 2)
+	private BigDecimal precioVentaGeneral;
+
 	@Column(name = "foto_url", length = 500)
 	private String fotoUrl;
 
@@ -43,13 +46,14 @@ class DisfrazJpaEntity {
 	}
 
 	DisfrazJpaEntity(UUID id, UUID empresaId, String nombre, UUID categoriaId, boolean activo,
-			BigDecimal precioRentaGeneral, String fotoUrl) {
+			BigDecimal precioRentaGeneral, BigDecimal precioVentaGeneral, String fotoUrl) {
 		this.id = id;
 		this.empresaId = empresaId;
 		this.nombre = nombre;
 		this.categoriaId = categoriaId;
 		this.activo = activo;
 		this.precioRentaGeneral = precioRentaGeneral;
+		this.precioVentaGeneral = precioVentaGeneral;
 		this.fotoUrl = fotoUrl;
 	}
 
@@ -75,6 +79,10 @@ class DisfrazJpaEntity {
 
 	BigDecimal getPrecioRentaGeneral() {
 		return precioRentaGeneral;
+	}
+
+	BigDecimal getPrecioVentaGeneral() {
+		return precioVentaGeneral;
 	}
 
 	String getFotoUrl() {

@@ -635,6 +635,72 @@ class DisfrazIntegrationTest {
 	}
 
 	@Test
+	void el_precio_de_venta_general_anula_la_suma_al_vender() throws Exception {
+		CtxRenta c = montarRenta("Venta General");
+		UUID cat = crearCategoria(c.dueno(), "Cat " + UUID.randomUUID());
+		UUID p1 = crearPrendaVenta(c.dueno(), cat, "Pieza1", "100.00");
+		UUID p2 = crearPrendaVenta(c.dueno(), cat, "Pieza2", "80.00");
+		// Disfraz de 2 piezas fijas (suma de venta 180) pero con precio de venta general 120.
+		String body = mvc.perform(post("/api/v1/disfraces").header("Authorization", "Bearer " + c.dueno())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Conjunto\",\"precioVentaGeneral\":120.00,\"slots\":["
+								+ "{\"orden\":1,\"nombre\":\"A\",\"ejePrenda\":\"FIJA\",\"prendaFijaId\":\"" + p1
+								+ "\",\"opcional\":false},"
+								+ "{\"orden\":2,\"nombre\":\"B\",\"ejePrenda\":\"FIJA\",\"prendaFijaId\":\"" + p2
+								+ "\",\"opcional\":false}]}"))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.precioVentaGeneral").value(120.00))
+				.andReturn().getResponse().getContentAsString();
+		UUID disfraz = UUID.fromString(json.readTree(body).get("id").asText());
+
+		String ventaBody = mvc.perform(post("/api/v1/disfraces/{id}/vender", disfraz)
+						.header("Authorization", "Bearer " + c.dueno()).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + c.sucursal() + "\",\"clienteId\":\"" + c.cliente() + "\"}"))
+				.andExpect(status().isOk())
+				.andReturn().getResponse().getContentAsString();
+		UUID ventaId = UUID.fromString(json.readTree(ventaBody).get("ventaId").asText());
+
+		// La venta total es 120 (el general), no 180 (la suma de las piezas).
+		mvc.perform(get("/api/v1/ventas/{id}", ventaId).header("Authorization", "Bearer " + c.dueno()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.total").value(120.00));
+	}
+
+	private UUID crearPrendaConValores(String dueno, UUID categoria, String nombre, String valorDano,
+			String valorReposicion) throws Exception {
+		String body = mvc.perform(post("/api/v1/prendas").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"categoriaId\":\"" + categoria + "\",\"nombre\":\"" + nombre + "\","
+								+ "\"tipoArticulo\":\"RENTA\",\"precioRenta\":40.00,"
+								+ "\"valorDano\":" + valorDano + ",\"valorReposicion\":" + valorReposicion + "}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		return UUID.fromString(json.readTree(body).get("id").asText());
+	}
+
+	@Test
+	void la_multa_sugerida_suma_los_valores_de_dano_y_reposicion_de_las_piezas() throws Exception {
+		UUID empresa = crearEmpresa("Multa " + UUID.randomUUID());
+		String dueno = duenoDe(empresa);
+		UUID cat = crearCategoria(dueno, "Cat " + UUID.randomUUID());
+		// Dos piezas fijas: daño 10 y 5 (suma 15); reposición 30 y 20 (suma 50).
+		UUID p1 = crearPrendaConValores(dueno, cat, "P1", "10.00", "30.00");
+		UUID p2 = crearPrendaConValores(dueno, cat, "P2", "5.00", "20.00");
+
+		mvc.perform(post("/api/v1/disfraces").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Conjunto\",\"slots\":["
+								+ "{\"orden\":1,\"nombre\":\"A\",\"ejePrenda\":\"FIJA\",\"prendaFijaId\":\"" + p1
+								+ "\",\"opcional\":false},"
+								+ "{\"orden\":2,\"nombre\":\"B\",\"ejePrenda\":\"FIJA\",\"prendaFijaId\":\"" + p2
+								+ "\",\"opcional\":false}]}"))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.multaSugerida.danoMin").value(15.00))
+				.andExpect(jsonPath("$.multaSugerida.danoMax").value(15.00))
+				.andExpect(jsonPath("$.multaSugerida.reposicionMin").value(50.00))
+				.andExpect(jsonPath("$.multaSugerida.reposicionMax").value(50.00));
+	}
+
+	@Test
 	void disfraz_con_categoria_se_lista_por_categoria() throws Exception {
 		UUID empresa = crearEmpresa("Disfraz Categoria " + UUID.randomUUID());
 		String dueno = duenoDe(empresa);
