@@ -42,11 +42,12 @@ class PagoController {
 	private final CrearIntentoDePagoDeCliente crearIntentoDePagoDeCliente;
 	private final ConfirmarPagoEnLinea confirmarPagoEnLinea;
 	private final VerificadorDeFirmaDeWebhook verificadorDeFirma;
+	private final com.costumi.backend.devoluciones.ConsultaDeMultas multas;
 
 	PagoController(RegistrarPago registrarPago, ConsultarPagos consultarPagos, RegistrarCobroMixto registrarCobroMixto,
 			com.costumi.backend.compartido.GeneradorDePdf pdf, CrearIntentoDePago crearIntentoDePago,
 			CrearIntentoDePagoDeCliente crearIntentoDePagoDeCliente, ConfirmarPagoEnLinea confirmarPagoEnLinea,
-			VerificadorDeFirmaDeWebhook verificadorDeFirma) {
+			VerificadorDeFirmaDeWebhook verificadorDeFirma, com.costumi.backend.devoluciones.ConsultaDeMultas multas) {
 		this.registrarPago = registrarPago;
 		this.consultarPagos = consultarPagos;
 		this.registrarCobroMixto = registrarCobroMixto;
@@ -55,6 +56,7 @@ class PagoController {
 		this.crearIntentoDePagoDeCliente = crearIntentoDePagoDeCliente;
 		this.confirmarPagoEnLinea = confirmarPagoEnLinea;
 		this.verificadorDeFirma = verificadorDeFirma;
+		this.multas = multas;
 	}
 
 	/** Inicia un pago en línea (RF-6.11): crea el checkout en la pasarela y devuelve la URL. */
@@ -146,19 +148,24 @@ class PagoController {
 	@GetMapping("/comprobante")
 	ComprobanteResponse comprobante(@RequestParam UUID conceptoId, @AuthenticationPrincipal Jwt jwt) {
 		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
-		return ComprobanteResponse.desde(consultarPagos.comprobante(empresaId, conceptoId));
+		return ComprobanteResponse.desde(consultarPagos.comprobante(empresaId, conceptoId),
+				multas.totalMultaDeRenta(empresaId, conceptoId));
 	}
 
 	/** Comprobante/recibo de pago en PDF (RF-3.4). */
 	@GetMapping(value = "/comprobante.pdf", produces = "application/pdf")
 	ResponseEntity<byte[]> comprobantePdf(@RequestParam UUID conceptoId, @AuthenticationPrincipal Jwt jwt) {
 		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
-		ComprobanteResponse c = ComprobanteResponse.desde(consultarPagos.comprobante(empresaId, conceptoId));
+		ComprobanteResponse c = ComprobanteResponse.desde(consultarPagos.comprobante(empresaId, conceptoId),
+				multas.totalMultaDeRenta(empresaId, conceptoId));
 		java.util.List<String> lineas = new java.util.ArrayList<>();
 		lineas.add("Concepto: " + c.conceptoId());
 		lineas.add("Total cobrado: $" + c.totalCobrado());
 		lineas.add("Total reembolsado: $" + c.totalReembolsado());
 		lineas.add("Saldo neto: $" + c.saldoNeto());
+		if (c.multa() != null && c.multa().signum() > 0) {
+			lineas.add("Multa: $" + c.multa());
+		}
 		if (c.impuesto() != null) {
 			lineas.add("Base imponible: $" + c.baseImponible());
 			lineas.add("Impuesto: $" + c.impuesto());
