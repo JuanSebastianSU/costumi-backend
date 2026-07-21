@@ -42,6 +42,9 @@ class GrupoDeStockJpaEntity {
 	private int disponibles;
 
 	@Column(nullable = false)
+	private int rentadas;
+
+	@Column(nullable = false)
 	private int danadas;
 
 	@Column(name = "en_limpieza", nullable = false)
@@ -55,13 +58,15 @@ class GrupoDeStockJpaEntity {
 	}
 
 	GrupoDeStockJpaEntity(UUID id, UUID empresaId, UUID sucursalId, UUID prendaId,
-			Set<ValorDeVarianteEmbeddable> combinacion, int disponibles, int danadas, int enLimpieza, int perdidas) {
+			Set<ValorDeVarianteEmbeddable> combinacion, int disponibles, int rentadas, int danadas, int enLimpieza,
+			int perdidas) {
 		this.id = id;
 		this.empresaId = empresaId;
 		this.sucursalId = sucursalId;
 		this.prendaId = prendaId;
 		this.combinacion = combinacion;
 		this.disponibles = disponibles;
+		this.rentadas = rentadas;
 		this.danadas = danadas;
 		this.enLimpieza = enLimpieza;
 		this.perdidas = perdidas;
@@ -89,6 +94,10 @@ class GrupoDeStockJpaEntity {
 
 	int getDisponibles() {
 		return disponibles;
+	}
+
+	int getRentadas() {
+		return rentadas;
 	}
 
 	int getDanadas() {

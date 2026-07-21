@@ -9,6 +9,30 @@
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
 ## Fase actual
+**Fase 16 — Stock unificado renta/venta: estado RENTADA (2026-07-21).**
+
+Rama `fix/stock-unificado-renta-venta` (desde `origin/main`, PENDIENTE de merge). El dueño reportó que **rentar no
+bajaba el stock** y que las operaciones se bloqueaban sin explicación. Antes, las rentas se contabilizaban por un
+"calendario" de fechas solapadas que **nunca tocaba `grupo_de_stock`**, mientras que solo las ventas descontaban
+`disponibles`; contabilidades desconectadas → stock que no baja al rentar, rentas que se bloquean entre sí y riesgo de
+sobreventa. Ahora hay un **5º estado `RENTADA`** en el grupo de stock:
+- **Rentar** compromete unidades: `disponible -> rentada` (bajan los disponibles, el **total NO cambia**). Migración
+  `V58__grupo_stock_rentadas.sql` (columna `rentadas int not null default 0`); enum `EstadoUnidad.RENTADA`.
+- **Devolver** (rápida o detallada) libera: `rentada -> disponible` (bien) o `rentada -> dañada/limpieza/perdida`
+  (novedad). **Cancelar/expirar** reserva: `rentada -> disponible`. Todo gated por `conteoStock`.
+- **Vender** sigue dando de baja de `disponibles` → como lo rentado ya no está en disponibles, **no se puede sobrevender**
+  lo que está en renta, y no se puede rentar lo que ya está fuera hasta devolverlo (modelo simple, sin calendario).
+- `AjusteDeInventario` gana `comprometerParaRenta`/`liberarDeRenta`; `procesarRetornoDeRenta` ahora mueve desde `rentada`.
+  `RentaService` inyecta `AjusteDeInventario` (compromete al crear, libera al devolver/cancelar). Reportes: `total` y
+  `valorInventario` incluyen rentadas; `rentadasAhora` = Σ rentadas del stock; tablero y `GrupoDeStockResponse` exponen
+  `rentadas`.
+- Tests: reescrito `se_puede_rentar_en_fechas_que_no_se_traslapan` → `no_se_puede_rentar_la_misma_unidad_hasta_devolverla`;
+  nuevo `rentar_baja_disponibles_y_devolver_los_restaura` (disponibles 3→2→3, rentadas 0→1→0, total estable). Suite
+  completa **473/473** en Docker (JDK21). **Al mergear: regenerar `:api-client` y mostrar `rentadas` en el tablero y en
+  la vista de stock del dueño.**
+
+---
+
 **Fase 16 — Reportes por sucursal + fix de esquema del estado de cuenta (2026-07-20).**
 
 Rama `feat/reportes-por-sucursal-y-estado-cuenta-fix` (desde `origin/main`, PENDIENTE de merge). Dos cosas:
