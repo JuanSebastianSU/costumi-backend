@@ -42,9 +42,11 @@ class DisfrazMarketplaceController {
 	/** Lista los disfraces activos de la tienda (con su estructura de slots y su precio de renta sugerido). */
 	@GetMapping
 	List<DisfrazResponse> listar(@PathVariable UUID empresaId) {
-		return consultarDisfraces.activosDeEmpresa(empresaId).stream()
-				.map(d -> DisfrazResponse.desde(d, consultarDisfraces.precioRentaSugerido(empresaId, d),
-						consultarDisfraces.precioVentaSugerido(empresaId, d)))
+		List<Disfraz> disfraces = consultarDisfraces.activosDeEmpresa(empresaId);
+		// Sugeridos de toda la vitrina en un solo cálculo (catálogo cargado una vez): sin N+1.
+		java.util.Map<UUID, ConsultarDisfraces.Sugeridos> sugeridos = consultarDisfraces.sugeridosDe(empresaId, disfraces);
+		return disfraces.stream()
+				.map(d -> DisfrazResponse.desde(d, sugeridos.get(d.id())))
 				.toList();
 	}
 
@@ -56,8 +58,7 @@ class DisfrazMarketplaceController {
 				.findFirst()
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Disfraz no encontrado"));
 		boolean disponible = consultarDisponibilidad.estaDisponible(empresaId, disfrazId);
-		DisfrazResponse resp = DisfrazResponse.desde(disfraz, consultarDisfraces.precioRentaSugerido(empresaId, disfraz),
-				consultarDisfraces.precioVentaSugerido(empresaId, disfraz));
+		DisfrazResponse resp = DisfrazResponse.desde(disfraz, consultarDisfraces.sugeridosDe(empresaId, disfraz));
 		return new DisfrazDetalleResponse(resp, disponible);
 	}
 

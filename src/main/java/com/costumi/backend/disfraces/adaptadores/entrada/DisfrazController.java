@@ -97,14 +97,9 @@ class DisfrazController {
 		return ResponseEntity.ok(resp(empresaId, disfraz));
 	}
 
-	/** Respuesta del disfraz con sus precios sugeridos (renta y venta, suma de las prendas) calculados. */
+	/** Respuesta del disfraz con su rango sugerido (renta/venta + multa) calculado en un solo paso. */
 	private DisfrazResponse resp(UUID empresaId, Disfraz disfraz) {
-		return DisfrazResponse.desde(disfraz,
-				consultarDisfraces.precioRentaSugerido(empresaId, disfraz),
-				consultarDisfraces.precioRentaSugeridoMax(empresaId, disfraz),
-				consultarDisfraces.precioVentaSugerido(empresaId, disfraz),
-				consultarDisfraces.precioVentaSugeridoMax(empresaId, disfraz),
-				consultarDisfraces.multaSugerida(empresaId, disfraz));
+		return DisfrazResponse.desde(disfraz, consultarDisfraces.sugeridosDe(empresaId, disfraz));
 	}
 
 	@PostMapping
@@ -146,9 +141,16 @@ class DisfrazController {
 	@GetMapping
 	List<DisfrazResponse> listar(@RequestParam(required = false) UUID categoriaId) {
 		return tenant.empresaId()
-				.map(empresaId -> consultarDisfraces.deEmpresa(empresaId).stream()
-						.filter(d -> categoriaId == null || categoriaId.equals(d.categoriaId()))
-						.map(d -> resp(empresaId, d)).toList())
+				.map(empresaId -> {
+					List<Disfraz> disfraces = consultarDisfraces.deEmpresa(empresaId).stream()
+							.filter(d -> categoriaId == null || categoriaId.equals(d.categoriaId()))
+							.toList();
+					// Un solo cálculo de sugeridos para toda la lista (catálogo cargado una vez): sin N+1.
+					Map<UUID, ConsultarDisfraces.Sugeridos> sugeridos = consultarDisfraces.sugeridosDe(empresaId, disfraces);
+					return disfraces.stream()
+							.map(d -> DisfrazResponse.desde(d, sugeridos.get(d.id())))
+							.toList();
+				})
 				.orElseGet(List::of);
 	}
 
