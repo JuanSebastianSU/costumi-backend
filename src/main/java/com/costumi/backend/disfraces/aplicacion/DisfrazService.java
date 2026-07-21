@@ -1,5 +1,6 @@
 package com.costumi.backend.disfraces.aplicacion;
 
+import com.costumi.backend.disfraces.ResolucionDeDisfraces;
 import com.costumi.backend.disfraces.dominio.ConsultaDeStockDePool;
 import com.costumi.backend.disfraces.dominio.Disfraz;
 import com.costumi.backend.disfraces.dominio.DisfrazRepository;
@@ -30,7 +31,7 @@ import java.util.UUID;
 @Service
 class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfraz, ConsultarDisfraces,
 		ConsultarDisponibilidadDeDisfraz, ConsultarOpcionesDeSlot, RentarDisfraz, VenderDisfraz,
-		RentarVariosDisfraces, VenderVariosDisfraces, AsignarFotoDeDisfraz {
+		RentarVariosDisfraces, VenderVariosDisfraces, ResolucionDeDisfraces, AsignarFotoDeDisfraz {
 
 	private final DisfrazRepository disfraces;
 	private final ConsultaDeInventario inventario;
@@ -411,6 +412,34 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 		Map<Integer, UUID> m = new HashMap<>();
 		if (selecciones != null) {
 			for (VenderDisfrazComando.SeleccionDeSlot s : selecciones) {
+				m.put(s.orden(), s.prendaId());
+			}
+		}
+		return m;
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<LineaResuelta> lineasDeRenta(UUID empresaId, UUID disfrazId, int cantidad,
+			List<SeleccionDeSlot> selecciones) {
+		return itemsRentaDe(empresaId, disfrazId, Math.max(1, cantidad), seleccionesResueltas(selecciones)).stream()
+				.map(it -> new LineaResuelta(it.prendaId(), it.cantidad(), it.precioPorDia()))
+				.toList();
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<LineaResuelta> lineasDeVenta(UUID empresaId, UUID disfrazId, int cantidad,
+			List<SeleccionDeSlot> selecciones) {
+		return itemsVentaDe(empresaId, disfrazId, Math.max(1, cantidad), seleccionesResueltas(selecciones)).stream()
+				.map(it -> new LineaResuelta(it.prendaId(), it.cantidad(), it.precioUnitario()))
+				.toList();
+	}
+
+	private static Map<Integer, UUID> seleccionesResueltas(List<SeleccionDeSlot> selecciones) {
+		Map<Integer, UUID> m = new HashMap<>();
+		if (selecciones != null) {
+			for (SeleccionDeSlot s : selecciones) {
 				m.put(s.orden(), s.prendaId());
 			}
 		}
