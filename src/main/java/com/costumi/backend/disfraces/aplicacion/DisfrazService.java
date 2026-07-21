@@ -236,15 +236,18 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 			if (!slot.esObligatorio() && !elegido) {
 				continue;
 			}
-			items.add(itemDeRenta(empresaId, resolverPrenda(empresaId, slot, seleccionPorOrden.get(slot.orden()))));
+			items.add(itemDeRenta(empresaId, resolverPrenda(empresaId, slot, seleccionPorOrden.get(slot.orden())),
+					comando.cantidad()));
 		}
 		if (items.isEmpty()) {
 			throw new IllegalArgumentException("El disfraz no resolvió ningún artículo para rentar");
 		}
 		// Precio general (RF-2.10): si el disfraz lo define, anula la suma por prendas repartiéndolo entre
-		// las líneas (proporcional a su precio) para que el total por día iguale el precio del conjunto.
+		// las líneas (proporcional a su precio) para que el total por día iguale el precio del conjunto ×
+		// la cantidad de disfraces rentados.
 		if (disfraz.tienePrecioGeneral()) {
-			items = repartirPrecioGeneral(items, disfraz.precioRentaGeneral());
+			items = repartirPrecioGeneral(items,
+					disfraz.precioRentaGeneral().multiply(BigDecimal.valueOf(comando.cantidad())));
 		}
 		return rentas.registrar(empresaId, comando.sucursalId(), comando.clienteId(), comando.fechaRetiro(),
 				comando.fechaDevolucion(), null, items, comando.empleadoId());
@@ -271,7 +274,8 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 			if (!slot.esObligatorio() && !elegido) {
 				continue;
 			}
-			items.add(itemDeVenta(empresaId, resolverPrenda(empresaId, slot, seleccionPorOrden.get(slot.orden()))));
+			items.add(itemDeVenta(empresaId, resolverPrenda(empresaId, slot, seleccionPorOrden.get(slot.orden())),
+					comando.cantidad()));
 		}
 		if (items.isEmpty()) {
 			throw new IllegalArgumentException("El disfraz no resolvió ningún artículo para vender");
@@ -279,10 +283,10 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 		return ventas.registrar(empresaId, comando.sucursalId(), comando.empleadoId(), comando.clienteId(), items);
 	}
 
-	private RegistroDeVentas.ItemDeVenta itemDeVenta(UUID empresaId, UUID prendaId) {
+	private RegistroDeVentas.ItemDeVenta itemDeVenta(UUID empresaId, UUID prendaId, int cantidad) {
 		BigDecimal precio = inventario.precioVenta(empresaId, prendaId)
 				.orElseThrow(() -> new IllegalArgumentException("La prenda del disfraz no tiene precio de venta"));
-		return new RegistroDeVentas.ItemDeVenta(prendaId, 1, precio);
+		return new RegistroDeVentas.ItemDeVenta(prendaId, cantidad, precio);
 	}
 
 	/**
@@ -332,10 +336,10 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 		return prendaElegida;
 	}
 
-	private RegistroDeRentas.ItemDeRenta itemDeRenta(UUID empresaId, UUID prendaId) {
+	private RegistroDeRentas.ItemDeRenta itemDeRenta(UUID empresaId, UUID prendaId, int cantidad) {
 		BigDecimal precio = inventario.precioRenta(empresaId, prendaId)
 				.orElseThrow(() -> new IllegalArgumentException("La prenda del disfraz no tiene precio de renta"));
-		return new RegistroDeRentas.ItemDeRenta(prendaId, 1, precio);
+		return new RegistroDeRentas.ItemDeRenta(prendaId, cantidad, precio);
 	}
 
 	/** Puente del puerto de Inventario al puerto de dominio del Disfraz, fijado al tenant. */

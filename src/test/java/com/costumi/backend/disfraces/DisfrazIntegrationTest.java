@@ -280,6 +280,34 @@ class DisfrazIntegrationTest {
 	}
 
 	@Test
+	void rentar_varias_unidades_del_mismo_disfraz_escala_el_importe_y_las_cantidades() throws Exception {
+		CtxRenta c = montarRenta("Cantidad");
+		UUID categoria = crearCategoria(c.dueno(), "Cat " + UUID.randomUUID());
+		UUID prendaBase = crearPrenda(c.dueno(), categoria);
+		UUID prendaAccesorio = crearPrenda(c.dueno(), categoria);
+		// Precio general 100/día. Rentar 3 disfraces × 3 días = 100 × 3 × 3 = 900.
+		UUID disfraz = crearDisfrazConPrecioGeneral(c.dueno(), prendaBase, categoria, "100.00");
+
+		mvc.perform(post("/api/v1/disfraces/{id}/rentar", disfraz)
+						.header("Authorization", "Bearer " + c.dueno()).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + c.sucursal() + "\",\"clienteId\":\"" + c.cliente() + "\","
+								+ "\"fechaRetiro\":\"2026-08-01\",\"fechaDevolucion\":\"2026-08-04\",\"cantidad\":3,"
+								+ "\"selecciones\":[{\"orden\":2,\"prendaId\":\"" + prendaAccesorio + "\"}]}"))
+				.andExpect(status().isOk());
+
+		String body = mvc.perform(get("/api/v1/rentas").param("clienteId", c.cliente().toString())
+						.header("Authorization", "Bearer " + c.dueno()))
+				.andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+		var renta = json.readTree(body).get("contenido").get(0);
+		org.assertj.core.api.Assertions.assertThat(new java.math.BigDecimal(renta.get("importe").asText()))
+				.isEqualByComparingTo("900.00");
+		// Cada línea del disfraz lleva cantidad 3 (3 unidades de cada pieza).
+		for (var linea : renta.get("lineas")) {
+			org.assertj.core.api.Assertions.assertThat(linea.get("cantidad").asInt()).isEqualTo(3);
+		}
+	}
+
+	@Test
 	void precio_general_del_disfraz_anula_la_suma_por_prendas_en_la_renta() throws Exception {
 		CtxRenta c = montarRenta("Precio General");
 		UUID categoria = crearCategoria(c.dueno(), "Cat " + UUID.randomUUID());

@@ -9,7 +9,7 @@ import java.util.UUID;
  * lleva fechas.
  */
 public record VenderDisfrazComando(UUID empresaId, UUID disfrazId, UUID sucursalId, UUID clienteId,
-		List<SeleccionDeSlot> selecciones, UUID empleadoId) {
+		int cantidad, List<SeleccionDeSlot> selecciones, UUID empleadoId) {
 
 	/** Elección del cliente para un slot: su número de orden y la prenda elegida (para personalizables). */
 	public record SeleccionDeSlot(int orden, UUID prendaId) {

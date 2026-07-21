@@ -9,7 +9,20 @@
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
 ## Fase actual
-**Fase 17 — Multa en el pendiente de cobros + "por etiqueta" cuenta rentas (2026-07-21).**
+**Fase 18 — Cantidad al rentar/vender un disfraz (2026-07-21).**
+
+Rama `feat/disfraz-cantidad` (desde `origin/main`, PENDIENTE de merge). El dueño reportó que solo podía rentar/vender
+disfraces de a uno. Ahora `POST /disfraces/{id}/rentar` y `/vender` aceptan **`cantidad`** (nulo o <1 = 1): se rentan/venden
+N unidades del mismo disfraz en una sola operación. Cada `ItemDeRenta`/`ItemDeVenta` de las piezas lleva la cantidad; el
+precio general del disfraz se multiplica por la cantidad al repartirlo (importe = precio × N × días). Con `conteoStock`,
+comprometer N unidades de cada pieza reutiliza el estado RENTADA (falla con `SinDisponibilidad` si no alcanza). DTOs y
+comandos ganan `cantidad`; el controller la normaliza. Test nuevo `rentar_varias_unidades_del_mismo_disfraz_escala_el_importe_y_las_cantidades`
+(3 disfraces, general 100/día × 3 días = 900; líneas con cantidad 3). Suite **476/476** en Docker (JDK21).
+**Al mergear: regenerar `:api-client` y agregar un selector de cantidad en `DisfrazAsignarFragment`.** Pendiente a futuro:
+carrito de varios disfraces DISTINTOS en una operación.
+
+---
+
 
 Rama `fix/multa-pendiente-etiqueta-rentas-push-cliente` (desde `origin/main`, PENDIENTE de merge). Dos arreglos que el
 dueño reportó:

@@ -21,6 +21,9 @@ public record VenderDisfrazRequest(
 		/** Ficha de cliente (modo asistido del personal). El CLIENTE usa su propia ficha (por token). */
 		UUID clienteId,
 
+		/** Cuántas unidades del disfraz se venden (para "N iguales" en una operación). Nulo o < 1 = 1. */
+		@Min(value = 1, message = "La cantidad debe ser mayor o igual a 1") Integer cantidad,
+
 		@Valid List<SeleccionSlotDto> selecciones) {
 
 	/** Elección de prenda para un slot, por su número de orden. */
