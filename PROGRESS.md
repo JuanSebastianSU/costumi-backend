@@ -9,7 +9,22 @@
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
 ## Fase actual
-**Fase 18 — Cantidad al rentar/vender un disfraz (2026-07-21).**
+**Fase 19 — Pedido de VARIOS disfraces distintos en una operación (2026-07-21).**
+
+Rama `feat/disfraz-varios` (desde `origin/main`, PENDIENTE de merge). Cierra el "carrito" que faltaba: rentar/vender
+**varios disfraces distintos** (cada uno con su cantidad y sus selecciones) al mismo cliente en **una sola** renta/venta.
+Nuevos endpoints `POST /disfraces/rentar-varios` y `/vender-varios` con `items: [{disfrazId, cantidad?, selecciones}]`.
+Se refactorizó `DisfrazService`: la resolución de un disfraz a sus piezas se extrajo a `itemsRentaDe`/`itemsVentaDe`
+(reusadas por el flujo single y por el de varios); el de varios recorre los items, acumula todas las líneas y crea una
+única renta/venta. Nuevos comandos/puertos `RentarVariosDisfraces`/`VenderVariosDisfraces` (implementados por
+`DisfrazService`) y requests `Rentar/VenderVariosDisfracesRequest`. Seguridad: caen en `anyRequest().authenticated()`
+igual que el rentar/vender single. Test nuevo `rentar_varios_disfraces_distintos_crea_una_sola_renta_con_todas_las_lineas`
+(1× disfraz 100/día + 2× disfraz 50/día × 3 días = 600, 4 líneas, 1 renta). Suite **477/477** en Docker (JDK21).
+**Al mergear: regenerar `:api-client` y construir el carrito en el front** (pantalla de pedido: cliente/sucursal/fechas +
+agregar disfraces configurados + confirmar).
+
+---
+
 
 Rama `feat/disfraz-cantidad` (desde `origin/main`, PENDIENTE de merge). El dueño reportó que solo podía rentar/vender
 disfraces de a uno. Ahora `POST /disfraces/{id}/rentar` y `/vender` aceptan **`cantidad`** (nulo o <1 = 1): se rentan/venden

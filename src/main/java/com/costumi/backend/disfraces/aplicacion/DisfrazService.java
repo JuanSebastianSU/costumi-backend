@@ -29,7 +29,8 @@ import java.util.UUID;
 /** Casos de uso de Disfraces (Capa 3), acotados a la empresa (tenant). */
 @Service
 class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfraz, ConsultarDisfraces,
-		ConsultarDisponibilidadDeDisfraz, ConsultarOpcionesDeSlot, RentarDisfraz, VenderDisfraz, AsignarFotoDeDisfraz {
+		ConsultarDisponibilidadDeDisfraz, ConsultarOpcionesDeSlot, RentarDisfraz, VenderDisfraz,
+		RentarVariosDisfraces, VenderVariosDisfraces, AsignarFotoDeDisfraz {
 
 	private final DisfrazRepository disfraces;
 	private final ConsultaDeInventario inventario;
@@ -219,68 +220,130 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 	@Transactional
 	public UUID ejecutar(RentarDisfrazComando comando) {
 		UUID empresaId = comando.empresaId();
-		Disfraz disfraz = exigirDelTenant(empresaId, comando.disfrazId());
-		if (!disfraz.activo()) {
-			throw new IllegalArgumentException("El disfraz está archivado y no se puede rentar");
-		}
-		Map<Integer, UUID> seleccionPorOrden = new HashMap<>();
-		if (comando.selecciones() != null) {
-			for (RentarDisfrazComando.SeleccionDeSlot seleccion : comando.selecciones()) {
-				seleccionPorOrden.put(seleccion.orden(), seleccion.prendaId());
-			}
-		}
-		List<RegistroDeRentas.ItemDeRenta> items = new ArrayList<>();
-		for (Slot slot : disfraz.slots()) {
-			boolean elegido = seleccionPorOrden.containsKey(slot.orden());
-			// Los slots opcionales solo entran si el cliente los eligió; los obligatorios siempre.
-			if (!slot.esObligatorio() && !elegido) {
-				continue;
-			}
-			items.add(itemDeRenta(empresaId, resolverPrenda(empresaId, slot, seleccionPorOrden.get(slot.orden())),
-					comando.cantidad()));
-		}
-		if (items.isEmpty()) {
-			throw new IllegalArgumentException("El disfraz no resolvió ningún artículo para rentar");
-		}
-		// Precio general (RF-2.10): si el disfraz lo define, anula la suma por prendas repartiéndolo entre
-		// las líneas (proporcional a su precio) para que el total por día iguale el precio del conjunto ×
-		// la cantidad de disfraces rentados.
-		if (disfraz.tienePrecioGeneral()) {
-			items = repartirPrecioGeneral(items,
-					disfraz.precioRentaGeneral().multiply(BigDecimal.valueOf(comando.cantidad())));
-		}
+		List<RegistroDeRentas.ItemDeRenta> items = itemsRentaDe(empresaId, comando.disfrazId(), comando.cantidad(),
+				seleccionesDeRenta(comando.selecciones()));
 		return rentas.registrar(empresaId, comando.sucursalId(), comando.clienteId(), comando.fechaRetiro(),
 				comando.fechaDevolucion(), null, items, comando.empleadoId());
 	}
 
 	@Override
 	@Transactional
+	public UUID ejecutar(RentarVariosDisfracesComando comando) {
+		UUID empresaId = comando.empresaId();
+		// Un pedido con varios disfraces distintos: se resuelve cada uno a sus piezas y se acumulan en UNA sola renta.
+		List<RegistroDeRentas.ItemDeRenta> todos = new ArrayList<>();
+		for (RentarVariosDisfracesComando.ItemDeDisfraz item : comando.items()) {
+			Map<Integer, UUID> sel = new HashMap<>();
+			if (item.selecciones() != null) {
+				for (RentarVariosDisfracesComando.SeleccionDeSlot s : item.selecciones()) {
+					sel.put(s.orden(), s.prendaId());
+				}
+			}
+			todos.addAll(itemsRentaDe(empresaId, item.disfrazId(), Math.max(1, item.cantidad()), sel));
+		}
+		if (todos.isEmpty()) {
+			throw new IllegalArgumentException("El pedido no resolvió ningún artículo para rentar");
+		}
+		return rentas.registrar(empresaId, comando.sucursalId(), comando.clienteId(), comando.fechaRetiro(),
+				comando.fechaDevolucion(), null, todos, comando.empleadoId());
+	}
+
+	@Override
+	@Transactional
 	public UUID ejecutar(VenderDisfrazComando comando) {
 		UUID empresaId = comando.empresaId();
-		Disfraz disfraz = exigirDelTenant(empresaId, comando.disfrazId());
+		List<RegistroDeVentas.ItemDeVenta> items = itemsVentaDe(empresaId, comando.disfrazId(), comando.cantidad(),
+				seleccionesDeVenta(comando.selecciones()));
+		return ventas.registrar(empresaId, comando.sucursalId(), comando.empleadoId(), comando.clienteId(), items);
+	}
+
+	@Override
+	@Transactional
+	public UUID ejecutar(VenderVariosDisfracesComando comando) {
+		UUID empresaId = comando.empresaId();
+		List<RegistroDeVentas.ItemDeVenta> todos = new ArrayList<>();
+		for (VenderVariosDisfracesComando.ItemDeDisfraz item : comando.items()) {
+			Map<Integer, UUID> sel = new HashMap<>();
+			if (item.selecciones() != null) {
+				for (VenderVariosDisfracesComando.SeleccionDeSlot s : item.selecciones()) {
+					sel.put(s.orden(), s.prendaId());
+				}
+			}
+			todos.addAll(itemsVentaDe(empresaId, item.disfrazId(), Math.max(1, item.cantidad()), sel));
+		}
+		if (todos.isEmpty()) {
+			throw new IllegalArgumentException("El pedido no resolvió ningún artículo para vender");
+		}
+		return ventas.registrar(empresaId, comando.sucursalId(), comando.empleadoId(), comando.clienteId(), todos);
+	}
+
+	private static Map<Integer, UUID> seleccionesDeRenta(List<RentarDisfrazComando.SeleccionDeSlot> selecciones) {
+		Map<Integer, UUID> m = new HashMap<>();
+		if (selecciones != null) {
+			for (RentarDisfrazComando.SeleccionDeSlot s : selecciones) {
+				m.put(s.orden(), s.prendaId());
+			}
+		}
+		return m;
+	}
+
+	private static Map<Integer, UUID> seleccionesDeVenta(List<VenderDisfrazComando.SeleccionDeSlot> selecciones) {
+		Map<Integer, UUID> m = new HashMap<>();
+		if (selecciones != null) {
+			for (VenderDisfrazComando.SeleccionDeSlot s : selecciones) {
+				m.put(s.orden(), s.prendaId());
+			}
+		}
+		return m;
+	}
+
+	/** Resuelve un disfraz a sus líneas de renta (una por pieza), con la cantidad y el reparto de precio general. */
+	private List<RegistroDeRentas.ItemDeRenta> itemsRentaDe(UUID empresaId, UUID disfrazId, int cantidad,
+			Map<Integer, UUID> seleccionPorOrden) {
+		Disfraz disfraz = exigirDelTenant(empresaId, disfrazId);
+		if (!disfraz.activo()) {
+			throw new IllegalArgumentException("El disfraz está archivado y no se puede rentar");
+		}
+		List<RegistroDeRentas.ItemDeRenta> items = new ArrayList<>();
+		for (Slot slot : disfraz.slots()) {
+			boolean elegido = seleccionPorOrden.containsKey(slot.orden());
+			if (!slot.esObligatorio() && !elegido) {
+				continue;
+			}
+			items.add(itemDeRenta(empresaId, resolverPrenda(empresaId, slot, seleccionPorOrden.get(slot.orden())),
+					cantidad));
+		}
+		if (items.isEmpty()) {
+			throw new IllegalArgumentException("El disfraz no resolvió ningún artículo para rentar");
+		}
+		// Precio general (RF-2.10) × cantidad: reparte el precio del conjunto entre las piezas.
+		if (disfraz.tienePrecioGeneral()) {
+			items = repartirPrecioGeneral(items,
+					disfraz.precioRentaGeneral().multiply(BigDecimal.valueOf(cantidad)));
+		}
+		return items;
+	}
+
+	/** Resuelve un disfraz a sus líneas de venta (una por pieza), con la cantidad. */
+	private List<RegistroDeVentas.ItemDeVenta> itemsVentaDe(UUID empresaId, UUID disfrazId, int cantidad,
+			Map<Integer, UUID> seleccionPorOrden) {
+		Disfraz disfraz = exigirDelTenant(empresaId, disfrazId);
 		if (!disfraz.activo()) {
 			throw new IllegalArgumentException("El disfraz está archivado y no se puede vender");
-		}
-		Map<Integer, UUID> seleccionPorOrden = new HashMap<>();
-		if (comando.selecciones() != null) {
-			for (VenderDisfrazComando.SeleccionDeSlot seleccion : comando.selecciones()) {
-				seleccionPorOrden.put(seleccion.orden(), seleccion.prendaId());
-			}
 		}
 		List<RegistroDeVentas.ItemDeVenta> items = new ArrayList<>();
 		for (Slot slot : disfraz.slots()) {
 			boolean elegido = seleccionPorOrden.containsKey(slot.orden());
-			// Los slots opcionales solo entran si el cliente los eligió; los obligatorios siempre.
 			if (!slot.esObligatorio() && !elegido) {
 				continue;
 			}
 			items.add(itemDeVenta(empresaId, resolverPrenda(empresaId, slot, seleccionPorOrden.get(slot.orden())),
-					comando.cantidad()));
+					cantidad));
 		}
 		if (items.isEmpty()) {
 			throw new IllegalArgumentException("El disfraz no resolvió ningún artículo para vender");
 		}
-		return ventas.registrar(empresaId, comando.sucursalId(), comando.empleadoId(), comando.clienteId(), items);
+		return items;
 	}
 
 	private RegistroDeVentas.ItemDeVenta itemDeVenta(UUID empresaId, UUID prendaId, int cantidad) {
