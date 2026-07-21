@@ -32,34 +32,42 @@ public final class Disfraz {
 	private final UUID id;
 	private final UUID empresaId;
 	private String nombre;
+	private UUID categoriaId;
 	private List<Slot> slots;
 	private boolean activo;
 	private BigDecimal precioRentaGeneral;
 	private String fotoUrl;
 
-	private Disfraz(UUID id, UUID empresaId, String nombre, List<Slot> slots, boolean activo,
+	private Disfraz(UUID id, UUID empresaId, String nombre, UUID categoriaId, List<Slot> slots, boolean activo,
 			BigDecimal precioRentaGeneral, String fotoUrl) {
 		this.id = Objects.requireNonNull(id, "id");
 		this.empresaId = Objects.requireNonNull(empresaId, "empresaId");
 		this.nombre = exigirNombre(nombre);
+		this.categoriaId = categoriaId;
 		this.slots = exigirSlots(slots);
 		this.activo = activo;
 		this.precioRentaGeneral = validarPrecio(precioRentaGeneral);
 		this.fotoUrl = fotoUrl;
 	}
 
+	public static Disfraz crear(UUID empresaId, String nombre, UUID categoriaId, List<Slot> slots,
+			BigDecimal precioRentaGeneral) {
+		return new Disfraz(UUID.randomUUID(), empresaId, nombre, categoriaId, slots, true, precioRentaGeneral, null);
+	}
+
+	/** Crea un disfraz sin categoría (compatibilidad); se cobra por prendas si no hay precio general. */
 	public static Disfraz crear(UUID empresaId, String nombre, List<Slot> slots, BigDecimal precioRentaGeneral) {
-		return new Disfraz(UUID.randomUUID(), empresaId, nombre, slots, true, precioRentaGeneral, null);
+		return crear(empresaId, nombre, null, slots, precioRentaGeneral);
 	}
 
-	/** Crea un disfraz que se cobra por prendas (sin precio general). */
+	/** Crea un disfraz que se cobra por prendas (sin categoría ni precio general). */
 	public static Disfraz crear(UUID empresaId, String nombre, List<Slot> slots) {
-		return crear(empresaId, nombre, slots, null);
+		return crear(empresaId, nombre, null, slots, null);
 	}
 
-	public static Disfraz rehidratar(UUID id, UUID empresaId, String nombre, List<Slot> slots, boolean activo,
-			BigDecimal precioRentaGeneral, String fotoUrl) {
-		return new Disfraz(id, empresaId, nombre, slots, activo, precioRentaGeneral, fotoUrl);
+	public static Disfraz rehidratar(UUID id, UUID empresaId, String nombre, UUID categoriaId, List<Slot> slots,
+			boolean activo, BigDecimal precioRentaGeneral, String fotoUrl) {
+		return new Disfraz(id, empresaId, nombre, categoriaId, slots, activo, precioRentaGeneral, fotoUrl);
 	}
 
 	/** Asigna/actualiza la foto del disfraz (la que sube el dueño, RF-2.9), tras subirla al almacén. */
@@ -77,9 +85,11 @@ public final class Disfraz {
 		this.nombre = exigirNombre(nuevoNombre);
 	}
 
-	/** Redefine el disfraz completo (nombre + slots + precio general) al editarlo (RF-2.3). */
-	public void redefinir(String nuevoNombre, List<Slot> nuevosSlots, BigDecimal precioRentaGeneral) {
+	/** Redefine el disfraz completo (nombre + categoría + slots + precio general) al editarlo (RF-2.3). */
+	public void redefinir(String nuevoNombre, UUID nuevaCategoriaId, List<Slot> nuevosSlots,
+			BigDecimal precioRentaGeneral) {
 		this.nombre = exigirNombre(nuevoNombre);
+		this.categoriaId = nuevaCategoriaId;
 		this.slots = exigirSlots(nuevosSlots);
 		this.precioRentaGeneral = validarPrecio(precioRentaGeneral);
 	}
@@ -130,6 +140,11 @@ public final class Disfraz {
 
 	public String nombre() {
 		return nombre;
+	}
+
+	/** Categoría del disfraz (RF-2.3), para agruparlos/verlos por categoría; nula en disfraces antiguos. */
+	public UUID categoriaId() {
+		return categoriaId;
 	}
 
 	public List<Slot> slots() {

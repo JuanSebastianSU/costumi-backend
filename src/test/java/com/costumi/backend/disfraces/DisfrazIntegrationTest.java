@@ -604,6 +604,80 @@ class DisfrazIntegrationTest {
 				.andExpect(status().isBadRequest());
 	}
 
+	private UUID crearPrendaVenta(String dueno, UUID categoria, String nombre, String precioVenta) throws Exception {
+		String body = mvc.perform(post("/api/v1/prendas").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"categoriaId\":\"" + categoria + "\",\"nombre\":\"" + nombre + "\","
+								+ "\"tipoArticulo\":\"VENTA\",\"precioVenta\":" + precioVenta + "}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		return UUID.fromString(json.readTree(body).get("id").asText());
+	}
+
+	@Test
+	void el_precio_de_venta_sugerido_es_un_rango_cuando_la_parte_tiene_opciones() throws Exception {
+		UUID empresa = crearEmpresa("Rango " + UUID.randomUUID());
+		String dueno = duenoDe(empresa);
+		UUID cat = crearCategoria(dueno, "Cat " + UUID.randomUUID());
+		// Dos opciones de venta con precios distintos: 50 y 90 -> el sugerido va de 50 a 90.
+		UUID barata = crearPrendaVenta(dueno, cat, "Barata", "50.00");
+		crearGrupo(dueno, empresa, barata, 3);
+		UUID cara = crearPrendaVenta(dueno, cat, "Cara", "90.00");
+		crearGrupo(dueno, empresa, cara, 3);
+
+		mvc.perform(post("/api/v1/disfraces").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Rango\",\"slots\":[{\"orden\":1,\"nombre\":\"Cuerpo\","
+								+ "\"ejePrenda\":\"PERSONALIZABLE\",\"prendasOpcion\":[\"" + barata + "\",\"" + cara
+								+ "\"],\"opcional\":false}]}"))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.precioVentaSugerido").value(50.00))
+				.andExpect(jsonPath("$.precioVentaSugeridoMax").value(90.00));
+	}
+
+	@Test
+	void disfraz_con_categoria_se_lista_por_categoria() throws Exception {
+		UUID empresa = crearEmpresa("Disfraz Categoria " + UUID.randomUUID());
+		String dueno = duenoDe(empresa);
+		UUID piratas = crearCategoria(dueno, "Piratas " + UUID.randomUUID());
+		UUID brujas = crearCategoria(dueno, "Brujas " + UUID.randomUUID());
+		UUID prenda = crearPrenda(dueno, piratas);
+
+		mvc.perform(post("/api/v1/disfraces").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Pirata\",\"categoriaId\":\"" + piratas + "\",\"slots\":[{\"orden\":1,"
+								+ "\"nombre\":\"Traje\",\"ejePrenda\":\"FIJA\",\"prendaFijaId\":\"" + prenda
+								+ "\",\"opcional\":false}]}"))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.categoriaId").value(piratas.toString()));
+
+		// El listado filtrado por Piratas lo trae; por Brujas no.
+		mvc.perform(get("/api/v1/disfraces").param("categoriaId", piratas.toString())
+						.header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(1));
+		mvc.perform(get("/api/v1/disfraces").param("categoriaId", brujas.toString())
+						.header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(0));
+	}
+
+	@Test
+	void crear_disfraz_con_categoria_de_otra_empresa_devuelve_400() throws Exception {
+		String duenoA = duenoDe(crearEmpresa("Disfraz Cat Cross A"));
+		UUID categoriaA = crearCategoria(duenoA, "Piratas A");
+
+		String duenoB = duenoDe(crearEmpresa("Disfraz Cat Cross B"));
+		UUID categoriaB = crearCategoria(duenoB, "Piratas B");
+		UUID prendaB = crearPrenda(duenoB, categoriaB);
+		// B arma un disfraz cuya categoría apunta a una categoría de A (cross-ref por tenant, §5.4).
+		mvc.perform(post("/api/v1/disfraces").header("Authorization", "Bearer " + duenoB)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Robo\",\"categoriaId\":\"" + categoriaA + "\",\"slots\":[{\"orden\":1,"
+								+ "\"nombre\":\"S\",\"ejePrenda\":\"FIJA\",\"prendaFijaId\":\"" + prendaB
+								+ "\",\"opcional\":false}]}"))
+				.andExpect(status().isBadRequest());
+	}
+
 	@Test
 	void disfraz_sin_slots_devuelve_400() throws Exception {
 		String dueno = duenoDe(crearEmpresa("Disfraz Vacio"));
