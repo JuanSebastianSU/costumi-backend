@@ -1,7 +1,9 @@
 package com.costumi.backend.disfraces;
 
 import java.math.BigDecimal;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -29,4 +31,15 @@ public interface ResolucionDeDisfraces {
 
 	/** Resuelve el disfraz a sus líneas de VENTA (precio unitario), aplicando su precio general si lo tiene. */
 	List<LineaResuelta> lineasDeVenta(UUID empresaId, UUID disfrazId, int cantidad, List<SeleccionDeSlot> selecciones);
+
+	/** Resumen mínimo de un disfraz para pintar el carrito/pedido: nombre y foto. */
+	record ResumenDeDisfraz(UUID disfrazId, String nombre, String fotoUrl) {
+	}
+
+	/**
+	 * Resumen (nombre + foto) de varios disfraces de la empresa, indexado por id. Sirve para que el carrito
+	 * muestre QUÉ disfraz se agregó, con imagen, sin conocer las clases internas de Disfraces. Ignora ids que
+	 * no existan o no sean de la empresa (aislamiento por tenant, §5.4).
+	 */
+	Map<UUID, ResumenDeDisfraz> resumenDeDisfraces(UUID empresaId, Collection<UUID> disfrazIds);
 }

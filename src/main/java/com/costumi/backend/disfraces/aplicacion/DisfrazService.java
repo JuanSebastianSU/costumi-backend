@@ -405,6 +405,21 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 				.toList();
 	}
 
+	@Override
+	@Transactional(readOnly = true)
+	public Map<UUID, ResumenDeDisfraz> resumenDeDisfraces(UUID empresaId, java.util.Collection<UUID> disfrazIds) {
+		Map<UUID, ResumenDeDisfraz> resumen = new java.util.LinkedHashMap<>();
+		for (UUID disfrazId : disfrazIds) {
+			if (disfrazId == null || resumen.containsKey(disfrazId)) {
+				continue;
+			}
+			disfraces.buscarPorId(disfrazId)
+					.filter(d -> d.empresaId().equals(empresaId))
+					.ifPresent(d -> resumen.put(d.id(), new ResumenDeDisfraz(d.id(), d.nombre(), d.fotoUrl())));
+		}
+		return resumen;
+	}
+
 	private static Map<Integer, UUID> seleccionesResueltas(List<SeleccionDeSlot> selecciones) {
 		Map<Integer, UUID> m = new HashMap<>();
 		if (selecciones != null) {

@@ -193,6 +193,125 @@ class CarritoIntegrationTest {
 				.andExpect(status().isOk());
 	}
 
+	private void stock(Ctx c, int cantidad) throws Exception {
+		mvc.perform(post("/api/v1/prendas/{id}/grupos-stock", c.prenda()).header("Authorization", "Bearer " + c.dueno())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + c.sucursal() + "\",\"combinacion\":[],\"cantidadInicial\":" + cantidad
+								+ "}"))
+				.andExpect(status().isCreated());
+	}
+
+	/** Disfraz con un único slot FIJO = la prenda del contexto (no requiere selección). */
+	private UUID crearDisfrazFijo(Ctx c) throws Exception {
+		String body = mvc.perform(post("/api/v1/disfraces").header("Authorization", "Bearer " + c.dueno())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Disfraz Fijo\",\"slots\":[{\"orden\":1,\"nombre\":\"Cuerpo\","
+								+ "\"ejePrenda\":\"FIJA\",\"prendaFijaId\":\"" + c.prenda() + "\",\"opcional\":false}]}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		return UUID.fromString(json.readTree(body).get("id").asText());
+	}
+
+	/** Disfraz con un slot PERSONALIZABLE cuya única opción explícita es la prenda del contexto. */
+	private UUID crearDisfrazPersonalizable(Ctx c) throws Exception {
+		String body = mvc.perform(post("/api/v1/disfraces").header("Authorization", "Bearer " + c.dueno())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Disfraz Pers\",\"slots\":[{\"orden\":1,\"nombre\":\"Cuerpo\","
+								+ "\"ejePrenda\":\"PERSONALIZABLE\",\"prendasOpcion\":[\"" + c.prenda()
+								+ "\"],\"opcional\":false}]}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		return UUID.fromString(json.readTree(body).get("id").asText());
+	}
+
+	@Test
+	void agregar_un_disfraz_de_venta_lo_valoriza_y_el_checkout_crea_la_venta() throws Exception {
+		Ctx c = montar(); // prenda: precioVenta 90.00
+		stock(c, 5);
+		UUID disfraz = crearDisfrazFijo(c);
+
+		// Agrega el disfraz (x2) al carrito de VENTA; su slot es FIJO, no necesita selección.
+		mvc.perform(post("/api/v1/carritos/items").header("Authorization", "Bearer " + c.dueno())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + c.sucursal() + "\",\"clienteId\":\"" + c.cliente()
+								+ "\",\"tipo\":\"VENTA\",\"disfrazId\":\"" + disfraz + "\",\"cantidad\":2}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.lineas[0].disfrazId").value(disfraz.toString()))
+				.andExpect(jsonPath("$.lineas[0].nombre").value("Disfraz Fijo"));
+
+		// El total = 2 × (precio de venta de la pieza 90) = 180.
+		mvc.perform(get("/api/v1/carritos").header("Authorization", "Bearer " + c.dueno())
+						.param("sucursalId", c.sucursal().toString())
+						.param("clienteId", c.cliente().toString())
+						.param("tipo", "VENTA"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.lineas.length()").value(1))
+				.andExpect(jsonPath("$.lineas[0].disfrazId").value(disfraz.toString()))
+				.andExpect(jsonPath("$.lineas[0].precioUnitario").value(90.00))
+				.andExpect(jsonPath("$.total").value(180.00));
+
+		// Checkout: crea la venta y confirma el carrito.
+		mvc.perform(post("/api/v1/carritos/checkout").header("Authorization", "Bearer " + c.dueno())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + c.sucursal() + "\",\"clienteId\":\"" + c.cliente() + "\"}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.ventaId").exists());
+		mvc.perform(get("/api/v1/ventas").header("Authorization", "Bearer " + c.dueno()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.contenido[?(@.total == 180.00)]").exists());
+	}
+
+	@Test
+	void agregar_un_disfraz_de_renta_con_seleccion_suma_cantidad_y_hace_checkout() throws Exception {
+		Ctx c = montar(); // prenda: precioRenta 30.00 (por día)
+		stock(c, 5);
+		UUID disfraz = crearDisfrazPersonalizable(c);
+		String seleccion = ",\"selecciones\":[{\"orden\":1,\"prendaId\":\"" + c.prenda() + "\"}]";
+		String periodo = ",\"fechaRetiro\":\"2026-08-01\",\"fechaDevolucion\":\"2026-08-04\""; // 3 días
+
+		// Misma selección + mismo periodo dos veces → suma a 3 (una sola línea).
+		agregarDisfrazRenta(c, disfraz, 1, seleccion, periodo);
+		agregarDisfrazRenta(c, disfraz, 2, seleccion, periodo);
+
+		// total = 30 (por día) × 3 (cantidad) × 3 (días) = 270.
+		mvc.perform(get("/api/v1/carritos").header("Authorization", "Bearer " + c.dueno())
+						.param("sucursalId", c.sucursal().toString())
+						.param("clienteId", c.cliente().toString())
+						.param("tipo", "RENTA"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.lineas.length()").value(1))
+				.andExpect(jsonPath("$.lineas[0].cantidad").value(3))
+				.andExpect(jsonPath("$.lineas[0].selecciones.length()").value(1))
+				.andExpect(jsonPath("$.lineas[0].selecciones[0].prendaId").value(c.prenda().toString()))
+				.andExpect(jsonPath("$.total").value(270.00));
+
+		// Checkout de renta: una renta (un solo periodo) y el carrito queda confirmado.
+		mvc.perform(post("/api/v1/carritos/checkout-renta").header("Authorization", "Bearer " + c.dueno())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + c.sucursal() + "\",\"clienteId\":\"" + c.cliente() + "\"}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.rentaIds.length()").value(1));
+	}
+
+	private void agregarDisfrazRenta(Ctx c, UUID disfraz, int cantidad, String seleccion, String periodo)
+			throws Exception {
+		mvc.perform(post("/api/v1/carritos/items").header("Authorization", "Bearer " + c.dueno())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + c.sucursal() + "\",\"clienteId\":\"" + c.cliente()
+								+ "\",\"tipo\":\"RENTA\",\"disfrazId\":\"" + disfraz + "\",\"cantidad\":" + cantidad
+								+ seleccion + periodo + "}"))
+				.andExpect(status().isOk());
+	}
+
+	@Test
+	void no_se_puede_agregar_prenda_y_disfraz_a_la_vez() throws Exception {
+		Ctx c = montar();
+		mvc.perform(post("/api/v1/carritos/items").header("Authorization", "Bearer " + c.dueno())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + c.sucursal() + "\",\"clienteId\":\"" + c.cliente()
+								+ "\",\"tipo\":\"VENTA\",\"prendaId\":\"" + c.prenda() + "\",\"disfrazId\":\""
+								+ UUID.randomUUID() + "\",\"cantidad\":1}"))
+				.andExpect(status().isBadRequest());
+	}
+
 	@Test
 	void cliente_del_marketplace_arma_su_carrito_y_hace_checkout() throws Exception {
 		Ctx c = montar();

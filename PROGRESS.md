@@ -9,6 +9,26 @@
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
 ## Fase actual
+**Fase 22 — Slice 4: el CARRITO del cliente acepta DISFRACES + total (2026-07-21).**
+
+Rama `feat/carrito-con-disfraces` (desde `origin/main`, PENDIENTE de merge). El carrito (`módulo pedidos`) era solo de
+prendas; ahora una línea es una **prenda** O un **disfraz** (con su elección de prenda por slot personalizable). Cambios:
+- **Migración V62:** `linea_de_carrito.prenda_id` pasa a NULLABLE, se agrega `disfraz_id` + CHECK "prenda XOR disfraz";
+  nueva tabla hija `linea_de_carrito_seleccion(linea_id, empresa_id, orden, prenda_id)` con FK `on delete cascade`.
+- **Dominio:** `SeleccionDeSlot` nuevo; `LineaDeCarrito` variante de disfraz + `esPrenda/esDisfraz`; clave de merge de
+  disfraz = disfraz + selecciones (ordenadas) + periodo; `Carrito.agregarDisfraz`.
+- **Puerto base `ResolucionDeDisfraces`:** se agrega `resumenDeDisfraces(empresaId, ids)` (nombre+foto para pintar el
+  carrito). La valorización y los dos checkouts resuelven cada disfraz a sus piezas valuadas con `lineasDeRenta/Venta`
+  (precio ya repartido si el disfraz tiene precio general). Modulith: `pedidos → disfraces` SOLO por el paquete base ✓.
+- **DTOs:** `AgregarItemRequest` relaja `prendaId` y gana `disfrazId`+`selecciones` (el controller valida uno-u-otro);
+  `CarritoResponse`/`CarritoValorizado` distinguen prenda/disfraz y traen `precioUnitario`/`subtotal`/`selecciones`.
+- Tests: dominio (merge de disfraz, prenda≠disfraz, fechas) + integración (valorizar venta 180, renta con selección que
+  suma a 3 y total 270, checkout venta+renta, 400 si prenda+disfraz juntos). Suite **496/496** en Docker (JDK21).
+**Al mergear: regenerar `:api-client`** (cambió `AgregarItemRequest` y `CarritoResponse`) y en el FRONT: agregar
+disfraces al carrito del cliente (elegir disfraz → selección por slot → ver total antes de confirmar).
+
+---
+
 **Fase 20 — Pedido MIXTO: prendas + disfraces en una sola renta/venta (2026-07-21).**
 
 Rama `feat/pedido-mixto-prendas-disfraces` (desde `origin/main`, PENDIENTE de merge). El dueño quiere que desde los

@@ -53,12 +53,7 @@ public class Carrito {
 	 */
 	public void agregarItem(UUID prendaId, int cantidad, java.time.LocalDate fechaRetiro,
 			java.time.LocalDate fechaDevolucion) {
-		if (tipo == TipoPedido.RENTA && (fechaRetiro == null || fechaDevolucion == null)) {
-			throw new IllegalArgumentException("Un artículo de renta requiere fechas de retiro y devolución");
-		}
-		if (tipo == TipoPedido.VENTA && (fechaRetiro != null || fechaDevolucion != null)) {
-			throw new IllegalArgumentException("Un artículo de venta no lleva fechas");
-		}
+		validarPeriodo(fechaRetiro, fechaDevolucion);
 		for (LineaDeCarrito linea : lineas) {
 			if (linea.mismaClave(prendaId, fechaRetiro, fechaDevolucion)) {
 				linea.incrementar(cantidad);
@@ -66,6 +61,33 @@ public class Carrito {
 			}
 		}
 		lineas.add(LineaDeCarrito.de(prendaId, cantidad, fechaRetiro, fechaDevolucion));
+	}
+
+	/**
+	 * Agrega un DISFRAZ con su elección de prenda por slot (RF-16/2.3). Si ya existe una línea del mismo
+	 * disfraz, con la MISMA elección y el mismo periodo, suma a su cantidad; distinta elección o periodo =
+	 * otra línea. Las fechas siguen la regla del tipo de carrito (renta obligatorias, venta nulas).
+	 */
+	public void agregarDisfraz(UUID disfrazId, List<SeleccionDeSlot> selecciones, int cantidad,
+			java.time.LocalDate fechaRetiro, java.time.LocalDate fechaDevolucion) {
+		validarPeriodo(fechaRetiro, fechaDevolucion);
+		for (LineaDeCarrito linea : lineas) {
+			if (linea.mismaClaveDisfraz(disfrazId, selecciones, fechaRetiro, fechaDevolucion)) {
+				linea.incrementar(cantidad);
+				return;
+			}
+		}
+		lineas.add(LineaDeCarrito.deDisfraz(disfrazId, selecciones, cantidad, fechaRetiro, fechaDevolucion));
+	}
+
+	/** En un carrito de RENTA las fechas del artículo son obligatorias; en uno de VENTA deben ser nulas. */
+	private void validarPeriodo(java.time.LocalDate fechaRetiro, java.time.LocalDate fechaDevolucion) {
+		if (tipo == TipoPedido.RENTA && (fechaRetiro == null || fechaDevolucion == null)) {
+			throw new IllegalArgumentException("Un artículo de renta requiere fechas de retiro y devolución");
+		}
+		if (tipo == TipoPedido.VENTA && (fechaRetiro != null || fechaDevolucion != null)) {
+			throw new IllegalArgumentException("Un artículo de venta no lleva fechas");
+		}
 	}
 
 	/** Confirma el carrito al hacer checkout (RF-16): pasa a CONFIRMADO. Debe estar pendiente y no vacío. */

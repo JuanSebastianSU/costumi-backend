@@ -3,6 +3,7 @@ package com.costumi.backend.pedidos.dominio;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -63,6 +64,52 @@ class CarritoTest {
 		Carrito carrito = nuevoDeRenta();
 
 		assertThatThrownBy(() -> carrito.agregarItem(UUID.randomUUID(), 1, null, null))
+				.isInstanceOf(IllegalArgumentException.class);
+	}
+
+	@Test
+	void agregar_el_mismo_disfraz_con_la_misma_seleccion_suma_cantidad() {
+		Carrito carrito = nuevo();
+		UUID disfraz = UUID.randomUUID();
+		UUID prendaSlot = UUID.randomUUID();
+
+		carrito.agregarDisfraz(disfraz, List.of(new SeleccionDeSlot(1, prendaSlot)), 1, null, null);
+		carrito.agregarDisfraz(disfraz, List.of(new SeleccionDeSlot(1, prendaSlot)), 2, null, null);
+
+		assertThat(carrito.lineas()).hasSize(1);
+		assertThat(carrito.lineas().get(0).cantidad()).isEqualTo(3);
+		assertThat(carrito.lineas().get(0).esDisfraz()).isTrue();
+	}
+
+	@Test
+	void el_mismo_disfraz_con_distinta_seleccion_son_lineas_distintas() {
+		Carrito carrito = nuevo();
+		UUID disfraz = UUID.randomUUID();
+
+		carrito.agregarDisfraz(disfraz, List.of(new SeleccionDeSlot(1, UUID.randomUUID())), 1, null, null);
+		carrito.agregarDisfraz(disfraz, List.of(new SeleccionDeSlot(1, UUID.randomUUID())), 1, null, null);
+
+		assertThat(carrito.lineas()).hasSize(2);
+	}
+
+	@Test
+	void una_prenda_y_un_disfraz_nunca_se_agrupan() {
+		Carrito carrito = nuevo();
+		UUID id = UUID.randomUUID();
+
+		carrito.agregarItem(id, 1);
+		carrito.agregarDisfraz(id, List.of(), 1, null, null);
+
+		assertThat(carrito.lineas()).hasSize(2);
+		assertThat(carrito.lineas().get(0).esPrenda()).isTrue();
+		assertThat(carrito.lineas().get(1).esDisfraz()).isTrue();
+	}
+
+	@Test
+	void en_renta_un_disfraz_requiere_fechas() {
+		Carrito carrito = nuevoDeRenta();
+
+		assertThatThrownBy(() -> carrito.agregarDisfraz(UUID.randomUUID(), List.of(), 1, null, null))
 				.isInstanceOf(IllegalArgumentException.class);
 	}
 
