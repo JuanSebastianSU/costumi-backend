@@ -9,6 +9,27 @@
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
 ## Fase actual
+**Fase 23 — Categorías de DISFRAZ como taxonomía propia, separada de las de prenda (2026-07-21).**
+
+Rama `feat/categorias-de-disfraz` (desde `origin/main`, PENDIENTE de merge). El dueño aclaró que las categorías
+de disfraz ("Piratas", etc.) son un concepto **completamente aparte** de las categorías de prenda (Camisa,
+Pantalón…). Hasta ahora `disfraz.categoria_id` (V60) apuntaba por error a la tabla `categoria` (de prendas).
+- **Migración V63:** nueva tabla `categoria_disfraz` (id, empresa_id, nombre, archivada); se **repunta** el FK
+  `disfraz.categoria_id` de `categoria`→`categoria_disfraz` y se limpian los valores viejos (referenciaban
+  categorías de prenda).
+- **Módulo `disfraces`:** nuevo agregado `CategoriaDeDisfraz` + repo + persistencia; puerto
+  `GestionCategoriasDeDisfraz` + `CategoriaDeDisfrazService` (listar/crear/renombrar/archivar/activar);
+  controller `CategoriaDeDisfrazController` en **`/api/v1/disfraces/categorias`** (GET/POST/PATCH/archivar/activar);
+  `DisfrazService.validarCategoriaDelTenant` ahora valida contra la taxonomía de disfraz (no la de prenda);
+  404 nuevo `CategoriaDeDisfrazNoEncontrada`.
+- Tests: `CategoriaDeDisfrazIntegrationTest` (crear/listar/renombrar/archivar; disfraz con su categoría + filtro;
+  una categoría de PRENDA NO sirve como categoría de disfraz → 400). Se actualizaron 2 tests viejos de
+  `DisfrazIntegrationTest` que usaban categoría de prenda para el disfraz. Suite **499/499** (Docker, JDK21).
+**Al mergear: regenerar `:api-client`** (endpoints nuevos + modelo `CategoriaDeDisfrazResponse`) y en el FRONT
+usar estas categorías en el form y la lista de disfraces (NO las de prenda) + una pantallita para gestionarlas.
+
+---
+
 **Fase 22 — Slice 4: el CARRITO del cliente acepta DISFRACES + total (2026-07-21).**
 
 Rama `feat/carrito-con-disfraces` (desde `origin/main`, PENDIENTE de merge). El carrito (`módulo pedidos`) era solo de

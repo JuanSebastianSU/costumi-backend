@@ -36,15 +36,18 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 	private final DisfrazRepository disfraces;
 	private final ConsultaDeInventario inventario;
 	private final ConsultaDeTaxonomia taxonomia;
+	private final com.costumi.backend.disfraces.dominio.CategoriaDeDisfrazRepository categoriasDeDisfraz;
 	private final RegistroDeRentas rentas;
 	private final RegistroDeVentas ventas;
 	private final AlmacenDeImagenesPublico almacenDeImagenes;
 
 	DisfrazService(DisfrazRepository disfraces, ConsultaDeInventario inventario, ConsultaDeTaxonomia taxonomia,
+			com.costumi.backend.disfraces.dominio.CategoriaDeDisfrazRepository categoriasDeDisfraz,
 			RegistroDeRentas rentas, RegistroDeVentas ventas, AlmacenDeImagenesPublico almacenDeImagenes) {
 		this.disfraces = disfraces;
 		this.inventario = inventario;
 		this.taxonomia = taxonomia;
+		this.categoriasDeDisfraz = categoriasDeDisfraz;
 		this.rentas = rentas;
 		this.ventas = ventas;
 		this.almacenDeImagenes = almacenDeImagenes;
@@ -82,9 +85,18 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 		return disfraces.guardar(disfraz);
 	}
 
-	/** La categoría del disfraz, si se indica, debe existir en la empresa (§5.4, cross-ref por tenant). */
+	/**
+	 * La categoría del disfraz, si se indica, debe existir en la empresa. Se valida contra la taxonomía
+	 * PROPIA de disfraces (categoria_disfraz), NO contra las categorías de prenda (§5.4, cross-ref por tenant).
+	 */
 	private void validarCategoriaDelTenant(UUID empresaId, UUID categoriaId) {
-		if (categoriaId != null && !taxonomia.categoriaExiste(empresaId, categoriaId)) {
+		if (categoriaId == null) {
+			return;
+		}
+		boolean existe = categoriasDeDisfraz.buscarPorId(categoriaId)
+				.filter(c -> c.empresaId().equals(empresaId))
+				.isPresent();
+		if (!existe) {
 			throw new IllegalArgumentException("La categoría del disfraz no existe en esta empresa");
 		}
 	}
