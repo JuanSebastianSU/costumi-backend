@@ -18,18 +18,24 @@ public class Usuario {
 	private final String passwordHash;
 	private final Rol rol;
 	private final boolean activo;
+	/** Datos que el propio usuario administra (RF-14). Opcionales: puede no haberlos cargado todavía. */
+	private final String nombre;
+	private final String telefono;
 
-	private Usuario(UUID id, UUID empresaId, String email, String passwordHash, Rol rol, boolean activo) {
+	private Usuario(UUID id, UUID empresaId, String email, String passwordHash, Rol rol, boolean activo,
+			String nombre, String telefono) {
 		this.id = Objects.requireNonNull(id, "id");
 		this.rol = Objects.requireNonNull(rol, "rol");
 		this.email = exigir(email, "email");
 		this.passwordHash = exigir(passwordHash, "passwordHash");
 		this.empresaId = validarTenant(empresaId, rol);
 		this.activo = activo;
+		this.nombre = normalizar(nombre);
+		this.telefono = normalizar(telefono);
 	}
 
 	public static Usuario crear(UUID empresaId, String email, String passwordHash, Rol rol) {
-		return new Usuario(UUID.randomUUID(), empresaId, email, passwordHash, rol, true);
+		return new Usuario(UUID.randomUUID(), empresaId, email, passwordHash, rol, true, null, null);
 	}
 
 	public static Usuario rehidratar(UUID id, UUID empresaId, String email, String passwordHash, Rol rol) {
@@ -38,7 +44,25 @@ public class Usuario {
 
 	public static Usuario rehidratar(UUID id, UUID empresaId, String email, String passwordHash, Rol rol,
 			boolean activo) {
-		return new Usuario(id, empresaId, email, passwordHash, rol, activo);
+		return new Usuario(id, empresaId, email, passwordHash, rol, activo, null, null);
+	}
+
+	public static Usuario rehidratar(UUID id, UUID empresaId, String email, String passwordHash, Rol rol,
+			boolean activo, String nombre, String telefono) {
+		return new Usuario(id, empresaId, email, passwordHash, rol, activo, nombre, telefono);
+	}
+
+	/**
+	 * El propio usuario actualiza sus datos (RF-14). Vacío borra el dato: son opcionales. No toca el
+	 * correo, que identifica la cuenta, ni el rol.
+	 */
+	public Usuario actualizarPerfil(String nuevoNombre, String nuevoTelefono) {
+		return new Usuario(id, empresaId, email, passwordHash, rol, activo, nuevoNombre, nuevoTelefono);
+	}
+
+	/** Nombre para mostrar: el que cargó, o su correo si todavía no puso ninguno. */
+	public String nombreParaMostrar() {
+		return nombre == null ? email : nombre;
 	}
 
 	/**
@@ -49,22 +73,22 @@ public class Usuario {
 		if (!rol.esCliente()) {
 			throw new IllegalStateException("Solo un CLIENTE puede promoverse a DUEÑO");
 		}
-		return new Usuario(id, empresaId, email, passwordHash, Rol.DUENO, activo);
+		return new Usuario(id, empresaId, email, passwordHash, Rol.DUENO, activo, nombre, telefono);
 	}
 
 	/** Cambia la contraseña (recibe el hash ya cifrado). Misma cuenta: solo cambia el hash. */
 	public Usuario cambiarContrasena(String nuevoPasswordHash) {
-		return new Usuario(id, empresaId, email, nuevoPasswordHash, rol, activo);
+		return new Usuario(id, empresaId, email, nuevoPasswordHash, rol, activo, nombre, telefono);
 	}
 
 	/** Da de baja al usuario: no podrá autenticarse ni renovar sesión (RF-8). Misma cuenta, se conserva. */
 	public Usuario desactivar() {
-		return new Usuario(id, empresaId, email, passwordHash, rol, false);
+		return new Usuario(id, empresaId, email, passwordHash, rol, false, nombre, telefono);
 	}
 
 	/** Reactiva al usuario dado de baja. */
 	public Usuario activar() {
-		return new Usuario(id, empresaId, email, passwordHash, rol, true);
+		return new Usuario(id, empresaId, email, passwordHash, rol, true, nombre, telefono);
 	}
 
 	/**
@@ -73,7 +97,7 @@ public class Usuario {
 	 * personal de su empresa. La autoridad para hacerlo (pirámide) la exige la capa de aplicación.
 	 */
 	public Usuario cambiarRol(Rol nuevoRol) {
-		return new Usuario(id, empresaId, email, passwordHash, nuevoRol, activo);
+		return new Usuario(id, empresaId, email, passwordHash, nuevoRol, activo, nombre, telefono);
 	}
 
 	private static UUID validarTenant(UUID empresaId, Rol rol) {
@@ -84,6 +108,11 @@ public class Usuario {
 			throw new IllegalArgumentException("El usuario debe pertenecer a una empresa");
 		}
 		return empresaId;
+	}
+
+	/** Un texto en blanco es lo mismo que no tener el dato. */
+	private static String normalizar(String valor) {
+		return valor == null || valor.isBlank() ? null : valor.trim();
 	}
 
 	private static String exigir(String valor, String campo) {
@@ -115,5 +144,13 @@ public class Usuario {
 
 	public boolean activo() {
 		return activo;
+	}
+
+	public String nombre() {
+		return nombre;
+	}
+
+	public String telefono() {
+		return telefono;
 	}
 }
