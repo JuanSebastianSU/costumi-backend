@@ -50,6 +50,20 @@ class CanalFcm implements CanalDeNotificacion {
 		return !credencialJson.isBlank() && projectId != null;
 	}
 
+	/**
+	 * Diagnostico para el dueno: por que el push no esta andando. **No devuelve la credencial**, solo si
+	 * llego y si se pudo leer, que es lo unico que hace falta para saber donde esta el problema.
+	 */
+	String diagnostico() {
+		if (credencialJson.isBlank()) {
+			return "Falta la variable COSTUMI_FCM_CREDENTIALS";
+		}
+		if (projectId == null) {
+			return "La credencial llego pero no es un JSON valido (revisa que se haya pegado completo)";
+		}
+		return "Configurado para el proyecto " + projectId;
+	}
+
 	@Override
 	public boolean enviar(Notificacion notificacion) {
 		if (!configurado()) {

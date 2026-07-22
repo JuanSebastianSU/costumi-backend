@@ -12,7 +12,8 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @Primary
-class RouterDeCanales implements CanalDeNotificacion {
+class RouterDeCanales implements CanalDeNotificacion,
+		com.costumi.backend.notificaciones.aplicacion.ConsultarEstadoDeCanales {
 
 	private final CanalWhatsApp whatsApp;
 	private final CanalFcm fcm;
@@ -22,6 +23,13 @@ class RouterDeCanales implements CanalDeNotificacion {
 		this.whatsApp = whatsApp;
 		this.fcm = fcm;
 		this.registroEnLog = registroEnLog;
+	}
+
+	/** Estado de los canales externos, para diagnosticar por que un aviso cayo al log. */
+	@Override
+	public com.costumi.backend.notificaciones.aplicacion.EstadoDeCanales estado() {
+		return new com.costumi.backend.notificaciones.aplicacion.EstadoDeCanales(
+				fcm.configurado(), fcm.diagnostico(), whatsApp.configurado());
 	}
 
 	@Override

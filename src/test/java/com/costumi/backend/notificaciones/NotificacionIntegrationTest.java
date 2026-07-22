@@ -210,4 +210,22 @@ class NotificacionIntegrationTest {
 	void sin_token_devuelve_401() throws Exception {
 		mvc.perform(get("/api/v1/notificaciones")).andExpect(status().isUnauthorized());
 	}
+
+	@Test
+	void el_estado_de_canales_dice_por_que_un_aviso_cae_al_log() throws Exception {
+		// Sin credencial de FCM configurada (el caso por defecto en tests), el canal no esta listo y el
+		// diagnostico lo dice con todas las letras: es lo que evita creer que una push "ENVIADA" llego.
+		String res = mvc.perform(post("/api/v1/empresas").contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Canales " + UUID.randomUUID() + "\"}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		UUID empresa = UUID.fromString(json.readTree(res).get("id").asText());
+		String superAdmin = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, null, Rol.SUPERADMIN);
+		mvc.perform(post("/api/v1/empresas/{id}/aprobar", empresa).header("Authorization", "Bearer " + superAdmin))
+				.andExpect(status().isOk());
+		String dueno = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.DUENO);
+		mvc.perform(get("/api/v1/notificaciones/estado-canales").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.fcmConfigurado").value(false))
+				.andExpect(jsonPath("$.fcmDetalle").value(org.hamcrest.Matchers.containsString("COSTUMI_FCM_CREDENTIALS")));
+	}
 }
