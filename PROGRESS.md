@@ -8,6 +8,22 @@
 > `CLAUDE.md`) para retomar sin perder el hilo. Regla: mueve ítems entre secciones,
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
+## OP-1 — el dueño puede ver el nombre de su tienda (2026-07-22)
+
+Reportado probando la app: el dueño **no tiene forma de ver el nombre de su propia tienda**. Y era
+cierto en el backend: las únicas lecturas de empresa son `GET /empresas` y `GET /empresas/pendientes`,
+las dos **solo de SUPERADMIN**, y no existía ningún `GET /empresas/{id}`. O sea que la app no podía
+mostrarlo aunque quisiera.
+
+- `GET /api/v1/empresas/mia` → id, nombre, estado y fecha de registro de la empresa **del token**.
+  La empresa nunca sale de la ruta, así que no hay forma de pedir la de otro (§5.4).
+- Caso de uso `ConsultarMiEmpresa`; usa `tenant.empresaIdRequerida()`, así que un CLIENTE (sin empresa)
+  recibe **403**, no un 500 ni la tienda de otro.
+- Tests: el dueño ve su tienda, cada empresa ve solo la suya, sin empresa da 403, sin token 401.
+  **Suite 523/523.**
+
+Pendiente del lado de la app: mostrarlo en la cabecera de Gestión.
+
 ## Barrido de aislamiento por tenant sobre todo el backend (2026-07-22)
 
 Barrido completo buscando dos cosas: **SQL crudo sin `empresa_id`** y **endpoints que reciben un id por

@@ -1,5 +1,7 @@
 package com.costumi.backend.identidad.adaptadores.entrada;
 
+import com.costumi.backend.compartido.ContextoDeTenant;
+import com.costumi.backend.identidad.aplicacion.ConsultarMiEmpresa;
 import com.costumi.backend.identidad.aplicacion.ConsultarEmpresas;
 import com.costumi.backend.identidad.aplicacion.ConsultarEmpresasPendientes;
 import com.costumi.backend.identidad.aplicacion.GestionarEmpresa;
@@ -31,13 +33,28 @@ class EmpresaController {
 	private final GestionarEmpresa gestionarEmpresa;
 	private final ConsultarEmpresasPendientes consultarEmpresasPendientes;
 	private final ConsultarEmpresas consultarEmpresas;
+	private final ConsultarMiEmpresa consultarMiEmpresa;
+	private final ContextoDeTenant tenant;
 
 	EmpresaController(RegistrarEmpresa registrarEmpresa, GestionarEmpresa gestionarEmpresa,
-			ConsultarEmpresasPendientes consultarEmpresasPendientes, ConsultarEmpresas consultarEmpresas) {
+			ConsultarEmpresasPendientes consultarEmpresasPendientes, ConsultarEmpresas consultarEmpresas,
+			ConsultarMiEmpresa consultarMiEmpresa, ContextoDeTenant tenant) {
 		this.registrarEmpresa = registrarEmpresa;
 		this.gestionarEmpresa = gestionarEmpresa;
 		this.consultarEmpresasPendientes = consultarEmpresasPendientes;
 		this.consultarEmpresas = consultarEmpresas;
+		this.consultarMiEmpresa = consultarMiEmpresa;
+		this.tenant = tenant;
+	}
+
+	/**
+	 * La <b>propia</b> tienda del usuario autenticado (RF-15.1): su nombre es lo que la app necesita para
+	 * encabezar Gestión, y hasta ahora no había forma de leerlo — el único listado de empresas es del
+	 * SuperAdmin. La empresa sale del token, así que no se puede pedir la de otro (§5.4).
+	 */
+	@GetMapping("/mia")
+	EmpresaResponse mia() {
+		return EmpresaResponse.desde(consultarMiEmpresa.ejecutar(tenant.empresaIdRequerida()));
 	}
 
 	/**
