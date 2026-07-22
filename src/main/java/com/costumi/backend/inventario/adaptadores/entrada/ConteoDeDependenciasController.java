@@ -1,5 +1,6 @@
 package com.costumi.backend.inventario.adaptadores.entrada;
 
+import com.costumi.backend.compartido.ContextoDeTenant;
 import com.costumi.backend.inventario.ConsultaDeInventario;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -24,22 +25,24 @@ import java.util.UUID;
 class ConteoDeDependenciasController {
 
 	private final ConsultaDeInventario consultaDeInventario;
+	private final ContextoDeTenant tenant;
 
-	ConteoDeDependenciasController(ConsultaDeInventario consultaDeInventario) {
+	ConteoDeDependenciasController(ConsultaDeInventario consultaDeInventario, ContextoDeTenant tenant) {
 		this.consultaDeInventario = consultaDeInventario;
+		this.tenant = tenant;
 	}
 
 	/** Prendas activas que pertenecen a la categoría (impacto de archivarla). DUENO/ENCARGADO. */
 	@GetMapping("/api/v1/categorias/{categoriaId}/prendas/conteo")
 	ConteoDeDependenciasResponse deCategoria(@PathVariable UUID categoriaId, @AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		return new ConteoDeDependenciasResponse(consultaDeInventario.contarPrendasEnCategoria(empresaId, categoriaId));
 	}
 
 	/** Prendas activas que llevan alguna etiqueta de ese tipo (impacto de archivar el tipo). DUENO/ENCARGADO. */
 	@GetMapping("/api/v1/tipos-etiqueta/{tipoId}/prendas/conteo")
 	ConteoDeDependenciasResponse deTipoEtiqueta(@PathVariable UUID tipoId, @AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		return new ConteoDeDependenciasResponse(consultaDeInventario.contarPrendasConTipoEtiqueta(empresaId, tipoId));
 	}
 
@@ -47,7 +50,7 @@ class ConteoDeDependenciasController {
 	@GetMapping("/api/v1/tipos-etiqueta/{tipoId}/valores/{valorId}/prendas/conteo")
 	ConteoDeDependenciasResponse deValorEtiqueta(@PathVariable UUID tipoId, @PathVariable UUID valorId,
 			@AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		return new ConteoDeDependenciasResponse(consultaDeInventario.contarPrendasConValorEtiqueta(empresaId, valorId));
 	}
 }

@@ -1,5 +1,6 @@
 package com.costumi.backend.notificaciones.adaptadores.entrada;
 
+import com.costumi.backend.compartido.ContextoDeTenant;
 import com.costumi.backend.notificaciones.aplicacion.GestionarPlantillas;
 import com.costumi.backend.notificaciones.dominio.TipoDeEvento;
 import jakarta.validation.Valid;
@@ -24,21 +25,23 @@ import java.util.UUID;
 class PlantillaNotificacionController {
 
 	private final GestionarPlantillas plantillas;
+	private final ContextoDeTenant tenant;
 
-	PlantillaNotificacionController(GestionarPlantillas plantillas) {
+	PlantillaNotificacionController(GestionarPlantillas plantillas, ContextoDeTenant tenant) {
 		this.plantillas = plantillas;
+		this.tenant = tenant;
 	}
 
 	@GetMapping
 	List<PlantillaResponse> listar(@AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		return plantillas.deEmpresa(empresaId).stream().map(PlantillaResponse::desde).toList();
 	}
 
 	@PutMapping("/{tipo}")
 	PlantillaResponse actualizar(@PathVariable String tipo, @Valid @RequestBody ActualizarPlantillaRequest request,
 			@AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		return PlantillaResponse.desde(
 				plantillas.actualizar(empresaId, tipoValido(tipo), request.texto(), request.activa()));
 	}

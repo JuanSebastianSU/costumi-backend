@@ -13,6 +13,7 @@ import com.costumi.backend.clientes.aplicacion.RegistrarDeviceToken;
 import com.costumi.backend.clientes.dominio.Cliente;
 import com.costumi.backend.clientes.dominio.FiltroDeClientes;
 import com.costumi.backend.clientes.dominio.HistorialItem;
+import com.costumi.backend.compartido.ContextoDeTenant;
 import com.costumi.backend.compartido.RespuestaPaginada;
 import com.costumi.backend.compartido.SolicitudDePagina;
 import jakarta.validation.Valid;
@@ -45,11 +46,12 @@ class ClienteController {
 	private final CambiarListaNegra cambiarListaNegra;
 	private final ConsultarHistorial consultarHistorial;
 	private final RegistrarDeviceToken registrarDeviceToken;
+	private final ContextoDeTenant tenant;
 
 	ClienteController(CrearCliente crearCliente, EditarCliente editarCliente,
 			CambiarEstadoCliente cambiarEstadoCliente, ConsultarClientes consultarClientes,
 			CambiarListaNegra cambiarListaNegra, ConsultarHistorial consultarHistorial,
-			RegistrarDeviceToken registrarDeviceToken) {
+			RegistrarDeviceToken registrarDeviceToken, ContextoDeTenant tenant) {
 		this.crearCliente = crearCliente;
 		this.editarCliente = editarCliente;
 		this.cambiarEstadoCliente = cambiarEstadoCliente;
@@ -57,6 +59,7 @@ class ClienteController {
 		this.cambiarListaNegra = cambiarListaNegra;
 		this.consultarHistorial = consultarHistorial;
 		this.registrarDeviceToken = registrarDeviceToken;
+		this.tenant = tenant;
 	}
 
 	/**
@@ -77,7 +80,7 @@ class ClienteController {
 	@PutMapping("/{id}/device-token")
 	ResponseEntity<ClienteResponse> registrarDeviceToken(@PathVariable UUID id,
 			@Valid @RequestBody DeviceTokenRequest request, @AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		Cliente cliente = registrarDeviceToken.ejecutar(empresaId, id, request.deviceToken());
 		return ResponseEntity.ok(ClienteResponse.desde(cliente));
 	}
@@ -85,7 +88,7 @@ class ClienteController {
 	@PostMapping
 	ResponseEntity<ClienteResponse> crear(@Valid @RequestBody CrearClienteRequest request,
 			@AuthenticationPrincipal Jwt jwt, UriComponentsBuilder uriBuilder) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		Cliente cliente = crearCliente.ejecutar(new CrearClienteComando(empresaId, request.nombre(),
 				request.telefono(), request.email(), request.documento(), request.direccion()));
 		URI location = uriBuilder.path("/api/v1/clientes/{id}").buildAndExpand(cliente.id()).toUri();
@@ -96,7 +99,7 @@ class ClienteController {
 	@PutMapping("/{id}")
 	ClienteResponse editar(@PathVariable UUID id, @Valid @RequestBody EditarClienteRequest request,
 			@AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		Cliente cliente = editarCliente.ejecutar(new EditarClienteComando(empresaId, id, request.nombre(),
 				request.telefono(), request.documento(), request.direccion()));
 		return ClienteResponse.desde(cliente);
@@ -105,14 +108,14 @@ class ClienteController {
 	/** Archiva una ficha: la retira de la lista activa y de nuevas rentas/ventas del personal, sin borrarla. */
 	@PostMapping("/{id}/archivar")
 	ClienteResponse archivar(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		return ClienteResponse.desde(cambiarEstadoCliente.archivar(empresaId, id));
 	}
 
 	/** Reactiva una ficha archivada. */
 	@PostMapping("/{id}/activar")
 	ClienteResponse activar(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		return ClienteResponse.desde(cambiarEstadoCliente.activar(empresaId, id));
 	}
 
@@ -157,14 +160,14 @@ class ClienteController {
 
 	@GetMapping("/{id}/historial")
 	List<HistorialItem> historial(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		return consultarHistorial.historialDeCliente(empresaId, id);
 	}
 
 	/** Estado de cuenta del cliente (RF-7/11.5): desglose por renta de cuánto debe y por qué. */
 	@GetMapping("/{id}/estado-cuenta")
 	EstadoDeCuentaResponse estadoCuenta(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		return EstadoDeCuentaResponse.desde(id, consultarHistorial.estadoDeCuenta(empresaId, id));
 	}
 
@@ -178,7 +181,7 @@ class ClienteController {
 	@PostMapping("/{id}/lista-negra")
 	ClienteResponse cambiarListaNegra(@PathVariable UUID id, @RequestBody CambiarListaNegraRequest request,
 			@AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		Cliente cliente = cambiarListaNegra.ejecutar(
 				new CambiarListaNegraComando(empresaId, id, request.enListaNegra()));
 		return ClienteResponse.desde(cliente);

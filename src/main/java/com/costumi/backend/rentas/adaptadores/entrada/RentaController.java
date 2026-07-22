@@ -1,5 +1,6 @@
 package com.costumi.backend.rentas.adaptadores.entrada;
 
+import com.costumi.backend.compartido.ContextoDeTenant;
 import com.costumi.backend.compartido.RespuestaPaginada;
 import com.costumi.backend.compartido.SolicitudDePagina;
 import com.costumi.backend.inventario.ConsultaDeInventario;
@@ -41,16 +42,18 @@ class RentaController {
 	private final com.costumi.backend.compartido.GeneradorDePdf pdf;
 
 	private final com.costumi.backend.clientes.ResolucionDeClientes clientes;
+	private final ContextoDeTenant tenant;
 
 	RentaController(CrearRenta crearRenta, ConsultarRentas consultarRentas, GestionarRenta gestionarRenta,
 			ConsultaDeInventario inventario, com.costumi.backend.compartido.GeneradorDePdf pdf,
-			com.costumi.backend.clientes.ResolucionDeClientes clientes) {
+			com.costumi.backend.clientes.ResolucionDeClientes clientes, ContextoDeTenant tenant) {
 		this.crearRenta = crearRenta;
 		this.consultarRentas = consultarRentas;
 		this.gestionarRenta = gestionarRenta;
 		this.inventario = inventario;
 		this.pdf = pdf;
 		this.clientes = clientes;
+		this.tenant = tenant;
 	}
 
 	/** Construye la respuesta con líneas enriquecidas (nombre + foto) y el nombre del cliente, para el listado. */
@@ -64,7 +67,7 @@ class RentaController {
 	/** Contrato de renta en PDF (RF-3.4). */
 	@GetMapping(value = "/{id}/contrato.pdf", produces = "application/pdf")
 	ResponseEntity<byte[]> contrato(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		Renta renta = consultarRentas.buscarPorId(empresaId, id)
 				.orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
 						org.springframework.http.HttpStatus.NOT_FOUND, "Renta no encontrada"));
@@ -94,7 +97,7 @@ class RentaController {
 	@PostMapping
 	ResponseEntity<RentaResponse> crear(@Valid @RequestBody CrearRentaRequest request,
 			@AuthenticationPrincipal Jwt jwt, UriComponentsBuilder uriBuilder) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		UUID empleadoId = UUID.fromString(jwt.getSubject());
 		Renta renta = crearRenta.ejecutar(new CrearRentaComando(empresaId, request.sucursalId(), request.clienteId(),
 				lineasDe(request), request.fechaRetiro(), request.fechaDevolucion(), request.deposito(),
@@ -138,7 +141,7 @@ class RentaController {
 	/** Una renta por id, con sus líneas (nombre + foto), para el detalle de cobros/reembolsos. */
 	@GetMapping("/{id}")
 	RentaResponse porId(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
-		UUID empresa = empresa(jwt);
+		UUID empresa = tenant.empresaIdRequerida();
 		Renta renta = consultarRentas.buscarPorId(empresa, id)
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Renta no encontrada"));
 		return resp(empresa, renta);
@@ -146,26 +149,26 @@ class RentaController {
 
 	@PostMapping("/{id}/entregar")
 	RentaResponse entregar(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
-		UUID empresa = empresa(jwt);
+		UUID empresa = tenant.empresaIdRequerida();
 		return resp(empresa, gestionarRenta.entregar(empresa, id));
 	}
 
 	@PostMapping("/{id}/devolver")
 	RentaResponse devolver(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
-		UUID empresa = empresa(jwt);
+		UUID empresa = tenant.empresaIdRequerida();
 		return resp(empresa, gestionarRenta.devolver(empresa, id));
 	}
 
 	@PostMapping("/{id}/cerrar")
 	RentaResponse cerrar(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
-		UUID empresa = empresa(jwt);
+		UUID empresa = tenant.empresaIdRequerida();
 		return resp(empresa, gestionarRenta.cerrar(empresa, id));
 	}
 
 	@PostMapping("/{id}/extender")
 	RentaResponse extender(@PathVariable UUID id, @RequestBody ExtenderRentaRequest request,
 			@AuthenticationPrincipal Jwt jwt) {
-		UUID empresa = empresa(jwt);
+		UUID empresa = tenant.empresaIdRequerida();
 		return resp(empresa, gestionarRenta.extender(empresa, id, request.nuevaFechaDevolucion()));
 	}
 
@@ -174,11 +177,7 @@ class RentaController {
 
 	@PostMapping("/{id}/cancelar")
 	RentaResponse cancelar(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
-		UUID empresa = empresa(jwt);
+		UUID empresa = tenant.empresaIdRequerida();
 		return resp(empresa, gestionarRenta.cancelar(empresa, id));
-	}
-
-	private static UUID empresa(Jwt jwt) {
-		return UUID.fromString(jwt.getClaimAsString("empresa_id"));
 	}
 }

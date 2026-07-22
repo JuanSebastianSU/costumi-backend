@@ -1,5 +1,6 @@
 package com.costumi.backend.inventario.adaptadores.entrada;
 
+import com.costumi.backend.compartido.ContextoDeTenant;
 import com.costumi.backend.compartido.RespuestaPaginada;
 import com.costumi.backend.compartido.SolicitudDePagina;
 import com.costumi.backend.inventario.aplicacion.AsignarFotoDePrenda;
@@ -47,23 +48,25 @@ class PrendaController {
 	private final ConsultarPrendas consultarPrendas;
 	private final ConsultarCatalogo consultarCatalogo;
 	private final AsignarFotoDePrenda asignarFotoDePrenda;
+	private final ContextoDeTenant tenant;
 
 	PrendaController(CrearPrenda crearPrenda, EditarPrenda editarPrenda, CambiarEstadoPrenda cambiarEstadoPrenda,
 			ConsultarPrendas consultarPrendas, ConsultarCatalogo consultarCatalogo,
-			AsignarFotoDePrenda asignarFotoDePrenda) {
+			AsignarFotoDePrenda asignarFotoDePrenda, ContextoDeTenant tenant) {
 		this.crearPrenda = crearPrenda;
 		this.editarPrenda = editarPrenda;
 		this.cambiarEstadoPrenda = cambiarEstadoPrenda;
 		this.consultarPrendas = consultarPrendas;
 		this.consultarCatalogo = consultarCatalogo;
 		this.asignarFotoDePrenda = asignarFotoDePrenda;
+		this.tenant = tenant;
 	}
 
 	/** Edita una prenda (RF-2.10): nombre, precios, valores y etiquetas. DUENO/ENCARGADO/BODEGA. */
 	@PutMapping("/{id}")
 	PrendaResponse editar(@PathVariable UUID id, @Valid @RequestBody EditarPrendaRequest request,
 			@AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		List<EtiquetaSeleccionada> etiquetas = request.etiquetas().stream()
 				.map(e -> new EtiquetaSeleccionada(e.tipoEtiquetaId(), e.valorEtiquetaId()))
 				.toList();
@@ -76,14 +79,14 @@ class PrendaController {
 	/** Archiva una prenda: la retira de la operación (renta/venta/pool) sin borrarla. */
 	@PostMapping("/{id}/archivar")
 	PrendaResponse archivar(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		return PrendaResponse.desde(cambiarEstadoPrenda.archivar(empresaId, id));
 	}
 
 	/** Reactiva una prenda archivada. */
 	@PostMapping("/{id}/activar")
 	PrendaResponse activar(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		return PrendaResponse.desde(cambiarEstadoPrenda.activar(empresaId, id));
 	}
 
@@ -91,7 +94,7 @@ class PrendaController {
 	@PostMapping("/{id}/foto")
 	ResponseEntity<PrendaResponse> subirFoto(@PathVariable UUID id, @RequestParam("archivo") MultipartFile archivo,
 			@AuthenticationPrincipal Jwt jwt) throws IOException {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		if (archivo == null || archivo.isEmpty()) {
 			throw new IllegalArgumentException("El archivo de la foto es obligatorio");
 		}
@@ -102,7 +105,7 @@ class PrendaController {
 	@PostMapping
 	ResponseEntity<PrendaResponse> crear(@Valid @RequestBody CrearPrendaRequest request,
 			@AuthenticationPrincipal Jwt jwt, UriComponentsBuilder uriBuilder) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		List<EtiquetaSeleccionada> etiquetas = request.etiquetas().stream()
 				.map(e -> new EtiquetaSeleccionada(e.tipoEtiquetaId(), e.valorEtiquetaId()))
 				.toList();

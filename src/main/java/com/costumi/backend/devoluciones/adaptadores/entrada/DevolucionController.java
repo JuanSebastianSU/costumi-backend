@@ -1,5 +1,6 @@
 package com.costumi.backend.devoluciones.adaptadores.entrada;
 
+import com.costumi.backend.compartido.ContextoDeTenant;
 import com.costumi.backend.devoluciones.aplicacion.ConsultarDevoluciones;
 import com.costumi.backend.devoluciones.aplicacion.RegistrarDevolucion;
 import com.costumi.backend.devoluciones.aplicacion.RegistrarDevolucionComando;
@@ -29,12 +30,14 @@ class DevolucionController {
 	private final RegistrarDevolucion registrarDevolucion;
 	private final ConsultarDevoluciones consultarDevoluciones;
 	private final ConsultaDeInventario inventario;
+	private final ContextoDeTenant tenant;
 
 	DevolucionController(RegistrarDevolucion registrarDevolucion, ConsultarDevoluciones consultarDevoluciones,
-			ConsultaDeInventario inventario) {
+			ConsultaDeInventario inventario, ContextoDeTenant tenant) {
 		this.registrarDevolucion = registrarDevolucion;
 		this.consultarDevoluciones = consultarDevoluciones;
 		this.inventario = inventario;
+		this.tenant = tenant;
 	}
 
 	/** Respuesta con piezas enriquecidas (nombre + foto) resolviendo cada prendaId contra el inventario. */
@@ -46,7 +49,7 @@ class DevolucionController {
 	@PostMapping
 	ResponseEntity<DevolucionResponse> registrar(@Valid @RequestBody RegistrarDevolucionRequest request,
 			@AuthenticationPrincipal Jwt jwt, UriComponentsBuilder uriBuilder) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		List<PiezaRevisada> piezas = (request.piezas() == null) ? List.of()
 				: request.piezas().stream()
 						.map(p -> PiezaRevisada.de(p.prendaId(), p.descripcion(), p.llego(), p.estado(),

@@ -1,5 +1,6 @@
 package com.costumi.backend.identidad.adaptadores.entrada;
 
+import com.costumi.backend.compartido.ContextoDeTenant;
 import com.costumi.backend.identidad.aplicacion.GestionarPermisosDeEmpleado;
 import com.costumi.backend.identidad.dominio.AccionDePermiso;
 import com.costumi.backend.identidad.dominio.Rol;
@@ -23,14 +24,16 @@ import java.util.UUID;
 class PermisosEmpleadoController {
 
 	private final GestionarPermisosDeEmpleado permisos;
+	private final ContextoDeTenant tenant;
 
-	PermisosEmpleadoController(GestionarPermisosDeEmpleado permisos) {
+	PermisosEmpleadoController(GestionarPermisosDeEmpleado permisos, ContextoDeTenant tenant) {
 		this.permisos = permisos;
+		this.tenant = tenant;
 	}
 
 	@GetMapping
 	List<PermisoDto> matriz(@PathVariable UUID usuarioId, @AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		Rol actorRol = Rol.valueOf(jwt.getClaimAsString("rol"));
 		return permisos.matriz(empresaId, actorRol, usuarioId).stream()
 				.map(p -> new PermisoDto(p.seccion(), p.accion(), p.concedido()))
@@ -40,7 +43,7 @@ class PermisosEmpleadoController {
 	@PutMapping
 	void establecer(@PathVariable UUID usuarioId, @RequestBody EstablecerPermisoRequest request,
 			@AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		Rol actorRol = Rol.valueOf(jwt.getClaimAsString("rol"));
 		permisos.establecer(empresaId, actorRol, usuarioId, request.seccion(), request.accion(), request.concedido());
 	}

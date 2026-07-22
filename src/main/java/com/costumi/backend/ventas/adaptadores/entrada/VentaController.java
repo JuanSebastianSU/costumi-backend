@@ -1,5 +1,6 @@
 package com.costumi.backend.ventas.adaptadores.entrada;
 
+import com.costumi.backend.compartido.ContextoDeTenant;
 import com.costumi.backend.compartido.RespuestaPaginada;
 import com.costumi.backend.compartido.SolicitudDePagina;
 import com.costumi.backend.inventario.ConsultaDeInventario;
@@ -39,14 +40,17 @@ class VentaController {
 	private final ConsultaDeInventario inventario;
 
 	private final com.costumi.backend.clientes.ResolucionDeClientes clientes;
+	private final ContextoDeTenant tenant;
 
 	VentaController(RegistrarVenta registrarVenta, ConsultarVentas consultarVentas, DevolverVenta devolverVenta,
-			ConsultaDeInventario inventario, com.costumi.backend.clientes.ResolucionDeClientes clientes) {
+			ConsultaDeInventario inventario, com.costumi.backend.clientes.ResolucionDeClientes clientes,
+			ContextoDeTenant tenant) {
 		this.registrarVenta = registrarVenta;
 		this.consultarVentas = consultarVentas;
 		this.devolverVenta = devolverVenta;
 		this.inventario = inventario;
 		this.clientes = clientes;
+		this.tenant = tenant;
 	}
 
 	/** Respuesta con líneas enriquecidas (nombre + foto) y el nombre del cliente, para el listado. */
@@ -64,7 +68,7 @@ class VentaController {
 	@PostMapping("/{id}/devolver")
 	VentaResponse devolver(@PathVariable UUID id, @RequestBody(required = false) DevolverVentaRequest request,
 			@AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		Map<UUID, Integer> cantidades = new LinkedHashMap<>();
 		if (request != null && request.lineas() != null) {
 			for (DevolverVentaRequest.LineaADevolver linea : request.lineas()) {
@@ -77,7 +81,7 @@ class VentaController {
 	@PostMapping
 	ResponseEntity<VentaResponse> registrar(@Valid @RequestBody RegistrarVentaRequest request,
 			@AuthenticationPrincipal Jwt jwt, UriComponentsBuilder uriBuilder) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		UUID empleadoId = UUID.fromString(jwt.getSubject());
 		List<LineaDeVenta> lineas = request.lineas().stream()
 				.map(l -> LineaDeVenta.de(l.prendaId(), l.cantidad(), l.precioUnitario()))
@@ -91,7 +95,7 @@ class VentaController {
 	/** Una venta por id, con sus líneas (nombre + foto), para el detalle de cobros/reembolsos. */
 	@GetMapping("/{id}")
 	VentaResponse porId(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		Venta venta = consultarVentas.buscarPorId(empresaId, id)
 				.orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
 						org.springframework.http.HttpStatus.NOT_FOUND, "Venta no encontrada"));

@@ -1,5 +1,6 @@
 package com.costumi.backend.ventas.adaptadores.entrada;
 
+import com.costumi.backend.compartido.ContextoDeTenant;
 import com.costumi.backend.ventas.ConsultaDeVentas;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -18,14 +19,16 @@ import java.util.UUID;
 class ActividadDeEmpleadoController {
 
 	private final ConsultaDeVentas ventas;
+	private final ContextoDeTenant tenant;
 
-	ActividadDeEmpleadoController(ConsultaDeVentas ventas) {
+	ActividadDeEmpleadoController(ConsultaDeVentas ventas, ContextoDeTenant tenant) {
 		this.ventas = ventas;
+		this.tenant = tenant;
 	}
 
 	@GetMapping("/api/v1/empleados/{usuarioId}/actividad")
 	ActividadResponse actividad(@PathVariable UUID usuarioId, @AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		ConsultaDeVentas.ActividadDeEmpleado actividad = ventas.actividadDeEmpleado(empresaId, usuarioId);
 		return new ActividadResponse(usuarioId, actividad.ventas(), actividad.totalVendido());
 	}

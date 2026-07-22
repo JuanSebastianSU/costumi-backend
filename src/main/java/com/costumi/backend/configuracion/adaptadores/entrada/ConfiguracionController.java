@@ -1,5 +1,6 @@
 package com.costumi.backend.configuracion.adaptadores.entrada;
 
+import com.costumi.backend.compartido.ContextoDeTenant;
 import com.costumi.backend.configuracion.aplicacion.ActualizarConfiguracionComando;
 import com.costumi.backend.configuracion.aplicacion.GestionarConfiguracion;
 import com.costumi.backend.configuracion.dominio.RecargoPorRetraso;
@@ -21,34 +22,36 @@ import java.util.UUID;
 class ConfiguracionController {
 
 	private final GestionarConfiguracion gestionarConfiguracion;
+	private final ContextoDeTenant tenant;
 
-	ConfiguracionController(GestionarConfiguracion gestionarConfiguracion) {
+	ConfiguracionController(GestionarConfiguracion gestionarConfiguracion, ContextoDeTenant tenant) {
 		this.gestionarConfiguracion = gestionarConfiguracion;
+		this.tenant = tenant;
 	}
 
 	@GetMapping
 	ConfiguracionResponse obtener(@AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		return ConfiguracionResponse.desde(gestionarConfiguracion.deEmpresa(empresaId));
 	}
 
 	@PutMapping
 	ConfiguracionResponse actualizar(@RequestBody ConfiguracionRequest request, @AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		return ConfiguracionResponse.desde(gestionarConfiguracion.actualizar(aComando(empresaId, request)));
 	}
 
 	/** Respaldo de la configuración (RF-12.3): igual que GET, pensado para exportar/guardar. */
 	@GetMapping("/export")
 	ConfiguracionResponse exportar(@AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		return ConfiguracionResponse.desde(gestionarConfiguracion.deEmpresa(empresaId));
 	}
 
 	/** Restauración de la configuración (RF-12.3): aplica un respaldo previamente exportado. */
 	@PostMapping("/import")
 	ConfiguracionResponse importar(@RequestBody ConfiguracionRequest request, @AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		return ConfiguracionResponse.desde(gestionarConfiguracion.actualizar(aComando(empresaId, request)));
 	}
 
