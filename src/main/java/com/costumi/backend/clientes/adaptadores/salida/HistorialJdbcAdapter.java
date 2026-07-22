@@ -43,7 +43,8 @@ class HistorialJdbcAdapter implements HistorialReadRepository {
 
 	private static final String LINEAS_RENTA = """
 			select rl.renta_id as operacion_id, rl.prenda_id, p.nombre, p.foto_url, rl.cantidad,
-			       rl.precio_por_dia as precio_unitario
+			       rl.precio_por_dia as precio_unitario,
+			       rl.disfraz_id, rl.disfraz_nombre, rl.disfraz_grupo, rl.disfraz_cantidad
 			from renta_linea rl
 			join renta r on r.id = rl.renta_id
 			join prenda p on p.id = rl.prenda_id
@@ -52,7 +53,8 @@ class HistorialJdbcAdapter implements HistorialReadRepository {
 
 	private static final String LINEAS_VENTA = """
 			select lv.venta_id as operacion_id, lv.prenda_id, p.nombre, p.foto_url, lv.cantidad,
-			       lv.precio_unitario
+			       lv.precio_unitario,
+			       lv.disfraz_id, lv.disfraz_nombre, lv.disfraz_grupo, lv.disfraz_cantidad
 			from linea_de_venta lv
 			join venta v on v.id = lv.venta_id
 			join prenda p on p.id = lv.prenda_id
@@ -67,7 +69,8 @@ class HistorialJdbcAdapter implements HistorialReadRepository {
 
 	/** Fila de línea con el id de su operación (renta o venta), para agrupar en memoria. */
 	private record LineaConOperacion(UUID operacionId, UUID prendaId, String nombre, String fotoUrl, int cantidad,
-			BigDecimal precioUnitario) {
+			BigDecimal precioUnitario, UUID disfrazId, String disfrazNombre, UUID disfrazGrupo,
+			Integer disfrazCantidad) {
 	}
 
 	@Override
@@ -82,7 +85,8 @@ class HistorialJdbcAdapter implements HistorialReadRepository {
 		Map<UUID, List<LineaDeHistorial>> lineasPorOperacion = Stream.concat(rentaLineas.stream(), ventaLineas.stream())
 				.collect(Collectors.groupingBy(LineaConOperacion::operacionId,
 						Collectors.mapping(l -> new LineaDeHistorial(l.prendaId(), l.nombre(), l.fotoUrl(),
-								l.cantidad(), l.precioUnitario()), Collectors.toList())));
+								l.cantidad(), l.precioUnitario(), l.disfrazId(), l.disfrazNombre(), l.disfrazGrupo(),
+								l.disfrazCantidad()), Collectors.toList())));
 
 		return jdbc.sql(HISTORIAL).param("empresaId", empresaId).param("clienteId", clienteId)
 				.query((rs, rowNum) -> {
