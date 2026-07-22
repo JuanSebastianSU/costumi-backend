@@ -30,7 +30,8 @@ class DisfrazRepositoryAdapter implements DisfrazRepository {
 	@Override
 	public Disfraz guardar(Disfraz disfraz) {
 		cabeceras.save(new DisfrazJpaEntity(disfraz.id(), disfraz.empresaId(), disfraz.nombre(), disfraz.categoriaId(),
-				disfraz.activo(), disfraz.precioRentaGeneral(), disfraz.precioVentaGeneral(), disfraz.fotoUrl()));
+				disfraz.activo(), disfraz.precioRentaGeneral(), disfraz.precioVentaGeneral(), disfraz.fotoUrl(),
+				disfraz.tipo()));
 		slots.deleteByDisfrazId(disfraz.id());
 		for (Slot slot : disfraz.slots()) {
 			slots.save(aEntidad(disfraz.id(), slot));
@@ -58,7 +59,7 @@ class DisfrazRepositoryAdapter implements DisfrazRepository {
 				.map(cabecera -> Disfraz.rehidratar(cabecera.getId(), cabecera.getEmpresaId(), cabecera.getNombre(),
 						cabecera.getCategoriaId(), slotsPorDisfraz.getOrDefault(cabecera.getId(), List.of()),
 						cabecera.isActivo(), cabecera.getPrecioRentaGeneral(), cabecera.getPrecioVentaGeneral(),
-						cabecera.getFotoUrl()))
+						cabecera.getFotoUrl(), cabecera.getTipo()))
 				.toList();
 	}
 
@@ -80,7 +81,7 @@ class DisfrazRepositoryAdapter implements DisfrazRepository {
 				.toList();
 		return Disfraz.rehidratar(cabecera.getId(), cabecera.getEmpresaId(), cabecera.getNombre(),
 				cabecera.getCategoriaId(), slotsDominio, cabecera.isActivo(), cabecera.getPrecioRentaGeneral(),
-				cabecera.getPrecioVentaGeneral(), cabecera.getFotoUrl());
+				cabecera.getPrecioVentaGeneral(), cabecera.getFotoUrl(), cabecera.getTipo());
 	}
 
 	private static Slot aSlotDominio(DisfrazSlotJpaEntity e) {

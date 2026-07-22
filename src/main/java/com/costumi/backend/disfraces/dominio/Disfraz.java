@@ -38,9 +38,10 @@ public final class Disfraz {
 	private BigDecimal precioRentaGeneral;
 	private BigDecimal precioVentaGeneral;
 	private String fotoUrl;
+	private TipoDeDisfraz tipo;
 
 	private Disfraz(UUID id, UUID empresaId, String nombre, UUID categoriaId, List<Slot> slots, boolean activo,
-			BigDecimal precioRentaGeneral, BigDecimal precioVentaGeneral, String fotoUrl) {
+			BigDecimal precioRentaGeneral, BigDecimal precioVentaGeneral, String fotoUrl, TipoDeDisfraz tipo) {
 		this.id = Objects.requireNonNull(id, "id");
 		this.empresaId = Objects.requireNonNull(empresaId, "empresaId");
 		this.nombre = exigirNombre(nombre);
@@ -50,12 +51,20 @@ public final class Disfraz {
 		this.precioRentaGeneral = validarPrecio(precioRentaGeneral);
 		this.precioVentaGeneral = validarPrecio(precioVentaGeneral);
 		this.fotoUrl = fotoUrl;
+		this.tipo = tipo == null ? TipoDeDisfraz.AMBOS : tipo;
+	}
+
+	/** Alta con el tipo elegido por el dueño (solo renta / solo venta / ambos). */
+	public static Disfraz crear(UUID empresaId, String nombre, UUID categoriaId, List<Slot> slots,
+			BigDecimal precioRentaGeneral, BigDecimal precioVentaGeneral, TipoDeDisfraz tipo) {
+		return new Disfraz(UUID.randomUUID(), empresaId, nombre, categoriaId, slots, true, precioRentaGeneral,
+				precioVentaGeneral, null, tipo);
 	}
 
 	public static Disfraz crear(UUID empresaId, String nombre, UUID categoriaId, List<Slot> slots,
 			BigDecimal precioRentaGeneral, BigDecimal precioVentaGeneral) {
-		return new Disfraz(UUID.randomUUID(), empresaId, nombre, categoriaId, slots, true, precioRentaGeneral,
-				precioVentaGeneral, null);
+		return crear(empresaId, nombre, categoriaId, slots, precioRentaGeneral, precioVentaGeneral,
+				TipoDeDisfraz.AMBOS);
 	}
 
 	/** Crea un disfraz con categoría y solo override de renta (sin override de venta). */
@@ -75,9 +84,10 @@ public final class Disfraz {
 	}
 
 	public static Disfraz rehidratar(UUID id, UUID empresaId, String nombre, UUID categoriaId, List<Slot> slots,
-			boolean activo, BigDecimal precioRentaGeneral, BigDecimal precioVentaGeneral, String fotoUrl) {
+			boolean activo, BigDecimal precioRentaGeneral, BigDecimal precioVentaGeneral, String fotoUrl,
+			TipoDeDisfraz tipo) {
 		return new Disfraz(id, empresaId, nombre, categoriaId, slots, activo, precioRentaGeneral, precioVentaGeneral,
-				fotoUrl);
+				fotoUrl, tipo);
 	}
 
 	/** Asigna/actualiza la foto del disfraz (la que sube el dueño, RF-2.9), tras subirla al almacén. */
@@ -97,12 +107,28 @@ public final class Disfraz {
 
 	/** Redefine el disfraz completo (nombre + categoría + slots + precios generales) al editarlo (RF-2.3). */
 	public void redefinir(String nuevoNombre, UUID nuevaCategoriaId, List<Slot> nuevosSlots,
-			BigDecimal precioRentaGeneral, BigDecimal precioVentaGeneral) {
+			BigDecimal precioRentaGeneral, BigDecimal precioVentaGeneral, TipoDeDisfraz nuevoTipo) {
 		this.nombre = exigirNombre(nuevoNombre);
 		this.categoriaId = nuevaCategoriaId;
 		this.slots = exigirSlots(nuevosSlots);
 		this.precioRentaGeneral = validarPrecio(precioRentaGeneral);
 		this.precioVentaGeneral = validarPrecio(precioVentaGeneral);
+		this.tipo = nuevoTipo == null ? TipoDeDisfraz.AMBOS : nuevoTipo;
+	}
+
+	/** El tipo elegido por el dueño: para qué está disponible el disfraz. */
+	public TipoDeDisfraz tipo() {
+		return tipo;
+	}
+
+	/** ¿El dueño habilitó este disfraz para RENTA? */
+	public boolean permiteRenta() {
+		return tipo.permiteRenta();
+	}
+
+	/** ¿El dueño habilitó este disfraz para VENTA? */
+	public boolean permiteVenta() {
+		return tipo.permiteVenta();
 	}
 
 	/** ¿El disfraz cobra un precio de RENTA general (que anula la suma por prendas)? */
