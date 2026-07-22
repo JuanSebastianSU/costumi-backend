@@ -80,6 +80,21 @@ public class Carrito {
 		lineas.add(LineaDeCarrito.deDisfraz(disfrazId, selecciones, cantidad, fechaRetiro, fechaDevolucion));
 	}
 
+	/**
+	 * Quita una línea del carrito por su id (RF-16). El cliente debe poder deshacer lo que agregó: sin
+	 * esto, una línea que ya no se puede valorizar —por ejemplo si el dueño cambió el tipo del disfraz
+	 * después— dejaría el carrito bloqueado para siempre.
+	 */
+	public void quitarLinea(UUID lineaId) {
+		if (estado != EstadoCarrito.PENDIENTE) {
+			throw new IllegalStateException("El carrito ya no está pendiente");
+		}
+		boolean quitada = lineas.removeIf(linea -> linea.id().equals(lineaId));
+		if (!quitada) {
+			throw new IllegalArgumentException("Ese artículo no está en el carrito");
+		}
+	}
+
 	/** En un carrito de RENTA las fechas del artículo son obligatorias; en uno de VENTA deben ser nulas. */
 	private void validarPeriodo(java.time.LocalDate fechaRetiro, java.time.LocalDate fechaDevolucion) {
 		if (tipo == TipoPedido.RENTA && (fechaRetiro == null || fechaDevolucion == null)) {

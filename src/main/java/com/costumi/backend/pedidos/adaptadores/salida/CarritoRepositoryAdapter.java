@@ -58,7 +58,8 @@ class CarritoRepositoryAdapter implements CarritoRepository {
 		}
 		lineas.deleteByCarritoId(carrito.id());
 		for (LineaDeCarrito linea : carrito.lineas()) {
-			UUID lineaId = UUID.randomUUID();
+			// Se conserva el id de la línea del dominio: es estable y el cliente lo usa para quitarla.
+			UUID lineaId = linea.id();
 			lineas.save(new LineaDeCarritoJpaEntity(lineaId, carrito.id(), carrito.empresaId(),
 					linea.prendaId(), linea.disfrazId(), linea.cantidad(), linea.fechaRetiro(),
 					linea.fechaDevolucion()));
@@ -95,12 +96,9 @@ class CarritoRepositoryAdapter implements CarritoRepository {
 			}
 		}
 		List<LineaDeCarrito> lineasDominio = filas.stream()
-				.map(l -> l.getDisfrazId() != null
-						? LineaDeCarrito.deDisfraz(l.getDisfrazId(),
-								seleccionesPorLinea.getOrDefault(l.getId(), List.of()), l.getCantidad(),
-								l.getFechaRetiro(), l.getFechaDevolucion())
-						: LineaDeCarrito.de(l.getPrendaId(), l.getCantidad(), l.getFechaRetiro(),
-								l.getFechaDevolucion()))
+				.map(l -> LineaDeCarrito.rehidratar(l.getId(), l.getPrendaId(), l.getDisfrazId(),
+						seleccionesPorLinea.getOrDefault(l.getId(), List.of()), l.getCantidad(),
+						l.getFechaRetiro(), l.getFechaDevolucion()))
 				.toList();
 		return Carrito.rehidratar(cabecera.getId(), cabecera.getEmpresaId(), cabecera.getSucursalId(),
 				cabecera.getClienteId(), cabecera.getTipo(), cabecera.getEstado(), lineasDominio);

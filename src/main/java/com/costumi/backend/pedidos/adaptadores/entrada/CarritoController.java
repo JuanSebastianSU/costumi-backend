@@ -9,6 +9,7 @@ import com.costumi.backend.pedidos.aplicacion.CarritoValorizado;
 import com.costumi.backend.pedidos.aplicacion.ConsultarCarrito;
 import com.costumi.backend.pedidos.aplicacion.HacerCheckout;
 import com.costumi.backend.pedidos.aplicacion.HacerCheckoutDeRenta;
+import com.costumi.backend.pedidos.aplicacion.QuitarItemDelCarrito;
 import com.costumi.backend.pedidos.dominio.Carrito;
 import com.costumi.backend.pedidos.dominio.SeleccionDeSlot;
 import com.costumi.backend.pedidos.dominio.TipoPedido;
@@ -17,7 +18,9 @@ import jakarta.validation.constraints.NotNull;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -43,6 +46,7 @@ import java.util.UUID;
 class CarritoController {
 
 	private final AgregarItemAlCarrito agregarItemAlCarrito;
+	private final QuitarItemDelCarrito quitarItemDelCarrito;
 	private final ConsultarCarrito consultarCarrito;
 	private final HacerCheckout hacerCheckout;
 	private final HacerCheckoutDeRenta hacerCheckoutDeRenta;
@@ -50,11 +54,12 @@ class CarritoController {
 	private final ConsultaDeInventario inventario;
 	private final ResolucionDeDisfraces disfraces;
 
-	CarritoController(AgregarItemAlCarrito agregarItemAlCarrito, ConsultarCarrito consultarCarrito,
-			HacerCheckout hacerCheckout, HacerCheckoutDeRenta hacerCheckoutDeRenta,
+	CarritoController(AgregarItemAlCarrito agregarItemAlCarrito, QuitarItemDelCarrito quitarItemDelCarrito,
+			ConsultarCarrito consultarCarrito, HacerCheckout hacerCheckout, HacerCheckoutDeRenta hacerCheckoutDeRenta,
 			ResolucionDeClientes resolucionDeClientes, ConsultaDeInventario inventario,
 			ResolucionDeDisfraces disfraces) {
 		this.agregarItemAlCarrito = agregarItemAlCarrito;
+		this.quitarItemDelCarrito = quitarItemDelCarrito;
 		this.consultarCarrito = consultarCarrito;
 		this.hacerCheckout = hacerCheckout;
 		this.hacerCheckoutDeRenta = hacerCheckoutDeRenta;
@@ -75,6 +80,20 @@ class CarritoController {
 				actor.empresaId(), request.sucursalId(), actor.clienteId(), request.tipo(),
 				request.prendaId(), request.disfrazId(), selecciones, request.cantidad(),
 				request.fechaRetiro(), request.fechaDevolucion()));
+		return responder(actor.empresaId(), carrito);
+	}
+
+	/**
+	 * Quita una línea del carrito pendiente (RF-16). El cliente debe poder deshacer lo que agregó: sin
+	 * esto, un artículo que ya no se puede valorizar dejaría el carrito bloqueado.
+	 */
+	@DeleteMapping("/items/{lineaId}")
+	CarritoResponse quitarItem(@PathVariable UUID lineaId, @RequestParam UUID sucursalId,
+			@RequestParam(required = false) UUID empresaId, @RequestParam(required = false) UUID clienteId,
+			@RequestParam TipoPedido tipo, @AuthenticationPrincipal Jwt jwt) {
+		Actor actor = resolver(jwt, empresaId, clienteId);
+		Carrito carrito = quitarItemDelCarrito.ejecutar(actor.empresaId(), sucursalId, actor.clienteId(), tipo,
+				lineaId);
 		return responder(actor.empresaId(), carrito);
 	}
 

@@ -427,7 +427,8 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 			}
 			disfraces.buscarPorId(disfrazId)
 					.filter(d -> d.empresaId().equals(empresaId))
-					.ifPresent(d -> resumen.put(d.id(), new ResumenDeDisfraz(d.id(), d.nombre(), d.fotoUrl())));
+					.ifPresent(d -> resumen.put(d.id(), new ResumenDeDisfraz(d.id(), d.nombre(), d.fotoUrl(),
+							d.permiteRenta(), d.permiteVenta())));
 		}
 		return resumen;
 	}

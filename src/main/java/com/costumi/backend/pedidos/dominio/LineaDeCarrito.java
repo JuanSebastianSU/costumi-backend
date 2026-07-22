@@ -15,6 +15,7 @@ import java.util.UUID;
  */
 public class LineaDeCarrito {
 
+	private final UUID id;
 	private final UUID prendaId;
 	private final UUID disfrazId;
 	private final List<SeleccionDeSlot> selecciones;
@@ -22,8 +23,9 @@ public class LineaDeCarrito {
 	private final LocalDate fechaRetiro;
 	private final LocalDate fechaDevolucion;
 
-	private LineaDeCarrito(UUID prendaId, UUID disfrazId, List<SeleccionDeSlot> selecciones, int cantidad,
+	private LineaDeCarrito(UUID id, UUID prendaId, UUID disfrazId, List<SeleccionDeSlot> selecciones, int cantidad,
 			LocalDate fechaRetiro, LocalDate fechaDevolucion) {
+		this.id = Objects.requireNonNull(id, "id");
 		if ((prendaId == null) == (disfrazId == null)) {
 			throw new IllegalArgumentException("Una línea es de una prenda O de un disfraz (exactamente uno)");
 		}
@@ -42,16 +44,26 @@ public class LineaDeCarrito {
 	}
 
 	public static LineaDeCarrito de(UUID prendaId, int cantidad) {
-		return new LineaDeCarrito(prendaId, null, List.of(), cantidad, null, null);
+		return new LineaDeCarrito(UUID.randomUUID(), prendaId, null, List.of(), cantidad, null, null);
 	}
 
 	public static LineaDeCarrito de(UUID prendaId, int cantidad, LocalDate fechaRetiro, LocalDate fechaDevolucion) {
-		return new LineaDeCarrito(prendaId, null, List.of(), cantidad, fechaRetiro, fechaDevolucion);
+		return new LineaDeCarrito(UUID.randomUUID(), prendaId, null, List.of(), cantidad, fechaRetiro, fechaDevolucion);
 	}
 
 	public static LineaDeCarrito deDisfraz(UUID disfrazId, List<SeleccionDeSlot> selecciones, int cantidad,
 			LocalDate fechaRetiro, LocalDate fechaDevolucion) {
-		return new LineaDeCarrito(null, disfrazId, selecciones, cantidad, fechaRetiro, fechaDevolucion);
+		return new LineaDeCarrito(UUID.randomUUID(), null, disfrazId, selecciones, cantidad, fechaRetiro,
+				fechaDevolucion);
+	}
+
+	/**
+	 * Reconstruye una linea ya persistida conservando su {@code id}. El id es estable durante toda la vida
+	 * de la linea: es lo que el cliente usa para pedir que se la quiten del carrito.
+	 */
+	public static LineaDeCarrito rehidratar(UUID id, UUID prendaId, UUID disfrazId,
+			List<SeleccionDeSlot> selecciones, int cantidad, LocalDate fechaRetiro, LocalDate fechaDevolucion) {
+		return new LineaDeCarrito(id, prendaId, disfrazId, selecciones, cantidad, fechaRetiro, fechaDevolucion);
 	}
 
 	/** Selecciones normalizadas (ordenadas por {@code orden}) para que la comparación de clave sea estable. */
@@ -87,6 +99,10 @@ public class LineaDeCarrito {
 				&& this.selecciones.equals(ordenadas(selecciones))
 				&& Objects.equals(this.fechaRetiro, fechaRetiro)
 				&& Objects.equals(this.fechaDevolucion, fechaDevolucion);
+	}
+
+	public UUID id() {
+		return id;
 	}
 
 	public boolean esPrenda() {

@@ -8,6 +8,24 @@
 > `CLAUDE.md`) para retomar sin perder el hilo. Regla: mueve ítems entre secciones,
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
+## Quitar un item del carrito (2026-07-22)
+
+El cliente no tenia forma de deshacer lo que agrego al carrito: no habia endpoint ni boton. El caso feo:
+si el dueño le cambiaba el **tipo** a un disfraz que un cliente ya tenia en el carrito, la valorizacion
+fallaba, el GET del carrito devolvia error y el carrito quedaba **bloqueado para siempre**.
+
+- `LineaDeCarrito` ahora tiene **id propio y estable** (antes el adaptador lo regeneraba en cada guardado,
+  asi que no servia para referirse a una linea). El adaptador conserva ese id al persistir y rehidratar.
+- `Carrito.quitarLinea(lineaId)` en el dominio; puerto `QuitarItemDelCarrito`; endpoint
+  **`DELETE /api/v1/carritos/items/{lineaId}`** (mismos parametros de segmentacion que el GET).
+- **La consulta del carrito ya no se cae** por una linea invalida: se pregunta ANTES de valorizar
+  (`ResumenDeDisfraz` gana `permiteRenta`/`permiteVenta`) y la linea vuelve con precio nulo y
+  `motivoNoDisponible`, para que el cliente la vea y la pueda quitar. El checkout la sigue rechazando.
+  No se usa try/catch: la excepcion venia de otro modulo transaccional y marcaba la transaccion para
+  rollback, asi que atraparla no alcanzaba.
+- Tests nuevos en `CarritoIntegrationTest`: quitar una linea (y 400 al quitar algo que ya no esta) y el
+  escenario completo del disfraz al que le cambian el tipo. **Suite 501/501.**
+
 ## Fase actual
 **Fase 23 — Categorías de DISFRAZ como taxonomía propia, separada de las de prenda (2026-07-21).**
 
