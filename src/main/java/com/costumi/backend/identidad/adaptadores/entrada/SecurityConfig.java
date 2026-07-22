@@ -116,6 +116,8 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.PUT, "/api/v1/clientes/me/device-token").authenticated()
 						.requestMatchers(HttpMethod.PUT, "/api/v1/clientes/*/device-token").hasAnyRole("DUENO", "ENCARGADO", "MOSTRADOR", "ATENCION")
 						.requestMatchers(HttpMethod.PUT, "/api/v1/clientes/*").hasAnyRole("DUENO", "ENCARGADO", "MOSTRADOR", "ATENCION")
+						// Los carritos propios: cualquier autenticado, y se resuelven por el usuario del token.
+						.requestMatchers(HttpMethod.GET, "/api/v1/carritos/mios").authenticated()
 						.requestMatchers(HttpMethod.POST, "/api/v1/carritos/items", "/api/v1/carritos/checkout",
 								"/api/v1/carritos/checkout-renta")
 						.hasAnyRole("DUENO", "ENCARGADO", "MOSTRADOR", "ATENCION", "CLIENTE")

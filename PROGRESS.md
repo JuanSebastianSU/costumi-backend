@@ -8,6 +8,31 @@
 > `CLAUDE.md`) para retomar sin perder el hilo. Regla: mueve ítems entre secciones,
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
+## OP-7 — el cliente puede volver a sus carritos (2026-07-22)
+
+Reportado probando la app: **no hay forma de abrir el carrito**. Solo se llega justo después de agregar
+un artículo, así que al cambiar de tienda había que agregar algo otra vez para reencontrarlo.
+
+Y no era solo del front: **el backend tampoco podía listarlos**. `GET /carritos` exige saber de antemano
+empresa, sucursal y tipo, y no existía ninguna consulta de "mis carritos", así que la app no tenía forma
+de saber cuáles hay abiertos ni siquiera para pintar un botón.
+
+- `GET /api/v1/carritos/mios` → los carritos PENDIENTES del usuario **en todas las tiendas**, con el
+  nombre de la tienda y de la sucursal y las unidades. Trae justo los tres datos que `GET /carritos`
+  exige para abrirlo (empresa, sucursal, tipo).
+- Read-model `CarritosAbiertosJdbcAdapter`, mismo patrón que el historial del cliente: se resuelve por el
+  **usuario del token** a través de sus fichas (`cliente.usuario_id`), no por empresa — es una consulta
+  que cruza tiendas a propósito, como su historial.
+- **Solo carritos con líneas**: uno vacío se crea con solo mirar la tienda (consultarlo lo resuelve/crea),
+  así que listarlos llenaría la pantalla de tiendas que el cliente apenas visitó.
+- **Lleva unidades, no importe**: el precio del carrito no está guardado, se calcula al valorizarlo
+  (renta = precio × cantidad × días). Ponerlo en el SQL duplicaría ese cálculo y las dos versiones se
+  desincronizarían. El importe lo da el carrito al abrirlo.
+- Tests: ve los de todas sus tiendas; renta y venta de la misma tienda son dos; **un cliente no ve los de
+  otro**; un carrito vacío no aparece; sin token 401. **Suite 528/528.**
+
+Del lado de la app: pestaña **Carrito** en la barra del cliente.
+
 ## OP-1 — el dueño puede ver el nombre de su tienda (2026-07-22)
 
 Reportado probando la app: el dueño **no tiene forma de ver el nombre de su propia tienda**. Y era
