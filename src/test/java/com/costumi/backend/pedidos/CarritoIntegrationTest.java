@@ -455,6 +455,13 @@ class CarritoIntegrationTest {
 				.andExpect(jsonPath("$.contenido[0].lineas[0].disfrazGrupo").exists())
 				.andExpect(jsonPath("$.contenido[0].lineas[0].disfrazCantidad").value(2));
 
+		// Y "Mis pedidos" del cliente dice QUE compro, no las piezas sueltas.
+		mvc.perform(get("/api/v1/clientes/{id}/historial", c.cliente())
+						.header("Authorization", "Bearer " + c.dueno()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[0].lineas[0].disfrazNombre").value("Disfraz Fijo"))
+				.andExpect(jsonPath("$[0].lineas[0].disfrazGrupo").exists());
+
 		// Y el dueño puede ver que DISFRAZ se vende mas: cuenta disfraces (2), no piezas.
 		mvc.perform(get("/api/v1/reportes/disfraces-mas-vendidos").header("Authorization", "Bearer " + c.dueno()))
 				.andExpect(status().isOk())

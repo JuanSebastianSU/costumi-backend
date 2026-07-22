@@ -74,6 +74,17 @@ era el correo de recuperacion. La pantalla "Perfil" del cliente solo podia mostr
 nombrandose con su correo. Usar el nombre del perfil exige que viaje en el token o que `clientes` dependa
 de `identidad` (hoy no lo hace); se decide aparte.
 
+## BACK-4 — el disfraz tambien en el historial del cliente (2026-07-22)
+
+Descuido de BACK-1: expuse el disfraz en `VentaResponse` y `RentaResponse`, pero **"Mis pedidos" del
+cliente usa otro read-model** (`/clientes/me/historial`, un JDBC aparte) que seguia devolviendo solo las
+prendas. El cliente seguia viendo "Capa Real" en vez del disfraz que compro.
+
+- `LineaDeHistorial` gana `disfrazId`, `disfrazNombre`, `disfrazGrupo` y `disfrazCantidad`; las dos
+  consultas (rentas y ventas) los leen de las columnas que ya agrego V65. Sin migracion nueva.
+- Test agregado al caso de BACK-1: ademas de la venta y el ranking, se verifica el historial.
+  **Suite 513/513.**
+
 ## PENDIENTE — auditoria de la app del 2026-07-22 (6 hallazgos)
 
 Barrido cruzando el codigo de la app contra el contrato: **158 de 160 operaciones del backend ya tienen
