@@ -60,6 +60,8 @@ class SecurityConfig {
 						.requestMatchers("/actuator/health", "/actuator/info").permitAll()
 						.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/v1/marketplace/**").permitAll()
+						// La propia tienda: cualquier usuario CON empresa (el claim lo exige el controller).
+						.requestMatchers(HttpMethod.GET, "/api/v1/empresas/mia").authenticated()
 						.requestMatchers(HttpMethod.GET, "/api/v1/empresas/pendientes").hasRole("SUPERADMIN")
 						.requestMatchers(HttpMethod.GET, "/api/v1/empresas").hasRole("SUPERADMIN")
 						.requestMatchers(HttpMethod.POST,
