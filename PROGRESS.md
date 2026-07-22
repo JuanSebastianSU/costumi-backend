@@ -8,6 +8,46 @@
 > `CLAUDE.md`) para retomar sin perder el hilo. Regla: mueve ítems entre secciones,
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
+## Barrido de aislamiento por tenant sobre todo el backend (2026-07-22)
+
+Barrido completo buscando dos cosas: **SQL crudo sin `empresa_id`** y **endpoints que reciben un id por
+URL sin validar el tenant**. Resultado:
+
+**SQL crudo — limpio.** Los 13 adaptadores JDBC filtran por `empresa_id` en cada consulta. Dos
+excepciones, ambas correctas por diseño: el **marketplace** (vitrina pública: filtra por
+`estado = 'ACTIVA'` y por el `empresaId` de la ruta, que ahí es el recurso y no el tenant) y
+`ContactoDelClienteJdbcAdapter`, que **sí era una fuga real** y es lo que arregla el **PR #150**.
+
+**Endpoints con id por URL — limpios.** Hay tres capas y las tres están puestas: el filtro Hibernate
+por tenant (`FiltroDeTenantAspect`), la regla ArchUnit que prohíbe `findById` (que se saltaría el
+filtro) y obliga a `findFirstById`, y la validación explícita en los casos de uso (`exigirDelTenant`,
+`verificarDuenoDelTenant`). En los endpoints del CLIENTE (`/pagos/intento/cliente`,
+`/reembolsos/cliente`, carrito) el `clienteId` **nunca** se toma de la petición: se deriva del `sub`
+del token dentro de la tienda.
+
+**Único hallazgo nuevo (no era una fuga).** El filtro Hibernate se apaga cuando el token no trae
+`empresa_id` — el caso del CLIENTE del marketplace, que además alcanza varias rutas de gestión porque
+caen en el `anyRequest().authenticated()`. Verificado en vivo contra Railway con el cliente real:
+`GET /rentas/{id}`, `/ventas/{id}`, `/clientes/{id}/historial` y `/estado-cuenta` respondían **500**, y
+las listas (`/prendas`, `/disfraces`, `/clientes`, `/caja/turnos`) **200 con contenido vacío**. O sea:
+**no había fuga de datos** — la petición moría en un `NullPointerException` al hacer
+`UUID.fromString(null)` sobre el claim ausente, antes de tocar la base. Pero devolvía *500 Error del
+servidor* donde corresponde *403 Prohibido*, lo que disfraza un problema de permisos como una caída del
+backend y ensucia los logs.
+
+**Arreglado**: 75 usos de `UUID.fromString(jwt.getClaimAsString("empresa_id"))` en 15 controllers
+sustituidos por `tenant.empresaIdRequerida()` (`ContextoDeTenant`), que ya existía, ya está documentado
+como la API pública del módulo compartido y ya lo usaban caja, catálogo, disfraces y pedidos — el patrón
+viejo era deuda histórica, no una excepción de aislamiento modular. Se eliminó el helper estático
+`RentaController.empresa(jwt)`, que era lo único que impedía usar el contexto. Test nuevo
+`TenantRequeridoIntegrationTest`: un CLIENTE recibe **403** en 6 rutas de gestión, y las listas siguen
+devolviendo vacío (no se convierten en 403).
+
+**Quedó fuera a propósito**: `NotificacionController` (4 usos) y `PlantillaNotificacionController` (2)
+— los toca el PR #150 y migrarlos aquí generaría un conflicto de merge. Se migran cuando #150 entre.
+También quedaron parámetros `@AuthenticationPrincipal Jwt jwt` muertos en varios métodos: quitarlos
+exige reescribir ~50 firmas y no compensa el riesgo dentro de un cambio de seguridad.
+
 ## FIX de aislamiento en probar-push (2026-07-22)
 
 Bug introducido por mi en el endpoint de diagnostico: `POST /notificaciones/probar-push/{clienteId}`
@@ -21,6 +61,7 @@ Rompia la regla del proyecto de filtrar todo por tenant (§5.4).
 - La validacion del cliente va **antes** de mirar si el canal esta configurado: la pertenencia al tenant no
   depende de que haya credencial, y asi la regla queda cubierta por tests aunque el canal este apagado.
 - Test nuevo: el dueno de la empresa A no puede probar un cliente de la B. **Suite 517/517.**
+
 
 ## BACK-1 — el disfraz sobrevive al cobro (2026-07-22)
 

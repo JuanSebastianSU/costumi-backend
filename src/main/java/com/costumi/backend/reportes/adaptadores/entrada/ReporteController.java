@@ -1,5 +1,6 @@
 package com.costumi.backend.reportes.adaptadores.entrada;
 
+import com.costumi.backend.compartido.ContextoDeTenant;
 import com.costumi.backend.reportes.aplicacion.ConsultarGanancia;
 import com.costumi.backend.reportes.aplicacion.ConsultarIngresos;
 import com.costumi.backend.reportes.aplicacion.ConsultarInventario;
@@ -38,16 +39,19 @@ class ReporteController {
 	private final ConsultarRankings consultarRankings;
 	private final ConsultarInventario consultarInventario;
 	private final com.costumi.backend.compartido.GeneradorDePdf pdf;
+	private final ContextoDeTenant tenant;
 
 	ReporteController(ConsultarIngresos consultarIngresos, ConsultarGanancia consultarGanancia,
 			ConsultarOperaciones consultarOperaciones, ConsultarRankings consultarRankings,
-			ConsultarInventario consultarInventario, com.costumi.backend.compartido.GeneradorDePdf pdf) {
+			ConsultarInventario consultarInventario, com.costumi.backend.compartido.GeneradorDePdf pdf,
+			ContextoDeTenant tenant) {
 		this.consultarIngresos = consultarIngresos;
 		this.consultarGanancia = consultarGanancia;
 		this.consultarOperaciones = consultarOperaciones;
 		this.consultarRankings = consultarRankings;
 		this.consultarInventario = consultarInventario;
 		this.pdf = pdf;
+		this.tenant = tenant;
 	}
 
 	@GetMapping("/ingresos")
@@ -71,7 +75,7 @@ class ReporteController {
 	@GetMapping("/rentas-vencidas")
 	List<RentaVencidaResponse> rentasVencidas(@RequestParam(required = false) UUID sucursalId,
 			@AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		LocalDate hoy = LocalDate.now();
 		return consultarOperaciones.rentasVencidas(empresaId, sucursalId).stream()
 				.map(r -> RentaVencidaResponse.desde(r, hoy)).toList();
@@ -80,7 +84,7 @@ class ReporteController {
 	@GetMapping("/depositos-activos")
 	DepositosActivosResponse depositosActivos(@RequestParam(required = false) UUID sucursalId,
 			@AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		return new DepositosActivosResponse(consultarOperaciones.depositosActivos(empresaId, sucursalId));
 	}
 
@@ -89,14 +93,14 @@ class ReporteController {
 			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
 			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
 			@RequestParam(required = false) UUID sucursalId, @AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		return consultarOperaciones.ingresosPorMetodo(empresaId, desde, hasta, sucursalId);
 	}
 
 	@GetMapping("/mas-vendidos")
 	List<ArticuloRanking> masVendidos(@RequestParam(required = false) UUID sucursalId,
 			@RequestParam(defaultValue = "10") int limite, @AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		return consultarRankings.masVendidos(empresaId, sucursalId, limite);
 	}
 
@@ -105,7 +109,7 @@ class ReporteController {
 			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
 			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
 			@RequestParam(defaultValue = "10") int limite, @AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		return consultarRankings.masRentados(empresaId, sucursalId, desde, hasta, limite);
 	}
 
@@ -114,7 +118,7 @@ class ReporteController {
 	List<com.costumi.backend.reportes.dominio.DisfrazRanking> disfracesMasVendidos(
 			@RequestParam(required = false) UUID sucursalId,
 			@RequestParam(defaultValue = "10") int limite, @AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		return consultarRankings.disfracesMasVendidos(empresaId, sucursalId, limite);
 	}
 
@@ -125,34 +129,34 @@ class ReporteController {
 			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
 			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
 			@RequestParam(defaultValue = "10") int limite, @AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		return consultarRankings.disfracesMasRentados(empresaId, sucursalId, desde, hasta, limite);
 	}
 
 	@GetMapping("/ventas-por-empleado")
 	List<EmpleadoVentas> ventasPorEmpleado(@RequestParam(required = false) UUID sucursalId,
 			@AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		return consultarRankings.ventasPorEmpleado(empresaId, sucursalId);
 	}
 
 	@GetMapping("/ventas-por-etiqueta")
 	List<ValorEtiquetaRanking> ventasPorEtiqueta(@RequestParam UUID tipoEtiquetaId,
 			@RequestParam(required = false) UUID sucursalId, @AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		return consultarRankings.ventasPorEtiqueta(empresaId, tipoEtiquetaId, sucursalId);
 	}
 
 	@GetMapping("/inventario/tablero")
 	List<GrupoInventario> tableroDeInventario(@RequestParam(required = false) UUID sucursalId,
 			@AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		return consultarInventario.tableroDeInventario(empresaId, sucursalId);
 	}
 
 	@GetMapping("/inventario/resumen")
 	ResumenInventario resumenDeInventario(@AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		return consultarInventario.resumenDeInventario(empresaId);
 	}
 
@@ -161,7 +165,7 @@ class ReporteController {
 	@GetMapping(value = "/export/rentas-vencidas.csv", produces = "text/csv")
 	ResponseEntity<String> exportRentasVencidas(@RequestParam(required = false) UUID sucursalId,
 			@AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		LocalDate hoy = LocalDate.now();
 		StringBuilder csv = new StringBuilder("rentaId,clienteId,prendaId,fechaDevolucion,diasVencida,importe,deposito\n");
 		for (var r : consultarOperaciones.rentasVencidas(empresaId, sucursalId)) {
@@ -176,7 +180,7 @@ class ReporteController {
 	@GetMapping(value = "/export/inventario-tablero.csv", produces = "text/csv")
 	ResponseEntity<String> exportInventarioTablero(@RequestParam(required = false) UUID sucursalId,
 			@AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		StringBuilder csv = new StringBuilder("prendaId,prenda,disponibles,danadas,enLimpieza,perdidas\n");
 		for (GrupoInventario g : consultarInventario.tableroDeInventario(empresaId, sucursalId)) {
 			csv.append(g.prendaId()).append(',').append(campo(g.prendaNombre())).append(',').append(g.disponibles())
@@ -189,7 +193,7 @@ class ReporteController {
 	@GetMapping(value = "/export/rentas-vencidas.pdf", produces = "application/pdf")
 	ResponseEntity<byte[]> exportRentasVencidasPdf(@RequestParam(required = false) UUID sucursalId,
 			@AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		LocalDate hoy = LocalDate.now();
 		String[] columnas = { "Renta", "Cliente", "Prenda", "Vence", "Días", "Importe", "Depósito" };
 		java.util.List<String[]> filas = new java.util.ArrayList<>();
@@ -204,7 +208,7 @@ class ReporteController {
 	@GetMapping(value = "/export/inventario-tablero.pdf", produces = "application/pdf")
 	ResponseEntity<byte[]> exportInventarioTableroPdf(@RequestParam(required = false) UUID sucursalId,
 			@AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		String[] columnas = { "Prenda", "Disponibles", "Dañadas", "En limpieza", "Perdidas" };
 		java.util.List<String[]> filas = new java.util.ArrayList<>();
 		for (GrupoInventario g : consultarInventario.tableroDeInventario(empresaId, sucursalId)) {

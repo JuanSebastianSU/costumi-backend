@@ -1,5 +1,6 @@
 package com.costumi.backend.pagos.adaptadores.entrada;
 
+import com.costumi.backend.compartido.ContextoDeTenant;
 import com.costumi.backend.pagos.aplicacion.ConfirmarPagoEnLinea;
 import com.costumi.backend.pagos.aplicacion.ConsultarPagos;
 import com.costumi.backend.pagos.aplicacion.CrearIntentoDePago;
@@ -43,11 +44,13 @@ class PagoController {
 	private final ConfirmarPagoEnLinea confirmarPagoEnLinea;
 	private final VerificadorDeFirmaDeWebhook verificadorDeFirma;
 	private final com.costumi.backend.devoluciones.ConsultaDeMultas multas;
+	private final ContextoDeTenant tenant;
 
 	PagoController(RegistrarPago registrarPago, ConsultarPagos consultarPagos, RegistrarCobroMixto registrarCobroMixto,
 			com.costumi.backend.compartido.GeneradorDePdf pdf, CrearIntentoDePago crearIntentoDePago,
 			CrearIntentoDePagoDeCliente crearIntentoDePagoDeCliente, ConfirmarPagoEnLinea confirmarPagoEnLinea,
-			VerificadorDeFirmaDeWebhook verificadorDeFirma, com.costumi.backend.devoluciones.ConsultaDeMultas multas) {
+			VerificadorDeFirmaDeWebhook verificadorDeFirma, com.costumi.backend.devoluciones.ConsultaDeMultas multas,
+			ContextoDeTenant tenant) {
 		this.registrarPago = registrarPago;
 		this.consultarPagos = consultarPagos;
 		this.registrarCobroMixto = registrarCobroMixto;
@@ -57,12 +60,13 @@ class PagoController {
 		this.confirmarPagoEnLinea = confirmarPagoEnLinea;
 		this.verificadorDeFirma = verificadorDeFirma;
 		this.multas = multas;
+		this.tenant = tenant;
 	}
 
 	/** Inicia un pago en línea (RF-6.11): crea el checkout en la pasarela y devuelve la URL. */
 	@PostMapping("/intento")
 	IntentoDePagoResponse intento(@Valid @RequestBody IntentoDePagoRequest request, @AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		UUID empleadoId = UUID.fromString(jwt.getSubject());
 		CrearIntentoDePago.Resultado r = crearIntentoDePago.ejecutar(empresaId, request.sucursalId(), empleadoId,
 				request.tipoConcepto(), request.conceptoId(), request.monto(), request.moneda());
@@ -100,7 +104,7 @@ class PagoController {
 	@PostMapping
 	ResponseEntity<PagoResponse> registrar(@Valid @RequestBody RegistrarPagoRequest request,
 			@AuthenticationPrincipal Jwt jwt, UriComponentsBuilder uriBuilder) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		UUID empleadoId = UUID.fromString(jwt.getSubject());
 		Pago pago = registrarPago.ejecutar(new RegistrarPagoComando(empresaId, request.sucursalId(), empleadoId,
 				request.tipoConcepto(), request.conceptoId(), request.monto(), request.tipoPago(), request.metodo(),
@@ -112,7 +116,7 @@ class PagoController {
 	@PostMapping("/mixto")
 	ResponseEntity<CobroMixtoResponse> registrarMixto(@Valid @RequestBody RegistrarCobroMixtoRequest request,
 			@AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		UUID empleadoId = UUID.fromString(jwt.getSubject());
 		List<PorcionDePago> porciones = request.porciones().stream()
 				.map(p -> new PorcionDePago(p.metodo(), p.monto(), p.referencia())).toList();
@@ -134,20 +138,20 @@ class PagoController {
 
 	@GetMapping("/saldo")
 	SaldoResponse saldo(@RequestParam UUID conceptoId, @AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		return new SaldoResponse(conceptoId, consultarPagos.saldoNeto(empresaId, conceptoId));
 	}
 
 	@GetMapping("/deposito")
 	com.costumi.backend.pagos.aplicacion.EstadoDeposito deposito(@RequestParam UUID conceptoId,
 			@AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		return consultarPagos.estadoDeposito(empresaId, conceptoId);
 	}
 
 	@GetMapping("/comprobante")
 	ComprobanteResponse comprobante(@RequestParam UUID conceptoId, @AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		return ComprobanteResponse.desde(consultarPagos.comprobante(empresaId, conceptoId),
 				multas.totalMultaDeRenta(empresaId, conceptoId));
 	}
@@ -155,7 +159,7 @@ class PagoController {
 	/** Comprobante/recibo de pago en PDF (RF-3.4). */
 	@GetMapping(value = "/comprobante.pdf", produces = "application/pdf")
 	ResponseEntity<byte[]> comprobantePdf(@RequestParam UUID conceptoId, @AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		ComprobanteResponse c = ComprobanteResponse.desde(consultarPagos.comprobante(empresaId, conceptoId),
 				multas.totalMultaDeRenta(empresaId, conceptoId));
 		java.util.List<String> lineas = new java.util.ArrayList<>();

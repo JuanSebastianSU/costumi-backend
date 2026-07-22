@@ -1,5 +1,6 @@
 package com.costumi.backend.identidad.adaptadores.entrada;
 
+import com.costumi.backend.compartido.ContextoDeTenant;
 import com.costumi.backend.identidad.aplicacion.AltaDeEmpleado;
 import com.costumi.backend.identidad.aplicacion.AsignarSucursales;
 import com.costumi.backend.identidad.aplicacion.CambiarRolDeEmpleado;
@@ -36,15 +37,17 @@ class EmpleadoController {
 	private final GestionarEstadoDeEmpleado gestionarEstadoDeEmpleado;
 	private final ListarEmpleados listarEmpleados;
 	private final CambiarRolDeEmpleado cambiarRolDeEmpleado;
+	private final ContextoDeTenant tenant;
 
 	EmpleadoController(AltaDeEmpleado altaDeEmpleado, AsignarSucursales asignarSucursales,
 			GestionarEstadoDeEmpleado gestionarEstadoDeEmpleado, ListarEmpleados listarEmpleados,
-			CambiarRolDeEmpleado cambiarRolDeEmpleado) {
+			CambiarRolDeEmpleado cambiarRolDeEmpleado, ContextoDeTenant tenant) {
 		this.altaDeEmpleado = altaDeEmpleado;
 		this.asignarSucursales = asignarSucursales;
 		this.gestionarEstadoDeEmpleado = gestionarEstadoDeEmpleado;
 		this.listarEmpleados = listarEmpleados;
 		this.cambiarRolDeEmpleado = cambiarRolDeEmpleado;
+		this.tenant = tenant;
 	}
 
 	/**
@@ -57,7 +60,7 @@ com.costumi.backend.compartido.RespuestaPaginada<EmpleadoDetalleResponse> listar
 			@org.springframework.web.bind.annotation.RequestParam(required = false) Integer pagina,
 			@org.springframework.web.bind.annotation.RequestParam(required = false) Integer tamano,
 			@AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		return com.costumi.backend.compartido.RespuestaPaginada.desde(
 				listarEmpleados.delTenant(empresaId, actorRol(jwt), buscar, com.costumi.backend.compartido.SolicitudDePagina.de(pagina, tamano)),
 				EmpleadoDetalleResponse::desde);
@@ -66,7 +69,7 @@ com.costumi.backend.compartido.RespuestaPaginada<EmpleadoDetalleResponse> listar
 	/** Da de baja a un empleado (RF-8): no podrá autenticarse ni renovar sesión. DUENO/ENCARGADO. */
 	@PostMapping("/{usuarioId}/desactivar")
 	EmpleadoResponse desactivar(@PathVariable UUID usuarioId, @AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		UUID actorId = UUID.fromString(jwt.getSubject());
 		return EmpleadoResponse.desde(gestionarEstadoDeEmpleado.desactivar(empresaId, actorRol(jwt), actorId, usuarioId));
 	}
@@ -74,14 +77,14 @@ com.costumi.backend.compartido.RespuestaPaginada<EmpleadoDetalleResponse> listar
 	/** Reactiva a un empleado dado de baja. DUENO/ENCARGADO. */
 	@PostMapping("/{usuarioId}/activar")
 	EmpleadoResponse activar(@PathVariable UUID usuarioId, @AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		return EmpleadoResponse.desde(gestionarEstadoDeEmpleado.activar(empresaId, actorRol(jwt), usuarioId));
 	}
 
 	@PostMapping
 	ResponseEntity<EmpleadoResponse> crear(@Valid @RequestBody AltaDeEmpleadoRequest request,
 			@AuthenticationPrincipal Jwt jwt, UriComponentsBuilder uriBuilder) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		Usuario empleado = altaDeEmpleado.ejecutar(new AltaDeEmpleado.AltaDeEmpleadoComando(
 				empresaId, actorRol(jwt), request.email(), request.password(), request.rol()));
 		URI location = uriBuilder.path("/api/v1/empleados/{id}").buildAndExpand(empleado.id()).toUri();
@@ -92,14 +95,14 @@ com.costumi.backend.compartido.RespuestaPaginada<EmpleadoDetalleResponse> listar
 	@PutMapping("/{usuarioId}/sucursales")
 	List<UUID> asignarSucursales(@PathVariable UUID usuarioId, @Valid @RequestBody AsignarSucursalesRequest request,
 			@AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		asignarSucursales.asignar(empresaId, actorRol(jwt), usuarioId, Set.copyOf(request.sucursalIds()));
 		return asignarSucursales.sucursalesDe(empresaId, actorRol(jwt), usuarioId);
 	}
 
 	@GetMapping("/{usuarioId}/sucursales")
 	List<UUID> sucursalesDe(@PathVariable UUID usuarioId, @AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		return asignarSucursales.sucursalesDe(empresaId, actorRol(jwt), usuarioId);
 	}
 
@@ -110,7 +113,7 @@ com.costumi.backend.compartido.RespuestaPaginada<EmpleadoDetalleResponse> listar
 	@PutMapping("/{usuarioId}/rol")
 	EmpleadoResponse cambiarRol(@PathVariable UUID usuarioId, @Valid @RequestBody CambiarRolRequest request,
 			@AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		return EmpleadoResponse.desde(
 				cambiarRolDeEmpleado.ejecutar(empresaId, actorRol(jwt), usuarioId, request.rol()));
 	}

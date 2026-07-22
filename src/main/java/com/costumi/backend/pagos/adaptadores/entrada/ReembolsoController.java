@@ -1,5 +1,6 @@
 package com.costumi.backend.pagos.adaptadores.entrada;
 
+import com.costumi.backend.compartido.ContextoDeTenant;
 import com.costumi.backend.pagos.aplicacion.ConsultarReembolsos;
 import com.costumi.backend.pagos.aplicacion.DecidirReembolso;
 import com.costumi.backend.pagos.aplicacion.DecidirReembolsoComando;
@@ -33,21 +34,23 @@ class ReembolsoController {
 	private final SolicitarReembolsoDeCliente solicitarReembolsoDeCliente;
 	private final DecidirReembolso decidirReembolso;
 	private final ConsultarReembolsos consultarReembolsos;
+	private final ContextoDeTenant tenant;
 
 	ReembolsoController(SolicitarReembolso solicitarReembolso,
 			SolicitarReembolsoDeCliente solicitarReembolsoDeCliente, DecidirReembolso decidirReembolso,
-			ConsultarReembolsos consultarReembolsos) {
+			ConsultarReembolsos consultarReembolsos, ContextoDeTenant tenant) {
 		this.solicitarReembolso = solicitarReembolso;
 		this.solicitarReembolsoDeCliente = solicitarReembolsoDeCliente;
 		this.decidirReembolso = decidirReembolso;
 		this.consultarReembolsos = consultarReembolsos;
+		this.tenant = tenant;
 	}
 
 	/** Paso 1: registra la solicitud de reembolso (personal). */
 	@PostMapping
 	ResponseEntity<SolicitudDeReembolsoResponse> solicitar(@Valid @RequestBody SolicitarReembolsoRequest request,
 			@AuthenticationPrincipal Jwt jwt, UriComponentsBuilder uriBuilder) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		SolicitudDeReembolso solicitud = solicitarReembolso.ejecutar(new SolicitarReembolsoComando(empresaId,
 				request.tipoConcepto(), request.conceptoId(), request.solicitanteClienteId(), request.monto(),
 				request.motivo()));
@@ -83,7 +86,7 @@ class ReembolsoController {
 	}
 
 	private SolicitudDeReembolsoResponse decidir(UUID id, boolean aprobar, String motivo, Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		UUID actorUsuarioId = UUID.fromString(jwt.getSubject());
 		String actorRol = jwt.getClaimAsString("rol");
 		SolicitudDeReembolso solicitud = decidirReembolso.ejecutar(

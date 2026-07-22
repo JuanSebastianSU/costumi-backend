@@ -11,6 +11,7 @@ import com.costumi.backend.catalogo.aplicacion.RenombrarTipoEtiqueta;
 import com.costumi.backend.catalogo.aplicacion.RenombrarValor;
 import com.costumi.backend.catalogo.dominio.TipoEtiqueta;
 import com.costumi.backend.catalogo.dominio.ValorEtiqueta;
+import com.costumi.backend.compartido.ContextoDeTenant;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -40,10 +41,11 @@ class TipoEtiquetaController {
 	private final RenombrarTipoEtiqueta renombrarTipoEtiqueta;
 	private final RenombrarValor renombrarValor;
 	private final GestionarEtiquetas gestionarEtiquetas;
+	private final ContextoDeTenant tenant;
 
 	TipoEtiquetaController(CrearTipoEtiqueta crearTipoEtiqueta, ConsultarTiposEtiqueta consultarTiposEtiqueta,
 			AgregarValor agregarValor, ConsultarValores consultarValores, RenombrarTipoEtiqueta renombrarTipoEtiqueta,
-			RenombrarValor renombrarValor, GestionarEtiquetas gestionarEtiquetas) {
+			RenombrarValor renombrarValor, GestionarEtiquetas gestionarEtiquetas, ContextoDeTenant tenant) {
 		this.crearTipoEtiqueta = crearTipoEtiqueta;
 		this.consultarTiposEtiqueta = consultarTiposEtiqueta;
 		this.agregarValor = agregarValor;
@@ -51,19 +53,20 @@ class TipoEtiquetaController {
 		this.renombrarTipoEtiqueta = renombrarTipoEtiqueta;
 		this.renombrarValor = renombrarValor;
 		this.gestionarEtiquetas = gestionarEtiquetas;
+		this.tenant = tenant;
 	}
 
 	/** Archiva un tipo de etiqueta: deja de ofrecerse para etiquetar prendas nuevas, sin borrarlo. */
 	@PostMapping("/{tipoId}/archivar")
 	TipoEtiquetaResponse archivarTipo(@PathVariable UUID tipoId, @AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		return TipoEtiquetaResponse.desde(gestionarEtiquetas.archivarTipo(empresaId, tipoId));
 	}
 
 	/** Reactiva un tipo de etiqueta archivado. */
 	@PostMapping("/{tipoId}/activar")
 	TipoEtiquetaResponse activarTipo(@PathVariable UUID tipoId, @AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		return TipoEtiquetaResponse.desde(gestionarEtiquetas.activarTipo(empresaId, tipoId));
 	}
 
@@ -71,7 +74,7 @@ class TipoEtiquetaController {
 	@PostMapping("/{tipoId}/valores/{valorId}/archivar")
 	ValorEtiquetaResponse archivarValor(@PathVariable UUID tipoId, @PathVariable UUID valorId,
 			@AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		return ValorEtiquetaResponse.desde(gestionarEtiquetas.archivarValor(empresaId, tipoId, valorId));
 	}
 
@@ -79,14 +82,14 @@ class TipoEtiquetaController {
 	@PostMapping("/{tipoId}/valores/{valorId}/activar")
 	ValorEtiquetaResponse activarValor(@PathVariable UUID tipoId, @PathVariable UUID valorId,
 			@AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		return ValorEtiquetaResponse.desde(gestionarEtiquetas.activarValor(empresaId, tipoId, valorId));
 	}
 
 	@PostMapping
 	ResponseEntity<TipoEtiquetaResponse> crear(@Valid @RequestBody CrearTipoEtiquetaRequest request,
 			@AuthenticationPrincipal Jwt jwt, UriComponentsBuilder uriBuilder) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		TipoEtiqueta tipo = crearTipoEtiqueta.ejecutar(new CrearTipoEtiquetaComando(empresaId, request.nombre(),
 				request.defineVariante(), request.seleccionablePorCliente(), request.categoriasQueAplica()));
 		URI location = uriBuilder.path("/api/v1/tipos-etiqueta/{id}").buildAndExpand(tipo.id()).toUri();
@@ -107,7 +110,7 @@ class TipoEtiquetaController {
 	ResponseEntity<ValorEtiquetaResponse> agregarValor(@PathVariable UUID tipoId,
 			@Valid @RequestBody AgregarValorRequest request, @AuthenticationPrincipal Jwt jwt,
 			UriComponentsBuilder uriBuilder) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		ValorEtiqueta valor = agregarValor.ejecutar(new AgregarValorComando(empresaId, tipoId, request.valor()));
 		URI location = uriBuilder.path("/api/v1/tipos-etiqueta/{tipoId}/valores/{id}")
 				.buildAndExpand(tipoId, valor.id()).toUri();
@@ -127,14 +130,14 @@ class TipoEtiquetaController {
 	@PatchMapping("/{tipoId}")
 	TipoEtiquetaResponse renombrar(@PathVariable UUID tipoId, @Valid @RequestBody RenombrarRequest request,
 			@AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		return TipoEtiquetaResponse.desde(renombrarTipoEtiqueta.ejecutar(empresaId, tipoId, request.nombre()));
 	}
 
 	@PatchMapping("/{tipoId}/valores/{valorId}")
 	ValorEtiquetaResponse renombrarValor(@PathVariable UUID tipoId, @PathVariable UUID valorId,
 			@Valid @RequestBody RenombrarRequest request, @AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		return ValorEtiquetaResponse.desde(renombrarValor.ejecutar(empresaId, tipoId, valorId, request.nombre()));
 	}
 }

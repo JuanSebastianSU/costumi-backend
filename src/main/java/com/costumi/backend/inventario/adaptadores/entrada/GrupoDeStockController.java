@@ -1,5 +1,6 @@
 package com.costumi.backend.inventario.adaptadores.entrada;
 
+import com.costumi.backend.compartido.ContextoDeTenant;
 import com.costumi.backend.inventario.aplicacion.AjustarStock;
 import com.costumi.backend.inventario.aplicacion.ConsultarGruposDeStock;
 import com.costumi.backend.inventario.aplicacion.ConsultarStockBajo;
@@ -41,10 +42,12 @@ class GrupoDeStockController {
 	private final AjustarStock ajustarStock;
 	private final TransferirStock transferirStock;
 	private final EliminarGrupoDeStock eliminarGrupoDeStock;
+	private final ContextoDeTenant tenant;
 
 	GrupoDeStockController(CrearGrupoDeStock crearGrupoDeStock, ConsultarGruposDeStock consultarGruposDeStock,
 			MoverUnidades moverUnidades, ReabastecerGrupo reabastecerGrupo, ConsultarStockBajo consultarStockBajo,
-			AjustarStock ajustarStock, TransferirStock transferirStock, EliminarGrupoDeStock eliminarGrupoDeStock) {
+			AjustarStock ajustarStock, TransferirStock transferirStock, EliminarGrupoDeStock eliminarGrupoDeStock,
+			ContextoDeTenant tenant) {
 		this.crearGrupoDeStock = crearGrupoDeStock;
 		this.consultarGruposDeStock = consultarGruposDeStock;
 		this.moverUnidades = moverUnidades;
@@ -53,13 +56,14 @@ class GrupoDeStockController {
 		this.ajustarStock = ajustarStock;
 		this.transferirStock = transferirStock;
 		this.eliminarGrupoDeStock = eliminarGrupoDeStock;
+		this.tenant = tenant;
 	}
 
 	@PostMapping("/api/v1/prendas/{prendaId}/grupos-stock")
 	ResponseEntity<GrupoDeStockResponse> crear(@PathVariable UUID prendaId,
 			@Valid @RequestBody CrearGrupoDeStockRequest request, @AuthenticationPrincipal Jwt jwt,
 			UriComponentsBuilder uriBuilder) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		List<SeleccionVariante> combinacion = request.combinacion().stream()
 				.map(s -> new SeleccionVariante(s.tipoEtiquetaId(), s.valorEtiquetaId()))
 				.toList();
@@ -82,7 +86,7 @@ class GrupoDeStockController {
 	@PostMapping("/api/v1/grupos-stock/{grupoId}/mover")
 	GrupoDeStockResponse mover(@PathVariable UUID grupoId, @Valid @RequestBody MoverUnidadesRequest request,
 			@AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		GrupoDeStock grupo = moverUnidades.ejecutar(new MoverUnidadesComando(
 				empresaId, grupoId, request.desde(), request.hacia(), request.cantidad()));
 		return GrupoDeStockResponse.desde(grupo);
@@ -91,14 +95,14 @@ class GrupoDeStockController {
 	@PostMapping("/api/v1/grupos-stock/{grupoId}/entrada")
 	GrupoDeStockResponse reabastecer(@PathVariable UUID grupoId, @Valid @RequestBody EntradaDeStockRequest request,
 			@AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		return GrupoDeStockResponse.desde(reabastecerGrupo.ejecutar(empresaId, grupoId, request.cantidad()));
 	}
 
 	@PostMapping("/api/v1/grupos-stock/{grupoId}/transferir")
 	GrupoDeStockResponse transferir(@PathVariable UUID grupoId, @Valid @RequestBody TransferirStockRequest request,
 			@AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		GrupoDeStock origen = transferirStock.ejecutar(new TransferirStock.TransferirStockComando(
 				empresaId, grupoId, request.sucursalDestinoId(), request.cantidad()));
 		return GrupoDeStockResponse.desde(origen);
@@ -107,7 +111,7 @@ class GrupoDeStockController {
 	@PostMapping("/api/v1/grupos-stock/{grupoId}/ajuste")
 	GrupoDeStockResponse ajustar(@PathVariable UUID grupoId, @Valid @RequestBody AjusteDeStockRequest request,
 			@AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		return GrupoDeStockResponse.desde(ajustarStock.ejecutar(new AjustarStock.AjustarStockComando(
 				empresaId, grupoId, request.estado(), request.delta(), request.motivo())));
 	}
@@ -115,7 +119,7 @@ class GrupoDeStockController {
 	/** Borra físicamente un grupo (R-F): solo si está vacío y no es el último de su prenda+sucursal. DUENO/ENCARGADO. */
 	@DeleteMapping("/api/v1/grupos-stock/{grupoId}")
 	ResponseEntity<Void> eliminar(@PathVariable UUID grupoId, @AuthenticationPrincipal Jwt jwt) {
-		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		UUID empresaId = tenant.empresaIdRequerida();
 		eliminarGrupoDeStock.ejecutar(empresaId, grupoId);
 		return ResponseEntity.noContent().build();
 	}
