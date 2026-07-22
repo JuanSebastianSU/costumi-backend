@@ -1,6 +1,7 @@
 package com.costumi.backend.pedidos.aplicacion;
 
 import com.costumi.backend.compartido.ContextoDeTenant;
+import com.costumi.backend.disfraces.ResolucionDeDisfraces;
 import com.costumi.backend.inventario.ConsultaDeInventario;
 import com.costumi.backend.pedidos.dominio.Carrito;
 import com.costumi.backend.pedidos.dominio.CarritoRepository;
@@ -25,18 +26,20 @@ class CarritoService implements AgregarItemAlCarrito, ConsultarCarrito, HacerChe
 
 	private final CarritoRepository carritos;
 	private final ConsultaDeInventario inventario;
+	private final ResolucionDeDisfraces disfraces;
 	private final RegistroDeVentas ventas;
 	private final RegistroDeRentas rentas;
 	private final ContextoDeTenant contexto;
 	private final com.costumi.backend.identidad.ConsultaDeSucursales sucursales;
 	private final com.costumi.backend.clientes.ResolucionDeClientes clientes;
 
-	CarritoService(CarritoRepository carritos, ConsultaDeInventario inventario, RegistroDeVentas ventas,
-			RegistroDeRentas rentas, ContextoDeTenant contexto,
+	CarritoService(CarritoRepository carritos, ConsultaDeInventario inventario, ResolucionDeDisfraces disfraces,
+			RegistroDeVentas ventas, RegistroDeRentas rentas, ContextoDeTenant contexto,
 			com.costumi.backend.identidad.ConsultaDeSucursales sucursales,
 			com.costumi.backend.clientes.ResolucionDeClientes clientes) {
 		this.carritos = carritos;
 		this.inventario = inventario;
+		this.disfraces = disfraces;
 		this.ventas = ventas;
 		this.rentas = rentas;
 		this.contexto = contexto;
@@ -60,7 +63,17 @@ class CarritoService implements AgregarItemAlCarrito, ConsultarCarrito, HacerChe
 				.buscarPendiente(comando.empresaId(), comando.sucursalId(), comando.clienteId(), comando.tipo())
 				.orElseGet(() -> Carrito.crear(
 						comando.empresaId(), comando.sucursalId(), comando.clienteId(), comando.tipo()));
-		carrito.agregarItem(comando.prendaId(), comando.cantidad(), comando.fechaRetiro(), comando.fechaDevolucion());
+		if (comando.esDisfraz()) {
+			// SEC-3: el disfraz debe existir en la empresa (evita FK 500 y anclar basura al carrito).
+			if (disfraces.resumenDeDisfraces(comando.empresaId(), List.of(comando.disfrazId())).isEmpty()) {
+				throw new IllegalArgumentException("El disfraz no existe en esta empresa");
+			}
+			carrito.agregarDisfraz(comando.disfrazId(), comando.selecciones(), comando.cantidad(),
+					comando.fechaRetiro(), comando.fechaDevolucion());
+		} else {
+			carrito.agregarItem(comando.prendaId(), comando.cantidad(), comando.fechaRetiro(),
+					comando.fechaDevolucion());
+		}
 		return carritos.guardar(carrito);
 	}
 
@@ -74,22 +87,59 @@ class CarritoService implements AgregarItemAlCarrito, ConsultarCarrito, HacerChe
 		List<CarritoValorizado.LineaValorizada> lineas = new ArrayList<>();
 		BigDecimal total = BigDecimal.ZERO;
 		for (LineaDeCarrito linea : carrito.lineas()) {
-			BigDecimal precioUnitario = (tipo == TipoPedido.VENTA
-					? inventario.precioVenta(empresaId, linea.prendaId())
-					: inventario.precioRenta(empresaId, linea.prendaId())).orElse(null);
-			BigDecimal subtotal = null;
-			if (precioUnitario != null) {
-				subtotal = precioUnitario.multiply(BigDecimal.valueOf(linea.cantidad()));
-				if (tipo == TipoPedido.RENTA) {
-					subtotal = subtotal.multiply(BigDecimal.valueOf(dias(linea.fechaRetiro(), linea.fechaDevolucion())));
-				}
-				total = total.add(subtotal);
+			CarritoValorizado.LineaValorizada valorizada = linea.esDisfraz()
+					? valorizarDisfraz(empresaId, tipo, linea)
+					: valorizarPrenda(empresaId, tipo, linea);
+			if (valorizada.subtotal() != null) {
+				total = total.add(valorizada.subtotal());
 			}
-			lineas.add(new CarritoValorizado.LineaValorizada(linea.prendaId(), linea.cantidad(),
-					linea.fechaRetiro(), linea.fechaDevolucion(), precioUnitario, subtotal));
+			lineas.add(valorizada);
 		}
 		return new CarritoValorizado(carrito.id(), carrito.sucursalId(), carrito.clienteId(),
 				carrito.tipo(), carrito.estado(), lineas, total);
+	}
+
+	/** Valoriza una línea de prenda: precioUnitario × cantidad (× días si es renta). */
+	private CarritoValorizado.LineaValorizada valorizarPrenda(UUID empresaId, TipoPedido tipo, LineaDeCarrito linea) {
+		BigDecimal precioUnitario = (tipo == TipoPedido.VENTA
+				? inventario.precioVenta(empresaId, linea.prendaId())
+				: inventario.precioRenta(empresaId, linea.prendaId())).orElse(null);
+		BigDecimal subtotal = null;
+		if (precioUnitario != null) {
+			subtotal = precioUnitario.multiply(BigDecimal.valueOf(linea.cantidad()));
+			if (tipo == TipoPedido.RENTA) {
+				subtotal = subtotal.multiply(BigDecimal.valueOf(dias(linea.fechaRetiro(), linea.fechaDevolucion())));
+			}
+		}
+		return new CarritoValorizado.LineaValorizada(linea.prendaId(), null, List.of(), linea.cantidad(),
+				linea.fechaRetiro(), linea.fechaDevolucion(), precioUnitario, subtotal);
+	}
+
+	/**
+	 * Valoriza una línea de disfraz: se resuelve a sus piezas con {@link ResolucionDeDisfraces} (misma
+	 * lógica que el checkout, para que el total coincida). {@code precioUnitario} = precio de UN disfraz
+	 * (suma de las piezas); {@code subtotal} = precioUnitario × cantidad (× días si es renta).
+	 */
+	private CarritoValorizado.LineaValorizada valorizarDisfraz(UUID empresaId, TipoPedido tipo, LineaDeCarrito linea) {
+		List<ResolucionDeDisfraces.LineaResuelta> resueltas = tipo == TipoPedido.VENTA
+				? disfraces.lineasDeVenta(empresaId, linea.disfrazId(), linea.cantidad(), aSelecciones(linea))
+				: disfraces.lineasDeRenta(empresaId, linea.disfrazId(), linea.cantidad(), aSelecciones(linea));
+		BigDecimal precioUnitario = resueltas.stream()
+				.map(ResolucionDeDisfraces.LineaResuelta::precio)
+				.reduce(BigDecimal.ZERO, BigDecimal::add);
+		BigDecimal subtotal = precioUnitario.multiply(BigDecimal.valueOf(linea.cantidad()));
+		if (tipo == TipoPedido.RENTA) {
+			subtotal = subtotal.multiply(BigDecimal.valueOf(dias(linea.fechaRetiro(), linea.fechaDevolucion())));
+		}
+		return new CarritoValorizado.LineaValorizada(null, linea.disfrazId(), linea.selecciones(), linea.cantidad(),
+				linea.fechaRetiro(), linea.fechaDevolucion(), precioUnitario, subtotal);
+	}
+
+	/** Traduce las selecciones de dominio del carrito a las del puerto de Disfraces. */
+	private static List<ResolucionDeDisfraces.SeleccionDeSlot> aSelecciones(LineaDeCarrito linea) {
+		return linea.selecciones().stream()
+				.map(s -> new ResolucionDeDisfraces.SeleccionDeSlot(s.orden(), s.prendaId()))
+				.toList();
 	}
 
 	/** Días facturables del periodo de renta (igual que el dominio Renta: al menos 1). */
@@ -107,10 +157,19 @@ class CarritoService implements AgregarItemAlCarrito, ConsultarCarrito, HacerChe
 		carritos.bloquearPedido(empresaId, sucursalId, clienteId, TipoPedido.VENTA);
 		Carrito carrito = carritos.buscarPendiente(empresaId, sucursalId, clienteId, TipoPedido.VENTA)
 				.orElseThrow(CarritoNoEncontrado::new);
-		List<RegistroDeVentas.ItemDeVenta> items = carrito.lineas().stream()
-				.map(linea -> new RegistroDeVentas.ItemDeVenta(linea.prendaId(), linea.cantidad(),
-						precioVentaDe(empresaId, linea)))
-				.toList();
+		List<RegistroDeVentas.ItemDeVenta> items = new ArrayList<>();
+		for (LineaDeCarrito linea : carrito.lineas()) {
+			if (linea.esDisfraz()) {
+				// El disfraz se resuelve a sus piezas valuadas (precio ya repartido si tiene precio general).
+				for (ResolucionDeDisfraces.LineaResuelta r : disfraces.lineasDeVenta(empresaId, linea.disfrazId(),
+						linea.cantidad(), aSelecciones(linea))) {
+					items.add(new RegistroDeVentas.ItemDeVenta(r.prendaId(), r.cantidad(), r.precio()));
+				}
+			} else {
+				items.add(new RegistroDeVentas.ItemDeVenta(linea.prendaId(), linea.cantidad(),
+						precioVentaDe(empresaId, linea)));
+			}
+		}
 		UUID ventaId = ventas.registrar(empresaId, sucursalId, empleadoId, clienteId, items);
 		carrito.confirmar();
 		carritos.guardar(carrito);
@@ -134,10 +193,19 @@ class CarritoService implements AgregarItemAlCarrito, ConsultarCarrito, HacerChe
 		List<UUID> rentaIds = new ArrayList<>();
 		for (Map.Entry<ClavePeriodo, List<LineaDeCarrito>> grupo : porPeriodo.entrySet()) {
 			ClavePeriodo periodo = grupo.getKey();
-			List<RegistroDeRentas.ItemDeRenta> items = grupo.getValue().stream()
-					.map(linea -> new RegistroDeRentas.ItemDeRenta(linea.prendaId(), linea.cantidad(),
-							precioRentaDe(empresaId, linea)))
-					.toList();
+			List<RegistroDeRentas.ItemDeRenta> items = new ArrayList<>();
+			for (LineaDeCarrito linea : grupo.getValue()) {
+				if (linea.esDisfraz()) {
+					// El disfraz se resuelve a sus piezas valuadas (precio por día ya repartido si tiene general).
+					for (ResolucionDeDisfraces.LineaResuelta r : disfraces.lineasDeRenta(empresaId, linea.disfrazId(),
+							linea.cantidad(), aSelecciones(linea))) {
+						items.add(new RegistroDeRentas.ItemDeRenta(r.prendaId(), r.cantidad(), r.precio()));
+					}
+				} else {
+					items.add(new RegistroDeRentas.ItemDeRenta(linea.prendaId(), linea.cantidad(),
+							precioRentaDe(empresaId, linea)));
+				}
+			}
 			// El depósito/garantía se gestiona en el pago (RF-6.2/6.8); la renta se crea sin depósito.
 			rentaIds.add(rentas.registrar(empresaId, sucursalId, clienteId, periodo.retiro(), periodo.devolucion(),
 					null, items, usuarioId));

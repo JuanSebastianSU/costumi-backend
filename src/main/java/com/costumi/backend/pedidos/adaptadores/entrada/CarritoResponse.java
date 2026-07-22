@@ -1,8 +1,10 @@
 package com.costumi.backend.pedidos.adaptadores.entrada;
 
+import com.costumi.backend.disfraces.ResolucionDeDisfraces;
 import com.costumi.backend.inventario.ConsultaDeInventario;
 import com.costumi.backend.pedidos.aplicacion.CarritoValorizado;
 import com.costumi.backend.pedidos.dominio.Carrito;
+import com.costumi.backend.pedidos.dominio.LineaDeCarrito;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -11,46 +13,81 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * DTO de salida del Carrito con sus líneas y precios. En los carritos de RENTA cada línea lleva su
- * periodo. Al consultar el carrito PENDIENTE se incluyen {@code precioUnitario}/{@code subtotal} por
- * línea y el {@code total}, para que el cliente vea cuánto pagará antes de confirmar (RF-18.5). Cada
- * línea trae además {@code nombre} y {@code fotoUrl} de la prenda para mostrar QUÉ se agregó, con imagen.
+ * DTO de salida del Carrito con sus líneas y precios. Una línea es de una PRENDA ({@code prendaId}) o de
+ * un DISFRAZ ({@code disfrazId} + {@code selecciones}). En los carritos de RENTA cada línea lleva su
+ * periodo. Al consultar el carrito PENDIENTE se incluyen {@code precioUnitario}/{@code subtotal} por línea
+ * y el {@code total}, para que el cliente vea cuánto pagará antes de confirmar (RF-18.5). Cada línea trae
+ * {@code nombre} y {@code fotoUrl} (de la prenda o del disfraz) para mostrar QUÉ se agregó, con imagen.
  */
 public record CarritoResponse(UUID id, UUID sucursalId, UUID clienteId, String tipo, String estado,
 		List<LineaDeCarritoResponse> lineas, BigDecimal total) {
 
-	public record LineaDeCarritoResponse(UUID prendaId, String nombre, String fotoUrl, int cantidad,
-			LocalDate fechaRetiro, LocalDate fechaDevolucion, BigDecimal precioUnitario, BigDecimal subtotal) {
+	public record LineaDeCarritoResponse(UUID prendaId, UUID disfrazId, String nombre, String fotoUrl, int cantidad,
+			LocalDate fechaRetiro, LocalDate fechaDevolucion, BigDecimal precioUnitario, BigDecimal subtotal,
+			List<SeleccionResponse> selecciones) {
+	}
+
+	/** Elección de prenda por slot del disfraz (para reflejar QUÉ eligió el cliente). */
+	public record SeleccionResponse(int orden, UUID prendaId) {
 	}
 
 	/** Respuesta tras agregar un ítem: aún sin valorizar (el total se ve al consultar el carrito). */
-	static CarritoResponse desde(Carrito carrito, Map<UUID, ConsultaDeInventario.ResumenDePrenda> resumen) {
+	static CarritoResponse desde(Carrito carrito, Map<UUID, ConsultaDeInventario.ResumenDePrenda> prendas,
+			Map<UUID, ResolucionDeDisfraces.ResumenDeDisfraz> disfraces) {
 		List<LineaDeCarritoResponse> lineas = carrito.lineas().stream()
-				.map(l -> new LineaDeCarritoResponse(l.prendaId(), nombre(resumen, l.prendaId()),
-						fotoUrl(resumen, l.prendaId()), l.cantidad(), l.fechaRetiro(), l.fechaDevolucion(), null, null))
+				.map(l -> l.esDisfraz()
+						? new LineaDeCarritoResponse(null, l.disfrazId(), nombreDisfraz(disfraces, l.disfrazId()),
+								fotoDisfraz(disfraces, l.disfrazId()), l.cantidad(), l.fechaRetiro(),
+								l.fechaDevolucion(), null, null, selecciones(l))
+						: new LineaDeCarritoResponse(l.prendaId(), null, nombrePrenda(prendas, l.prendaId()),
+								fotoPrenda(prendas, l.prendaId()), l.cantidad(), l.fechaRetiro(),
+								l.fechaDevolucion(), null, null, List.of()))
 				.toList();
 		return new CarritoResponse(carrito.id(), carrito.sucursalId(), carrito.clienteId(),
 				carrito.tipo().name(), carrito.estado().name(), lineas, null);
 	}
 
 	/** Respuesta del carrito pendiente: con precio por línea y total calculados por el backend. */
-	static CarritoResponse desde(CarritoValorizado carrito, Map<UUID, ConsultaDeInventario.ResumenDePrenda> resumen) {
+	static CarritoResponse desde(CarritoValorizado carrito, Map<UUID, ConsultaDeInventario.ResumenDePrenda> prendas,
+			Map<UUID, ResolucionDeDisfraces.ResumenDeDisfraz> disfraces) {
 		List<LineaDeCarritoResponse> lineas = carrito.lineas().stream()
-				.map(l -> new LineaDeCarritoResponse(l.prendaId(), nombre(resumen, l.prendaId()),
-						fotoUrl(resumen, l.prendaId()), l.cantidad(), l.fechaRetiro(), l.fechaDevolucion(),
-						l.precioUnitario(), l.subtotal()))
+				.map(l -> l.disfrazId() != null
+						? new LineaDeCarritoResponse(null, l.disfrazId(), nombreDisfraz(disfraces, l.disfrazId()),
+								fotoDisfraz(disfraces, l.disfrazId()), l.cantidad(), l.fechaRetiro(),
+								l.fechaDevolucion(), l.precioUnitario(), l.subtotal(), seleccionesValorizadas(l))
+						: new LineaDeCarritoResponse(l.prendaId(), null, nombrePrenda(prendas, l.prendaId()),
+								fotoPrenda(prendas, l.prendaId()), l.cantidad(), l.fechaRetiro(),
+								l.fechaDevolucion(), l.precioUnitario(), l.subtotal(), List.of()))
 				.toList();
 		return new CarritoResponse(carrito.id(), carrito.sucursalId(), carrito.clienteId(),
 				carrito.tipo().name(), carrito.estado().name(), lineas, carrito.total());
 	}
 
-	private static String nombre(Map<UUID, ConsultaDeInventario.ResumenDePrenda> resumen, UUID prendaId) {
+	private static List<SeleccionResponse> selecciones(LineaDeCarrito linea) {
+		return linea.selecciones().stream().map(s -> new SeleccionResponse(s.orden(), s.prendaId())).toList();
+	}
+
+	private static List<SeleccionResponse> seleccionesValorizadas(CarritoValorizado.LineaValorizada linea) {
+		return linea.selecciones().stream().map(s -> new SeleccionResponse(s.orden(), s.prendaId())).toList();
+	}
+
+	private static String nombrePrenda(Map<UUID, ConsultaDeInventario.ResumenDePrenda> resumen, UUID prendaId) {
 		ConsultaDeInventario.ResumenDePrenda r = resumen.get(prendaId);
 		return r == null ? null : r.nombre();
 	}
 
-	private static String fotoUrl(Map<UUID, ConsultaDeInventario.ResumenDePrenda> resumen, UUID prendaId) {
+	private static String fotoPrenda(Map<UUID, ConsultaDeInventario.ResumenDePrenda> resumen, UUID prendaId) {
 		ConsultaDeInventario.ResumenDePrenda r = resumen.get(prendaId);
+		return r == null ? null : r.fotoUrl();
+	}
+
+	private static String nombreDisfraz(Map<UUID, ResolucionDeDisfraces.ResumenDeDisfraz> resumen, UUID disfrazId) {
+		ResolucionDeDisfraces.ResumenDeDisfraz r = resumen.get(disfrazId);
+		return r == null ? null : r.nombre();
+	}
+
+	private static String fotoDisfraz(Map<UUID, ResolucionDeDisfraces.ResumenDeDisfraz> resumen, UUID disfrazId) {
+		ResolucionDeDisfraces.ResumenDeDisfraz r = resumen.get(disfrazId);
 		return r == null ? null : r.fotoUrl();
 	}
 }

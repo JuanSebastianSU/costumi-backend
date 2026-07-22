@@ -1,6 +1,7 @@
 package com.costumi.backend.pedidos.adaptadores.entrada;
 
 import com.costumi.backend.clientes.ResolucionDeClientes;
+import com.costumi.backend.disfraces.ResolucionDeDisfraces;
 import com.costumi.backend.inventario.ConsultaDeInventario;
 import com.costumi.backend.pedidos.aplicacion.AgregarItemAlCarrito;
 import com.costumi.backend.pedidos.aplicacion.AgregarItemAlCarritoComando;
@@ -9,6 +10,7 @@ import com.costumi.backend.pedidos.aplicacion.ConsultarCarrito;
 import com.costumi.backend.pedidos.aplicacion.HacerCheckout;
 import com.costumi.backend.pedidos.aplicacion.HacerCheckoutDeRenta;
 import com.costumi.backend.pedidos.dominio.Carrito;
+import com.costumi.backend.pedidos.dominio.SeleccionDeSlot;
 import com.costumi.backend.pedidos.dominio.TipoPedido;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -46,26 +48,34 @@ class CarritoController {
 	private final HacerCheckoutDeRenta hacerCheckoutDeRenta;
 	private final ResolucionDeClientes resolucionDeClientes;
 	private final ConsultaDeInventario inventario;
+	private final ResolucionDeDisfraces disfraces;
 
 	CarritoController(AgregarItemAlCarrito agregarItemAlCarrito, ConsultarCarrito consultarCarrito,
 			HacerCheckout hacerCheckout, HacerCheckoutDeRenta hacerCheckoutDeRenta,
-			ResolucionDeClientes resolucionDeClientes, ConsultaDeInventario inventario) {
+			ResolucionDeClientes resolucionDeClientes, ConsultaDeInventario inventario,
+			ResolucionDeDisfraces disfraces) {
 		this.agregarItemAlCarrito = agregarItemAlCarrito;
 		this.consultarCarrito = consultarCarrito;
 		this.hacerCheckout = hacerCheckout;
 		this.hacerCheckoutDeRenta = hacerCheckoutDeRenta;
 		this.resolucionDeClientes = resolucionDeClientes;
 		this.inventario = inventario;
+		this.disfraces = disfraces;
 	}
 
 	@PostMapping("/items")
 	CarritoResponse agregarItem(@Valid @RequestBody AgregarItemRequest request, @AuthenticationPrincipal Jwt jwt) {
 		Actor actor = resolver(jwt, request.empresaId(), request.clienteId());
+		validarUnoUOtro(request);
+		List<SeleccionDeSlot> selecciones = (request.selecciones() == null ? List.<AgregarItemRequest.SeleccionSlotDto>of()
+				: request.selecciones()).stream()
+				.map(s -> new SeleccionDeSlot(s.orden(), s.prendaId()))
+				.toList();
 		Carrito carrito = agregarItemAlCarrito.ejecutar(new AgregarItemAlCarritoComando(
 				actor.empresaId(), request.sucursalId(), actor.clienteId(), request.tipo(),
-				request.prendaId(), request.cantidad(), request.fechaRetiro(), request.fechaDevolucion()));
-		List<UUID> prendaIds = carrito.lineas().stream().map(l -> l.prendaId()).toList();
-		return CarritoResponse.desde(carrito, inventario.resumenDePrendas(actor.empresaId(), prendaIds));
+				request.prendaId(), request.disfrazId(), selecciones, request.cantidad(),
+				request.fechaRetiro(), request.fechaDevolucion()));
+		return responder(actor.empresaId(), carrito);
 	}
 
 	@GetMapping
@@ -74,8 +84,34 @@ class CarritoController {
 			@AuthenticationPrincipal Jwt jwt) {
 		Actor actor = resolver(jwt, empresaId, clienteId);
 		CarritoValorizado carrito = consultarCarrito.pendiente(actor.empresaId(), sucursalId, actor.clienteId(), tipo);
-		List<UUID> prendaIds = carrito.lineas().stream().map(l -> l.prendaId()).toList();
-		return CarritoResponse.desde(carrito, inventario.resumenDePrendas(actor.empresaId(), prendaIds));
+		return responder(actor.empresaId(), carrito);
+	}
+
+	/** Un ítem es una prenda O un disfraz, exactamente uno (RF-16). */
+	private static void validarUnoUOtro(AgregarItemRequest request) {
+		boolean hayPrenda = request.prendaId() != null;
+		boolean hayDisfraz = request.disfrazId() != null;
+		if (hayPrenda == hayDisfraz) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+					"Envía una prenda o un disfraz (exactamente uno)");
+		}
+	}
+
+	/** Arma la respuesta con nombre+foto de prendas y disfraces del carrito (para pintar QUÉ se agregó). */
+	private CarritoResponse responder(UUID empresaId, Carrito carrito) {
+		List<UUID> prendaIds = carrito.lineas().stream().filter(l -> l.esPrenda()).map(l -> l.prendaId()).toList();
+		List<UUID> disfrazIds = carrito.lineas().stream().filter(l -> l.esDisfraz()).map(l -> l.disfrazId()).toList();
+		return CarritoResponse.desde(carrito, inventario.resumenDePrendas(empresaId, prendaIds),
+				disfraces.resumenDeDisfraces(empresaId, disfrazIds));
+	}
+
+	private CarritoResponse responder(UUID empresaId, CarritoValorizado carrito) {
+		List<UUID> prendaIds = carrito.lineas().stream().filter(l -> l.prendaId() != null).map(l -> l.prendaId())
+				.toList();
+		List<UUID> disfrazIds = carrito.lineas().stream().filter(l -> l.disfrazId() != null).map(l -> l.disfrazId())
+				.toList();
+		return CarritoResponse.desde(carrito, inventario.resumenDePrendas(empresaId, prendaIds),
+				disfraces.resumenDeDisfraces(empresaId, disfrazIds));
 	}
 
 	@PostMapping("/checkout")
