@@ -16,8 +16,10 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.UUID;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -299,6 +301,90 @@ class CarritoIntegrationTest {
 								+ "\",\"tipo\":\"RENTA\",\"disfrazId\":\"" + disfraz + "\",\"cantidad\":" + cantidad
 								+ seleccion + periodo + "}"))
 				.andExpect(status().isOk());
+	}
+
+	@Test
+	void el_cliente_puede_quitar_un_item_del_carrito() throws Exception {
+		Ctx c = montar();
+		stock(c, 5);
+		UUID disfraz = crearDisfrazFijo(c);
+		agregar(c, "VENTA", 2);
+		mvc.perform(post("/api/v1/carritos/items").header("Authorization", "Bearer " + c.dueno())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + c.sucursal() + "\",\"clienteId\":\"" + c.cliente()
+								+ "\",\"tipo\":\"VENTA\",\"disfrazId\":\"" + disfraz + "\",\"cantidad\":1}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.lineas.length()").value(2));
+
+		// El id de la línea del disfraz es lo que se manda para quitarla.
+		String carrito = mvc.perform(get("/api/v1/carritos").header("Authorization", "Bearer " + c.dueno())
+						.param("sucursalId", c.sucursal().toString())
+						.param("clienteId", c.cliente().toString())
+						.param("tipo", "VENTA"))
+				.andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+		String lineaDelDisfraz = null;
+		for (com.fasterxml.jackson.databind.JsonNode linea : json.readTree(carrito).get("lineas")) {
+			if (!linea.get("disfrazId").isNull()) {
+				lineaDelDisfraz = linea.get("id").asText();
+			}
+		}
+		org.assertj.core.api.Assertions.assertThat(lineaDelDisfraz).isNotNull();
+
+		mvc.perform(delete("/api/v1/carritos/items/{lineaId}", lineaDelDisfraz)
+						.header("Authorization", "Bearer " + c.dueno())
+						.param("sucursalId", c.sucursal().toString())
+						.param("clienteId", c.cliente().toString())
+						.param("tipo", "VENTA"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.lineas.length()").value(1))
+				.andExpect(jsonPath("$.lineas[0].prendaId").value(c.prenda().toString()));
+
+		// Quitar algo que ya no está es un 400, no un 500.
+		mvc.perform(delete("/api/v1/carritos/items/{lineaId}", lineaDelDisfraz)
+						.header("Authorization", "Bearer " + c.dueno())
+						.param("sucursalId", c.sucursal().toString())
+						.param("clienteId", c.cliente().toString())
+						.param("tipo", "VENTA"))
+				.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	void un_item_que_ya_no_se_puede_valorizar_no_bloquea_el_carrito_y_se_puede_quitar() throws Exception {
+		Ctx c = montar();
+		stock(c, 5);
+		UUID disfraz = crearDisfrazFijo(c); // nace AMBOS: se puede comprar
+		mvc.perform(post("/api/v1/carritos/items").header("Authorization", "Bearer " + c.dueno())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + c.sucursal() + "\",\"clienteId\":\"" + c.cliente()
+								+ "\",\"tipo\":\"VENTA\",\"disfrazId\":\"" + disfraz + "\",\"cantidad\":1}"))
+				.andExpect(status().isOk());
+
+		// El dueño lo pasa a SOLO RENTA DESPUÉS de que el cliente ya lo tenía en el carrito de venta.
+		mvc.perform(put("/api/v1/disfraces/{id}", disfraz).header("Authorization", "Bearer " + c.dueno())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Disfraz Fijo\",\"tipo\":\"RENTA\",\"slots\":[{\"orden\":1,"
+								+ "\"nombre\":\"Cuerpo\",\"ejePrenda\":\"FIJA\",\"prendaFijaId\":\"" + c.prenda()
+								+ "\",\"opcional\":false}]}"))
+				.andExpect(status().isOk());
+
+		// El carrito NO se cae: la línea vuelve sin precio y con el motivo, para poder quitarla.
+		String carrito = mvc.perform(get("/api/v1/carritos").header("Authorization", "Bearer " + c.dueno())
+						.param("sucursalId", c.sucursal().toString())
+						.param("clienteId", c.cliente().toString())
+						.param("tipo", "VENTA"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.lineas[0].precioUnitario").doesNotExist())
+				.andExpect(jsonPath("$.lineas[0].motivoNoDisponible").exists())
+				.andReturn().getResponse().getContentAsString();
+
+		String lineaId = json.readTree(carrito).get("lineas").get(0).get("id").asText();
+		mvc.perform(delete("/api/v1/carritos/items/{lineaId}", lineaId)
+						.header("Authorization", "Bearer " + c.dueno())
+						.param("sucursalId", c.sucursal().toString())
+						.param("clienteId", c.cliente().toString())
+						.param("tipo", "VENTA"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.lineas.length()").value(0));
 	}
 
 	@Test

@@ -32,8 +32,13 @@ public interface ResolucionDeDisfraces {
 	/** Resuelve el disfraz a sus líneas de VENTA (precio unitario), aplicando su precio general si lo tiene. */
 	List<LineaResuelta> lineasDeVenta(UUID empresaId, UUID disfrazId, int cantidad, List<SeleccionDeSlot> selecciones);
 
-	/** Resumen mínimo de un disfraz para pintar el carrito/pedido: nombre y foto. */
-	record ResumenDeDisfraz(UUID disfrazId, String nombre, String fotoUrl) {
+	/**
+	 * Resumen mínimo de un disfraz para pintar el carrito/pedido: nombre, foto y qué operaciones admite
+	 * (el dueño decide si es de renta, de venta o de ambos). Con {@code permiteRenta}/{@code permiteVenta}
+	 * el carrito sabe ANTES de valorizar si esa línea sigue siendo válida, sin provocar un error.
+	 */
+	record ResumenDeDisfraz(UUID disfrazId, String nombre, String fotoUrl, boolean permiteRenta,
+			boolean permiteVenta) {
 	}
 
 	/**

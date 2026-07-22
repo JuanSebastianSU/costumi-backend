@@ -19,7 +19,14 @@ import java.util.UUID;
 public record CarritoValorizado(UUID id, UUID sucursalId, UUID clienteId, TipoPedido tipo, EstadoCarrito estado,
 		List<LineaValorizada> lineas, BigDecimal total) {
 
-	public record LineaValorizada(UUID prendaId, UUID disfrazId, List<SeleccionDeSlot> selecciones, int cantidad,
-			LocalDate fechaRetiro, LocalDate fechaDevolucion, BigDecimal precioUnitario, BigDecimal subtotal) {
+	/**
+	 * {@code id} identifica la línea dentro del carrito (es lo que se manda para quitarla).
+	 * {@code motivoNoDisponible} explica por qué una línea no se pudo valorizar (por ejemplo, el dueño
+	 * cambió el tipo del disfraz después de agregarlo). Una línea así se devuelve igual —con precio nulo—
+	 * para que el cliente la vea y pueda quitarla; el checkout sigue rechazándola.
+	 */
+	public record LineaValorizada(UUID id, UUID prendaId, UUID disfrazId, List<SeleccionDeSlot> selecciones,
+			int cantidad, LocalDate fechaRetiro, LocalDate fechaDevolucion, BigDecimal precioUnitario,
+			BigDecimal subtotal, String motivoNoDisponible) {
 	}
 }

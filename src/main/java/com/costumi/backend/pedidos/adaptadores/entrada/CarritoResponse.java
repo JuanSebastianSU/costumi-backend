@@ -22,9 +22,15 @@ import java.util.UUID;
 public record CarritoResponse(UUID id, UUID sucursalId, UUID clienteId, String tipo, String estado,
 		List<LineaDeCarritoResponse> lineas, BigDecimal total) {
 
-	public record LineaDeCarritoResponse(UUID prendaId, UUID disfrazId, String nombre, String fotoUrl, int cantidad,
-			LocalDate fechaRetiro, LocalDate fechaDevolucion, BigDecimal precioUnitario, BigDecimal subtotal,
-			List<SeleccionResponse> selecciones) {
+	/**
+	 * {@code id} identifica la línea dentro del carrito: es lo que se manda a {@code DELETE
+	 * /api/v1/carritos/items/{lineaId}} para quitarla. {@code motivoNoDisponible} viene con texto cuando
+	 * esa línea ya no se puede valorizar (el dueño cambió el artículo después de que el cliente lo agregó);
+	 * en ese caso {@code precioUnitario} y {@code subtotal} son nulos y la línea hay que quitarla.
+	 */
+	public record LineaDeCarritoResponse(UUID id, UUID prendaId, UUID disfrazId, String nombre, String fotoUrl,
+			int cantidad, LocalDate fechaRetiro, LocalDate fechaDevolucion, BigDecimal precioUnitario,
+			BigDecimal subtotal, String motivoNoDisponible, List<SeleccionResponse> selecciones) {
 	}
 
 	/** Elección de prenda por slot del disfraz (para reflejar QUÉ eligió el cliente). */
@@ -36,12 +42,12 @@ public record CarritoResponse(UUID id, UUID sucursalId, UUID clienteId, String t
 			Map<UUID, ResolucionDeDisfraces.ResumenDeDisfraz> disfraces) {
 		List<LineaDeCarritoResponse> lineas = carrito.lineas().stream()
 				.map(l -> l.esDisfraz()
-						? new LineaDeCarritoResponse(null, l.disfrazId(), nombreDisfraz(disfraces, l.disfrazId()),
-								fotoDisfraz(disfraces, l.disfrazId()), l.cantidad(), l.fechaRetiro(),
-								l.fechaDevolucion(), null, null, selecciones(l))
-						: new LineaDeCarritoResponse(l.prendaId(), null, nombrePrenda(prendas, l.prendaId()),
+						? new LineaDeCarritoResponse(l.id(), null, l.disfrazId(),
+								nombreDisfraz(disfraces, l.disfrazId()), fotoDisfraz(disfraces, l.disfrazId()),
+								l.cantidad(), l.fechaRetiro(), l.fechaDevolucion(), null, null, null, selecciones(l))
+						: new LineaDeCarritoResponse(l.id(), l.prendaId(), null, nombrePrenda(prendas, l.prendaId()),
 								fotoPrenda(prendas, l.prendaId()), l.cantidad(), l.fechaRetiro(),
-								l.fechaDevolucion(), null, null, List.of()))
+								l.fechaDevolucion(), null, null, null, List.of()))
 				.toList();
 		return new CarritoResponse(carrito.id(), carrito.sucursalId(), carrito.clienteId(),
 				carrito.tipo().name(), carrito.estado().name(), lineas, null);
@@ -52,12 +58,14 @@ public record CarritoResponse(UUID id, UUID sucursalId, UUID clienteId, String t
 			Map<UUID, ResolucionDeDisfraces.ResumenDeDisfraz> disfraces) {
 		List<LineaDeCarritoResponse> lineas = carrito.lineas().stream()
 				.map(l -> l.disfrazId() != null
-						? new LineaDeCarritoResponse(null, l.disfrazId(), nombreDisfraz(disfraces, l.disfrazId()),
-								fotoDisfraz(disfraces, l.disfrazId()), l.cantidad(), l.fechaRetiro(),
-								l.fechaDevolucion(), l.precioUnitario(), l.subtotal(), seleccionesValorizadas(l))
-						: new LineaDeCarritoResponse(l.prendaId(), null, nombrePrenda(prendas, l.prendaId()),
+						? new LineaDeCarritoResponse(l.id(), null, l.disfrazId(),
+								nombreDisfraz(disfraces, l.disfrazId()), fotoDisfraz(disfraces, l.disfrazId()),
+								l.cantidad(), l.fechaRetiro(), l.fechaDevolucion(), l.precioUnitario(), l.subtotal(),
+								l.motivoNoDisponible(), seleccionesValorizadas(l))
+						: new LineaDeCarritoResponse(l.id(), l.prendaId(), null, nombrePrenda(prendas, l.prendaId()),
 								fotoPrenda(prendas, l.prendaId()), l.cantidad(), l.fechaRetiro(),
-								l.fechaDevolucion(), l.precioUnitario(), l.subtotal(), List.of()))
+								l.fechaDevolucion(), l.precioUnitario(), l.subtotal(), l.motivoNoDisponible(),
+								List.of()))
 				.toList();
 		return new CarritoResponse(carrito.id(), carrito.sucursalId(), carrito.clienteId(),
 				carrito.tipo().name(), carrito.estado().name(), lineas, carrito.total());
