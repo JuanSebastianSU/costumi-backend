@@ -44,7 +44,7 @@ class CanalWhatsApp implements CanalDeNotificacion {
 		if (!configurado()) {
 			return false;
 		}
-		String telefono = contacto.buscar(notificacion.clienteId()).map(ContactoDeCliente::telefono).orElse(null);
+		String telefono = contacto.buscar(notificacion.empresaId(), notificacion.clienteId()).map(ContactoDeCliente::telefono).orElse(null);
 		if (telefono == null || telefono.isBlank()) {
 			return false;
 		}

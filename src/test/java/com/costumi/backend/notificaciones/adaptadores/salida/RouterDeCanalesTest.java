@@ -13,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /** El router está gateado: sin credenciales/contacto, cualquier canal cae al registro en log y confirma. */
 class RouterDeCanalesTest {
 
-	private final ContactoDelCliente sinContacto = id -> Optional.empty();
+	private final ContactoDelCliente sinContacto = (empresaId, clienteId) -> Optional.empty();
 
 	private RouterDeCanales routerSinCredenciales() {
 		return new RouterDeCanales(

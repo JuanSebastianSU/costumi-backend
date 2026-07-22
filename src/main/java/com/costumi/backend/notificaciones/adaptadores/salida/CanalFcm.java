@@ -69,7 +69,7 @@ class CanalFcm implements CanalDeNotificacion {
 		if (!configurado()) {
 			return false;
 		}
-		String deviceToken = contacto.buscar(notificacion.clienteId()).map(ContactoDeCliente::deviceToken).orElse(null);
+		String deviceToken = contacto.buscar(notificacion.empresaId(), notificacion.clienteId()).map(ContactoDeCliente::deviceToken).orElse(null);
 		if (deviceToken == null || deviceToken.isBlank()) {
 			return false;
 		}
@@ -95,13 +95,15 @@ class CanalFcm implements CanalDeNotificacion {
 	 * saber por que no llego: FCM contesta cosas muy concretas ("token no registrado", "argumento
 	 * invalido") que sin esto quedan solo en los logs del servidor.
 	 */
-	ResultadoDeEnvio probar(java.util.UUID clienteId) {
+	ResultadoDeEnvio probar(java.util.UUID empresaId, java.util.UUID clienteId) {
+		// El cliente se valida ANTES que la configuracion: la pertenencia al tenant no depende de si el
+		// canal esta listo, y asi la regla queda cubierta por tests aunque no haya credencial.
+		String deviceToken = contacto.buscar(empresaId, clienteId).map(ContactoDeCliente::deviceToken).orElse(null);
+		if (deviceToken == null || deviceToken.isBlank()) {
+			return new ResultadoDeEnvio(false, "Ese cliente no existe en tu tienda o no tiene un dispositivo registrado");
+		}
 		if (!configurado()) {
 			return new ResultadoDeEnvio(false, diagnostico());
-		}
-		String deviceToken = contacto.buscar(clienteId).map(ContactoDeCliente::deviceToken).orElse(null);
-		if (deviceToken == null || deviceToken.isBlank()) {
-			return new ResultadoDeEnvio(false, "El cliente no tiene un dispositivo registrado");
 		}
 		try {
 			RestClient.create().post()
