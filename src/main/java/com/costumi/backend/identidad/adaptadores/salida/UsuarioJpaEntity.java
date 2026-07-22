@@ -38,17 +38,35 @@ class UsuarioJpaEntity {
 	@Column(nullable = false)
 	private boolean activo;
 
+	/** Datos del perfil que administra el propio usuario (RF-14); opcionales. */
+	@Column(length = 120)
+	private String nombre;
+
+	@Column(length = 40)
+	private String telefono;
+
 	protected UsuarioJpaEntity() {
 		// requerido por JPA
 	}
 
-	UsuarioJpaEntity(UUID id, UUID empresaId, String email, String passwordHash, Rol rol, boolean activo) {
+	UsuarioJpaEntity(UUID id, UUID empresaId, String email, String passwordHash, Rol rol, boolean activo,
+			String nombre, String telefono) {
 		this.id = id;
 		this.empresaId = empresaId;
 		this.email = email;
 		this.passwordHash = passwordHash;
 		this.rol = rol;
 		this.activo = activo;
+		this.nombre = nombre;
+		this.telefono = telefono;
+	}
+
+	String getNombre() {
+		return nombre;
+	}
+
+	String getTelefono() {
+		return telefono;
 	}
 
 	UUID getId() {
