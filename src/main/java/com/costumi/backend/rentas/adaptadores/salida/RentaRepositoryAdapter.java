@@ -82,12 +82,10 @@ class RentaRepositoryAdapter implements RentaRepository {
 	}
 
 	@Override
-	public Pagina<Renta> listar(UUID empresaId, UUID clienteId, SolicitudDePagina solicitud) {
+	public Pagina<Renta> listar(UUID empresaId, UUID clienteId, String buscar, SolicitudDePagina solicitud) {
 		Pageable pageable = PageRequest.of(solicitud.pagina(), solicitud.tamano(),
 				Sort.by(Sort.Order.desc("fechaRetiro"), Sort.Order.asc("id")));
-		Page<RentaJpaEntity> pagina = (clienteId == null)
-				? jpa.findByEmpresaId(empresaId, pageable)
-				: jpa.findByEmpresaIdAndClienteId(empresaId, clienteId, pageable);
+		Page<RentaJpaEntity> pagina = jpa.buscarPagina(empresaId, clienteId, normalizarCodigo(buscar), pageable);
 		return new Pagina<>(aDominioEnLote(pagina.getContent()), pagina.getTotalElements(),
 				solicitud.pagina(), solicitud.tamano());
 	}
@@ -147,5 +145,18 @@ class RentaRepositoryAdapter implements RentaRepository {
 		return Renta.rehidratar(e.getId(), e.getEmpresaId(), e.getSucursalId(), e.getClienteId(), e.getEmpleadoId(),
 				lineas, e.getFechaRetiro(), e.getFechaDevolucion(), e.getDeposito(), e.getImporte(), e.getEstado(),
 				e.getClaveIdempotencia());
+	}
+
+	/**
+	 * El usuario escribe el código tal como lo ve ("V-75EC3602"); en la BD el id se guarda en minúsculas y
+	 * sin prefijo, así que se quita el prefijo y se pasa a minúsculas para buscar por prefijo del id.
+	 */
+	private static String normalizarCodigo(String buscar) {
+		if (buscar == null || buscar.isBlank()) {
+			return null;
+		}
+		String limpio = buscar.trim().toLowerCase(java.util.Locale.ROOT);
+		int guion = limpio.indexOf('-');
+		return guion >= 0 && guion <= 2 ? limpio.substring(guion + 1) : limpio;
 	}
 }

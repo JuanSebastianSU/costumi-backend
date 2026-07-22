@@ -92,13 +92,20 @@ class ReembolsoController {
 	}
 
 	/** Bandeja de solicitudes de la empresa (personal). */
+	/** Página de solicitudes, más recientes primero. {@code buscar} filtra por el motivo. */
 	@GetMapping
-	List<SolicitudDeReembolsoResponse> listar(@AuthenticationPrincipal Jwt jwt) {
+	com.costumi.backend.compartido.RespuestaPaginada<SolicitudDeReembolsoResponse> listar(
+			@org.springframework.web.bind.annotation.RequestParam(required = false) String buscar,
+			@org.springframework.web.bind.annotation.RequestParam(required = false) Integer pagina,
+			@org.springframework.web.bind.annotation.RequestParam(required = false) Integer tamano,
+			@AuthenticationPrincipal Jwt jwt) {
 		String empresaId = jwt.getClaimAsString("empresa_id");
 		if (empresaId == null) {
-			return List.of();
+			return new com.costumi.backend.compartido.RespuestaPaginada<>(List.of(), 0, 0, 0, 0);
 		}
-		return consultarReembolsos.deEmpresa(UUID.fromString(empresaId)).stream()
-				.map(SolicitudDeReembolsoResponse::desde).toList();
+		return com.costumi.backend.compartido.RespuestaPaginada.desde(
+				consultarReembolsos.deEmpresa(UUID.fromString(empresaId), buscar,
+						com.costumi.backend.compartido.SolicitudDePagina.de(pagina, tamano)),
+				SolicitudDeReembolsoResponse::desde);
 	}
 }

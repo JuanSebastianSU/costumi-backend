@@ -9,4 +9,7 @@ import java.util.UUID;
 public interface ConsultarReembolsos {
 
 	List<SolicitudDeReembolso> deEmpresa(UUID empresaId);
+
+	/** Página de solicitudes, con búsqueda opcional por motivo. */
+	com.costumi.backend.compartido.Pagina<SolicitudDeReembolso> deEmpresa(UUID empresaId, String buscar, com.costumi.backend.compartido.SolicitudDePagina pagina);
 }

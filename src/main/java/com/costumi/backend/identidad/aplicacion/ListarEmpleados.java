@@ -17,4 +17,13 @@ public interface ListarEmpleados {
 	 * suyo en la pirámide (RF-1.3/B3). Así un Encargado ve a los operativos, no al Dueño ni a otros encargados.
 	 */
 	List<EmpleadoDelTenant> delTenant(UUID empresaId, Rol actorRol);
+
+	/**
+	 * Página del personal visible para el actor, filtrando opcionalmente por correo.
+	 *
+	 * <p>El filtrado y la paginación son en memoria a propósito: la pirámide de roles (B3) decide QUIÉN es
+	 * visible y debe aplicarse antes de cortar la página; paginar en la BD devolvería páginas incompletas.
+	 * El personal de una empresa es acotado (decenas), así que traerlo entero no es un problema.
+	 */
+	com.costumi.backend.compartido.Pagina<EmpleadoDelTenant> delTenant(UUID empresaId, Rol actorRol, String buscar, com.costumi.backend.compartido.SolicitudDePagina pagina);
 }

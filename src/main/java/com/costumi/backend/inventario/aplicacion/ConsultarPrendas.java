@@ -13,5 +13,6 @@ public interface ConsultarPrendas {
 	List<Prenda> deEmpresa(UUID empresaId);
 
 	/** Página de prendas de la empresa, en orden estable por nombre (C3). */
-	Pagina<Prenda> listar(UUID empresaId, SolicitudDePagina solicitud);
+	/** Página de prendas; {@code buscar} (opcional) filtra por nombre. */
+	Pagina<Prenda> listar(UUID empresaId, String buscar, SolicitudDePagina solicitud);
 }

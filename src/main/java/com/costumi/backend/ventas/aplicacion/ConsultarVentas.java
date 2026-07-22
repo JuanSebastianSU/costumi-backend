@@ -14,7 +14,8 @@ public interface ConsultarVentas {
 	List<Venta> deEmpresa(UUID empresaId);
 
 	/** Página de ventas de la empresa, más recientes primero (C3). */
-	Pagina<Venta> listar(UUID empresaId, SolicitudDePagina solicitud);
+	/** Página de ventas; {@code buscar} (opcional) filtra por código de retiro. */
+	Pagina<Venta> listar(UUID empresaId, String buscar, SolicitudDePagina solicitud);
 
 	/** Una venta del tenant por id (para su detalle con líneas y foto). */
 	Optional<Venta> buscarPorId(UUID empresaId, UUID ventaId);

@@ -80,8 +80,8 @@ class PrendaService implements CrearPrenda, EditarPrenda, CambiarEstadoPrenda, C
 
 	@Override
 	@Transactional(readOnly = true)
-	public Pagina<Prenda> listar(UUID empresaId, SolicitudDePagina solicitud) {
-		return prendas.listar(empresaId, solicitud);
+	public Pagina<Prenda> listar(UUID empresaId, String buscar, SolicitudDePagina solicitud) {
+		return prendas.listar(empresaId, buscar, solicitud);
 	}
 
 	/**

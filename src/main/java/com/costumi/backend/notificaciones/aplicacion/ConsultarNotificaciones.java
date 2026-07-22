@@ -9,4 +9,7 @@ import java.util.UUID;
 public interface ConsultarNotificaciones {
 
 	List<Notificacion> deEmpresa(UUID empresaId);
+
+	/** Página de notificaciones, con búsqueda opcional en el mensaje. */
+	com.costumi.backend.compartido.Pagina<Notificacion> deEmpresa(UUID empresaId, String buscar, com.costumi.backend.compartido.SolicitudDePagina pagina);
 }

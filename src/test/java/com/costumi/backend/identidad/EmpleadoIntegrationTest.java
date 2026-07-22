@@ -164,12 +164,12 @@ class EmpleadoIntegrationTest {
 		// G1: el dueño ve a quienes puede gestionar (los 2 creados), no a sí mismo; con rol y estado.
 		mvc.perform(get("/api/v1/empleados").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.length()").value(2))
-				.andExpect(jsonPath("$[?(@.rol == 'MOSTRADOR')]").exists())
-				.andExpect(jsonPath("$[?(@.rol == 'BODEGA')]").exists())
-				.andExpect(jsonPath("$[?(@.rol == 'DUENO')]").doesNotExist())
-				.andExpect(jsonPath("$[0].activo").value(true))
-				.andExpect(jsonPath("$[0].email").exists());
+				.andExpect(jsonPath("$.contenido.length()").value(2))
+				.andExpect(jsonPath("$.contenido[?(@.rol == 'MOSTRADOR')]").exists())
+				.andExpect(jsonPath("$.contenido[?(@.rol == 'BODEGA')]").exists())
+				.andExpect(jsonPath("$.contenido[?(@.rol == 'DUENO')]").doesNotExist())
+				.andExpect(jsonPath("$.contenido[0].activo").value(true))
+				.andExpect(jsonPath("$.contenido[0].email").exists());
 	}
 
 	@Test
@@ -181,9 +181,9 @@ class EmpleadoIntegrationTest {
 
 		mvc.perform(get("/api/v1/empleados").header("Authorization", "Bearer " + encargado))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.rol == 'MOSTRADOR')]").exists())
-				.andExpect(jsonPath("$[?(@.rol == 'DUENO')]").doesNotExist())
-				.andExpect(jsonPath("$[?(@.rol == 'ENCARGADO')]").doesNotExist());
+				.andExpect(jsonPath("$.contenido[?(@.rol == 'MOSTRADOR')]").exists())
+				.andExpect(jsonPath("$.contenido[?(@.rol == 'DUENO')]").doesNotExist())
+				.andExpect(jsonPath("$.contenido[?(@.rol == 'ENCARGADO')]").doesNotExist());
 	}
 
 	@Test

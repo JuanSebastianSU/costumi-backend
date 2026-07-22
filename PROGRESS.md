@@ -30,6 +30,28 @@ Al confirmar una venta o renta el disfraz se resolvía a sus prendas y **se perd
 - Tests: el disfraz sobrevive al cobro y se rankea; y una prenda suelta NO queda marcada como disfraz.
   **Suite 504/504.**
 
+## BACK-2 — búsqueda y paginación en las listas que no escalaban (2026-07-22)
+
+De 14 listas de la app solo Clientes tenía buscador, y **seis endpoints devolvían TODO** sin paginar.
+
+- **Ahora paginan y buscan:** auditoría (por acción/detalle), notificaciones (por mensaje), reembolsos
+  (por motivo), devoluciones (por la descripción escrita en una pieza revisada, el único texto libre que
+  tiene una devolución) y disfraces (por nombre, y sigue filtrando por categoría).
+  - En disfraces se pagina **en la BD**, así que el cálculo de precios sugeridos solo se hace para la
+    página que se ve (antes se calculaba para el catálogo entero).
+- **Ganan `buscar` las que ya paginaban:** prendas (por nombre), ventas y rentas (**por código de
+  retiro**, que es lo que el cliente muestra en la tienda; el código son los 8 primeros caracteres del id,
+  así que se busca por prefijo y se acepta escrito como se ve, `V-75EC3602`).
+- **Empleados**: gana `buscar` por correo, pero el filtrado y la paginación son **en memoria a
+  propósito**: la pirámide de roles decide quién es visible y debe aplicarse ANTES de cortar la página;
+  paginar en la BD devolvería páginas incompletas. El personal de una empresa es acotado.
+- Gotcha de Postgres: un parámetro opcional nulo llega como `bytea` y `lower(?)` revienta. Se tipa con
+  `cast(:buscar as string)` en todas las consultas.
+- **Cambio de contrato:** esos seis endpoints pasan de devolver un arreglo a `{contenido, total, pagina,
+  tamano, totalPaginas}`. Hay que regenerar el `:api-client` y adaptar el front.
+- Test nuevo `BusquedaYPaginacionIntegrationTest` (5 casos) + 12 tests existentes actualizados a la forma
+  paginada. **Suite 509/509.**
+
 ## PENDIENTE — auditoria de la app del 2026-07-22 (6 hallazgos)
 
 Barrido cruzando el codigo de la app contra el contrato: **158 de 160 operaciones del backend ya tienen
@@ -38,7 +60,7 @@ pantalla**. Lo que falta, y que parte le toca a cada lado:
 | # | Hallazgo | Backend | Front |
 |---|----------|---------|-------|
 | 1 | ✅ **HECHO (BACK-1).** ~~El disfraz se disuelve en prendas al cobrar.~~ La venta/renta guarda solo prendas: el cliente ve "Capa Real" cuando compro "Traje_Pirata_Opciones", y el dueno no puede saber que DISFRAZ se vende mas. | **BACK-1** | FRONT-1 |
-| 2 | **Las listas no escalan.** Sin paginacion NI busqueda: disfraces, devoluciones, reembolsos, empleados, notificaciones, auditoria. Con paginacion pero sin busqueda: prendas, rentas, ventas. De 14 listas de la app solo Clientes tiene buscador. | **BACK-2** | FRONT-2 |
+| 2 | ✅ **HECHO (BACK-2).** ~~Las listas no escalan.~~ Sin paginacion NI busqueda: disfraces, devoluciones, reembolsos, empleados, notificaciones, auditoria. Con paginacion pero sin busqueda: prendas, rentas, ventas. De 14 listas de la app solo Clientes tiene buscador. | **BACK-2** | FRONT-2 |
 | 3 | **Buscar tiendas.** `GET /marketplace/empresas?buscar=` ya existe; la app manda `null` y no tiene caja. | — (hecho) | FRONT-3 |
 | 4 | **Push no llegan.** `PUT /clientes/{id}/device-token` existe y nunca se llama. | — (hecho) | FRONT-4 |
 | 5 | **Perfil del cliente vacio.** No puede editar sus datos ni cambiar contrasena: no hay endpoint para que el propio usuario lo haga. | **BACK-3** | FRONT-5 |

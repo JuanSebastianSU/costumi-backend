@@ -13,6 +13,9 @@ public interface ConsultarDisfraces {
 	/** Todos los disfraces de la empresa (incluidos los archivados): vista de gestión. */
 	List<Disfraz> deEmpresa(UUID empresaId);
 
+	/** Página de disfraces por nombre, filtrando opcionalmente por texto y por categoría. */
+	com.costumi.backend.compartido.Pagina<Disfraz> deEmpresa(UUID empresaId, String buscar, UUID categoriaId, com.costumi.backend.compartido.SolicitudDePagina pagina);
+
 	/** Solo los disfraces activos: vista pública (vitrina del marketplace). */
 	List<Disfraz> activosDeEmpresa(UUID empresaId);
 

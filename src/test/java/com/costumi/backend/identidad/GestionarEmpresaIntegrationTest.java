@@ -89,7 +89,7 @@ class GestionarEmpresaIntegrationTest {
 		// RF-15.5: la suspensión del SuperAdmin queda auditada (antes solo se auditaba la aprobación).
 		mvc.perform(get("/api/v1/auditoria").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.accion == 'EMPRESA_SUSPENDIDA')]").exists());
+				.andExpect(jsonPath("$.contenido[?(@.accion == 'EMPRESA_SUSPENDIDA')]").exists());
 	}
 
 	@Test

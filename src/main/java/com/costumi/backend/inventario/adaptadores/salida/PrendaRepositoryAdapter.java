@@ -46,10 +46,10 @@ class PrendaRepositoryAdapter implements PrendaRepository {
 	}
 
 	@Override
-	public Pagina<Prenda> listar(UUID empresaId, SolicitudDePagina solicitud) {
+	public Pagina<Prenda> listar(UUID empresaId, String buscar, SolicitudDePagina solicitud) {
 		Pageable pageable = PageRequest.of(solicitud.pagina(), solicitud.tamano(),
 				Sort.by(Sort.Order.asc("nombre"), Sort.Order.asc("id")));
-		Page<PrendaJpaEntity> pagina = jpa.findByEmpresaId(empresaId, pageable);
+		Page<PrendaJpaEntity> pagina = jpa.buscarPagina(empresaId, normalizar(buscar), pageable);
 		return new Pagina<>(pagina.getContent().stream().map(PrendaRepositoryAdapter::aDominio).toList(),
 				pagina.getTotalElements(), solicitud.pagina(), solicitud.tamano());
 	}
@@ -70,5 +70,10 @@ class PrendaRepositoryAdapter implements PrendaRepository {
 				e.getPrecioRenta(), e.getPrecioVenta(), e.getCostoAdquisicion(), e.getDepositoSugerido(),
 				e.getValorReposicion(), e.getValorDano(), EtiquetasDePrenda.de(valores), e.isArchivada(),
 				e.getFotoUrl());
+	}
+
+	/** Un texto en blanco es lo mismo que no filtrar. */
+	private static String normalizar(String buscar) {
+		return buscar == null || buscar.isBlank() ? null : buscar.trim();
 	}
 }

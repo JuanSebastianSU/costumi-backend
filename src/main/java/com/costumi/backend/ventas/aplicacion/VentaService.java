@@ -108,9 +108,9 @@ class VentaService implements RegistrarVenta, ConsultarVentas, RegistroDeVentas,
 
 	@Override
 	@Transactional(readOnly = true)
-	public com.costumi.backend.compartido.Pagina<Venta> listar(UUID empresaId,
+	public com.costumi.backend.compartido.Pagina<Venta> listar(UUID empresaId, String buscar,
 			com.costumi.backend.compartido.SolicitudDePagina solicitud) {
-		return ventas.listar(empresaId, solicitud);
+		return ventas.listar(empresaId, buscar, solicitud);
 	}
 
 	@Override

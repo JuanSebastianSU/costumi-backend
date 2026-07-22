@@ -122,6 +122,7 @@ class RentaController {
 
 	@GetMapping
 	RespuestaPaginada<RentaResponse> listar(@RequestParam(required = false) UUID clienteId,
+			@RequestParam(required = false) String buscar,
 			@RequestParam(required = false) Integer pagina, @RequestParam(required = false) Integer tamano,
 			@AuthenticationPrincipal Jwt jwt) {
 		String empresaId = jwt.getClaimAsString("empresa_id");
@@ -130,7 +131,7 @@ class RentaController {
 		}
 		UUID empresa = UUID.fromString(empresaId);
 		return RespuestaPaginada.desde(
-				consultarRentas.listar(empresa, clienteId, SolicitudDePagina.de(pagina, tamano)),
+				consultarRentas.listar(empresa, clienteId, buscar, SolicitudDePagina.de(pagina, tamano)),
 				r -> resp(empresa, r));
 	}
 

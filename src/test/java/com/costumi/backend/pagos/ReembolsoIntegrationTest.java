@@ -86,7 +86,7 @@ class ReembolsoIntegrationTest {
 
 		mvc.perform(get("/api/v1/reembolsos").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.id == '" + solicitud + "')]").exists());
+				.andExpect(jsonPath("$.contenido[?(@.id == '" + solicitud + "')]").exists());
 
 		mvc.perform(post("/api/v1/reembolsos/{id}/rechazar", solicitud).header("Authorization", "Bearer " + dueno)
 						.contentType(MediaType.APPLICATION_JSON).content("{\"motivo\":\"fuera del plazo de cambios\"}"))

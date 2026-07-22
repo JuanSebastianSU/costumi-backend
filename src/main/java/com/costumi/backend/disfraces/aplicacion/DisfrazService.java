@@ -161,6 +161,12 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 
 	@Override
 	@Transactional(readOnly = true)
+	public com.costumi.backend.compartido.Pagina<Disfraz> deEmpresa(UUID empresaId, String buscar, UUID categoriaId, com.costumi.backend.compartido.SolicitudDePagina pagina) {
+		return disfraces.listarPorEmpresa(empresaId, buscar, categoriaId, pagina);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
 	public List<Disfraz> activosDeEmpresa(UUID empresaId) {
 		return disfraces.listarPorEmpresa(empresaId).stream().filter(Disfraz::activo).toList();
 	}

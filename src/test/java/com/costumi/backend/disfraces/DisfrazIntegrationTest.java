@@ -525,7 +525,7 @@ class DisfrazIntegrationTest {
 		// Tambien en la lista del dueño y en el detalle publico.
 		mvc.perform(get("/api/v1/disfraces").header("Authorization", "Bearer " + c.dueno()))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[0].categoria").value(nombreCategoria));
+				.andExpect(jsonPath("$.contenido[0].categoria").value(nombreCategoria));
 		mvc.perform(get("/api/v1/marketplace/empresas/{e}/disfraces/{d}", c.empresa(), disfraz))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.disfraz.categoria").value(nombreCategoria));
@@ -821,11 +821,11 @@ class DisfrazIntegrationTest {
 		mvc.perform(get("/api/v1/disfraces").param("categoriaId", piratas.toString())
 						.header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.length()").value(1));
+				.andExpect(jsonPath("$.contenido.length()").value(1));
 		mvc.perform(get("/api/v1/disfraces").param("categoriaId", brujas.toString())
 						.header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.length()").value(0));
+				.andExpect(jsonPath("$.contenido.length()").value(0));
 	}
 
 	@Test

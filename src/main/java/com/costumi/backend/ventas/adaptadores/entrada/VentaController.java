@@ -99,7 +99,8 @@ class VentaController {
 	}
 
 	@GetMapping
-	RespuestaPaginada<VentaResponse> listar(@RequestParam(required = false) Integer pagina,
+	RespuestaPaginada<VentaResponse> listar(@RequestParam(required = false) String buscar,
+			@RequestParam(required = false) Integer pagina,
 			@RequestParam(required = false) Integer tamano, @AuthenticationPrincipal Jwt jwt) {
 		String empresaId = jwt.getClaimAsString("empresa_id");
 		if (empresaId == null) {
@@ -107,7 +108,7 @@ class VentaController {
 		}
 		UUID empresa = UUID.fromString(empresaId);
 		return RespuestaPaginada.desde(
-				consultarVentas.listar(empresa, SolicitudDePagina.de(pagina, tamano)),
+				consultarVentas.listar(empresa, buscar, SolicitudDePagina.de(pagina, tamano)),
 				v -> resp(empresa, v));
 	}
 }
