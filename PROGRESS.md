@@ -105,6 +105,20 @@ Al ir a hacer FRONT-4 aparecieron dos bloqueos que hacian imposible que una noti
 
 Tests: `DeviceTokenPropioIntegrationTest` (2 casos). **Suite 515/515.**
 
+## Estado del front tras la auditoria (2026-07-22)
+
+Cerrados y verificados contra el entorno desplegado: **FRONT-1** (el disfraz se ve en Mis pedidos y hay
+rankings por disfraz en Reportes), **FRONT-2** (buscador en las 10 listas que no lo tenian), **FRONT-3**
+(buscar tiendas en Explorar), **FRONT-5** (perfil editable y cambio de contrasena) y **FRONT-6** (los
+nombres de las sucursales asignadas, no un conteo).
+
+**FRONT-4 (push) queda abierto.** La app ya obtiene el token de Firebase y lo registra, y el backend tiene
+el canal FCM en la API v1 con la credencial cargada, pero **la notificacion no llega al dispositivo** y
+falta desplegar el endpoint de diagnostico (PR #148) para ver el motivo exacto que devuelve FCM.
+
+Hueco conocido del lado de la app: el token **solo se registra al iniciar sesion**. Si el usuario ya tiene
+sesion abierta no se reintenta, asi que un registro fallido no se recupera nunca.
+
 ## PENDIENTE — auditoria de la app del 2026-07-22 (6 hallazgos)
 
 Barrido cruzando el codigo de la app contra el contrato: **158 de 160 operaciones del backend ya tienen
