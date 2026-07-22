@@ -138,6 +138,8 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.GET, "/api/v1/auditoria").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.PUT, "/api/v1/configuracion").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.POST, "/api/v1/configuracion/import").hasAnyRole("DUENO", "ENCARGADO")
+						// Diagnostico de canales: solo dice si estan configurados, nunca la credencial.
+						.requestMatchers(HttpMethod.GET, "/api/v1/notificaciones/estado-canales").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.GET, "/api/v1/notificaciones/plantillas").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.PUT, "/api/v1/notificaciones/plantillas/*").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.POST, "/api/v1/notificaciones/recordar-vencidas",

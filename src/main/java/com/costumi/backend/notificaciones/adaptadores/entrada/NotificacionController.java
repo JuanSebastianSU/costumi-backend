@@ -32,9 +32,12 @@ class NotificacionController {
 	private final RecordarVencidas recordarVencidas;
 	private final RecordarProximas recordarProximas;
 	private final AvisarStockBajo avisarStockBajo;
+	private final com.costumi.backend.notificaciones.aplicacion.ConsultarEstadoDeCanales estadoDeCanales;
 
 	NotificacionController(EnviarNotificacion enviarNotificacion, ConsultarNotificaciones consultarNotificaciones,
-			RecordarVencidas recordarVencidas, RecordarProximas recordarProximas, AvisarStockBajo avisarStockBajo) {
+			RecordarVencidas recordarVencidas, RecordarProximas recordarProximas, AvisarStockBajo avisarStockBajo,
+			com.costumi.backend.notificaciones.aplicacion.ConsultarEstadoDeCanales estadoDeCanales) {
+		this.estadoDeCanales = estadoDeCanales;
 		this.enviarNotificacion = enviarNotificacion;
 		this.consultarNotificaciones = consultarNotificaciones;
 		this.recordarVencidas = recordarVencidas;
@@ -93,5 +96,14 @@ class NotificacionController {
 				consultarNotificaciones.deEmpresa(UUID.fromString(empresaId), buscar,
 						com.costumi.backend.compartido.SolicitudDePagina.de(pagina, tamano)),
 				NotificacionResponse::desde);
+	}
+
+	/**
+	 * Estado de los canales externos. Responde "por que no llego la push" sin mirar logs ni exponer
+	 * credenciales: si un canal no esta configurado, el aviso cae al log y queda como ENVIADA igual.
+	 */
+	@GetMapping("/estado-canales")
+	com.costumi.backend.notificaciones.aplicacion.EstadoDeCanales estadoDeCanales() {
+		return estadoDeCanales.estado();
 	}
 }
