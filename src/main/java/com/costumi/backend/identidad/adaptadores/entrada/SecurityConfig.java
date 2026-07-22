@@ -110,6 +110,8 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.POST, "/api/v1/clientes/*/archivar",
 								"/api/v1/clientes/*/activar").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.POST, "/api/v1/clientes").hasAnyRole("DUENO", "ENCARGADO", "MOSTRADOR", "ATENCION")
+						// El propio usuario registra SU dispositivo: cualquier rol autenticado, incluido CLIENTE.
+						.requestMatchers(HttpMethod.PUT, "/api/v1/clientes/me/device-token").authenticated()
 						.requestMatchers(HttpMethod.PUT, "/api/v1/clientes/*/device-token").hasAnyRole("DUENO", "ENCARGADO", "MOSTRADOR", "ATENCION")
 						.requestMatchers(HttpMethod.PUT, "/api/v1/clientes/*").hasAnyRole("DUENO", "ENCARGADO", "MOSTRADOR", "ATENCION")
 						.requestMatchers(HttpMethod.POST, "/api/v1/carritos/items", "/api/v1/carritos/checkout",

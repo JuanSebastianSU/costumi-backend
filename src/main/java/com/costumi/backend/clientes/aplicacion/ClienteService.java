@@ -108,6 +108,17 @@ class ClienteService implements CrearCliente, ConsultarClientes, CambiarListaNeg
 	}
 
 	@Override
+	@Transactional
+	public int deUsuario(UUID usuarioId, String deviceToken) {
+		java.util.List<Cliente> fichas = clientes.buscarPorUsuario(usuarioId);
+		for (Cliente ficha : fichas) {
+			ficha.registrarDeviceToken(deviceToken);
+			clientes.guardar(ficha);
+		}
+		return fichas.size();
+	}
+
+	@Override
 	@Transactional(readOnly = true)
 	public List<HistorialItem> historialDeCliente(UUID empresaId, UUID clienteId) {
 		return historial.deCliente(empresaId, clienteId);
