@@ -63,6 +63,14 @@ class DisfrazIntegrationTest {
 		return UUID.fromString(json.readTree(body).get("id").asText());
 	}
 
+	/** Categoría de DISFRAZ (taxonomía propia, separada de las de prenda). */
+	private UUID crearCategoriaDisfraz(String token, String nombre) throws Exception {
+		String body = mvc.perform(post("/api/v1/disfraces/categorias").header("Authorization", "Bearer " + token)
+						.contentType(MediaType.APPLICATION_JSON).content("{\"nombre\":\"" + nombre + "\"}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		return UUID.fromString(json.readTree(body).get("id").asText());
+	}
+
 	private UUID crearPrenda(String token, UUID categoriaId) throws Exception {
 		String body = mvc.perform(post("/api/v1/prendas").header("Authorization", "Bearer " + token)
 						.contentType(MediaType.APPLICATION_JSON)
@@ -704,9 +712,10 @@ class DisfrazIntegrationTest {
 	void disfraz_con_categoria_se_lista_por_categoria() throws Exception {
 		UUID empresa = crearEmpresa("Disfraz Categoria " + UUID.randomUUID());
 		String dueno = duenoDe(empresa);
-		UUID piratas = crearCategoria(dueno, "Piratas " + UUID.randomUUID());
-		UUID brujas = crearCategoria(dueno, "Brujas " + UUID.randomUUID());
-		UUID prenda = crearPrenda(dueno, piratas);
+		UUID piratas = crearCategoriaDisfraz(dueno, "Piratas " + UUID.randomUUID());
+		UUID brujas = crearCategoriaDisfraz(dueno, "Brujas " + UUID.randomUUID());
+		UUID catPrenda = crearCategoria(dueno, "Camisa " + UUID.randomUUID());
+		UUID prenda = crearPrenda(dueno, catPrenda);
 
 		mvc.perform(post("/api/v1/disfraces").header("Authorization", "Bearer " + dueno)
 						.contentType(MediaType.APPLICATION_JSON)
@@ -730,10 +739,10 @@ class DisfrazIntegrationTest {
 	@Test
 	void crear_disfraz_con_categoria_de_otra_empresa_devuelve_400() throws Exception {
 		String duenoA = duenoDe(crearEmpresa("Disfraz Cat Cross A"));
-		UUID categoriaA = crearCategoria(duenoA, "Piratas A");
+		UUID categoriaA = crearCategoriaDisfraz(duenoA, "Piratas A");
 
 		String duenoB = duenoDe(crearEmpresa("Disfraz Cat Cross B"));
-		UUID categoriaB = crearCategoria(duenoB, "Piratas B");
+		UUID categoriaB = crearCategoria(duenoB, "Camisa B " + UUID.randomUUID());
 		UUID prendaB = crearPrenda(duenoB, categoriaB);
 		// B arma un disfraz cuya categoría apunta a una categoría de A (cross-ref por tenant, §5.4).
 		mvc.perform(post("/api/v1/disfraces").header("Authorization", "Bearer " + duenoB)
