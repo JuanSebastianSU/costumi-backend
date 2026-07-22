@@ -431,6 +431,53 @@ class CarritoIntegrationTest {
 	}
 
 	@Test
+	void el_disfraz_no_se_pierde_al_cobrar_y_el_dueno_puede_rankearlo() throws Exception {
+		// Antes, al confirmar la compra el disfraz se resolvia a sus prendas y desaparecia: el cliente
+		// veia las PIEZAS en su pedido y el dueño no podia saber que DISFRAZ se vende mas.
+		Ctx c = montar();
+		stock(c, 5);
+		UUID disfraz = crearDisfrazFijo(c);
+		mvc.perform(post("/api/v1/carritos/items").header("Authorization", "Bearer " + c.dueno())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + c.sucursal() + "\",\"clienteId\":\"" + c.cliente()
+								+ "\",\"tipo\":\"VENTA\",\"disfrazId\":\"" + disfraz + "\",\"cantidad\":2}"))
+				.andExpect(status().isOk());
+		mvc.perform(post("/api/v1/carritos/checkout").header("Authorization", "Bearer " + c.dueno())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + c.sucursal() + "\",\"clienteId\":\"" + c.cliente() + "\"}"))
+				.andExpect(status().isOk());
+
+		// La venta recuerda de que disfraz salio cada linea, con su nombre.
+		mvc.perform(get("/api/v1/ventas").header("Authorization", "Bearer " + c.dueno()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.contenido[0].lineas[0].disfrazId").value(disfraz.toString()))
+				.andExpect(jsonPath("$.contenido[0].lineas[0].disfrazNombre").value("Disfraz Fijo"))
+				.andExpect(jsonPath("$.contenido[0].lineas[0].disfrazGrupo").exists())
+				.andExpect(jsonPath("$.contenido[0].lineas[0].disfrazCantidad").value(2));
+
+		// Y el dueño puede ver que DISFRAZ se vende mas: cuenta disfraces (2), no piezas.
+		mvc.perform(get("/api/v1/reportes/disfraces-mas-vendidos").header("Authorization", "Bearer " + c.dueno()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[0].disfrazId").value(disfraz.toString()))
+				.andExpect(jsonPath("$[0].nombre").value("Disfraz Fijo"))
+				.andExpect(jsonPath("$[0].unidades").value(2));
+	}
+
+	@Test
+	void una_prenda_suelta_no_queda_marcada_como_disfraz() throws Exception {
+		Ctx c = montar();
+		stock(c, 5);
+		agregar(c, "VENTA", 1);
+		mvc.perform(post("/api/v1/carritos/checkout").header("Authorization", "Bearer " + c.dueno())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + c.sucursal() + "\",\"clienteId\":\"" + c.cliente() + "\"}"))
+				.andExpect(status().isOk());
+		mvc.perform(get("/api/v1/ventas").header("Authorization", "Bearer " + c.dueno()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.contenido[0].lineas[0].disfrazId").doesNotExist());
+	}
+
+	@Test
 	void el_carrito_muestra_precio_por_linea_y_total() throws Exception {
 		Ctx c = montar(); // prenda: precioRenta 30.00 (por día), precioVenta 90.00
 

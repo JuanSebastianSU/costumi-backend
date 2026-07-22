@@ -15,8 +15,11 @@ public class LineaDeVenta {
 	private final int cantidad;
 	private final BigDecimal precioUnitario;
 	private int cantidadDevuelta;
+	/** De qué disfraz salió esta línea, o null si es una prenda suelta. */
+	private final OrigenDisfraz origenDisfraz;
 
-	private LineaDeVenta(UUID prendaId, int cantidad, BigDecimal precioUnitario, int cantidadDevuelta) {
+	private LineaDeVenta(UUID prendaId, int cantidad, BigDecimal precioUnitario, int cantidadDevuelta,
+			OrigenDisfraz origenDisfraz) {
 		this.prendaId = Objects.requireNonNull(prendaId, "prendaId");
 		if (cantidad <= 0) {
 			throw new IllegalArgumentException("La cantidad debe ser mayor a 0");
@@ -30,15 +33,31 @@ public class LineaDeVenta {
 		this.cantidad = cantidad;
 		this.precioUnitario = precioUnitario;
 		this.cantidadDevuelta = cantidadDevuelta;
+		this.origenDisfraz = origenDisfraz;
 	}
 
 	public static LineaDeVenta de(UUID prendaId, int cantidad, BigDecimal precioUnitario) {
-		return new LineaDeVenta(prendaId, cantidad, precioUnitario, 0);
+		return de(prendaId, cantidad, precioUnitario, null);
+	}
+
+	/** Línea que salió de armar un disfraz: recuerda cuál, para no perderlo al cobrar. */
+	public static LineaDeVenta de(UUID prendaId, int cantidad, BigDecimal precioUnitario,
+			OrigenDisfraz origenDisfraz) {
+		return new LineaDeVenta(prendaId, cantidad, precioUnitario, 0, origenDisfraz);
 	}
 
 	public static LineaDeVenta rehidratar(UUID prendaId, int cantidad, BigDecimal precioUnitario,
 			int cantidadDevuelta) {
-		return new LineaDeVenta(prendaId, cantidad, precioUnitario, cantidadDevuelta);
+		return new LineaDeVenta(prendaId, cantidad, precioUnitario, cantidadDevuelta, null);
+	}
+
+	public static LineaDeVenta rehidratar(UUID prendaId, int cantidad, BigDecimal precioUnitario,
+			int cantidadDevuelta, OrigenDisfraz origenDisfraz) {
+		return new LineaDeVenta(prendaId, cantidad, precioUnitario, cantidadDevuelta, origenDisfraz);
+	}
+
+	public OrigenDisfraz origenDisfraz() {
+		return origenDisfraz;
 	}
 
 	/** Devuelve {@code cantidad} unidades de esta línea; no puede exceder lo pendiente. */

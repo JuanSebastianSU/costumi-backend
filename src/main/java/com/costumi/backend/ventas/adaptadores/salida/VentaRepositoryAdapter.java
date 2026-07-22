@@ -37,8 +37,11 @@ class VentaRepositoryAdapter implements VentaRepository {
 		// Reescribe las líneas (idempotente): al devolver por partes la venta se guarda varias veces.
 		lineas.deleteByVentaId(venta.id());
 		for (LineaDeVenta linea : venta.lineas()) {
+			com.costumi.backend.ventas.dominio.OrigenDisfraz origen = linea.origenDisfraz();
 			lineas.save(new LineaDeVentaJpaEntity(UUID.randomUUID(), venta.id(), venta.empresaId(),
-					linea.prendaId(), linea.cantidad(), linea.precioUnitario(), linea.cantidadDevuelta()));
+					linea.prendaId(), linea.cantidad(), linea.precioUnitario(), linea.cantidadDevuelta(),
+					origen == null ? null : origen.disfrazId(), origen == null ? null : origen.grupo(),
+					origen == null ? null : origen.cantidad(), origen == null ? null : origen.nombre()));
 		}
 		return venta;
 	}
@@ -70,8 +73,7 @@ class VentaRepositoryAdapter implements VentaRepository {
 		List<UUID> ids = cabecerasPagina.stream().map(VentaJpaEntity::getId).toList();
 		Map<UUID, List<LineaDeVenta>> lineasPorVenta = lineas.findByVentaIdIn(ids).stream()
 				.collect(Collectors.groupingBy(LineaDeVentaJpaEntity::getVentaId, Collectors.mapping(
-						l -> LineaDeVenta.rehidratar(l.getPrendaId(), l.getCantidad(), l.getPrecioUnitario(),
-								l.getCantidadDevuelta()), Collectors.toList())));
+						VentaRepositoryAdapter::aLineaDeDominio, Collectors.toList())));
 		return cabecerasPagina.stream()
 				.map(c -> aDominioConLineas(c, lineasPorVenta.getOrDefault(c.getId(), List.of())))
 				.toList();
@@ -82,10 +84,15 @@ class VentaRepositoryAdapter implements VentaRepository {
 		return cabeceras.findByEmpresaIdAndClaveIdempotencia(empresaId, claveIdempotencia).map(this::aDominio);
 	}
 
+	private static LineaDeVenta aLineaDeDominio(LineaDeVentaJpaEntity l) {
+		return LineaDeVenta.rehidratar(l.getPrendaId(), l.getCantidad(), l.getPrecioUnitario(),
+				l.getCantidadDevuelta(), com.costumi.backend.ventas.dominio.OrigenDisfraz.rehidratar(
+						l.getDisfrazId(), l.getDisfrazGrupo(), l.getDisfrazCantidad(), l.getDisfrazNombre()));
+	}
+
 	private Venta aDominio(VentaJpaEntity cabecera) {
 		List<LineaDeVenta> lineasDominio = lineas.findByVentaId(cabecera.getId()).stream()
-				.map(l -> LineaDeVenta.rehidratar(l.getPrendaId(), l.getCantidad(), l.getPrecioUnitario(),
-						l.getCantidadDevuelta()))
+				.map(VentaRepositoryAdapter::aLineaDeDominio)
 				.toList();
 		return aDominioConLineas(cabecera, lineasDominio);
 	}

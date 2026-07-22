@@ -10,8 +10,19 @@ import java.util.UUID;
  */
 public interface RegistroDeVentas {
 
-	/** Una línea de la venta ya resuelta: prenda, cantidad y precio unitario. */
-	record ItemDeVenta(UUID prendaId, int cantidad, BigDecimal precioUnitario) {
+	/**
+	 * Una línea de la venta ya resuelta: prenda, cantidad y precio unitario. Si la línea salió de armar
+	 * un disfraz, {@code disfrazId}/{@code disfrazGrupo}/{@code disfrazCantidad} dicen cuál: así el
+	 * disfraz no se pierde al cobrar. {@code disfrazGrupo} distingue dos instancias del mismo disfraz
+	 * dentro de la misma venta (p. ej. con piezas distintas).
+	 */
+	record ItemDeVenta(UUID prendaId, int cantidad, BigDecimal precioUnitario, UUID disfrazId, UUID disfrazGrupo,
+			Integer disfrazCantidad, String disfrazNombre) {
+
+		/** Prenda suelta (sin disfraz de origen). */
+		public ItemDeVenta(UUID prendaId, int cantidad, BigDecimal precioUnitario) {
+			this(prendaId, cantidad, precioUnitario, null, null, null, null);
+		}
 	}
 
 	/** Registra la venta (descuenta stock, RF-4.4) y devuelve su id. */

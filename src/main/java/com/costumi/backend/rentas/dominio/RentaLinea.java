@@ -13,8 +13,10 @@ public class RentaLinea {
 	private final UUID prendaId;
 	private final int cantidad;
 	private final BigDecimal precioPorDia;
+	/** De qué disfraz salió esta línea, o null si es una prenda suelta. */
+	private final OrigenDisfraz origenDisfraz;
 
-	private RentaLinea(UUID prendaId, int cantidad, BigDecimal precioPorDia) {
+	private RentaLinea(UUID prendaId, int cantidad, BigDecimal precioPorDia, OrigenDisfraz origenDisfraz) {
 		this.prendaId = Objects.requireNonNull(prendaId, "prendaId");
 		if (cantidad <= 0) {
 			throw new IllegalArgumentException("La cantidad de la línea debe ser mayor a 0");
@@ -24,10 +26,21 @@ public class RentaLinea {
 		}
 		this.cantidad = cantidad;
 		this.precioPorDia = precioPorDia;
+		this.origenDisfraz = origenDisfraz;
 	}
 
 	public static RentaLinea de(UUID prendaId, int cantidad, BigDecimal precioPorDia) {
-		return new RentaLinea(prendaId, cantidad, precioPorDia);
+		return new RentaLinea(prendaId, cantidad, precioPorDia, null);
+	}
+
+	/** Línea que salió de armar un disfraz: recuerda cuál, para no perderlo al cobrar. */
+	public static RentaLinea de(UUID prendaId, int cantidad, BigDecimal precioPorDia,
+			OrigenDisfraz origenDisfraz) {
+		return new RentaLinea(prendaId, cantidad, precioPorDia, origenDisfraz);
+	}
+
+	public OrigenDisfraz origenDisfraz() {
+		return origenDisfraz;
 	}
 
 	/** Subtotal por día de la línea (precio × cantidad); el importe multiplica esto por el periodo. */

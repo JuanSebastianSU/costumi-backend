@@ -32,6 +32,12 @@ class RentaRepositoryAdapter implements RentaRepository {
 	private final RentaJpaRepository jpa;
 	private final RentaLineaJpaRepository lineasJpa;
 
+	private static RentaLinea aLineaDeDominio(RentaLineaJpaEntity l) {
+		return RentaLinea.de(l.getPrendaId(), l.getCantidad(), l.getPrecioPorDia(),
+				com.costumi.backend.rentas.dominio.OrigenDisfraz.rehidratar(
+						l.getDisfrazId(), l.getDisfrazGrupo(), l.getDisfrazCantidad(), l.getDisfrazNombre()));
+	}
+
 	@PersistenceContext
 	private EntityManager em;
 
@@ -50,8 +56,11 @@ class RentaRepositoryAdapter implements RentaRepository {
 		// no en las actualizaciones de estado (entregar/devolver/extender).
 		if (lineasJpa.findByRentaId(renta.id()).isEmpty()) {
 			for (RentaLinea linea : renta.lineas()) {
+				com.costumi.backend.rentas.dominio.OrigenDisfraz origen = linea.origenDisfraz();
 				lineasJpa.save(new RentaLineaJpaEntity(UUID.randomUUID(), renta.id(), renta.empresaId(),
-						linea.prendaId(), linea.cantidad(), linea.precioPorDia()));
+						linea.prendaId(), linea.cantidad(), linea.precioPorDia(),
+						origen == null ? null : origen.disfrazId(), origen == null ? null : origen.grupo(),
+						origen == null ? null : origen.cantidad(), origen == null ? null : origen.nombre()));
 			}
 		}
 		return renta;
@@ -91,7 +100,7 @@ class RentaRepositoryAdapter implements RentaRepository {
 		List<UUID> ids = entidades.stream().map(RentaJpaEntity::getId).toList();
 		Map<UUID, List<RentaLinea>> lineasPorRenta = lineasJpa.findByRentaIdIn(ids).stream()
 				.collect(Collectors.groupingBy(RentaLineaJpaEntity::getRentaId, Collectors.mapping(
-						l -> RentaLinea.de(l.getPrendaId(), l.getCantidad(), l.getPrecioPorDia()), Collectors.toList())));
+						RentaRepositoryAdapter::aLineaDeDominio, Collectors.toList())));
 		return entidades.stream()
 				.map(e -> aDominioConLineas(e, lineasPorRenta.getOrDefault(e.getId(), List.of())))
 				.toList();
@@ -125,7 +134,7 @@ class RentaRepositoryAdapter implements RentaRepository {
 
 	private Renta aDominio(RentaJpaEntity e) {
 		List<RentaLinea> lineas = lineasJpa.findByRentaId(e.getId()).stream()
-				.map(l -> RentaLinea.de(l.getPrendaId(), l.getCantidad(), l.getPrecioPorDia()))
+				.map(RentaRepositoryAdapter::aLineaDeDominio)
 				.toList();
 		return aDominioConLineas(e, lineas);
 	}

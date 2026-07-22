@@ -88,6 +88,20 @@ class ReporteService
 
 	@Override
 	@Transactional(readOnly = true)
+	public List<com.costumi.backend.reportes.dominio.DisfrazRanking> disfracesMasVendidos(UUID empresaId,
+			UUID sucursalId, int limite) {
+		return rankings.disfracesMasVendidos(empresaId, sucursalId, limite);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<com.costumi.backend.reportes.dominio.DisfrazRanking> disfracesMasRentados(UUID empresaId,
+			UUID sucursalId, LocalDate desde, LocalDate hasta, int limite) {
+		return rankings.disfracesMasRentados(empresaId, sucursalId, desde, hasta, limite);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
 	public List<EmpleadoVentas> ventasPorEmpleado(UUID empresaId, UUID sucursalId) {
 		return rankings.ventasPorEmpleado(empresaId, sucursalId);
 	}

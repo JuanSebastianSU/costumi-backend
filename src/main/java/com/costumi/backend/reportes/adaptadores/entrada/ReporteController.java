@@ -109,6 +109,26 @@ class ReporteController {
 		return consultarRankings.masRentados(empresaId, sucursalId, desde, hasta, limite);
 	}
 
+	/** Disfraces más vendidos (RF-9.1): cuenta DISFRACES, no las piezas en que se resuelven al cobrar. */
+	@GetMapping("/disfraces-mas-vendidos")
+	List<com.costumi.backend.reportes.dominio.DisfrazRanking> disfracesMasVendidos(
+			@RequestParam(required = false) UUID sucursalId,
+			@RequestParam(defaultValue = "10") int limite, @AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		return consultarRankings.disfracesMasVendidos(empresaId, sucursalId, limite);
+	}
+
+	/** Disfraces más rentados (RF-9.1): cuenta DISFRACES, no las piezas. */
+	@GetMapping("/disfraces-mas-rentados")
+	List<com.costumi.backend.reportes.dominio.DisfrazRanking> disfracesMasRentados(
+			@RequestParam(required = false) UUID sucursalId,
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+			@RequestParam(defaultValue = "10") int limite, @AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
+		return consultarRankings.disfracesMasRentados(empresaId, sucursalId, desde, hasta, limite);
+	}
+
 	@GetMapping("/ventas-por-empleado")
 	List<EmpleadoVentas> ventasPorEmpleado(@RequestParam(required = false) UUID sucursalId,
 			@AuthenticationPrincipal Jwt jwt) {

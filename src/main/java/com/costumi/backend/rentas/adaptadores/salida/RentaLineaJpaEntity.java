@@ -35,17 +35,56 @@ class RentaLineaJpaEntity {
 	@Column(name = "precio_por_dia", nullable = false, precision = 12, scale = 2)
 	private BigDecimal precioPorDia;
 
+	/** De qué disfraz salió la línea (null si es una prenda suelta). Las tres viajan juntas. */
+	@Column(name = "disfraz_id")
+	private UUID disfrazId;
+
+	@Column(name = "disfraz_grupo")
+	private UUID disfrazGrupo;
+
+	@Column(name = "disfraz_cantidad")
+	private Integer disfrazCantidad;
+
+	/** Nombre con el que se cobró el disfraz (histórico: no cambia si después lo renombran). */
+	@Column(name = "disfraz_nombre")
+	private String disfrazNombre;
+
 	protected RentaLineaJpaEntity() {
 		// requerido por JPA
 	}
 
 	RentaLineaJpaEntity(UUID id, UUID rentaId, UUID empresaId, UUID prendaId, int cantidad, BigDecimal precioPorDia) {
+		this(id, rentaId, empresaId, prendaId, cantidad, precioPorDia, null, null, null, null);
+	}
+
+	RentaLineaJpaEntity(UUID id, UUID rentaId, UUID empresaId, UUID prendaId, int cantidad, BigDecimal precioPorDia,
+			UUID disfrazId, UUID disfrazGrupo, Integer disfrazCantidad, String disfrazNombre) {
 		this.id = id;
 		this.rentaId = rentaId;
 		this.empresaId = empresaId;
 		this.prendaId = prendaId;
 		this.cantidad = cantidad;
 		this.precioPorDia = precioPorDia;
+		this.disfrazId = disfrazId;
+		this.disfrazGrupo = disfrazGrupo;
+		this.disfrazCantidad = disfrazCantidad;
+		this.disfrazNombre = disfrazNombre;
+	}
+
+	UUID getDisfrazId() {
+		return disfrazId;
+	}
+
+	UUID getDisfrazGrupo() {
+		return disfrazGrupo;
+	}
+
+	Integer getDisfrazCantidad() {
+		return disfrazCantidad;
+	}
+
+	String getDisfrazNombre() {
+		return disfrazNombre;
 	}
 
 	UUID getRentaId() {

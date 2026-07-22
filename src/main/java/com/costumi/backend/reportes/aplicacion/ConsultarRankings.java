@@ -15,6 +15,14 @@ public interface ConsultarRankings {
 
 	List<ArticuloRanking> masRentados(UUID empresaId, UUID sucursalId, LocalDate desde, LocalDate hasta, int limite);
 
+	/** Disfraces más vendidos (cuenta disfraces, no piezas). */
+	List<com.costumi.backend.reportes.dominio.DisfrazRanking> disfracesMasVendidos(UUID empresaId, UUID sucursalId,
+			int limite);
+
+	/** Disfraces más rentados (cuenta disfraces, no piezas). */
+	List<com.costumi.backend.reportes.dominio.DisfrazRanking> disfracesMasRentados(UUID empresaId, UUID sucursalId,
+			LocalDate desde, LocalDate hasta, int limite);
+
 	List<EmpleadoVentas> ventasPorEmpleado(UUID empresaId, UUID sucursalId);
 
 	List<ValorEtiquetaRanking> ventasPorEtiqueta(UUID empresaId, UUID tipoEtiquetaId, UUID sucursalId);
