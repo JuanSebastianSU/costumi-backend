@@ -89,6 +89,39 @@ class CanalFcm implements CanalDeNotificacion {
 		}
 	}
 
+	/**
+	 * Intenta enviar y devuelve el resultado <b>con el motivo del fallo</b>. {@link #enviar} se traga los
+	 * errores a proposito (un aviso que no sale no debe romper el flujo), pero entonces no hay forma de
+	 * saber por que no llego: FCM contesta cosas muy concretas ("token no registrado", "argumento
+	 * invalido") que sin esto quedan solo en los logs del servidor.
+	 */
+	ResultadoDeEnvio probar(java.util.UUID clienteId) {
+		if (!configurado()) {
+			return new ResultadoDeEnvio(false, diagnostico());
+		}
+		String deviceToken = contacto.buscar(clienteId).map(ContactoDeCliente::deviceToken).orElse(null);
+		if (deviceToken == null || deviceToken.isBlank()) {
+			return new ResultadoDeEnvio(false, "El cliente no tiene un dispositivo registrado");
+		}
+		try {
+			RestClient.create().post()
+					.uri("https://fcm.googleapis.com/v1/projects/" + projectId + "/messages:send")
+					.header("Authorization", "Bearer " + tokenDeAcceso())
+					.contentType(MediaType.APPLICATION_JSON)
+					.body(Map.of("message", Map.of(
+							"token", deviceToken,
+							"notification", Map.of("title", "Costumi", "body", "Prueba de notificacion"))))
+					.retrieve().toBodilessEntity();
+			return new ResultadoDeEnvio(true, "Enviado a FCM");
+		} catch (Exception e) {
+			return new ResultadoDeEnvio(false, e.getMessage());
+		}
+	}
+
+	/** Resultado de un envio de prueba: si salio y, si no, por que. */
+	record ResultadoDeEnvio(boolean enviado, String detalle) {
+	}
+
 	/** Token OAuth de corta duración; la librería de Google lo cachea y lo renueva sola. */
 	private String tokenDeAcceso() throws java.io.IOException {
 		GoogleCredentials credenciales = GoogleCredentials

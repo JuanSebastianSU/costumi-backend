@@ -33,6 +33,12 @@ class RouterDeCanales implements CanalDeNotificacion,
 	}
 
 	@Override
+	public com.costumi.backend.notificaciones.aplicacion.ResultadoDePrueba probarPush(java.util.UUID clienteId) {
+		CanalFcm.ResultadoDeEnvio r = fcm.probar(clienteId);
+		return new com.costumi.backend.notificaciones.aplicacion.ResultadoDePrueba(r.enviado(), r.detalle());
+	}
+
+	@Override
 	public boolean enviar(Notificacion notificacion) {
 		boolean enviado = switch (notificacion.canal()) {
 			case WHATSAPP -> whatsApp.enviar(notificacion);

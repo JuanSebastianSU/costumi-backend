@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -105,5 +106,11 @@ class NotificacionController {
 	@GetMapping("/estado-canales")
 	com.costumi.backend.notificaciones.aplicacion.EstadoDeCanales estadoDeCanales() {
 		return estadoDeCanales.estado();
+	}
+
+	/** Push de prueba al dispositivo del cliente; devuelve el motivo exacto si no sale. */
+	@PostMapping("/probar-push/{clienteId}")
+	com.costumi.backend.notificaciones.aplicacion.ResultadoDePrueba probarPush(@PathVariable UUID clienteId) {
+		return estadoDeCanales.probarPush(clienteId);
 	}
 }

@@ -4,4 +4,7 @@ package com.costumi.backend.notificaciones.aplicacion;
 public interface ConsultarEstadoDeCanales {
 
 	EstadoDeCanales estado();
+
+	/** Manda una push de prueba al dispositivo del cliente y devuelve si salio y, si no, por que. */
+	ResultadoDePrueba probarPush(java.util.UUID clienteId);
 }
