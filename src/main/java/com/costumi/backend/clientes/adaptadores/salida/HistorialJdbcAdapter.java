@@ -1,6 +1,7 @@
 package com.costumi.backend.clientes.adaptadores.salida;
 
 import com.costumi.backend.clientes.dominio.CargaDeCliente;
+import com.costumi.backend.clientes.dominio.DeudaEnTienda;
 import com.costumi.backend.clientes.dominio.FiltroDeClientes;
 import com.costumi.backend.clientes.dominio.HistorialItem;
 import com.costumi.backend.clientes.dominio.HistorialReadRepository;
@@ -198,6 +199,54 @@ class HistorialJdbcAdapter implements HistorialReadRepository {
 				})
 				.list().stream()
 				.filter(l -> l.saldo().signum() > 0 || l.multa().signum() > 0)
+				.toList();
+	}
+
+	/**
+	 * Igual que {@link #ESTADO_DE_CUENTA} pero por USUARIO: cruza sus fichas de cliente ({@code cliente
+	 * .usuario_id}) para traer lo que debe en TODAS las tiendas, con el nombre de cada una. Reusa los
+	 * mismos fragmentos de multa y pagos, así que las cifras cuadran con las que ve la tienda.
+	 *
+	 * <p>En UNA consulta: hacerlo ficha por ficha sería un N+1 que crece con cada tienda en la que el
+	 * cliente compró.
+	 */
+	private static final String ESTADO_DE_CUENTA_DE_USUARIO = """
+			select e.id as empresa_id, e.nombre as empresa_nombre,
+			       r.id as renta_id, r.estado, r.fecha_retiro, r.fecha_devolucion, r.importe,
+			       coalesce((select sum(d.cargo_por_danos) from devolucion d
+			                 where d.renta_id = r.id and d.empresa_id = r.empresa_id), 0) as danos,
+			       coalesce((select sum(d.cargo_por_retraso) from devolucion d
+			                 where d.renta_id = r.id and d.empresa_id = r.empresa_id), 0) as retraso,
+			       coalesce((select sum(d.deposito) from devolucion d
+			                 where d.renta_id = r.id and d.empresa_id = r.empresa_id), 0) as deposito,
+			       %1$s as multa,
+			       %2$s as pagado,
+			       case when r.estado in ('ACTIVA','DEVUELTA') then greatest(r.importe + %1$s - %2$s, 0)
+			            else 0 end as saldo
+			from renta r
+			join cliente cl on cl.id = r.cliente_id and cl.empresa_id = r.empresa_id
+			join empresa e on e.id = r.empresa_id
+			where cl.usuario_id = :usuarioId
+			order by r.fecha_retiro desc nulls last
+			""".formatted(MULTA_DE_RENTA, PAGOS_NETOS_DE_RENTA);
+
+	@Override
+	public List<DeudaEnTienda> estadoDeCuentaDeUsuario(UUID usuarioId) {
+		return jdbc.sql(ESTADO_DE_CUENTA_DE_USUARIO).param("usuarioId", usuarioId)
+				.query((rs, rowNum) -> {
+					UUID rentaId = rs.getObject("renta_id", UUID.class);
+					LineaDeEstadoDeCuenta linea = new LineaDeEstadoDeCuenta(rentaId,
+							CodigoDeRetiro.de("R", rentaId), rs.getString("estado"),
+							rs.getObject("fecha_retiro", LocalDate.class),
+							rs.getObject("fecha_devolucion", LocalDate.class), rs.getBigDecimal("importe"),
+							rs.getBigDecimal("danos"), rs.getBigDecimal("retraso"), rs.getBigDecimal("deposito"),
+							rs.getBigDecimal("multa"), rs.getBigDecimal("pagado"), rs.getBigDecimal("saldo"));
+					return new DeudaEnTienda(rs.getObject("empresa_id", UUID.class),
+							rs.getString("empresa_nombre"), linea);
+				})
+				.list().stream()
+				// Mismo criterio que el estado de cuenta de la tienda: solo lo que debe o lo que le multaron.
+				.filter(d -> d.linea().saldo().signum() > 0 || d.linea().multa().signum() > 0)
 				.toList();
 	}
 

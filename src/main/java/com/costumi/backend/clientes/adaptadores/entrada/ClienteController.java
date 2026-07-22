@@ -178,6 +178,19 @@ class ClienteController {
 		return consultarHistorial.historialDeUsuario(usuarioId);
 	}
 
+	/**
+	 * Lo que el propio cliente debe: multas y saldos, en TODAS las tiendas (RF-7/11.5). El estado de
+	 * cuenta que ya existía es por empresa y lo mira la tienda; el cliente no tenía forma de ver sus
+	 * multas ni de saber por qué se las cobraron.
+	 *
+	 * <p>Se resuelve por el usuario del token (sus fichas), nunca por un id del request.
+	 */
+	@GetMapping("/me/deudas")
+	List<MiDeudaResponse> misDeudas(@AuthenticationPrincipal Jwt jwt) {
+		UUID usuarioId = UUID.fromString(jwt.getSubject());
+		return consultarHistorial.misDeudas(usuarioId).stream().map(MiDeudaResponse::desde).toList();
+	}
+
 	@PostMapping("/{id}/lista-negra")
 	ClienteResponse cambiarListaNegra(@PathVariable UUID id, @RequestBody CambiarListaNegraRequest request,
 			@AuthenticationPrincipal Jwt jwt) {

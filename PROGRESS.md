@@ -8,6 +8,27 @@
 > `CLAUDE.md`) para retomar sin perder el hilo. Regla: mueve ítems entre secciones,
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
+## OP-8 — el cliente puede ver sus multas (2026-07-22)
+
+Reportado probando la app: **el cliente no tiene dónde ver sus multas**. El estado de cuenta ya existía
+y es completo (importe, daños, retraso, depósito, multa, pagado, saldo por renta), pero solo se expone
+como `GET /clientes/{id}/estado-cuenta`, que es **de la tienda**: exige el claim `empresa_id` y un rol de
+personal, así que el cliente no podía verlo.
+
+- `GET /api/v1/clientes/me/deudas` → lo que debe **en todas las tiendas**, con el nombre de cada una y
+  el **desglose** de cada cargo. Se resuelve por el usuario del token (sus fichas), nunca por un id.
+- Read-model `estadoDeCuentaDeUsuario`: **una sola consulta** que cruza sus fichas por
+  `cliente.usuario_id` — ficha por ficha sería un N+1 que crece con cada tienda en la que compró.
+  Reusa los mismos fragmentos de multa y pagos que el estado de cuenta de la tienda, así que las cifras
+  **cuadran exactamente** con las que ve el dueño.
+- Mismo criterio de filtrado que el de la tienda: solo lo que tiene **saldo > 0 o multa > 0**.
+- Tests: el cliente ve su multa con desglose y tienda (daños 150 − depósito 50 = multa 100); **un cliente
+  no ve las deudas de otro**; sin token, 401.
+
+En la app: pantalla **Mis multas**, con el total a pagar arriba y por renta el desglose
+("Danos $150 - Deposito $50 = Multa $100"). Se entra desde **Perfil**, no como quinta pestaña: la barra
+ya tiene cuatro y las multas son información de cuenta, no navegación primaria.
+
 ## OP-7 — el cliente puede volver a sus carritos (2026-07-22)
 
 Reportado probando la app: **no hay forma de abrir el carrito**. Solo se llega justo después de agregar
@@ -32,6 +53,7 @@ de saber cuáles hay abiertos ni siquiera para pintar un botón.
   otro**; un carrito vacío no aparece; sin token 401. **Suite 528/528.**
 
 Del lado de la app: pestaña **Carrito** en la barra del cliente.
+
 
 ## OP-1 — el dueño puede ver el nombre de su tienda (2026-07-22)
 
