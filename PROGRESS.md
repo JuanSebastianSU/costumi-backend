@@ -85,6 +85,26 @@ prendas. El cliente seguia viendo "Capa Real" en vez del disfraz que compro.
 - Test agregado al caso de BACK-1: ademas de la venta y el ranking, se verifica el historial.
   **Suite 513/513.**
 
+## BACK-5 — el push puede funcionar de verdad (2026-07-22)
+
+Al ir a hacer FRONT-4 aparecieron dos bloqueos que hacian imposible que una notificacion llegara:
+
+1. **El cliente no podia registrar su telefono.** El unico endpoint (`PUT /clientes/{id}/device-token`)
+   exige rol de personal y lee el claim `empresa_id`; un CLIENTE del marketplace no tiene ninguno de los
+   dos (habria reventado con NPE). Ese endpoint sirve para que el mostrador registre a un cliente
+   presencial, no para la app.
+   - Nuevo **`PUT /api/v1/clientes/me/device-token`**: sin id (sale del token) y para cualquier rol
+     autenticado. Guarda el token en **todas las fichas del usuario**, porque tiene una por tienda y el
+     telefono es el mismo: si fuera a una sola, las demas tiendas no podrian avisarle.
+2. **`CanalFcm` apuntaba a una API muerta.** Usaba la legacy `fcm.googleapis.com/fcm/send` con "server
+   key", que **Google apago**. Migrado a **HTTP v1**, firmando con la cuenta de servicio
+   (`google-auth-library-oauth2-http`). El `project_id` se lee del propio JSON, asi que no hay una segunda
+   variable que se pueda desincronizar.
+   - Config: **`COSTUMI_FCM_CREDENTIALS`** (reemplaza a `COSTUMI_FCM_SERVER_KEY`). Sin ella el canal queda
+     apagado y las notificaciones caen al log: el backend arranca igual.
+
+Tests: `DeviceTokenPropioIntegrationTest` (2 casos). **Suite 515/515.**
+
 ## PENDIENTE — auditoria de la app del 2026-07-22 (6 hallazgos)
 
 Barrido cruzando el codigo de la app contra el contrato: **158 de 160 operaciones del backend ya tienen

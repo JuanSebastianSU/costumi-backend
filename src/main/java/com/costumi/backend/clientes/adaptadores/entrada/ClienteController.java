@@ -59,7 +59,21 @@ class ClienteController {
 		this.registrarDeviceToken = registrarDeviceToken;
 	}
 
-	/** Registra el token de dispositivo del cliente para push FCM (RF-18.11). */
+	/**
+	 * El propio usuario registra el token de SU dispositivo (RF-18.11). No recibe id: sale del token, asi
+	 * que nadie registra el dispositivo de otro.
+	 *
+	 * <p>Existe aparte del endpoint por id porque aquel exige el claim {@code empresa_id} y un rol de
+	 * personal: un CLIENTE del marketplace no tiene ninguno de los dos y no podia registrar su telefono.
+	 */
+	@PutMapping("/me/device-token")
+	ResponseEntity<Void> registrarMiDeviceToken(@Valid @RequestBody DeviceTokenRequest request,
+			@AuthenticationPrincipal Jwt jwt) {
+		registrarDeviceToken.deUsuario(UUID.fromString(jwt.getSubject()), request.deviceToken());
+		return ResponseEntity.noContent().build();
+	}
+
+	/** Registra el token de dispositivo de un cliente presencial (lo hace el personal). */
 	@PutMapping("/{id}/device-token")
 	ResponseEntity<ClienteResponse> registrarDeviceToken(@PathVariable UUID id,
 			@Valid @RequestBody DeviceTokenRequest request, @AuthenticationPrincipal Jwt jwt) {

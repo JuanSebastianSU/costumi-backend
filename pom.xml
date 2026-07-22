@@ -24,6 +24,14 @@
 
 	<dependencies>
 		<!-- Web / API REST -->
+		<!-- Autenticacion de cuenta de servicio para FCM HTTP v1. La API legacy (server key) fue apagada
+		     por Google, asi que el push necesita firmar con la credencial del proyecto Firebase. -->
+		<dependency>
+			<groupId>com.google.auth</groupId>
+			<artifactId>google-auth-library-oauth2-http</artifactId>
+			<version>1.30.0</version>
+		</dependency>
+
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
