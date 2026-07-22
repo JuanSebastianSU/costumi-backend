@@ -104,7 +104,7 @@ class RentaService implements CrearRenta, ConsultarRentas, GestionarRenta, Consu
 			}
 		}
 		List<RentaLinea> lineas = comando.lineas().stream()
-				.map(l -> RentaLinea.de(l.prendaId(), l.cantidad(), l.precioPorDia()))
+				.map(l -> RentaLinea.de(l.prendaId(), l.cantidad(), l.precioPorDia(), l.origenDisfraz()))
 				.toList();
 		return rentas.guardar(Renta.crear(comando.empresaId(), comando.sucursalId(), comando.clienteId(), lineas,
 				comando.fechaRetiro(), comando.fechaDevolucion(), comando.deposito(), comando.claveIdempotencia(),
@@ -117,7 +117,9 @@ class RentaService implements CrearRenta, ConsultarRentas, GestionarRenta, Consu
 			java.time.LocalDate fechaDevolucion, java.math.BigDecimal deposito, List<ItemDeRenta> items,
 			UUID empleadoId) {
 		List<LineaDeRentaComando> lineas = items.stream()
-				.map(i -> new LineaDeRentaComando(i.prendaId(), i.cantidad(), i.precioPorDia()))
+				.map(i -> new LineaDeRentaComando(i.prendaId(), i.cantidad(), i.precioPorDia(),
+						com.costumi.backend.rentas.dominio.OrigenDisfraz.rehidratar(
+								i.disfrazId(), i.disfrazGrupo(), i.disfrazCantidad(), i.disfrazNombre())))
 				.toList();
 		Renta renta = ejecutar(new CrearRentaComando(empresaId, sucursalId, clienteId, lineas, fechaRetiro,
 				fechaDevolucion, deposito, null, empleadoId));

@@ -8,6 +8,46 @@
 > `CLAUDE.md`) para retomar sin perder el hilo. Regla: mueve ítems entre secciones,
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
+## BACK-1 — el disfraz sobrevive al cobro (2026-07-22)
+
+Al confirmar una venta o renta el disfraz se resolvía a sus prendas y **se perdía**: el cliente veía
+"Capa Real" cuando había comprado un "Traje Pirata", y el dueño solo podía rankear prendas.
+
+- **V65**: `linea_de_venta` y `renta_linea` ganan `disfraz_id`, `disfraz_grupo`, `disfraz_cantidad` y
+  `disfraz_nombre` (CHECK: viajan juntas o ninguna).
+  - `disfraz_grupo` identifica **una instancia** del disfraz en el pedido: el mismo disfraz dos veces con
+    piezas distintas no debe mezclarse al agrupar.
+  - `disfraz_nombre` se **guarda**, no se resuelve al leer: un pedido histórico no cambia si después
+    renombran el disfraz, y evita que `ventas`/`rentas` dependan de `disfraces` (**Modulith detectó ese
+    ciclo**; el snapshot es la solución correcta, no un parche).
+- Dominio: `OrigenDisfraz` en cada módulo; `LineaDeVenta`/`RentaLinea` lo llevan.
+- Se etiqueta en el **único punto de paso**: `DisfrazService.itemsVentaDe/itemsRentaDe` (venta directa y
+  varios) y `CarritoService` (checkout).
+- Respuestas: cada línea de venta/renta expone `disfrazId`, `disfrazNombre`, `disfrazGrupo`,
+  `disfrazCantidad`.
+- Reportes: **`GET /reportes/disfraces-mas-vendidos`** y **`/disfraces-mas-rentados`** — cuentan
+  DISFRACES, no piezas (agrupan por grupo y suman).
+- Tests: el disfraz sobrevive al cobro y se rankea; y una prenda suelta NO queda marcada como disfraz.
+  **Suite 504/504.**
+
+## PENDIENTE — auditoria de la app del 2026-07-22 (6 hallazgos)
+
+Barrido cruzando el codigo de la app contra el contrato: **158 de 160 operaciones del backend ya tienen
+pantalla**. Lo que falta, y que parte le toca a cada lado:
+
+| # | Hallazgo | Backend | Front |
+|---|----------|---------|-------|
+| 1 | ✅ **HECHO (BACK-1).** ~~El disfraz se disuelve en prendas al cobrar.~~ La venta/renta guarda solo prendas: el cliente ve "Capa Real" cuando compro "Traje_Pirata_Opciones", y el dueno no puede saber que DISFRAZ se vende mas. | **BACK-1** | FRONT-1 |
+| 2 | **Las listas no escalan.** Sin paginacion NI busqueda: disfraces, devoluciones, reembolsos, empleados, notificaciones, auditoria. Con paginacion pero sin busqueda: prendas, rentas, ventas. De 14 listas de la app solo Clientes tiene buscador. | **BACK-2** | FRONT-2 |
+| 3 | **Buscar tiendas.** `GET /marketplace/empresas?buscar=` ya existe; la app manda `null` y no tiene caja. | — (hecho) | FRONT-3 |
+| 4 | **Push no llegan.** `PUT /clientes/{id}/device-token` existe y nunca se llama. | — (hecho) | FRONT-4 |
+| 5 | **Perfil del cliente vacio.** No puede editar sus datos ni cambiar contrasena: no hay endpoint para que el propio usuario lo haga. | **BACK-3** | FRONT-5 |
+| 6 | No se leen las sucursales asignadas a un empleado (`GET /empleados/{usuarioId}/sucursales` sin usar). | — (hecho) | FRONT-6 |
+
+Falsos positivos descartados en la auditoria (SI estan hechos, usan APIs escritas a mano en la app y no el
+cliente generado): subir foto al disfraz, exportar reportes a PDF/CSV, y `/pagos`+`/saldo`+`/deposito` (ya
+vienen dentro de `/pagos/comprobante`).
+
 ## Nombre de la categoria en la vitrina del disfraz (2026-07-22)
 
 El cliente del marketplace no puede leer la taxonomia de la empresa, asi que con solo `categoriaId` (un UUID)

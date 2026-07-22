@@ -13,6 +13,13 @@ public interface RankingReadRepository {
 	/** Prendas más rentadas por número de rentas (por fecha de retiro/sucursal opcional), top {@code limite}. */
 	List<ArticuloRanking> masRentados(UUID empresaId, UUID sucursalId, LocalDate desde, LocalDate hasta, int limite);
 
+	/** Disfraces más vendidos por unidades de disfraz (no piezas), top {@code limite}. */
+	List<DisfrazRanking> disfracesMasVendidos(UUID empresaId, UUID sucursalId, int limite);
+
+	/** Disfraces más rentados por unidades de disfraz (por fecha de retiro/sucursal opcional), top {@code limite}. */
+	List<DisfrazRanking> disfracesMasRentados(UUID empresaId, UUID sucursalId, LocalDate desde, LocalDate hasta,
+			int limite);
+
 	/** Ventas agregadas por empleado (opcionalmente por sucursal). */
 	List<EmpleadoVentas> ventasPorEmpleado(UUID empresaId, UUID sucursalId);
 

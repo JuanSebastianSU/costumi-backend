@@ -1,6 +1,7 @@
 package com.costumi.backend.reportes.adaptadores.salida;
 
 import com.costumi.backend.reportes.dominio.ArticuloRanking;
+import com.costumi.backend.reportes.dominio.DisfrazRanking;
 import com.costumi.backend.reportes.dominio.EmpleadoVentas;
 import com.costumi.backend.reportes.dominio.RankingReadRepository;
 import com.costumi.backend.reportes.dominio.ValorEtiquetaRanking;
@@ -65,6 +66,56 @@ class RankingJdbcAdapter implements RankingReadRepository {
 			spec = spec.param("hasta", hasta);
 		}
 		return spec.query(ArticuloRanking.class).list();
+	}
+
+	@Override
+	public List<DisfrazRanking> disfracesMasVendidos(UUID empresaId, UUID sucursalId, int limite) {
+		// Cuenta DISFRACES, no piezas: cada grupo es una instancia cobrada, y su cantidad se repite en
+		// todas sus líneas, asi que se toma una sola vez por grupo (max) y el monto es la suma del grupo.
+		String sql = "select g.disfraz_id, d.nombre, sum(g.unidades) as unidades, sum(g.monto) as monto"
+				+ " from (select lv.disfraz_id, lv.disfraz_grupo, max(lv.disfraz_cantidad) as unidades,"
+				+ "              coalesce(sum(lv.cantidad * lv.precio_unitario), 0) as monto"
+				+ "       from linea_de_venta lv"
+				+ "       join venta v on v.id = lv.venta_id"
+				+ "       where lv.empresa_id = :empresaId and lv.disfraz_id is not null"
+				+ (sucursalId == null ? "" : " and v.sucursal_id = :sucursalId")
+				+ "       group by lv.disfraz_id, lv.disfraz_grupo) g"
+				+ " join disfraz d on d.id = g.disfraz_id"
+				+ " group by g.disfraz_id, d.nombre order by unidades desc limit :limite";
+		JdbcClient.StatementSpec spec = jdbc.sql(sql).param("empresaId", empresaId).param("limite", limite);
+		if (sucursalId != null) {
+			spec = spec.param("sucursalId", sucursalId);
+		}
+		return spec.query(DisfrazRanking.class).list();
+	}
+
+	@Override
+	public List<DisfrazRanking> disfracesMasRentados(UUID empresaId, UUID sucursalId, LocalDate desde,
+			LocalDate hasta, int limite) {
+		String sql = "select g.disfraz_id, d.nombre, sum(g.unidades) as unidades, sum(g.monto) as monto"
+				+ " from (select l.disfraz_id, l.disfraz_grupo, max(l.disfraz_cantidad) as unidades,"
+				+ "              coalesce(sum(l.cantidad * l.precio_por_dia"
+				+ "                * greatest(1, (r.fecha_devolucion - r.fecha_retiro))), 0) as monto"
+				+ "       from renta_linea l"
+				+ "       join renta r on r.id = l.renta_id"
+				+ "       where l.empresa_id = :empresaId and l.disfraz_id is not null"
+				+ (sucursalId == null ? "" : " and r.sucursal_id = :sucursalId")
+				+ (desde == null ? "" : " and r.fecha_retiro >= :desde")
+				+ (hasta == null ? "" : " and r.fecha_retiro <= :hasta")
+				+ "       group by l.disfraz_id, l.disfraz_grupo) g"
+				+ " join disfraz d on d.id = g.disfraz_id"
+				+ " group by g.disfraz_id, d.nombre order by unidades desc limit :limite";
+		JdbcClient.StatementSpec spec = jdbc.sql(sql).param("empresaId", empresaId).param("limite", limite);
+		if (sucursalId != null) {
+			spec = spec.param("sucursalId", sucursalId);
+		}
+		if (desde != null) {
+			spec = spec.param("desde", desde);
+		}
+		if (hasta != null) {
+			spec = spec.param("hasta", hasta);
+		}
+		return spec.query(DisfrazRanking.class).list();
 	}
 
 	@Override

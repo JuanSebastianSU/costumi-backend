@@ -182,7 +182,9 @@ class VentaService implements RegistrarVenta, ConsultarVentas, RegistroDeVentas,
 	@Transactional
 	public UUID registrar(UUID empresaId, UUID sucursalId, UUID empleadoId, UUID clienteId, List<ItemDeVenta> items) {
 		List<LineaDeVenta> lineas = items.stream()
-				.map(i -> LineaDeVenta.de(i.prendaId(), i.cantidad(), i.precioUnitario()))
+				.map(i -> LineaDeVenta.de(i.prendaId(), i.cantidad(), i.precioUnitario(),
+						com.costumi.backend.ventas.dominio.OrigenDisfraz.rehidratar(
+								i.disfrazId(), i.disfrazGrupo(), i.disfrazCantidad(), i.disfrazNombre())))
 				.toList();
 		Venta venta = ejecutar(new RegistrarVentaComando(empresaId, sucursalId, empleadoId, clienteId,
 				BigDecimal.ZERO, lineas, null));

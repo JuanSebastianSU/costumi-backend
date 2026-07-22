@@ -16,8 +16,14 @@ public record VentaResponse(UUID id, String codigoRetiro, UUID sucursalId, UUID 
 		String clienteNombre, BigDecimal descuento, BigDecimal total, String estado, BigDecimal montoReembolsado,
 		List<LineaResponse> lineas) {
 
+	/**
+	 * Una línea de la venta. Si salió de armar un disfraz, {@code disfrazId}/{@code disfrazNombre} dicen
+	 * cuál y {@code disfrazGrupo} identifica esa instancia concreta (dos veces el mismo disfraz con piezas
+	 * distintas son dos grupos): así el cliente ve QUÉ compró y no un montón de piezas sueltas.
+	 */
 	public record LineaResponse(UUID prendaId, String nombre, String fotoUrl, int cantidad, int cantidadDevuelta,
-			BigDecimal precioUnitario, BigDecimal subtotal) {
+			BigDecimal precioUnitario, BigDecimal subtotal, UUID disfrazId, String disfrazNombre, UUID disfrazGrupo,
+			Integer disfrazCantidad) {
 	}
 
 	/** Sin resumen de prendas ni nombre: líneas sin nombre/foto (usos internos). */
@@ -33,8 +39,13 @@ public record VentaResponse(UUID id, String codigoRetiro, UUID sucursalId, UUID 
 		List<LineaResponse> lineas = v.lineas().stream()
 				.map(l -> {
 					ResumenDePrenda r = resumenes.get(l.prendaId());
+					com.costumi.backend.ventas.dominio.OrigenDisfraz o = l.origenDisfraz();
 					return new LineaResponse(l.prendaId(), r == null ? null : r.nombre(), r == null ? null : r.fotoUrl(),
-							l.cantidad(), l.cantidadDevuelta(), l.precioUnitario(), l.subtotal());
+							l.cantidad(), l.cantidadDevuelta(), l.precioUnitario(), l.subtotal(),
+							o == null ? null : o.disfrazId(),
+							o == null ? null : o.nombre(),
+							o == null ? null : o.grupo(),
+							o == null ? null : o.cantidad());
 				})
 				.toList();
 		return new VentaResponse(v.id(), CodigoDeRetiro.de("V", v.id()), v.sucursalId(), v.empleadoId(), v.clienteId(),

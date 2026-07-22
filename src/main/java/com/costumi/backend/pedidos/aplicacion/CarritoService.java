@@ -185,6 +185,16 @@ class CarritoService implements AgregarItemAlCarrito, QuitarItemDelCarrito, Cons
 				linea.cantidad(), linea.fechaRetiro(), linea.fechaDevolucion(), precioUnitario, subtotal, null);
 	}
 
+	/**
+	 * Nombre con el que se cobra el disfraz. Se guarda en la línea (no se resuelve al leer) para que el
+	 * pedido histórico no cambie si después lo renombran.
+	 */
+	private String nombreDeDisfraz(UUID empresaId, UUID disfrazId) {
+		ResolucionDeDisfraces.ResumenDeDisfraz resumen = disfraces
+				.resumenDeDisfraces(empresaId, List.of(disfrazId)).get(disfrazId);
+		return resumen == null ? null : resumen.nombre();
+	}
+
 	/** Traduce las selecciones de dominio del carrito a las del puerto de Disfraces. */
 	private static List<ResolucionDeDisfraces.SeleccionDeSlot> aSelecciones(LineaDeCarrito linea) {
 		return linea.selecciones().stream()
@@ -211,9 +221,13 @@ class CarritoService implements AgregarItemAlCarrito, QuitarItemDelCarrito, Cons
 		for (LineaDeCarrito linea : carrito.lineas()) {
 			if (linea.esDisfraz()) {
 				// El disfraz se resuelve a sus piezas valuadas (precio ya repartido si tiene precio general).
+				// El grupo identifica ESTA instancia del disfraz: dos líneas del mismo disfraz con piezas
+				// distintas no deben mezclarse al mostrar el pedido.
+				UUID grupo = UUID.randomUUID();
 				for (ResolucionDeDisfraces.LineaResuelta r : disfraces.lineasDeVenta(empresaId, linea.disfrazId(),
 						linea.cantidad(), aSelecciones(linea))) {
-					items.add(new RegistroDeVentas.ItemDeVenta(r.prendaId(), r.cantidad(), r.precio()));
+					items.add(new RegistroDeVentas.ItemDeVenta(r.prendaId(), r.cantidad(), r.precio(),
+							linea.disfrazId(), grupo, linea.cantidad(), nombreDeDisfraz(empresaId, linea.disfrazId())));
 				}
 			} else {
 				items.add(new RegistroDeVentas.ItemDeVenta(linea.prendaId(), linea.cantidad(),
@@ -247,9 +261,12 @@ class CarritoService implements AgregarItemAlCarrito, QuitarItemDelCarrito, Cons
 			for (LineaDeCarrito linea : grupo.getValue()) {
 				if (linea.esDisfraz()) {
 					// El disfraz se resuelve a sus piezas valuadas (precio por día ya repartido si tiene general).
+					UUID grupoDisfraz = UUID.randomUUID();
 					for (ResolucionDeDisfraces.LineaResuelta r : disfraces.lineasDeRenta(empresaId, linea.disfrazId(),
 							linea.cantidad(), aSelecciones(linea))) {
-						items.add(new RegistroDeRentas.ItemDeRenta(r.prendaId(), r.cantidad(), r.precio()));
+						items.add(new RegistroDeRentas.ItemDeRenta(r.prendaId(), r.cantidad(), r.precio(),
+								linea.disfrazId(), grupoDisfraz, linea.cantidad(),
+								nombreDeDisfraz(empresaId, linea.disfrazId())));
 					}
 				} else {
 					items.add(new RegistroDeRentas.ItemDeRenta(linea.prendaId(), linea.cantidad(),

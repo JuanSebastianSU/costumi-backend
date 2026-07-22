@@ -13,7 +13,13 @@ import java.util.UUID;
 public interface RegistroDeRentas {
 
 	/** Una línea de la renta ya resuelta: prenda, cantidad y precio por día. */
-	record ItemDeRenta(UUID prendaId, int cantidad, BigDecimal precioPorDia) {
+	record ItemDeRenta(UUID prendaId, int cantidad, BigDecimal precioPorDia, UUID disfrazId, UUID disfrazGrupo,
+			Integer disfrazCantidad, String disfrazNombre) {
+
+		/** Prenda suelta (sin disfraz de origen). */
+		public ItemDeRenta(UUID prendaId, int cantidad, BigDecimal precioPorDia) {
+			this(prendaId, cantidad, precioPorDia, null, null, null, null);
+		}
 	}
 
 	/**

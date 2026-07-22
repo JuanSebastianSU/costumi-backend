@@ -471,7 +471,12 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 			items = repartirPrecioGeneral(items,
 					disfraz.precioRentaGeneral().multiply(BigDecimal.valueOf(cantidad)));
 		}
-		return items;
+		// Cada pieza recuerda de qué disfraz salió (ver itemsVentaDe).
+		UUID grupo = UUID.randomUUID();
+		return items.stream()
+				.map(i -> new RegistroDeRentas.ItemDeRenta(i.prendaId(), i.cantidad(), i.precioPorDia(),
+						disfrazId, grupo, cantidad, disfraz.nombre()))
+				.toList();
 	}
 
 	/** Resuelve un disfraz a sus líneas de venta (una por pieza), con la cantidad y el reparto de precio general. */
@@ -501,7 +506,14 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 		if (disfraz.tienePrecioVentaGeneral()) {
 			items = repartirVenta(items, disfraz.precioVentaGeneral().multiply(BigDecimal.valueOf(cantidad)));
 		}
-		return items;
+		// Cada pieza recuerda de qué disfraz salió: si no, al cobrar el disfraz se pierde y el pedido
+		// queda como un montón de prendas sueltas. El grupo distingue esta instancia de otra del mismo
+		// disfraz en el mismo pedido (p. ej. con piezas distintas).
+		UUID grupo = UUID.randomUUID();
+		return items.stream()
+				.map(i -> new RegistroDeVentas.ItemDeVenta(i.prendaId(), i.cantidad(), i.precioUnitario(),
+						disfrazId, grupo, cantidad, disfraz.nombre()))
+				.toList();
 	}
 
 	/**
