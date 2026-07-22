@@ -1,10 +1,13 @@
 package com.costumi.backend.disfraces.adaptadores.salida;
 
 import com.costumi.backend.compartido.FiltroTenant;
+import com.costumi.backend.disfraces.dominio.TipoDeDisfraz;
 import org.hibernate.annotations.Filter;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
@@ -41,12 +44,16 @@ class DisfrazJpaEntity {
 	@Column(name = "foto_url", length = 500)
 	private String fotoUrl;
 
+	@Enumerated(EnumType.STRING)
+	@Column(nullable = false, length = 10)
+	private TipoDeDisfraz tipo;
+
 	protected DisfrazJpaEntity() {
 		// requerido por JPA
 	}
 
 	DisfrazJpaEntity(UUID id, UUID empresaId, String nombre, UUID categoriaId, boolean activo,
-			BigDecimal precioRentaGeneral, BigDecimal precioVentaGeneral, String fotoUrl) {
+			BigDecimal precioRentaGeneral, BigDecimal precioVentaGeneral, String fotoUrl, TipoDeDisfraz tipo) {
 		this.id = id;
 		this.empresaId = empresaId;
 		this.nombre = nombre;
@@ -55,6 +62,11 @@ class DisfrazJpaEntity {
 		this.precioRentaGeneral = precioRentaGeneral;
 		this.precioVentaGeneral = precioVentaGeneral;
 		this.fotoUrl = fotoUrl;
+		this.tipo = tipo;
+	}
+
+	TipoDeDisfraz getTipo() {
+		return tipo;
 	}
 
 	UUID getId() {

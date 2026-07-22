@@ -3,6 +3,7 @@ package com.costumi.backend.disfraces.adaptadores.entrada;
 import com.costumi.backend.disfraces.aplicacion.ConsultarDisfraces;
 import com.costumi.backend.disfraces.dominio.Disfraz;
 import com.costumi.backend.disfraces.dominio.Slot;
+import com.costumi.backend.disfraces.dominio.TipoDeDisfraz;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -13,7 +14,8 @@ import java.util.UUID;
  * de renta de sus prendas, RF-2.10) para mostrárselo al dueño, y {@code precioRentaGeneral} (el override
  * que fija el dueño, o null si cobra por la suma). La disponibilidad se consulta aparte (derivada).
  */
-public record DisfrazResponse(UUID id, UUID empresaId, String nombre, UUID categoriaId, boolean activo,
+public record DisfrazResponse(UUID id, UUID empresaId, String nombre, UUID categoriaId, TipoDeDisfraz tipo,
+		boolean activo,
 		BigDecimal precioRentaGeneral, BigDecimal precioVentaGeneral, BigDecimal precioRentaSugerido,
 		BigDecimal precioRentaSugeridoMax, BigDecimal precioVentaSugerido, BigDecimal precioVentaSugeridoMax,
 		MultaSugeridaDto multaSugerida, String fotoUrl, List<SlotDto> slots) {
@@ -43,7 +45,7 @@ public record DisfrazResponse(UUID id, UUID empresaId, String nombre, UUID categ
 		List<SlotDto> slots = d.slots().stream().map(DisfrazResponse::aSlotDto).toList();
 		MultaSugeridaDto multaDto = multa == null ? null
 				: new MultaSugeridaDto(multa.danoMin(), multa.danoMax(), multa.reposicionMin(), multa.reposicionMax());
-		return new DisfrazResponse(d.id(), d.empresaId(), d.nombre(), d.categoriaId(), d.activo(),
+		return new DisfrazResponse(d.id(), d.empresaId(), d.nombre(), d.categoriaId(), d.tipo(), d.activo(),
 				d.precioRentaGeneral(), d.precioVentaGeneral(), precioRentaSugerido, precioRentaSugeridoMax,
 				precioVentaSugerido, precioVentaSugeridoMax, multaDto, d.fotoUrl(), slots);
 	}

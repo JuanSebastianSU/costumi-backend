@@ -3,6 +3,7 @@ package com.costumi.backend.disfraces.adaptadores.entrada;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 
+import com.costumi.backend.disfraces.dominio.TipoDeDisfraz;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
@@ -23,10 +24,14 @@ public record CrearDisfrazRequest(
 
 		BigDecimal precioVentaGeneral,
 
+		/** Para qué está disponible: RENTA, VENTA o AMBOS (lo decide el dueño). Por defecto AMBOS. */
+		TipoDeDisfraz tipo,
+
 		@Valid
 		List<SlotDto> slots) {
 
 	public CrearDisfrazRequest {
 		slots = (slots == null) ? List.of() : slots;
+		tipo = (tipo == null) ? TipoDeDisfraz.AMBOS : tipo;
 	}
 }

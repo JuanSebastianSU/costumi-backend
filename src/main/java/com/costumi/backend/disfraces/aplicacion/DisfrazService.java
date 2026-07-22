@@ -68,7 +68,7 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 		validarCategoriaDelTenant(comando.empresaId(), comando.categoriaId());
 		comando.slots().forEach(slot -> validarSlotDelTenant(comando.empresaId(), slot));
 		Disfraz disfraz = Disfraz.crear(comando.empresaId(), comando.nombre(), comando.categoriaId(),
-				aSlots(comando.slots()), comando.precioRentaGeneral(), comando.precioVentaGeneral());
+				aSlots(comando.slots()), comando.precioRentaGeneral(), comando.precioVentaGeneral(), comando.tipo());
 		return disfraces.guardar(disfraz);
 	}
 
@@ -81,7 +81,7 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 		validarCategoriaDelTenant(comando.empresaId(), comando.categoriaId());
 		comando.slots().forEach(slot -> validarSlotDelTenant(comando.empresaId(), slot));
 		disfraz.redefinir(comando.nombre(), comando.categoriaId(), aSlots(comando.slots()),
-				comando.precioRentaGeneral(), comando.precioVentaGeneral());
+				comando.precioRentaGeneral(), comando.precioVentaGeneral(), comando.tipo());
 		return disfraces.guardar(disfraz);
 	}
 
@@ -449,6 +449,10 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 		if (!disfraz.activo()) {
 			throw new IllegalArgumentException("El disfraz está archivado y no se puede rentar");
 		}
+		// El dueño decide para qué está disponible el disfraz (RF-2.3): si es solo de venta, no se renta.
+		if (!disfraz.permiteRenta()) {
+			throw new IllegalArgumentException("Este disfraz es solo para venta, no se puede rentar");
+		}
 		List<RegistroDeRentas.ItemDeRenta> items = new ArrayList<>();
 		for (Slot slot : disfraz.slots()) {
 			boolean elegido = seleccionPorOrden.containsKey(slot.orden());
@@ -475,6 +479,10 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 		Disfraz disfraz = exigirDelTenant(empresaId, disfrazId);
 		if (!disfraz.activo()) {
 			throw new IllegalArgumentException("El disfraz está archivado y no se puede vender");
+		}
+		// El dueño decide para qué está disponible el disfraz (RF-2.3): si es solo de renta, no se vende.
+		if (!disfraz.permiteVenta()) {
+			throw new IllegalArgumentException("Este disfraz es solo para renta, no se puede comprar");
 		}
 		List<RegistroDeVentas.ItemDeVenta> items = new ArrayList<>();
 		for (Slot slot : disfraz.slots()) {

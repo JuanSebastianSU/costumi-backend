@@ -113,6 +113,63 @@ class DisfrazIntegrationTest {
 		return json.readTree(body).get("disponible").asBoolean();
 	}
 
+	/** Crea un disfraz de una pieza fija con el tipo elegido por el dueño (RENTA / VENTA / AMBOS). */
+	private UUID crearDisfrazConTipo(String dueno, UUID prenda, String nombre, String tipo) throws Exception {
+		String body = mvc.perform(post("/api/v1/disfraces").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"" + nombre + "\",\"tipo\":\"" + tipo + "\",\"slots\":[{\"orden\":1,"
+								+ "\"nombre\":\"Pieza\",\"ejePrenda\":\"FIJA\",\"prendaFijaId\":\"" + prenda
+								+ "\",\"opcional\":false}]}"))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.tipo").value(tipo))
+				.andReturn().getResponse().getContentAsString();
+		return UUID.fromString(json.readTree(body).get("id").asText());
+	}
+
+	@Test
+	void el_dueno_decide_si_el_disfraz_es_de_renta_o_de_venta_y_se_respeta() throws Exception {
+		UUID empresa = crearEmpresa("Disfraz Tipo " + UUID.randomUUID());
+		String dueno = duenoDe(empresa);
+		UUID categoria = crearCategoria(dueno, "Cat " + UUID.randomUUID());
+		// Prenda con AMBOS precios: así la validación que falla es la del TIPO del disfraz, no la de precio.
+		UUID prenda = UUID.fromString(json.readTree(mvc.perform(post("/api/v1/prendas")
+						.header("Authorization", "Bearer " + dueno).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"categoriaId\":\"" + categoria + "\",\"nombre\":\"Pieza\","
+								+ "\"tipoArticulo\":\"AMBOS\",\"precioRenta\":40.00,\"precioVenta\":100.00}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asText());
+		UUID sucursal = AuthTestHelper.sucursal(sucursales, empresa);
+		mvc.perform(post("/api/v1/prendas/{prendaId}/grupos-stock", prenda).header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + sucursal + "\",\"combinacion\":[],\"cantidadInicial\":5}"))
+				.andExpect(status().isCreated());
+		UUID cliente = UUID.fromString(json.readTree(mvc.perform(post("/api/v1/clientes")
+						.header("Authorization", "Bearer " + dueno).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Cliente\"}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asText());
+
+		// Disfraz SOLO RENTA: comprarlo debe fallar.
+		UUID soloRenta = crearDisfrazConTipo(dueno, prenda, "Solo Renta", "RENTA");
+		mvc.perform(post("/api/v1/disfraces/{id}/vender", soloRenta).header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + sucursal + "\",\"clienteId\":\"" + cliente + "\"}"))
+				.andExpect(status().isBadRequest());
+
+		// Disfraz SOLO VENTA: rentarlo debe fallar.
+		UUID soloVenta = crearDisfrazConTipo(dueno, prenda, "Solo Venta", "VENTA");
+		mvc.perform(post("/api/v1/disfraces/{id}/rentar", soloVenta).header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + sucursal + "\",\"clienteId\":\"" + cliente
+								+ "\",\"fechaRetiro\":\"2026-08-01\",\"fechaDevolucion\":\"2026-08-04\"}"))
+				.andExpect(status().isBadRequest());
+
+		// Uno de AMBOS sí permite las dos operaciones (se comprueba que la venta pasa).
+		UUID ambos = crearDisfrazConTipo(dueno, prenda, "Ambos", "AMBOS");
+		mvc.perform(post("/api/v1/disfraces/{id}/vender", ambos).header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + sucursal + "\",\"clienteId\":\"" + cliente + "\"}"))
+				.andExpect(status().isOk());
+	}
+
 	@Test
 	void el_disfraz_se_puede_vender_al_precio_de_venta_de_sus_prendas() throws Exception {
 		UUID empresa = crearEmpresa("DisfrazVenta " + UUID.randomUUID());
