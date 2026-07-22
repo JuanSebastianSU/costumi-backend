@@ -60,6 +60,7 @@ class TenantRequeridoIntegrationTest {
 			"/api/v1/clientes/" + cualquiera + "/estado-cuenta",
 			"/api/v1/empleados/" + cualquiera + "/actividad",
 			"/api/v1/categorias/" + cualquiera + "/prendas/conteo",
+			"/api/v1/notificaciones/plantillas",
 		};
 		for (String ruta : rutas) {
 			mvc.perform(get(ruta).header("Authorization", "Bearer " + cliente))
@@ -78,6 +79,8 @@ class TenantRequeridoIntegrationTest {
 		mvc.perform(get("/api/v1/prendas").header("Authorization", "Bearer " + cliente))
 				.andExpect(status().isOk());
 		mvc.perform(get("/api/v1/categorias").header("Authorization", "Bearer " + cliente))
+				.andExpect(status().isOk());
+		mvc.perform(get("/api/v1/notificaciones").header("Authorization", "Bearer " + cliente))
 				.andExpect(status().isOk());
 	}
 }
