@@ -7,6 +7,7 @@ import com.costumi.backend.pedidos.aplicacion.AgregarItemAlCarrito;
 import com.costumi.backend.pedidos.aplicacion.AgregarItemAlCarritoComando;
 import com.costumi.backend.pedidos.aplicacion.CarritoValorizado;
 import com.costumi.backend.pedidos.aplicacion.ConsultarCarrito;
+import com.costumi.backend.pedidos.aplicacion.ConsultarMisCarritos;
 import com.costumi.backend.pedidos.aplicacion.HacerCheckout;
 import com.costumi.backend.pedidos.aplicacion.HacerCheckoutDeRenta;
 import com.costumi.backend.pedidos.aplicacion.QuitarItemDelCarrito;
@@ -48,6 +49,7 @@ class CarritoController {
 	private final AgregarItemAlCarrito agregarItemAlCarrito;
 	private final QuitarItemDelCarrito quitarItemDelCarrito;
 	private final ConsultarCarrito consultarCarrito;
+	private final ConsultarMisCarritos consultarMisCarritos;
 	private final HacerCheckout hacerCheckout;
 	private final HacerCheckoutDeRenta hacerCheckoutDeRenta;
 	private final ResolucionDeClientes resolucionDeClientes;
@@ -55,12 +57,14 @@ class CarritoController {
 	private final ResolucionDeDisfraces disfraces;
 
 	CarritoController(AgregarItemAlCarrito agregarItemAlCarrito, QuitarItemDelCarrito quitarItemDelCarrito,
-			ConsultarCarrito consultarCarrito, HacerCheckout hacerCheckout, HacerCheckoutDeRenta hacerCheckoutDeRenta,
+			ConsultarCarrito consultarCarrito, ConsultarMisCarritos consultarMisCarritos,
+			HacerCheckout hacerCheckout, HacerCheckoutDeRenta hacerCheckoutDeRenta,
 			ResolucionDeClientes resolucionDeClientes, ConsultaDeInventario inventario,
 			ResolucionDeDisfraces disfraces) {
 		this.agregarItemAlCarrito = agregarItemAlCarrito;
 		this.quitarItemDelCarrito = quitarItemDelCarrito;
 		this.consultarCarrito = consultarCarrito;
+		this.consultarMisCarritos = consultarMisCarritos;
 		this.hacerCheckout = hacerCheckout;
 		this.hacerCheckoutDeRenta = hacerCheckoutDeRenta;
 		this.resolucionDeClientes = resolucionDeClientes;
@@ -95,6 +99,19 @@ class CarritoController {
 		Carrito carrito = quitarItemDelCarrito.ejecutar(actor.empresaId(), sucursalId, actor.clienteId(), tipo,
 				lineaId);
 		return responder(actor.empresaId(), carrito);
+	}
+
+	/**
+	 * Los carritos que el cliente dejó abiertos, en cualquier tienda (RF-16.2/16.3). Sirve para volver a
+	 * uno: {@link #pendiente} exige saber de antemano empresa, sucursal y tipo, y el cliente no tenía
+	 * dónde verlos — al cambiar de tienda había que agregar un artículo otra vez para reencontrarlo.
+	 *
+	 * <p>Se resuelve por el <b>usuario del token</b> (sus fichas de cliente), nunca por un id del request.
+	 */
+	@GetMapping("/mios")
+	List<CarritoAbiertoResponse> mios(@AuthenticationPrincipal Jwt jwt) {
+		UUID usuarioId = UUID.fromString(jwt.getSubject());
+		return consultarMisCarritos.deUsuario(usuarioId).stream().map(CarritoAbiertoResponse::desde).toList();
 	}
 
 	@GetMapping
