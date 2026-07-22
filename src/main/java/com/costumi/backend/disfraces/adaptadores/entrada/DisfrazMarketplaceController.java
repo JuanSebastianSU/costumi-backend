@@ -1,6 +1,8 @@
 package com.costumi.backend.disfraces.adaptadores.entrada;
 
 import com.costumi.backend.disfraces.aplicacion.ConsultarDisfraces;
+import com.costumi.backend.disfraces.aplicacion.GestionCategoriasDeDisfraz;
+import com.costumi.backend.disfraces.dominio.CategoriaDeDisfraz;
 import com.costumi.backend.disfraces.aplicacion.ConsultarDisponibilidadDeDisfraz;
 import com.costumi.backend.disfraces.aplicacion.ConsultarOpcionesDeSlot;
 import com.costumi.backend.disfraces.dominio.Disfraz;
@@ -30,13 +32,21 @@ class DisfrazMarketplaceController {
 	private final ConsultarDisfraces consultarDisfraces;
 	private final ConsultarDisponibilidadDeDisfraz consultarDisponibilidad;
 	private final ConsultarOpcionesDeSlot consultarOpcionesDeSlot;
+	private final GestionCategoriasDeDisfraz categorias;
 
 	DisfrazMarketplaceController(ConsultarDisfraces consultarDisfraces,
 			ConsultarDisponibilidadDeDisfraz consultarDisponibilidad,
-			ConsultarOpcionesDeSlot consultarOpcionesDeSlot) {
+			ConsultarOpcionesDeSlot consultarOpcionesDeSlot, GestionCategoriasDeDisfraz categorias) {
 		this.consultarDisfraces = consultarDisfraces;
 		this.consultarDisponibilidad = consultarDisponibilidad;
 		this.consultarOpcionesDeSlot = consultarOpcionesDeSlot;
+		this.categorias = categorias;
+	}
+
+	/** Nombres de las categorías de la tienda, en UNA consulta para toda la vitrina (sin N+1). */
+	private java.util.Map<UUID, String> nombresDeCategoria(UUID empresaId) {
+		return categorias.deEmpresa(empresaId).stream()
+				.collect(java.util.stream.Collectors.toMap(CategoriaDeDisfraz::id, CategoriaDeDisfraz::nombre));
 	}
 
 	/** Lista los disfraces activos de la tienda (con su estructura de slots y su precio de renta sugerido). */
@@ -45,8 +55,9 @@ class DisfrazMarketplaceController {
 		List<Disfraz> disfraces = consultarDisfraces.activosDeEmpresa(empresaId);
 		// Sugeridos de toda la vitrina en un solo cálculo (catálogo cargado una vez): sin N+1.
 		java.util.Map<UUID, ConsultarDisfraces.Sugeridos> sugeridos = consultarDisfraces.sugeridosDe(empresaId, disfraces);
+		java.util.Map<UUID, String> nombres = nombresDeCategoria(empresaId);
 		return disfraces.stream()
-				.map(d -> DisfrazResponse.desde(d, sugeridos.get(d.id())))
+				.map(d -> DisfrazResponse.desde(d, sugeridos.get(d.id()), nombres.get(d.categoriaId())))
 				.toList();
 	}
 
@@ -58,7 +69,8 @@ class DisfrazMarketplaceController {
 				.findFirst()
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Disfraz no encontrado"));
 		boolean disponible = consultarDisponibilidad.estaDisponible(empresaId, disfrazId);
-		DisfrazResponse resp = DisfrazResponse.desde(disfraz, consultarDisfraces.sugeridosDe(empresaId, disfraz));
+		DisfrazResponse resp = DisfrazResponse.desde(disfraz, consultarDisfraces.sugeridosDe(empresaId, disfraz),
+				nombresDeCategoria(empresaId).get(disfraz.categoriaId()));
 		return new DisfrazDetalleResponse(resp, disponible);
 	}
 

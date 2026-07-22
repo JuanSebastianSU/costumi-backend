@@ -62,6 +62,7 @@ class DisfrazController {
 	private final AsignarFotoDeDisfraz asignarFotoDeDisfraz;
 	private final ContextoDeTenant tenant;
 	private final ResolucionDeClientes resolucionDeClientes;
+	private final com.costumi.backend.disfraces.aplicacion.GestionCategoriasDeDisfraz categorias;
 
 	DisfrazController(CrearDisfraz crearDisfraz, EditarDisfraz editarDisfraz,
 			CambiarEstadoDisfraz cambiarEstadoDisfraz, ConsultarDisfraces consultarDisfraces,
@@ -70,7 +71,8 @@ class DisfrazController {
 			com.costumi.backend.disfraces.aplicacion.RentarVariosDisfraces rentarVariosDisfraces,
 			com.costumi.backend.disfraces.aplicacion.VenderVariosDisfraces venderVariosDisfraces,
 			AsignarFotoDeDisfraz asignarFotoDeDisfraz, ContextoDeTenant tenant,
-			ResolucionDeClientes resolucionDeClientes) {
+			ResolucionDeClientes resolucionDeClientes,
+			com.costumi.backend.disfraces.aplicacion.GestionCategoriasDeDisfraz categorias) {
 		this.crearDisfraz = crearDisfraz;
 		this.editarDisfraz = editarDisfraz;
 		this.cambiarEstadoDisfraz = cambiarEstadoDisfraz;
@@ -83,6 +85,7 @@ class DisfrazController {
 		this.asignarFotoDeDisfraz = asignarFotoDeDisfraz;
 		this.tenant = tenant;
 		this.resolucionDeClientes = resolucionDeClientes;
+		this.categorias = categorias;
 	}
 
 	/** Sube/actualiza la foto del disfraz (RF-2.9, multipart) — la que sube el dueño para la vitrina. */
@@ -149,8 +152,13 @@ class DisfrazController {
 							.toList();
 					// Un solo cálculo de sugeridos para toda la lista (catálogo cargado una vez): sin N+1.
 					Map<UUID, ConsultarDisfraces.Sugeridos> sugeridos = consultarDisfraces.sugeridosDe(empresaId, disfraces);
+					// Nombres de categoría en UNA consulta para toda la lista (sin N+1).
+					Map<UUID, String> nombres = categorias.deEmpresa(empresaId).stream()
+							.collect(java.util.stream.Collectors.toMap(
+									com.costumi.backend.disfraces.dominio.CategoriaDeDisfraz::id,
+									com.costumi.backend.disfraces.dominio.CategoriaDeDisfraz::nombre));
 					return disfraces.stream()
-							.map(d -> DisfrazResponse.desde(d, sugeridos.get(d.id())))
+							.map(d -> DisfrazResponse.desde(d, sugeridos.get(d.id()), nombres.get(d.categoriaId())))
 							.toList();
 				})
 				.orElseGet(List::of);
