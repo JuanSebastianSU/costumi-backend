@@ -8,6 +8,20 @@
 > `CLAUDE.md`) para retomar sin perder el hilo. Regla: mueve ítems entre secciones,
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
+## FIX de aislamiento en probar-push (2026-07-22)
+
+Bug introducido por mi en el endpoint de diagnostico: `POST /notificaciones/probar-push/{clienteId}`
+recibia el id por URL y **no filtraba por empresa** (`select ... from cliente where id = :id`). Un dueno
+podia averiguar si un cliente de OTRA tienda tenia dispositivo registrado, y mandarle una notificacion.
+Rompia la regla del proyecto de filtrar todo por tenant (§5.4).
+
+- `ContactoDelCliente.buscar` ahora **exige `empresaId`** y el SQL filtra por `empresa_id`. Esto endurece
+  tambien el camino normal de envio (WhatsApp y FCM), no solo el diagnostico.
+- La empresa sale del token, nunca del request.
+- La validacion del cliente va **antes** de mirar si el canal esta configurado: la pertenencia al tenant no
+  depende de que haya credencial, y asi la regla queda cubierta por tests aunque el canal este apagado.
+- Test nuevo: el dueno de la empresa A no puede probar un cliente de la B. **Suite 517/517.**
+
 ## BACK-1 — el disfraz sobrevive al cobro (2026-07-22)
 
 Al confirmar una venta o renta el disfraz se resolvía a sus prendas y **se perdía**: el cliente veía

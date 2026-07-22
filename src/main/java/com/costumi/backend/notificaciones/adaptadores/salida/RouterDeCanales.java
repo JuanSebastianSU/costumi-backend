@@ -33,8 +33,9 @@ class RouterDeCanales implements CanalDeNotificacion,
 	}
 
 	@Override
-	public com.costumi.backend.notificaciones.aplicacion.ResultadoDePrueba probarPush(java.util.UUID clienteId) {
-		CanalFcm.ResultadoDeEnvio r = fcm.probar(clienteId);
+	public com.costumi.backend.notificaciones.aplicacion.ResultadoDePrueba probarPush(java.util.UUID empresaId,
+			java.util.UUID clienteId) {
+		CanalFcm.ResultadoDeEnvio r = fcm.probar(empresaId, clienteId);
 		return new com.costumi.backend.notificaciones.aplicacion.ResultadoDePrueba(r.enviado(), r.detalle());
 	}
 

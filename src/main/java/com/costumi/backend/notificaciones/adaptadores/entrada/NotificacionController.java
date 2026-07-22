@@ -108,9 +108,13 @@ class NotificacionController {
 		return estadoDeCanales.estado();
 	}
 
-	/** Push de prueba al dispositivo del cliente; devuelve el motivo exacto si no sale. */
+	/**
+	 * Push de prueba al dispositivo del cliente; devuelve el motivo exacto si no sale. El cliente tiene
+	 * que ser de TU tienda: la empresa sale del token, nunca del request.
+	 */
 	@PostMapping("/probar-push/{clienteId}")
-	com.costumi.backend.notificaciones.aplicacion.ResultadoDePrueba probarPush(@PathVariable UUID clienteId) {
-		return estadoDeCanales.probarPush(clienteId);
+	com.costumi.backend.notificaciones.aplicacion.ResultadoDePrueba probarPush(@PathVariable UUID clienteId,
+			@AuthenticationPrincipal Jwt jwt) {
+		return estadoDeCanales.probarPush(UUID.fromString(jwt.getClaimAsString("empresa_id")), clienteId);
 	}
 }

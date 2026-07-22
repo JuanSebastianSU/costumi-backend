@@ -228,4 +228,33 @@ class NotificacionIntegrationTest {
 				.andExpect(jsonPath("$.fcmConfigurado").value(false))
 				.andExpect(jsonPath("$.fcmDetalle").value(org.hamcrest.Matchers.containsString("COSTUMI_FCM_CREDENTIALS")));
 	}
+
+	@Test
+	void no_se_puede_probar_el_push_de_un_cliente_de_otra_empresa() throws Exception {
+		// El endpoint de diagnostico recibe un clienteId por URL. Sin filtrar por tenant, un dueno podria
+		// averiguar si un cliente AJENO tiene dispositivo registrado y hasta mandarle una notificacion.
+		UUID empresaA = crearEmpresaAprobada("Tenant A");
+		UUID empresaB = crearEmpresaAprobada("Tenant B");
+		String duenoA = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresaA, Rol.DUENO);
+		String duenoB = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresaB, Rol.DUENO);
+		UUID clienteDeB = postId("/api/v1/clientes", duenoB, "{\"nombre\":\"Cliente de B\"}");
+
+		// El dueno de A pregunta por un cliente de B: no debe poder distinguirlo de uno inexistente.
+		mvc.perform(post("/api/v1/notificaciones/probar-push/{id}", clienteDeB)
+						.header("Authorization", "Bearer " + duenoA))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.enviado").value(false))
+				.andExpect(jsonPath("$.detalle").value(org.hamcrest.Matchers.containsString("tu tienda")));
+	}
+
+	private UUID crearEmpresaAprobada(String nombre) throws Exception {
+		String res = mvc.perform(post("/api/v1/empresas").contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"" + nombre + " " + UUID.randomUUID() + "\"}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		UUID empresa = UUID.fromString(json.readTree(res).get("id").asText());
+		String superAdmin = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, null, Rol.SUPERADMIN);
+		mvc.perform(post("/api/v1/empresas/{id}/aprobar", empresa).header("Authorization", "Bearer " + superAdmin))
+				.andExpect(status().isOk());
+		return empresa;
+	}
 }

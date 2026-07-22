@@ -15,7 +15,10 @@ import java.util.UUID;
 @Repository
 class ContactoDelClienteJdbcAdapter implements ContactoDelCliente {
 
-	private static final String SQL = "select telefono, device_token from cliente where id = :id";
+	// El filtro por empresa_id no es opcional: sin el se podria leer el contacto de un cliente de otra
+	// tienda, o notificarlo (§5.4).
+	private static final String SQL =
+			"select telefono, device_token from cliente where id = :id and empresa_id = :empresaId";
 
 	private final JdbcClient jdbc;
 
@@ -24,8 +27,8 @@ class ContactoDelClienteJdbcAdapter implements ContactoDelCliente {
 	}
 
 	@Override
-	public Optional<ContactoDeCliente> buscar(UUID clienteId) {
-		return jdbc.sql(SQL).param("id", clienteId)
+	public Optional<ContactoDeCliente> buscar(UUID empresaId, UUID clienteId) {
+		return jdbc.sql(SQL).param("id", clienteId).param("empresaId", empresaId)
 				.query((rs, n) -> new ContactoDeCliente(rs.getString("telefono"), rs.getString("device_token")))
 				.optional();
 	}
