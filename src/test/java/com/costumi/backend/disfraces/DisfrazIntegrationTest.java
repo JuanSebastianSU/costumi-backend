@@ -507,6 +507,41 @@ class DisfrazIntegrationTest {
 	}
 
 	@Test
+	void la_vitrina_trae_el_nombre_de_la_categoria_para_que_el_cliente_pueda_filtrar() throws Exception {
+		// El cliente del marketplace no puede leer la taxonomia de la empresa: sin el NOMBRE en la vitrina
+		// no podria mostrar ni filtrar por categoria (solo tendria un UUID).
+		CtxRenta c = montarRenta("Vitrina Categoria");
+		UUID categoriaPrenda = crearCategoria(c.dueno(), "Cat " + UUID.randomUUID());
+		UUID prendaBase = crearPrenda(c.dueno(), categoriaPrenda);
+		String nombreCategoria = "Piratas " + UUID.randomUUID();
+		UUID categoriaDisfraz = crearCategoriaDisfraz(c.dueno(), nombreCategoria);
+		UUID disfraz = crearDisfrazEnCategoria(c.dueno(), prendaBase, categoriaDisfraz);
+
+		mvc.perform(get("/api/v1/marketplace/empresas/{e}/disfraces", c.empresa()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[0].categoriaId").value(categoriaDisfraz.toString()))
+				.andExpect(jsonPath("$[0].categoria").value(nombreCategoria));
+
+		// Tambien en la lista del dueño y en el detalle publico.
+		mvc.perform(get("/api/v1/disfraces").header("Authorization", "Bearer " + c.dueno()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[0].categoria").value(nombreCategoria));
+		mvc.perform(get("/api/v1/marketplace/empresas/{e}/disfraces/{d}", c.empresa(), disfraz))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.disfraz.categoria").value(nombreCategoria));
+	}
+
+	private UUID crearDisfrazEnCategoria(String token, UUID prendaFija, UUID categoriaDisfraz) throws Exception {
+		String body = mvc.perform(post("/api/v1/disfraces").header("Authorization", "Bearer " + token)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Disfraz Cat\",\"categoriaId\":\"" + categoriaDisfraz
+								+ "\",\"slots\":[{\"orden\":1,\"nombre\":\"Cuerpo\",\"ejePrenda\":\"FIJA\","
+								+ "\"prendaFijaId\":\"" + prendaFija + "\",\"opcional\":false}]}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		return UUID.fromString(json.readTree(body).get("id").asText());
+	}
+
+	@Test
 	void editar_disfraz_redefine_nombre_y_slots() throws Exception {
 		String dueno = duenoDe(crearEmpresa("Editar Disfraz"));
 		UUID categoria = crearCategoria(dueno, "Cat " + UUID.randomUUID());

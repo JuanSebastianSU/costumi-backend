@@ -8,6 +8,16 @@
 > `CLAUDE.md`) para retomar sin perder el hilo. Regla: mueve ítems entre secciones,
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
+## Nombre de la categoria en la vitrina del disfraz (2026-07-22)
+
+El cliente del marketplace no puede leer la taxonomia de la empresa, asi que con solo `categoriaId` (un UUID)
+no podia ni mostrar ni filtrar por categoria en la vitrina de disfraces.
+
+- `DisfrazResponse` gana **`categoria`** (el NOMBRE), igual que ya hacia `PrendaVitrinaResponse`.
+- Lo resuelven la lista del dueño, la vitrina publica y el detalle publico, con **una sola consulta de
+  categorias por lista** (sin N+1).
+- Test nuevo en `DisfrazIntegrationTest`. **Suite 502/502.**
+
 ## Quitar un item del carrito (2026-07-22)
 
 El cliente no tenia forma de deshacer lo que agrego al carrito: no habia endpoint ni boton. El caso feo:
