@@ -45,12 +45,24 @@ class DisfrazRepositoryAdapter implements DisfrazRepository {
 	}
 
 	@Override
+	public com.costumi.backend.compartido.Pagina<Disfraz> listarPorEmpresa(UUID empresaId, String buscar, UUID categoriaId,
+			com.costumi.backend.compartido.SolicitudDePagina pagina) {
+		org.springframework.data.domain.Page<DisfrazJpaEntity> page = cabeceras.buscarPagina(empresaId,
+				buscar == null || buscar.isBlank() ? null : buscar.trim(), categoriaId,
+				org.springframework.data.domain.PageRequest.of(pagina.pagina(), pagina.tamano()));
+		return com.costumi.backend.compartido.Pagina.de(conSlots(page.getContent()), page.getTotalElements(), pagina);
+	}
+
+	@Override
 	public List<Disfraz> listarPorEmpresa(UUID empresaId) {
-		List<DisfrazJpaEntity> lista = cabeceras.findByEmpresaId(empresaId);
+		return conSlots(cabeceras.findByEmpresaId(empresaId));
+	}
+
+	/** Rehidrata las cabeceras con sus slots en UNA sola query (evita el N+1 de un findByDisfrazId por cabecera). */
+	private List<Disfraz> conSlots(List<DisfrazJpaEntity> lista) {
 		if (lista.isEmpty()) {
 			return List.of();
 		}
-		// Una sola query para TODOS los slots de estos disfraces (evita el N+1 de un findByDisfrazId por cabecera).
 		List<UUID> ids = lista.stream().map(DisfrazJpaEntity::getId).toList();
 		Map<UUID, List<Slot>> slotsPorDisfraz = slots.findByDisfrazIdInOrderByDisfrazIdAscOrdenAsc(ids).stream()
 				.collect(Collectors.groupingBy(DisfrazSlotJpaEntity::getDisfrazId, LinkedHashMap::new,

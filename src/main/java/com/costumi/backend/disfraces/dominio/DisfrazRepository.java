@@ -12,4 +12,7 @@ public interface DisfrazRepository {
 	Optional<Disfraz> buscarPorId(UUID id);
 
 	List<Disfraz> listarPorEmpresa(UUID empresaId);
+
+	/** Página de disfraces por nombre, filtrando opcionalmente por texto y por categoría. */
+	com.costumi.backend.compartido.Pagina<Disfraz> listarPorEmpresa(UUID empresaId, String buscar, UUID categoriaId, com.costumi.backend.compartido.SolicitudDePagina pagina);
 }

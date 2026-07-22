@@ -17,7 +17,8 @@ public interface VentaRepository {
 	List<Venta> listarPorEmpresa(UUID empresaId);
 
 	/** Página de ventas de la empresa, más recientes primero (C3). */
-	Pagina<Venta> listar(UUID empresaId, SolicitudDePagina solicitud);
+	/** Página de ventas; {@code buscar} (opcional) filtra por código de retiro. */
+	Pagina<Venta> listar(UUID empresaId, String buscar, SolicitudDePagina solicitud);
 
 	/** Venta con esa clave de idempotencia en la empresa, si existe (RF-17.6). */
 	Optional<Venta> buscarPorClave(UUID empresaId, String claveIdempotencia);

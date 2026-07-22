@@ -36,6 +36,16 @@ class SolicitudDeReembolsoRepositoryAdapter implements SolicitudDeReembolsoRepos
 	}
 
 	@Override
+	public com.costumi.backend.compartido.Pagina<SolicitudDeReembolso> listarPorEmpresa(UUID empresaId, String buscar,
+			com.costumi.backend.compartido.SolicitudDePagina pagina) {
+		org.springframework.data.domain.Page<SolicitudDeReembolsoJpaEntity> page = jpa.buscarPagina(empresaId,
+				buscar == null || buscar.isBlank() ? null : buscar.trim(),
+				org.springframework.data.domain.PageRequest.of(pagina.pagina(), pagina.tamano()));
+		return com.costumi.backend.compartido.Pagina.de(page.getContent().stream()
+				.map(SolicitudDeReembolsoRepositoryAdapter::aDominio).toList(), page.getTotalElements(), pagina);
+	}
+
+	@Override
 	public boolean existePendientePorConcepto(UUID empresaId, UUID conceptoId) {
 		return jpa.existsByEmpresaIdAndConceptoIdAndEstado(empresaId, conceptoId,
 				EstadoSolicitudReembolso.PENDIENTE);

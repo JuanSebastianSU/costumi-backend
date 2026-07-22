@@ -9,4 +9,7 @@ import java.util.UUID;
 public interface ConsultarDevoluciones {
 
 	List<Devolucion> deEmpresa(UUID empresaId);
+
+	/** Página de devoluciones, con búsqueda opcional en la descripción de las piezas revisadas. */
+	com.costumi.backend.compartido.Pagina<Devolucion> deEmpresa(UUID empresaId, String buscar, com.costumi.backend.compartido.SolicitudDePagina pagina);
 }

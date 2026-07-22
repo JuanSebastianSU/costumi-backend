@@ -336,7 +336,7 @@ class VentaIntegrationTest {
 		// RF-11.1: la compra dispara el mensaje de agradecimiento por WhatsApp con la plantilla configurable.
 		mvc.perform(get("/api/v1/notificaciones").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.canal == 'WHATSAPP')].mensaje",
+				.andExpect(jsonPath("$.contenido[?(@.canal == 'WHATSAPP')].mensaje",
 						org.hamcrest.Matchers.hasItem(org.hamcrest.Matchers.containsString("Gracias por tu compra, Comprador"))));
 	}
 

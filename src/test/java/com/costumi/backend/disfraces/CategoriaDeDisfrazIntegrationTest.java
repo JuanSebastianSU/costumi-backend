@@ -97,8 +97,8 @@ class CategoriaDeDisfrazIntegrationTest {
 		mvc.perform(get("/api/v1/disfraces").param("categoriaId", piratas.toString())
 						.header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.length()").value(1))
-				.andExpect(jsonPath("$[0].nombre").value("Pirata Clásico"));
+				.andExpect(jsonPath("$.contenido.length()").value(1))
+				.andExpect(jsonPath("$.contenido[0].nombre").value("Pirata Clásico"));
 	}
 
 	@Test

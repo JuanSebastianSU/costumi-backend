@@ -52,7 +52,7 @@ class AuditoriaIntegrationTest {
 		String dueno = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.DUENO);
 		mvc.perform(get("/api/v1/auditoria").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.accion == 'EMPRESA_APROBADA')]").exists());
+				.andExpect(jsonPath("$.contenido[?(@.accion == 'EMPRESA_APROBADA')]").exists());
 	}
 
 	@Test

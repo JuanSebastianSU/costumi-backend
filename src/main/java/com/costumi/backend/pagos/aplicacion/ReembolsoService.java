@@ -123,6 +123,13 @@ class ReembolsoService implements SolicitarReembolso, SolicitarReembolsoDeClient
 		return solicitudes.listarPorEmpresa(empresaId);
 	}
 
+	@Override
+	@Transactional(readOnly = true)
+	public com.costumi.backend.compartido.Pagina<SolicitudDeReembolso> deEmpresa(UUID empresaId, String buscar,
+			com.costumi.backend.compartido.SolicitudDePagina pagina) {
+		return solicitudes.listarPorEmpresa(empresaId, buscar, pagina);
+	}
+
 	private boolean itemDevuelto(SolicitudDeReembolso solicitud) {
 		return switch (solicitud.tipoConcepto()) {
 			case VENTA -> ventas.estaDevuelta(solicitud.empresaId(), solicitud.conceptoId());

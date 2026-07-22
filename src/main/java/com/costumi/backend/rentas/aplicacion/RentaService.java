@@ -210,9 +210,9 @@ class RentaService implements CrearRenta, ConsultarRentas, GestionarRenta, Consu
 
 	@Override
 	@Transactional(readOnly = true)
-	public com.costumi.backend.compartido.Pagina<Renta> listar(UUID empresaId, UUID clienteId,
+	public com.costumi.backend.compartido.Pagina<Renta> listar(UUID empresaId, UUID clienteId, String buscar,
 			com.costumi.backend.compartido.SolicitudDePagina solicitud) {
-		return rentas.listar(empresaId, clienteId, solicitud);
+		return rentas.listar(empresaId, clienteId, buscar, solicitud);
 	}
 
 	@Override

@@ -61,14 +61,20 @@ class DevolucionController {
 		return ResponseEntity.created(location).body(resp(empresaId, devolucion));
 	}
 
+	/** Página de devoluciones. {@code buscar} filtra por la descripción escrita en una pieza revisada. */
 	@GetMapping
-	List<DevolucionResponse> listar(@AuthenticationPrincipal Jwt jwt) {
+	com.costumi.backend.compartido.RespuestaPaginada<DevolucionResponse> listar(
+			@org.springframework.web.bind.annotation.RequestParam(required = false) String buscar,
+			@org.springframework.web.bind.annotation.RequestParam(required = false) Integer pagina,
+			@org.springframework.web.bind.annotation.RequestParam(required = false) Integer tamano,
+			@AuthenticationPrincipal Jwt jwt) {
 		String empresaId = jwt.getClaimAsString("empresa_id");
 		if (empresaId == null) {
-			return List.of();
+			return new com.costumi.backend.compartido.RespuestaPaginada<>(List.of(), 0, 0, 0, 0);
 		}
 		UUID empresa = UUID.fromString(empresaId);
-		return consultarDevoluciones.deEmpresa(empresa).stream()
-				.map(d -> resp(empresa, d)).toList();
+		return com.costumi.backend.compartido.RespuestaPaginada.desde(
+				consultarDevoluciones.deEmpresa(empresa, buscar, com.costumi.backend.compartido.SolicitudDePagina.de(pagina, tamano)),
+				d -> resp(empresa, d));
 	}
 }

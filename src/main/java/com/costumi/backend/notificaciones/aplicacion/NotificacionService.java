@@ -57,6 +57,12 @@ class NotificacionService implements EnviarNotificacion, ConsultarNotificaciones
 
 	@Override
 	@Transactional(readOnly = true)
+	public com.costumi.backend.compartido.Pagina<Notificacion> deEmpresa(UUID empresaId, String buscar, com.costumi.backend.compartido.SolicitudDePagina pagina) {
+		return notificaciones.listarPorEmpresa(empresaId, buscar, pagina);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
 	public List<UUID> empresasConVencidas() {
 		return vencidas.empresasConVencidas(LocalDate.now());
 	}

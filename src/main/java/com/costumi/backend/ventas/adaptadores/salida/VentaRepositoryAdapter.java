@@ -57,10 +57,10 @@ class VentaRepositoryAdapter implements VentaRepository {
 	}
 
 	@Override
-	public Pagina<Venta> listar(UUID empresaId, SolicitudDePagina solicitud) {
+	public Pagina<Venta> listar(UUID empresaId, String buscar, SolicitudDePagina solicitud) {
 		Pageable pageable = PageRequest.of(solicitud.pagina(), solicitud.tamano(),
 				Sort.by(Sort.Order.desc("creadaEn"), Sort.Order.asc("id")));
-		Page<VentaJpaEntity> pagina = cabeceras.findByEmpresaId(empresaId, pageable);
+		Page<VentaJpaEntity> pagina = cabeceras.buscarPagina(empresaId, normalizarCodigo(buscar), pageable);
 		return new Pagina<>(aDominioEnLote(pagina.getContent()), pagina.getTotalElements(),
 				solicitud.pagina(), solicitud.tamano());
 	}
@@ -101,5 +101,18 @@ class VentaRepositoryAdapter implements VentaRepository {
 		return Venta.rehidratar(cabecera.getId(), cabecera.getEmpresaId(), cabecera.getSucursalId(),
 				cabecera.getEmpleadoId(), cabecera.getClienteId(), cabecera.getDescuento(), cabecera.getTotal(),
 				cabecera.getEstado(), lineasDominio, cabecera.getClaveIdempotencia(), cabecera.getCreadaEn());
+	}
+
+	/**
+	 * El usuario escribe el código tal como lo ve ("V-75EC3602"); en la BD el id se guarda en minúsculas y
+	 * sin prefijo, así que se quita el prefijo y se pasa a minúsculas para buscar por prefijo del id.
+	 */
+	private static String normalizarCodigo(String buscar) {
+		if (buscar == null || buscar.isBlank()) {
+			return null;
+		}
+		String limpio = buscar.trim().toLowerCase(java.util.Locale.ROOT);
+		int guion = limpio.indexOf('-');
+		return guion >= 0 && guion <= 2 ? limpio.substring(guion + 1) : limpio;
 	}
 }

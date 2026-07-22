@@ -9,4 +9,7 @@ import java.util.UUID;
 public interface ConsultarAuditoria {
 
 	List<RegistroDeAuditoria> deEmpresa(UUID empresaId);
+
+	/** Página del trail, con búsqueda opcional por acción o detalle. */
+	com.costumi.backend.compartido.Pagina<RegistroDeAuditoria> deEmpresa(UUID empresaId, String buscar, com.costumi.backend.compartido.SolicitudDePagina pagina);
 }

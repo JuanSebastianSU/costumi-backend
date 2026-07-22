@@ -29,4 +29,10 @@ class AuditoriaService implements RegistrarAuditoria, ConsultarAuditoria {
 	public List<RegistroDeAuditoria> deEmpresa(UUID empresaId) {
 		return registros.listarPorEmpresa(empresaId);
 	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public com.costumi.backend.compartido.Pagina<RegistroDeAuditoria> deEmpresa(UUID empresaId, String buscar, com.costumi.backend.compartido.SolicitudDePagina pagina) {
+		return registros.listarPorEmpresa(empresaId, buscar, pagina);
+	}
 }

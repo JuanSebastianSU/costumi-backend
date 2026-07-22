@@ -75,13 +75,23 @@ class NotificacionController {
 	record RecordatorioResponse(int enviadas) {
 	}
 
+	/**
+	 * Página de notificaciones, más recientes primero. {@code buscar} filtra por el texto del mensaje.
+	 * Se pagina siempre: se genera una por cada aviso y devolverlas todas deja de funcionar con el tiempo.
+	 */
 	@GetMapping
-	List<NotificacionResponse> listar(@AuthenticationPrincipal Jwt jwt) {
+	com.costumi.backend.compartido.RespuestaPaginada<NotificacionResponse> listar(
+			@org.springframework.web.bind.annotation.RequestParam(required = false) String buscar,
+			@org.springframework.web.bind.annotation.RequestParam(required = false) Integer pagina,
+			@org.springframework.web.bind.annotation.RequestParam(required = false) Integer tamano,
+			@AuthenticationPrincipal Jwt jwt) {
 		String empresaId = jwt.getClaimAsString("empresa_id");
 		if (empresaId == null) {
-			return List.of();
+			return new com.costumi.backend.compartido.RespuestaPaginada<>(List.of(), 0, 0, 0, 0);
 		}
-		return consultarNotificaciones.deEmpresa(UUID.fromString(empresaId)).stream()
-				.map(NotificacionResponse::desde).toList();
+		return com.costumi.backend.compartido.RespuestaPaginada.desde(
+				consultarNotificaciones.deEmpresa(UUID.fromString(empresaId), buscar,
+						com.costumi.backend.compartido.SolicitudDePagina.de(pagina, tamano)),
+				NotificacionResponse::desde);
 	}
 }

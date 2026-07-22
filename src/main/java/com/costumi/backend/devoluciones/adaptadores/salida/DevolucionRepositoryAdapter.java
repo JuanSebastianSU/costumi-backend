@@ -44,6 +44,15 @@ class DevolucionRepositoryAdapter implements DevolucionRepository {
 	}
 
 	@Override
+	public com.costumi.backend.compartido.Pagina<Devolucion> listarPorEmpresa(UUID empresaId, String buscar, com.costumi.backend.compartido.SolicitudDePagina pagina) {
+		org.springframework.data.domain.Page<DevolucionJpaEntity> page = cabeceras.buscarPagina(empresaId,
+				buscar == null || buscar.isBlank() ? null : buscar.trim(),
+				org.springframework.data.domain.PageRequest.of(pagina.pagina(), pagina.tamano()));
+		return com.costumi.backend.compartido.Pagina.de(page.getContent().stream().map(this::aDominio).toList(),
+				page.getTotalElements(), pagina);
+	}
+
+	@Override
 	public List<Devolucion> listarPorRenta(UUID empresaId, UUID rentaId) {
 		return cabeceras.findByEmpresaIdAndRentaId(empresaId, rentaId).stream().map(this::aDominio).toList();
 	}

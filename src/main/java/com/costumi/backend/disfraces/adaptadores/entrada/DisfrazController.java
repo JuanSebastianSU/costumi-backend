@@ -142,26 +142,32 @@ class DisfrazController {
 		return resp(empresaId, cambiarEstadoDisfraz.activar(empresaId, disfrazId));
 	}
 
-	/** Lista los disfraces del tenant; con {@code categoriaId} filtra por esa categoría (RF-2.3). */
+	/**
+	 * Página de disfraces del tenant. {@code buscar} filtra por nombre y {@code categoriaId} por categoría
+	 * (RF-2.3). Se pagina en la BD: el cálculo de precios sugeridos solo se hace para la página que se ve.
+	 */
 	@GetMapping
-	List<DisfrazResponse> listar(@RequestParam(required = false) UUID categoriaId) {
+	com.costumi.backend.compartido.RespuestaPaginada<DisfrazResponse> listar(
+			@RequestParam(required = false) UUID categoriaId,
+			@RequestParam(required = false) String buscar,
+			@RequestParam(required = false) Integer pagina,
+			@RequestParam(required = false) Integer tamano) {
 		return tenant.empresaId()
 				.map(empresaId -> {
-					List<Disfraz> disfraces = consultarDisfraces.deEmpresa(empresaId).stream()
-							.filter(d -> categoriaId == null || categoriaId.equals(d.categoriaId()))
-							.toList();
-					// Un solo cálculo de sugeridos para toda la lista (catálogo cargado una vez): sin N+1.
+					com.costumi.backend.compartido.Pagina<Disfraz> pagados = consultarDisfraces.deEmpresa(
+							empresaId, buscar, categoriaId, com.costumi.backend.compartido.SolicitudDePagina.de(pagina, tamano));
+					List<Disfraz> disfraces = pagados.contenido();
+					// Un solo cálculo de sugeridos para la página (catálogo cargado una vez): sin N+1.
 					Map<UUID, ConsultarDisfraces.Sugeridos> sugeridos = consultarDisfraces.sugeridosDe(empresaId, disfraces);
-					// Nombres de categoría en UNA consulta para toda la lista (sin N+1).
+					// Nombres de categoría en UNA consulta para toda la página (sin N+1).
 					Map<UUID, String> nombres = categorias.deEmpresa(empresaId).stream()
 							.collect(java.util.stream.Collectors.toMap(
 									com.costumi.backend.disfraces.dominio.CategoriaDeDisfraz::id,
 									com.costumi.backend.disfraces.dominio.CategoriaDeDisfraz::nombre));
-					return disfraces.stream()
-							.map(d -> DisfrazResponse.desde(d, sugeridos.get(d.id()), nombres.get(d.categoriaId())))
-							.toList();
+					return com.costumi.backend.compartido.RespuestaPaginada.desde(pagados,
+							d -> DisfrazResponse.desde(d, sugeridos.get(d.id()), nombres.get(d.categoriaId())));
 				})
-				.orElseGet(List::of);
+				.orElseGet(() -> new com.costumi.backend.compartido.RespuestaPaginada<>(List.of(), 0, 0, 0, 0));
 	}
 
 	@GetMapping("/{disfrazId}/disponibilidad")

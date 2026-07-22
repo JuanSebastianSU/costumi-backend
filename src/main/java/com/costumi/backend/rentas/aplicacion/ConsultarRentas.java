@@ -14,7 +14,8 @@ public interface ConsultarRentas {
 	List<Renta> buscar(UUID empresaId, UUID clienteId);
 
 	/** Página de rentas de la empresa, opcionalmente por cliente (C3). */
-	Pagina<Renta> listar(UUID empresaId, UUID clienteId, SolicitudDePagina solicitud);
+	/** Página de rentas; {@code buscar} (opcional) filtra por código de retiro. */
+	Pagina<Renta> listar(UUID empresaId, UUID clienteId, String buscar, SolicitudDePagina solicitud);
 
 	/** Una renta de la empresa por su id (scoped por tenant). Vacío si no existe o es de otra empresa. */
 	Optional<Renta> buscarPorId(UUID empresaId, UUID rentaId);

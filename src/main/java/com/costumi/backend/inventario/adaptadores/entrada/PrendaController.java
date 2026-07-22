@@ -115,14 +115,15 @@ class PrendaController {
 	}
 
 	@GetMapping
-	RespuestaPaginada<PrendaResponse> listar(@RequestParam(required = false) Integer pagina,
+	RespuestaPaginada<PrendaResponse> listar(@RequestParam(required = false) String buscar,
+			@RequestParam(required = false) Integer pagina,
 			@RequestParam(required = false) Integer tamano, @AuthenticationPrincipal Jwt jwt) {
 		String empresaId = jwt.getClaimAsString("empresa_id");
 		if (empresaId == null) {
 			return new RespuestaPaginada<>(List.of(), 0, 0, 0, 0);
 		}
 		return RespuestaPaginada.desde(
-				consultarPrendas.listar(UUID.fromString(empresaId), SolicitudDePagina.de(pagina, tamano)),
+				consultarPrendas.listar(UUID.fromString(empresaId), buscar, SolicitudDePagina.de(pagina, tamano)),
 				PrendaResponse::desde);
 	}
 

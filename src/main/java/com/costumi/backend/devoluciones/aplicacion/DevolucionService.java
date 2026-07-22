@@ -151,6 +151,12 @@ class DevolucionService implements RegistrarDevolucion, ConsultarDevoluciones,
 
 	@Override
 	@Transactional(readOnly = true)
+	public com.costumi.backend.compartido.Pagina<Devolucion> deEmpresa(UUID empresaId, String buscar, com.costumi.backend.compartido.SolicitudDePagina pagina) {
+		return devoluciones.listarPorEmpresa(empresaId, buscar, pagina);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
 	public BigDecimal totalMultaDeRenta(UUID empresaId, UUID rentaId) {
 		return devoluciones.listarPorRenta(empresaId, rentaId).stream()
 				.map(Devolucion::multa)

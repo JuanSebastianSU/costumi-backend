@@ -35,4 +35,16 @@ class ListarEmpleadosService implements ListarEmpleados {
 						asignaciones.sucursalesDe(usuario.id())))
 				.toList();
 	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public com.costumi.backend.compartido.Pagina<EmpleadoDelTenant> delTenant(UUID empresaId, Rol actorRol, String buscar, com.costumi.backend.compartido.SolicitudDePagina pagina) {
+		String filtro = buscar == null || buscar.isBlank() ? null : buscar.trim().toLowerCase();
+		List<EmpleadoDelTenant> visibles = delTenant(empresaId, actorRol).stream()
+				.filter(e -> filtro == null || e.email().toLowerCase().contains(filtro))
+				.toList();
+		int desde = Math.min(pagina.pagina() * pagina.tamano(), visibles.size());
+		int hasta = Math.min(desde + pagina.tamano(), visibles.size());
+		return com.costumi.backend.compartido.Pagina.de(visibles.subList(desde, hasta), visibles.size(), pagina);
+	}
 }

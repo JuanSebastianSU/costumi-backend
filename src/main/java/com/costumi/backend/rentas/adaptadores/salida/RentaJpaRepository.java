@@ -23,6 +23,18 @@ interface RentaJpaRepository extends JpaRepository<RentaJpaEntity, UUID> {
 
 	Page<RentaJpaEntity> findByEmpresaIdAndClienteId(UUID empresaId, UUID clienteId, Pageable pageable);
 
+	/**
+	 * Página de rentas; {@code buscar} filtra por el CÓDIGO DE RETIRO (p. ej. {@code R-6A783DAA}), que son
+	 * los 8 primeros caracteres del id: se busca por prefijo. {@code clienteId} es opcional.
+	 */
+	@org.springframework.data.jpa.repository.Query("select r from RentaJpaEntity r where r.empresaId = :empresaId "
+			+ "and (:clienteId is null or r.clienteId = :clienteId) "
+			+ "and (cast(:buscar as string) is null or lower(cast(r.id as string)) like concat(cast(:buscar as string), '%'))")
+	Page<RentaJpaEntity> buscarPagina(
+			@org.springframework.data.repository.query.Param("empresaId") UUID empresaId,
+			@org.springframework.data.repository.query.Param("clienteId") UUID clienteId,
+			@org.springframework.data.repository.query.Param("buscar") String buscar, Pageable pageable);
+
 	Optional<RentaJpaEntity> findByEmpresaIdAndClaveIdempotencia(UUID empresaId, String claveIdempotencia);
 
 	/** Carga por PK como QUERY (no em.find) para que el @Filter multi-tenant la acote (§5.4). */

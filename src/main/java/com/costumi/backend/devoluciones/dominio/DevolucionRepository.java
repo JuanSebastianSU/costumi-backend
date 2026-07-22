@@ -13,6 +13,9 @@ public interface DevolucionRepository {
 
 	List<Devolucion> listarPorEmpresa(UUID empresaId);
 
+	/** Página de devoluciones, con búsqueda opcional en la descripción de las piezas revisadas. */
+	com.costumi.backend.compartido.Pagina<Devolucion> listarPorEmpresa(UUID empresaId, String buscar, com.costumi.backend.compartido.SolicitudDePagina pagina);
+
 	/** Devoluciones registradas contra una renta (para acumular lo ya devuelto y detectar la total, RF-5.5). */
 	List<Devolucion> listarPorRenta(UUID empresaId, UUID rentaId);
 }

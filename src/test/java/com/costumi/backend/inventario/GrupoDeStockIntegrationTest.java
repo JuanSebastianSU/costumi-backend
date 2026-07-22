@@ -136,7 +136,7 @@ class GrupoDeStockIntegrationTest {
 		// El ajuste quedó auditado (RF-10 + RF-0.5).
 		mvc.perform(get("/api/v1/auditoria").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.accion == 'STOCK_AJUSTADO')]").exists());
+				.andExpect(jsonPath("$.contenido[?(@.accion == 'STOCK_AJUSTADO')]").exists());
 	}
 
 	@Test

@@ -52,11 +52,15 @@ class EmpleadoController {
 	 * puede gestionar (estrictamente por debajo suyo). DUENO/ENCARGADO.
 	 */
 	@GetMapping
-	List<EmpleadoDetalleResponse> listar(@AuthenticationPrincipal Jwt jwt) {
+com.costumi.backend.compartido.RespuestaPaginada<EmpleadoDetalleResponse> listar(
+			@org.springframework.web.bind.annotation.RequestParam(required = false) String buscar,
+			@org.springframework.web.bind.annotation.RequestParam(required = false) Integer pagina,
+			@org.springframework.web.bind.annotation.RequestParam(required = false) Integer tamano,
+			@AuthenticationPrincipal Jwt jwt) {
 		UUID empresaId = UUID.fromString(jwt.getClaimAsString("empresa_id"));
-		return listarEmpleados.delTenant(empresaId, actorRol(jwt)).stream()
-				.map(EmpleadoDetalleResponse::desde)
-				.toList();
+		return com.costumi.backend.compartido.RespuestaPaginada.desde(
+				listarEmpleados.delTenant(empresaId, actorRol(jwt), buscar, com.costumi.backend.compartido.SolicitudDePagina.de(pagina, tamano)),
+				EmpleadoDetalleResponse::desde);
 	}
 
 	/** Da de baja a un empleado (RF-8): no podrá autenticarse ni renovar sesión. DUENO/ENCARGADO. */

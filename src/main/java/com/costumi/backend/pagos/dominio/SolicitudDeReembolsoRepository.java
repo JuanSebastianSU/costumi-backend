@@ -14,6 +14,10 @@ public interface SolicitudDeReembolsoRepository {
 	/** Solicitudes de la empresa, más recientes primero (para la bandeja del personal). */
 	List<SolicitudDeReembolso> listarPorEmpresa(UUID empresaId);
 
+	/** Página de solicitudes (más recientes primero), con búsqueda opcional por motivo. */
+	com.costumi.backend.compartido.Pagina<SolicitudDeReembolso> listarPorEmpresa(UUID empresaId, String buscar,
+			com.costumi.backend.compartido.SolicitudDePagina pagina);
+
 	/** ¿Ya hay una solicitud PENDIENTE para ese concepto? (evita duplicados). */
 	boolean existePendientePorConcepto(UUID empresaId, UUID conceptoId);
 }

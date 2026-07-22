@@ -122,7 +122,7 @@ class DevolucionIntegrationTest {
 
 		mvc.perform(get("/api/v1/devoluciones").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.rentaId == '" + renta + "')]").exists());
+				.andExpect(jsonPath("$.contenido[?(@.rentaId == '" + renta + "')]").exists());
 
 		// RF-5.4/5.6: la pieza dañada movió la unidad de disponible a dañada.
 		mvc.perform(get("/api/v1/prendas/{id}/grupos-stock", prenda).header("Authorization", "Bearer " + dueno))
@@ -152,9 +152,9 @@ class DevolucionIntegrationTest {
 		// La notificación sale por WhatsApp con la plantilla configurable, resolviendo cliente y monto.
 		mvc.perform(get("/api/v1/notificaciones").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.canal == 'WHATSAPP')].mensaje",
+				.andExpect(jsonPath("$.contenido[?(@.canal == 'WHATSAPP')].mensaje",
 						org.hamcrest.Matchers.hasItem(org.hamcrest.Matchers.containsString("Hola Cliente"))))
-				.andExpect(jsonPath("$[?(@.canal == 'WHATSAPP')].mensaje",
+				.andExpect(jsonPath("$.contenido[?(@.canal == 'WHATSAPP')].mensaje",
 						org.hamcrest.Matchers.hasItem(org.hamcrest.Matchers.containsString("$30"))));
 	}
 
@@ -185,7 +185,7 @@ class DevolucionIntegrationTest {
 		// confirmación de renta al entregar).
 		mvc.perform(get("/api/v1/notificaciones").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.mensaje =~ /.*multa.*/i)]").doesNotExist());
+				.andExpect(jsonPath("$.contenido[?(@.mensaje =~ /.*multa.*/i)]").doesNotExist());
 	}
 
 	@Test
@@ -367,7 +367,7 @@ class DevolucionIntegrationTest {
 		// RF-0.5: el detalle referencia al cliente por su nombre, no por un id opaco.
 		mvc.perform(get("/api/v1/auditoria").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.accion == 'DEVOLUCION_REGISTRADA')].detalle",
+				.andExpect(jsonPath("$.contenido[?(@.accion == 'DEVOLUCION_REGISTRADA')].detalle",
 						org.hamcrest.Matchers.hasItem(org.hamcrest.Matchers.containsString("«Cliente»"))));
 	}
 
@@ -378,7 +378,7 @@ class DevolucionIntegrationTest {
 		// RF-11.1: al entregar, sale la confirmación de renta por WhatsApp con la plantilla configurable.
 		mvc.perform(get("/api/v1/notificaciones").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.canal == 'WHATSAPP')].mensaje",
+				.andExpect(jsonPath("$.contenido[?(@.canal == 'WHATSAPP')].mensaje",
 						org.hamcrest.Matchers.hasItem(org.hamcrest.Matchers.containsString("tu renta quedó confirmada"))));
 	}
 
@@ -403,7 +403,7 @@ class DevolucionIntegrationTest {
 		// Sin multa, no debe salir el aviso de "ya no adeudas nada".
 		mvc.perform(get("/api/v1/notificaciones").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.mensaje =~ /.*adeudas nada.*/i)]").doesNotExist());
+				.andExpect(jsonPath("$.contenido[?(@.mensaje =~ /.*adeudas nada.*/i)]").doesNotExist());
 	}
 
 	@Test
@@ -429,9 +429,9 @@ class DevolucionIntegrationTest {
 		// RF-11.1: al saldar la multa sale el aviso "ya no adeudas nada" por WhatsApp, con el monto.
 		mvc.perform(get("/api/v1/notificaciones").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.canal == 'WHATSAPP')].mensaje",
+				.andExpect(jsonPath("$.contenido[?(@.canal == 'WHATSAPP')].mensaje",
 						org.hamcrest.Matchers.hasItem(org.hamcrest.Matchers.containsString("Ya no adeudas nada"))))
-				.andExpect(jsonPath("$[?(@.canal == 'WHATSAPP')].mensaje",
+				.andExpect(jsonPath("$.contenido[?(@.canal == 'WHATSAPP')].mensaje",
 						org.hamcrest.Matchers.hasItem(org.hamcrest.Matchers.containsString("$30"))));
 	}
 
@@ -450,7 +450,7 @@ class DevolucionIntegrationTest {
 
 		mvc.perform(get("/api/v1/devoluciones").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.rentaId == '" + renta + "')].piezas[0].nombre",
+				.andExpect(jsonPath("$.contenido[?(@.rentaId == '" + renta + "')].piezas[0].nombre",
 						org.hamcrest.Matchers.hasItem("Camisa")));
 	}
 

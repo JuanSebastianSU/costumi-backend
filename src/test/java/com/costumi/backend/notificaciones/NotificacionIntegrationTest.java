@@ -63,7 +63,7 @@ class NotificacionIntegrationTest {
 
 		mvc.perform(get("/api/v1/notificaciones").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.length()").value(1));
+				.andExpect(jsonPath("$.contenido.length()").value(1));
 	}
 
 	@Test
@@ -91,7 +91,7 @@ class NotificacionIntegrationTest {
 
 		mvc.perform(get("/api/v1/notificaciones").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.canal == 'IN_APP')]").exists());
+				.andExpect(jsonPath("$.contenido[?(@.canal == 'IN_APP')]").exists());
 	}
 
 	private UUID postId(String path, String tk, String body) throws Exception {
@@ -132,9 +132,9 @@ class NotificacionIntegrationTest {
 		// Quedó registrada la notificación al cliente (WhatsApp, plantilla configurable)...
 		mvc.perform(get("/api/v1/notificaciones").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.canal == 'WHATSAPP')]").exists())
+				.andExpect(jsonPath("$.contenido[?(@.canal == 'WHATSAPP')]").exists())
 				// ...y el resumen in-app para el dueño (sin cliente asociado).
-				.andExpect(jsonPath("$[?(@.canal == 'IN_APP')]").exists());
+				.andExpect(jsonPath("$.contenido[?(@.canal == 'IN_APP')]").exists());
 	}
 
 	@Test
@@ -200,9 +200,9 @@ class NotificacionIntegrationTest {
 		// El mensaje usa la plantilla configurable con cliente, días restantes y dirección/maps.
 		mvc.perform(get("/api/v1/notificaciones").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.canal == 'WHATSAPP')].mensaje",
+				.andExpect(jsonPath("$.contenido[?(@.canal == 'WHATSAPP')].mensaje",
 						org.hamcrest.Matchers.hasItem(org.hamcrest.Matchers.containsString("Hola Ana"))))
-				.andExpect(jsonPath("$[?(@.canal == 'WHATSAPP')].mensaje",
+				.andExpect(jsonPath("$.contenido[?(@.canal == 'WHATSAPP')].mensaje",
 						org.hamcrest.Matchers.hasItem(org.hamcrest.Matchers.containsString("Av Central 100"))));
 	}
 
