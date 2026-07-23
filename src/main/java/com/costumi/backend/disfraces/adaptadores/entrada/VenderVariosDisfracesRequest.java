@@ -24,7 +24,7 @@ public record VenderVariosDisfracesRequest(
 
 		@Valid List<ItemDisfrazDto> items,
 
-		@Valid List<LineaPrendaDto> lineas) {
+		@Valid List<LineaPrendaVentaDto> lineas) {
 
 	/** Un disfraz del pedido: cuál, cuántas unidades (nulo/<1 = 1) y las prendas elegidas por slot. */
 	public record ItemDisfrazDto(
@@ -36,8 +36,12 @@ public record VenderVariosDisfracesRequest(
 			@Valid List<SeleccionSlotDto> selecciones) {
 	}
 
-	/** Una prenda suelta del pedido: cuál, cuántas y su precio unitario. */
-	public record LineaPrendaDto(
+	/**
+	 * Una prenda suelta del pedido: cuál, cuántas y su precio UNITARIO. Nombre propio (no {@code LineaPrendaDto})
+	 * a propósito: springdoc colapsa records anidados homónimos en un solo schema, y este difiere del de renta
+	 * ({@code precioUnitario} vs {@code precioPorDia}); con el mismo nombre el contrato mentía sobre este campo.
+	 */
+	public record LineaPrendaVentaDto(
 
 			@NotNull(message = "La prenda es obligatoria") UUID prendaId,
 
