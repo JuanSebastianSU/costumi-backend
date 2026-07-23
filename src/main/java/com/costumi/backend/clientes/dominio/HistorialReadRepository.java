@@ -18,6 +18,12 @@ public interface HistorialReadRepository {
 	List<LineaDeEstadoDeCuenta> estadoDeCuenta(UUID empresaId, UUID clienteId);
 
 	/**
+	 * Lo que el USUARIO debe en todas las tiendas (RF-7/11.5 desde el lado del cliente): sus multas y
+	 * saldos, con el nombre de cada tienda. Cruza sus fichas, igual que su historial.
+	 */
+	List<DeudaEnTienda> estadoDeCuentaDeUsuario(UUID usuarioId);
+
+	/**
 	 * Ids de clientes de la empresa que caen en la categoría de pendiente indicada (RF-11.5/11.6).
 	 * {@code hoy} se usa para las rentas vencidas.
 	 */

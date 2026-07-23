@@ -114,6 +114,8 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.POST, "/api/v1/clientes").hasAnyRole("DUENO", "ENCARGADO", "MOSTRADOR", "ATENCION")
 						// El propio usuario registra SU dispositivo: cualquier rol autenticado, incluido CLIENTE.
 						.requestMatchers(HttpMethod.PUT, "/api/v1/clientes/me/device-token").authenticated()
+						// Lo propio del cliente (historial y deudas): se resuelve por el usuario del token.
+						.requestMatchers(HttpMethod.GET, "/api/v1/clientes/me/**").authenticated()
 						.requestMatchers(HttpMethod.PUT, "/api/v1/clientes/*/device-token").hasAnyRole("DUENO", "ENCARGADO", "MOSTRADOR", "ATENCION")
 						.requestMatchers(HttpMethod.PUT, "/api/v1/clientes/*").hasAnyRole("DUENO", "ENCARGADO", "MOSTRADOR", "ATENCION")
 						// Los carritos propios: cualquier autenticado, y se resuelven por el usuario del token.

@@ -146,6 +146,13 @@ class ClienteService implements CrearCliente, ConsultarClientes, CambiarListaNeg
 
 	@Override
 	@Transactional(readOnly = true)
+	public List<com.costumi.backend.clientes.dominio.DeudaEnTienda> misDeudas(UUID usuarioId) {
+		// Una sola consulta que cruza sus fichas: ficha por ficha seria un N+1 que crece con cada tienda.
+		return historial.estadoDeCuentaDeUsuario(usuarioId);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
 	public List<HistorialItem> historialDeUsuario(UUID usuarioId) {
 		List<HistorialItem> todo = new java.util.ArrayList<>();
 		for (Cliente ficha : clientes.buscarPorUsuario(usuarioId)) {
