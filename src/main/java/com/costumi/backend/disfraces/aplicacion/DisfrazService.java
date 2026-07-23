@@ -19,10 +19,13 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
@@ -409,7 +412,32 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 					.filter(opcion -> opcion.etiquetas().values().containsAll(requeridos))
 					.toList();
 		}
-		return new OpcionesDeSlot(slot.orden(), slot.nombre(), slot.ejePrenda(), slot.opcional(), opciones);
+		// Las opciones traen las etiquetas como ids; la ruleta necesita nombres ("Talla: M") para que el
+		// cliente distinga dos prendas que solo difieren en talla o color. Se resuelven en UNA sola pasada
+		// por la taxonomía de la empresa (todos los valores del slot juntos), no una consulta por opción.
+		Set<UUID> valoresDelSlot = opciones.stream()
+				.flatMap(opcion -> opcion.etiquetas().values().stream())
+				.collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+		Map<UUID, ConsultaDeTaxonomia.EtiquetaConNombre> nombres =
+				taxonomia.describirValores(empresaId, valoresDelSlot);
+		List<OpcionElegible> elegibles = opciones.stream()
+				.map(opcion -> new OpcionElegible(opcion.prendaId(), opcion.nombre(), opcion.fotoUrl(),
+						opcion.precioRenta(), opcion.unidadesDisponibles(), etiquetasConNombre(opcion, nombres)))
+				.toList();
+		return new OpcionesDeSlot(slot.orden(), slot.nombre(), slot.ejePrenda(), slot.opcional(), elegibles);
+	}
+
+	/** Etiquetas de una opción resueltas a nombre y ordenadas por tipo, para un desplegado estable. */
+	private static List<EtiquetaConNombre> etiquetasConNombre(ConsultaDeInventario.OpcionDePool opcion,
+			Map<UUID, ConsultaDeTaxonomia.EtiquetaConNombre> nombres) {
+		return opcion.etiquetas().values().stream()
+				.map(nombres::get)
+				.filter(Objects::nonNull)
+				.map(e -> new EtiquetaConNombre(e.tipoEtiquetaId(), e.tipoNombre(), e.valorEtiquetaId(),
+						e.valorNombre()))
+				.sorted(Comparator.comparing(EtiquetaConNombre::tipoNombre,
+						Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)))
+				.toList();
 	}
 
 	@Override

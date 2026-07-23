@@ -9,8 +9,12 @@ import com.costumi.backend.catalogo.dominio.ValorEtiquetaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -172,6 +176,32 @@ class TaxonomiaService implements CrearTipoEtiqueta, ConsultarTiposEtiqueta, Agr
 		}
 		return valores.listarPorTipo(tipoEtiquetaId).stream()
 				.anyMatch(valor -> valor.id().equals(valorEtiquetaId) && !valor.archivada());
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public Map<UUID, EtiquetaConNombre> describirValores(UUID empresaId, Collection<UUID> valorEtiquetaIds) {
+		if (valorEtiquetaIds == null || valorEtiquetaIds.isEmpty()) {
+			return Map.of();
+		}
+		// Nombres de todos los tipos de la empresa en una sola consulta; los valores se buscan por id (pocos
+		// distintos por slot). Así el coste no crece con la cantidad de opciones de la ruleta.
+		Map<UUID, String> nombreDeTipo = new HashMap<>();
+		for (TipoEtiqueta tipo : tipos.listarPorEmpresa(empresaId)) {
+			nombreDeTipo.put(tipo.id(), tipo.nombre());
+		}
+		Map<UUID, EtiquetaConNombre> descripcion = new LinkedHashMap<>();
+		for (UUID valorId : valorEtiquetaIds) {
+			if (valorId == null || descripcion.containsKey(valorId)) {
+				continue;
+			}
+			valores.buscarPorId(valorId)
+					.filter(valor -> valor.empresaId().equals(empresaId))
+					.ifPresent(valor -> descripcion.put(valor.id(), new EtiquetaConNombre(
+							valor.tipoEtiquetaId(), nombreDeTipo.get(valor.tipoEtiquetaId()),
+							valor.id(), valor.valor())));
+		}
+		return descripcion;
 	}
 
 	/** Carga el tipo garantizando que pertenece a la empresa; si no, 404 (no revela existencia). */

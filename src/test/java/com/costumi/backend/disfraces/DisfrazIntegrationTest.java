@@ -18,6 +18,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.List;
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -619,6 +620,56 @@ class DisfrazIntegrationTest {
 				.andExpect(jsonPath("$.ejePrenda").value("FIJA"))
 				.andExpect(jsonPath("$.opciones.length()").value(1))
 				.andExpect(jsonPath("$.opciones[0].prendaId").value(prendaBase.toString()));
+	}
+
+	@Test
+	void la_ruleta_devuelve_las_etiquetas_de_cada_opcion_con_su_nombre() throws Exception {
+		UUID empresa = crearEmpresa("Ruleta Etiquetas " + UUID.randomUUID());
+		String dueno = duenoDe(empresa);
+		UUID categoria = crearCategoria(dueno, "Camisa " + UUID.randomUUID());
+		UUID talla = crearTipoEtiqueta(dueno, "Talla");
+		UUID tallaM = agregarValorEtiqueta(dueno, talla, "M");
+		UUID prendaBase = crearPrenda(dueno, categoria);
+		crearGrupo(dueno, empresa, prendaBase, 5);
+		// Una opción del pool etiquetada Talla: M. La ruleta debe devolver los NOMBRES (tipo y valor), no solo
+		// los ids: dos camisas que difieren solo en talla se ven idénticas si el cliente no puede leer "M".
+		UUID conEtiqueta = crearPrendaConEtiqueta(dueno, categoria, talla, tallaM);
+		crearGrupo(dueno, empresa, conEtiqueta, 3);
+		UUID disfraz = crearDisfrazFijaMasPersonalizable(dueno, prendaBase, categoria);
+
+		String etiquetasDeLaOpcion = "$.opciones[?(@.prendaId == '" + conEtiqueta + "')].etiquetas[0].";
+		mvc.perform(get("/api/v1/marketplace/empresas/{e}/disfraces/{d}/slots/{o}/opciones", empresa, disfraz, 2))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath(etiquetasDeLaOpcion + "tipoEtiquetaId", hasItem(talla.toString())))
+				.andExpect(jsonPath(etiquetasDeLaOpcion + "tipoNombre", hasItem("Talla")))
+				.andExpect(jsonPath(etiquetasDeLaOpcion + "valorEtiquetaId", hasItem(tallaM.toString())))
+				.andExpect(jsonPath(etiquetasDeLaOpcion + "valorNombre", hasItem("M")));
+	}
+
+	private UUID crearTipoEtiqueta(String token, String nombre) throws Exception {
+		String body = mvc.perform(post("/api/v1/tipos-etiqueta").header("Authorization", "Bearer " + token)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"" + nombre + "\",\"defineVariante\":false,\"seleccionablePorCliente\":true}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		return UUID.fromString(json.readTree(body).get("id").asText());
+	}
+
+	private UUID agregarValorEtiqueta(String token, UUID tipoId, String valor) throws Exception {
+		String body = mvc.perform(post("/api/v1/tipos-etiqueta/{tipoId}/valores", tipoId)
+						.header("Authorization", "Bearer " + token)
+						.contentType(MediaType.APPLICATION_JSON).content("{\"valor\":\"" + valor + "\"}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		return UUID.fromString(json.readTree(body).get("id").asText());
+	}
+
+	private UUID crearPrendaConEtiqueta(String token, UUID categoriaId, UUID tipoId, UUID valorId) throws Exception {
+		String body = mvc.perform(post("/api/v1/prendas").header("Authorization", "Bearer " + token)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"categoriaId\":\"" + categoriaId + "\",\"nombre\":\"Pieza etiquetada\","
+								+ "\"tipoArticulo\":\"RENTA\",\"precioRenta\":40.00,\"etiquetas\":[{\"tipoEtiquetaId\":\""
+								+ tipoId + "\",\"valorEtiquetaId\":\"" + valorId + "\"}]}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		return UUID.fromString(json.readTree(body).get("id").asText());
 	}
 
 	@Test

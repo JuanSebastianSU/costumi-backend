@@ -1,5 +1,7 @@
 package com.costumi.backend.catalogo;
 
+import java.util.Collection;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -23,4 +25,16 @@ public interface ConsultaDeTaxonomia {
 
 	/** ¿El valor pertenece a ese tipo (de la empresa) y no está archivado? */
 	boolean valorPerteneceATipo(UUID empresaId, UUID tipoEtiquetaId, UUID valorEtiquetaId);
+
+	/** Nombres de tipo y valor de una etiqueta, para mostrarla como "Talla: M" en vez de dos UUID. */
+	record EtiquetaConNombre(UUID tipoEtiquetaId, String tipoNombre, UUID valorEtiquetaId, String valorNombre) {
+	}
+
+	/**
+	 * Resuelve los nombres (tipo y valor) de los valores de etiqueta dados, acotado al tenant e indexado por
+	 * {@code valorEtiquetaId}. Ignora los ids que no existan o no sean de la empresa. La usa la "ruleta" de
+	 * un slot (RF-2.3) para que el cliente vea "Talla: M" al comparar opciones y no un identificador. Resuelve
+	 * la taxonomía de la empresa en una sola pasada (sin N+1 por opción).
+	 */
+	Map<UUID, EtiquetaConNombre> describirValores(UUID empresaId, Collection<UUID> valorEtiquetaIds);
 }
