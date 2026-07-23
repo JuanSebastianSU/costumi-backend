@@ -24,7 +24,14 @@ public record CrearDisfrazRequest(
 
 		BigDecimal precioVentaGeneral,
 
-		/** Para qué está disponible: RENTA, VENTA o AMBOS (lo decide el dueño). Por defecto AMBOS. */
+		/**
+		 * Para qué está disponible: RENTA, VENTA o AMBOS (lo decide el dueño).
+		 *
+		 * <p><b>Opcional a propósito</b>: si no viene, el tipo se <b>deriva de las piezas</b> (el disfraz
+		 * sirve para lo que sirvan todas ellas). Antes se rellenaba aquí con AMBOS, que es la opción más
+		 * exigente —obliga a que cada pieza sirva para renta y para venta—, así que quien no elegía nada
+		 * recibía un error por una decisión que nunca tomó.
+		 */
 		TipoDeDisfraz tipo,
 
 		@Valid
@@ -32,6 +39,5 @@ public record CrearDisfrazRequest(
 
 	public CrearDisfrazRequest {
 		slots = (slots == null) ? List.of() : slots;
-		tipo = (tipo == null) ? TipoDeDisfraz.AMBOS : tipo;
 	}
 }

@@ -36,6 +36,16 @@ class ConsultaDeInventarioService implements ConsultaDeInventario {
 
 	@Override
 	@Transactional(readOnly = true)
+	public boolean prendaSirvePara(UUID empresaId, UUID prendaId, boolean exigeRenta, boolean exigeVenta) {
+		return prendas.buscarPorId(prendaId)
+				.filter(prenda -> prenda.empresaId().equals(empresaId))
+				.filter(prenda -> !exigeRenta || prenda.tipoArticulo().incluyeRenta())
+				.filter(prenda -> !exigeVenta || prenda.tipoArticulo().incluyeVenta())
+				.isPresent();
+	}
+
+	@Override
+	@Transactional(readOnly = true)
 	public boolean prendaTieneStockDisponible(UUID empresaId, UUID prendaId) {
 		return prendas.buscarPorId(prendaId)
 				.filter(prenda -> prenda.empresaId().equals(empresaId))
@@ -137,7 +147,8 @@ class ConsultaDeInventarioService implements ConsultaDeInventario {
 				.filter(prenda -> !prenda.archivada())
 				.map(prenda -> new PrendaValuada(prenda.id(), prenda.categoriaId(),
 						Map.copyOf(prenda.etiquetas().valores()), prenda.precioRenta(), prenda.precioVenta(),
-						prenda.valorDano(), prenda.valorReposicion()))
+						prenda.valorDano(), prenda.valorReposicion(),
+						prenda.tipoArticulo().incluyeRenta(), prenda.tipoArticulo().incluyeVenta()))
 				.toList();
 	}
 
@@ -194,7 +205,8 @@ class ConsultaDeInventarioService implements ConsultaDeInventario {
 
 	private OpcionDePool aOpcion(Prenda prenda) {
 		return new OpcionDePool(prenda.id(), prenda.nombre(), prenda.fotoUrl(), prenda.precioRenta(),
-				unidadesDisponiblesTotales(prenda.id()), Map.copyOf(prenda.etiquetas().valores()));
+				unidadesDisponiblesTotales(prenda.id()), Map.copyOf(prenda.etiquetas().valores()),
+				prenda.tipoArticulo().incluyeRenta(), prenda.tipoArticulo().incluyeVenta());
 	}
 
 	private int unidadesDisponiblesTotales(UUID prendaId) {
