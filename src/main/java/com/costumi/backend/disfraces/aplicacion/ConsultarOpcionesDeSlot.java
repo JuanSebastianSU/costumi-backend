@@ -1,8 +1,8 @@
 package com.costumi.backend.disfraces.aplicacion;
 
 import com.costumi.backend.disfraces.dominio.EjeDePrenda;
-import com.costumi.backend.inventario.ConsultaDeInventario;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -18,6 +18,18 @@ public interface ConsultarOpcionesDeSlot {
 
 	/** Un slot con sus opciones concretas disponibles. */
 	record OpcionesDeSlot(int orden, String nombre, EjeDePrenda ejePrenda, boolean opcional,
-			List<ConsultaDeInventario.OpcionDePool> opciones) {
+			List<OpcionElegible> opciones) {
+	}
+
+	/**
+	 * Una opción concreta de la "ruleta": la prenda con su foto, precio, stock y sus etiquetas ya resueltas a
+	 * nombre ("Talla: M") para que el cliente pueda distinguir opciones que solo difieren en talla o color.
+	 */
+	record OpcionElegible(UUID prendaId, String nombre, String fotoUrl, BigDecimal precioRenta,
+			int unidadesDisponibles, List<EtiquetaConNombre> etiquetas) {
+	}
+
+	/** Una etiqueta de la opción con tipo y valor legibles (ej. tipo "Talla", valor "M"). */
+	record EtiquetaConNombre(UUID tipoEtiquetaId, String tipoNombre, UUID valorEtiquetaId, String valorNombre) {
 	}
 }
