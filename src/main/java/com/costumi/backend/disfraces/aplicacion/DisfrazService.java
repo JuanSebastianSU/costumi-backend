@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -405,26 +406,105 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 				.filter(opcion -> !disfraz.tipo().permiteRenta() || opcion.sirveParaRenta())
 				.filter(opcion -> !disfraz.tipo().permiteVenta() || opcion.sirveParaVenta())
 				.toList();
-		// Filtro adicional de la ruleta: la opción debe incluir TODOS los valores de etiqueta elegidos.
-		if (valoresFiltro != null && !valoresFiltro.isEmpty()) {
-			Set<UUID> requeridos = new HashSet<>(valoresFiltro);
-			opciones = opciones.stream()
-					.filter(opcion -> opcion.etiquetas().values().containsAll(requeridos))
-					.toList();
-		}
-		// Las opciones traen las etiquetas como ids; la ruleta necesita nombres ("Talla: M") para que el
-		// cliente distinga dos prendas que solo difieren en talla o color. Se resuelven en UNA sola pasada
-		// por la taxonomía de la empresa (todos los valores del slot juntos), no una consulta por opción.
-		Set<UUID> valoresDelSlot = opciones.stream()
+		// El conjunto base: todas las opciones con stock que sirven al disfraz (aún SIN aplicar el filtro del
+		// cliente). Sobre él se calculan las facetas; las etiquetas se resuelven a nombre en UNA sola pasada
+		// por la taxonomía (todos los valores del slot juntos), no una consulta por opción.
+		List<ConsultaDeInventario.OpcionDePool> base = opciones;
+		Set<UUID> valoresDelSlot = base.stream()
 				.flatMap(opcion -> opcion.etiquetas().values().stream())
 				.collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
 		Map<UUID, ConsultaDeTaxonomia.EtiquetaConNombre> nombres =
 				taxonomia.describirValores(empresaId, valoresDelSlot);
-		List<OpcionElegible> elegibles = opciones.stream()
+
+		// El filtro del cliente, agrupado por dimensión: OR dentro de una dimensión, AND entre dimensiones.
+		Map<UUID, Set<UUID>> filtroPorTipo = agruparFiltroPorTipo(valoresFiltro, nombres);
+		List<ConsultaDeInventario.OpcionDePool> filtradas = base.stream()
+				.filter(opcion -> cumpleFiltro(opcion, filtroPorTipo))
+				.toList();
+
+		List<OpcionElegible> elegibles = filtradas.stream()
 				.map(opcion -> new OpcionElegible(opcion.prendaId(), opcion.nombre(), opcion.fotoUrl(),
 						opcion.precioRenta(), opcion.unidadesDisponibles(), etiquetasConNombre(opcion, nombres)))
 				.toList();
-		return new OpcionesDeSlot(slot.orden(), slot.nombre(), slot.ejePrenda(), slot.opcional(), elegibles);
+		List<Faceta> facetas = construirFacetas(base, nombres, filtroPorTipo);
+		return new OpcionesDeSlot(slot.orden(), slot.nombre(), slot.ejePrenda(), slot.opcional(), elegibles, facetas);
+	}
+
+	/**
+	 * Agrupa los valores del filtro por su tipo de etiqueta. Solo se honran valores de tipos
+	 * <b>seleccionables por el cliente</b> (las facetas son la única fuente legítima del filtro): así el
+	 * cliente no puede filtrar por dimensiones internas del dueño. Valores ajenos al conjunto se ignoran.
+	 */
+	private static Map<UUID, Set<UUID>> agruparFiltroPorTipo(List<UUID> valoresFiltro,
+			Map<UUID, ConsultaDeTaxonomia.EtiquetaConNombre> nombres) {
+		if (valoresFiltro == null || valoresFiltro.isEmpty()) {
+			return Map.of();
+		}
+		Map<UUID, Set<UUID>> porTipo = new LinkedHashMap<>();
+		for (UUID valorId : valoresFiltro) {
+			ConsultaDeTaxonomia.EtiquetaConNombre e = nombres.get(valorId);
+			if (e == null || !e.seleccionablePorCliente()) {
+				continue;
+			}
+			porTipo.computeIfAbsent(e.tipoEtiquetaId(), k -> new HashSet<>()).add(valorId);
+		}
+		return porTipo;
+	}
+
+	/** ¿La opción satisface el filtro? Para cada dimensión pedida, su valor en esa dimensión debe estar permitido. */
+	private static boolean cumpleFiltro(ConsultaDeInventario.OpcionDePool opcion, Map<UUID, Set<UUID>> filtroPorTipo) {
+		for (Map.Entry<UUID, Set<UUID>> dimension : filtroPorTipo.entrySet()) {
+			UUID valorDeLaOpcion = opcion.etiquetas().get(dimension.getKey());
+			if (valorDeLaOpcion == null || !dimension.getValue().contains(valorDeLaOpcion)) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/**
+	 * Facetas del conjunto: por cada tipo <b>seleccionable por el cliente</b> presente en las opciones, sus
+	 * valores con conteo <b>dinámico</b> — cada dimensión se cuenta sobre las opciones que cumplen los filtros
+	 * de las <i>otras</i> dimensiones, para que elegir un valor no vacíe su propia lista y no queden filtros
+	 * que lleven a cero resultados.
+	 */
+	private static List<Faceta> construirFacetas(List<ConsultaDeInventario.OpcionDePool> base,
+			Map<UUID, ConsultaDeTaxonomia.EtiquetaConNombre> nombres, Map<UUID, Set<UUID>> filtroPorTipo) {
+		Map<UUID, String> tiposSeleccionables = new LinkedHashMap<>();
+		for (ConsultaDeTaxonomia.EtiquetaConNombre e : nombres.values()) {
+			if (e.seleccionablePorCliente()) {
+				tiposSeleccionables.putIfAbsent(e.tipoEtiquetaId(), e.tipoNombre());
+			}
+		}
+		List<Faceta> facetas = new ArrayList<>();
+		for (Map.Entry<UUID, String> tipo : tiposSeleccionables.entrySet()) {
+			UUID tipoId = tipo.getKey();
+			Map<UUID, Set<UUID>> filtroSinEsteTipo = new LinkedHashMap<>(filtroPorTipo);
+			filtroSinEsteTipo.remove(tipoId);
+			Map<UUID, Integer> conteo = new LinkedHashMap<>();
+			for (ConsultaDeInventario.OpcionDePool opcion : base) {
+				if (!cumpleFiltro(opcion, filtroSinEsteTipo)) {
+					continue;
+				}
+				UUID valorId = opcion.etiquetas().get(tipoId);
+				if (valorId != null) {
+					conteo.merge(valorId, 1, Integer::sum);
+				}
+			}
+			List<ValorDeFaceta> valores = conteo.entrySet().stream()
+					.map(entrada -> {
+						ConsultaDeTaxonomia.EtiquetaConNombre e = nombres.get(entrada.getKey());
+						return new ValorDeFaceta(entrada.getKey(), e == null ? null : e.valorNombre(), entrada.getValue());
+					})
+					.sorted(Comparator.comparing(ValorDeFaceta::valorNombre,
+							Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)))
+					.toList();
+			if (!valores.isEmpty()) {
+				facetas.add(new Faceta(tipoId, tipo.getValue(), valores));
+			}
+		}
+		facetas.sort(Comparator.comparing(Faceta::tipoNombre, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)));
+		return facetas;
 	}
 
 	/** Etiquetas de una opción resueltas a nombre y ordenadas por tipo, para un desplegado estable. */

@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -670,6 +671,83 @@ class DisfrazIntegrationTest {
 								+ tipoId + "\",\"valorEtiquetaId\":\"" + valorId + "\"}]}"))
 				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
 		return UUID.fromString(json.readTree(body).get("id").asText());
+	}
+
+	private UUID crearTipoEtiquetaNoSeleccionable(String token, String nombre) throws Exception {
+		String body = mvc.perform(post("/api/v1/tipos-etiqueta").header("Authorization", "Bearer " + token)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"" + nombre + "\",\"defineVariante\":false,\"seleccionablePorCliente\":false}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		return UUID.fromString(json.readTree(body).get("id").asText());
+	}
+
+	private static String par(UUID tipoId, UUID valorId) {
+		return "{\"tipoEtiquetaId\":\"" + tipoId + "\",\"valorEtiquetaId\":\"" + valorId + "\"}";
+	}
+
+	private UUID crearPrendaEtiquetada(String token, UUID categoriaId, String etiquetasJson) throws Exception {
+		String body = mvc.perform(post("/api/v1/prendas").header("Authorization", "Bearer " + token)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"categoriaId\":\"" + categoriaId + "\",\"nombre\":\"Pieza\",\"tipoArticulo\":\"RENTA\","
+								+ "\"precioRenta\":40.00,\"etiquetas\":[" + etiquetasJson + "]}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		return UUID.fromString(json.readTree(body).get("id").asText());
+	}
+
+	@Test
+	void la_ruleta_expone_facetas_con_conteo_dinamico_y_filtra_por_ellas() throws Exception {
+		UUID empresa = crearEmpresa("Facetas " + UUID.randomUUID());
+		String dueno = duenoDe(empresa);
+		UUID cat = crearCategoria(dueno, "Camisa " + UUID.randomUUID());
+		UUID talla = crearTipoEtiqueta(dueno, "Talla");       // seleccionable por cliente
+		UUID m = agregarValorEtiqueta(dueno, talla, "M");
+		UUID l = agregarValorEtiqueta(dueno, talla, "L");
+		UUID color = crearTipoEtiqueta(dueno, "Color");       // seleccionable por cliente
+		UUID rojo = agregarValorEtiqueta(dueno, color, "Rojo");
+		UUID azul = agregarValorEtiqueta(dueno, color, "Azul");
+		UUID interno = crearTipoEtiquetaNoSeleccionable(dueno, "Interno");
+		UUID equis = agregarValorEtiqueta(dueno, interno, "X");
+
+		// Prenda base = slot fijo (sin etiquetas). El pool del slot personalizable la incluye pero no aporta a
+		// ninguna faceta. p1/p2/p3 dan el reparto: Talla M×2 (p1,p2) L×1 (p3); Color Rojo×2 (p1,p3) Azul×1 (p2).
+		UUID base = crearPrenda(dueno, cat);
+		crearGrupo(dueno, empresa, base, 5);
+		UUID p1 = crearPrendaEtiquetada(dueno, cat, par(talla, m) + "," + par(color, rojo) + "," + par(interno, equis));
+		crearGrupo(dueno, empresa, p1, 3);
+		UUID p2 = crearPrendaEtiquetada(dueno, cat, par(talla, m) + "," + par(color, azul));
+		crearGrupo(dueno, empresa, p2, 3);
+		UUID p3 = crearPrendaEtiquetada(dueno, cat, par(talla, l) + "," + par(color, rojo));
+		crearGrupo(dueno, empresa, p3, 3);
+		UUID disfraz = crearDisfrazFijaMasPersonalizable(dueno, base, cat);
+		String url = "/api/v1/marketplace/empresas/{e}/disfraces/{d}/slots/{o}/opciones";
+		String talla_ = "$.facetas[?(@.tipoNombre == 'Talla')].valores[?(@.valorNombre == '%s')].cantidad";
+		String color_ = "$.facetas[?(@.tipoNombre == 'Color')].valores[?(@.valorNombre == '%s')].cantidad";
+
+		// Sin filtro: facetas Talla y Color con sus conteos; el tipo NO seleccionable ("Interno") no aparece.
+		mvc.perform(get(url, empresa, disfraz, 2))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.facetas[*].tipoNombre", hasItem("Talla")))
+				.andExpect(jsonPath("$.facetas[*].tipoNombre", hasItem("Color")))
+				.andExpect(jsonPath("$.facetas[*].tipoNombre", not(hasItem("Interno"))))
+				.andExpect(jsonPath(String.format(talla_, "M"), hasItem(2)))
+				.andExpect(jsonPath(String.format(talla_, "L"), hasItem(1)))
+				.andExpect(jsonPath(String.format(color_, "Rojo"), hasItem(2)))
+				.andExpect(jsonPath(String.format(color_, "Azul"), hasItem(1)));
+
+		// Filtro Talla=M: solo p1 y p2. El conteo de Color es DINÁMICO (Rojo 1, Azul 1, ya no 2/1); el de Talla
+		// se calcula excluyendo su propia dimensión, así que sigue mostrando M y L (no se auto-vacía).
+		mvc.perform(get(url + "?valores={v}", empresa, disfraz, 2, m))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.opciones.length()").value(2))
+				.andExpect(jsonPath("$.opciones[?(@.prendaId == '" + p3 + "')]").doesNotExist())
+				.andExpect(jsonPath(String.format(color_, "Rojo"), hasItem(1)))
+				.andExpect(jsonPath(String.format(color_, "Azul"), hasItem(1)))
+				.andExpect(jsonPath(String.format(talla_, "L"), hasItem(1)));
+
+		// OR dentro de una dimensión: Talla ∈ {M, L} devuelve las tres prendas etiquetadas (p1, p2, p3).
+		mvc.perform(get(url + "?valores={a}&valores={b}", empresa, disfraz, 2, m, l))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.opciones.length()").value(3));
 	}
 
 	@Test

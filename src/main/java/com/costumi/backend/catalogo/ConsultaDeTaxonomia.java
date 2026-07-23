@@ -26,8 +26,12 @@ public interface ConsultaDeTaxonomia {
 	/** ¿El valor pertenece a ese tipo (de la empresa) y no está archivado? */
 	boolean valorPerteneceATipo(UUID empresaId, UUID tipoEtiquetaId, UUID valorEtiquetaId);
 
-	/** Nombres de tipo y valor de una etiqueta, para mostrarla como "Talla: M" en vez de dos UUID. */
-	record EtiquetaConNombre(UUID tipoEtiquetaId, String tipoNombre, UUID valorEtiquetaId, String valorNombre) {
+	/**
+	 * Nombres de tipo y valor de una etiqueta, para mostrarla como "Talla: M" en vez de dos UUID.
+	 * {@code seleccionablePorCliente} indica si su tipo puede ofrecerse al cliente como filtro (RF-2.7.2).
+	 */
+	record EtiquetaConNombre(UUID tipoEtiquetaId, String tipoNombre, UUID valorEtiquetaId, String valorNombre,
+			boolean seleccionablePorCliente) {
 	}
 
 	/**

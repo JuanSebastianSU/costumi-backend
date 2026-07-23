@@ -184,11 +184,11 @@ class TaxonomiaService implements CrearTipoEtiqueta, ConsultarTiposEtiqueta, Agr
 		if (valorEtiquetaIds == null || valorEtiquetaIds.isEmpty()) {
 			return Map.of();
 		}
-		// Nombres de todos los tipos de la empresa en una sola consulta; los valores se buscan por id (pocos
-		// distintos por slot). Así el coste no crece con la cantidad de opciones de la ruleta.
-		Map<UUID, String> nombreDeTipo = new HashMap<>();
+		// Todos los tipos de la empresa en una sola consulta (nombre + si es seleccionable por cliente); los
+		// valores se buscan por id (pocos distintos por slot). Así el coste no crece con la cantidad de opciones.
+		Map<UUID, TipoEtiqueta> tipoPorId = new HashMap<>();
 		for (TipoEtiqueta tipo : tipos.listarPorEmpresa(empresaId)) {
-			nombreDeTipo.put(tipo.id(), tipo.nombre());
+			tipoPorId.put(tipo.id(), tipo);
 		}
 		Map<UUID, EtiquetaConNombre> descripcion = new LinkedHashMap<>();
 		for (UUID valorId : valorEtiquetaIds) {
@@ -197,9 +197,13 @@ class TaxonomiaService implements CrearTipoEtiqueta, ConsultarTiposEtiqueta, Agr
 			}
 			valores.buscarPorId(valorId)
 					.filter(valor -> valor.empresaId().equals(empresaId))
-					.ifPresent(valor -> descripcion.put(valor.id(), new EtiquetaConNombre(
-							valor.tipoEtiquetaId(), nombreDeTipo.get(valor.tipoEtiquetaId()),
-							valor.id(), valor.valor())));
+					.ifPresent(valor -> {
+						TipoEtiqueta tipo = tipoPorId.get(valor.tipoEtiquetaId());
+						descripcion.put(valor.id(), new EtiquetaConNombre(
+								valor.tipoEtiquetaId(), tipo == null ? null : tipo.nombre(),
+								valor.id(), valor.valor(),
+								tipo != null && tipo.seleccionablePorCliente()));
+					});
 		}
 		return descripcion;
 	}
