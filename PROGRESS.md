@@ -8,6 +8,37 @@
 > `CLAUDE.md`) para retomar sin perder el hilo. Regla: mueve ítems entre secciones,
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
+## OP-6 — el tipo del disfraz y el de sus piezas son coherentes (2026-07-22)
+
+Detectado revisando el modelo con el responsable: **se podía armar un disfraz de VENTA con prendas de
+solo RENTA**. Esas prendas no tienen precio de venta (el dominio no se lo exige), así que el precio
+sugerido del disfraz se calculaba sobre nada y salía en **cero, en silencio** — peor que un error.
+La regla no estaba en `BACKEND_REQUIREMENTS.md`; se decidió con el responsable antes de implementarla.
+
+**Reglas.** Disfraz de RENTA → piezas RENTA o AMBOS; de VENTA → VENTA o AMBOS; de AMBOS → **solo piezas
+AMBOS** (tiene que servir para las dos cosas).
+
+**El tipo se deriva si el dueño no lo elige.** El valor por defecto era AMBOS, que es la opción **más
+exigente**, así que quien no elegía nada recibía un error por una decisión que nunca tomó. Se veía en
+los datos: 7 de 9 disfraces en Railway eran AMBOS solo porque el formulario lo traía preseleccionado.
+Al derivar se distingue el rol del slot: una prenda **fija** va sí o sí (debe servir), mientras que en un
+slot de **opciones** el cliente elige una, así que basta con que exista alguna que sirva. Los pools
+también aportan, resueltos contra el catálogo ya cargado. Mezclar una pieza de solo renta con una de
+solo venta se rechaza (**422**): ese disfraz no se podría ni rentar ni vender.
+
+**Dos puntos de aplicación, no uno**: al crear/editar (prenda fija y opciones explícitas) y en la
+**ruleta**, porque un slot de pool no lista prendas — las resuelve en el momento y el pool es dinámico
+(mañana alguien agrega otra prenda a esa categoría). Por eso allí se **filtra** en vez de fallar.
+
+- `ConsultaDeInventario` expone `prendaSirvePara(...)` y los flags `sirveParaRenta`/`sirveParaVenta` en
+  `PrendaValuada` y `OpcionDePool`, **sin** filtrar el enum `TipoArticulo` (interno de Inventario).
+- El catálogo se carga **una vez** para derivar: preguntar prenda por prenda sería un N+1 por disfraz.
+- Los **40 tests de disfraces existentes pasan sin tocarlos**: la derivación reproduce lo que ya
+  esperaban. 9 tests nuevos cubren la regla. **Suite 540/540.**
+
+En la app: el selector de tipo ofrece **"Automático (según las piezas)"** por defecto, en vez del AMBOS
+preseleccionado. Al editar un disfraz ya guardado se muestra su tipo concreto.
+
 ## OP-8 — el cliente puede ver sus multas (2026-07-22)
 
 Reportado probando la app: **el cliente no tiene dónde ver sus multas**. El estado de cuenta ya existía

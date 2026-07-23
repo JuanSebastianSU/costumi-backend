@@ -7,6 +7,7 @@ import com.costumi.backend.disfraces.dominio.DisfrazRepository;
 import com.costumi.backend.disfraces.dominio.EjeDePrenda;
 import com.costumi.backend.disfraces.dominio.PoolDeSlot;
 import com.costumi.backend.disfraces.dominio.Slot;
+import com.costumi.backend.disfraces.dominio.TipoDeDisfraz;
 import com.costumi.backend.catalogo.ConsultaDeTaxonomia;
 import com.costumi.backend.inventario.AlmacenDeImagenesPublico;
 import com.costumi.backend.inventario.ConsultaDeInventario;
@@ -14,8 +15,6 @@ import com.costumi.backend.rentas.RegistroDeRentas;
 import com.costumi.backend.ventas.RegistroDeVentas;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import com.costumi.backend.inventario.ConsultaDeInventario;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -66,9 +65,10 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 	@Transactional
 	public Disfraz ejecutar(CrearDisfrazComando comando) {
 		validarCategoriaDelTenant(comando.empresaId(), comando.categoriaId());
-		comando.slots().forEach(slot -> validarSlotDelTenant(comando.empresaId(), slot));
+		TipoDeDisfraz tipo = tipoEfectivo(comando.empresaId(), comando.slots(), comando.tipo());
+		comando.slots().forEach(slot -> validarSlotDelTenant(comando.empresaId(), slot, tipo));
 		Disfraz disfraz = Disfraz.crear(comando.empresaId(), comando.nombre(), comando.categoriaId(),
-				aSlots(comando.slots()), comando.precioRentaGeneral(), comando.precioVentaGeneral(), comando.tipo());
+				aSlots(comando.slots()), comando.precioRentaGeneral(), comando.precioVentaGeneral(), tipo);
 		return disfraces.guardar(disfraz);
 	}
 
@@ -79,10 +79,95 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 				.filter(d -> d.empresaId().equals(comando.empresaId()))
 				.orElseThrow(() -> new DisfrazNoEncontrado(comando.disfrazId()));
 		validarCategoriaDelTenant(comando.empresaId(), comando.categoriaId());
-		comando.slots().forEach(slot -> validarSlotDelTenant(comando.empresaId(), slot));
+		TipoDeDisfraz tipo = tipoEfectivo(comando.empresaId(), comando.slots(), comando.tipo());
+		comando.slots().forEach(slot -> validarSlotDelTenant(comando.empresaId(), slot, tipo));
 		disfraz.redefinir(comando.nombre(), comando.categoriaId(), aSlots(comando.slots()),
-				comando.precioRentaGeneral(), comando.precioVentaGeneral(), comando.tipo());
+				comando.precioRentaGeneral(), comando.precioVentaGeneral(), tipo);
 		return disfraces.guardar(disfraz);
+	}
+
+	/**
+	 * Para qué sirve el disfraz. Si el dueño <b>lo eligió</b>, se respeta tal cual (y sus piezas se validan
+	 * contra esa elección). Si <b>no lo eligió</b>, se <b>deriva de las piezas</b>: el disfraz sirve para lo
+	 * que sirvan todas ellas.
+	 *
+	 * <p>Antes el valor por defecto era AMBOS, que es la opción <b>más exigente</b> (obliga a que cada pieza
+	 * sirva para renta y para venta). Aplicarla a quien no eligió nada hacía fallar el caso más común —armar
+	 * un disfraz con prendas de solo renta— con un error sobre algo que el dueño nunca decidió.
+	 *
+	 * <p>Solo mira las piezas <b>conocidas</b> (prenda fija y opciones explícitas). Un slot de pool no lista
+	 * prendas —las resuelve en el momento— y no restringe: la ruleta ya filtra las opciones incompatibles.
+	 */
+	private TipoDeDisfraz tipoEfectivo(UUID empresaId, List<SlotComando> slots, TipoDeDisfraz elegido) {
+		if (elegido != null) {
+			return elegido;
+		}
+		// El catálogo se carga UNA vez: preguntar prenda por prenda sería un N+1 al crear cada disfraz.
+		List<ConsultaDeInventario.PrendaValuada> catalogo = inventario.prendasValuadasDeEmpresa(empresaId);
+		Map<UUID, ConsultaDeInventario.PrendaValuada> porId = catalogo.stream()
+				.collect(java.util.stream.Collectors.toMap(
+						ConsultaDeInventario.PrendaValuada::prendaId, p -> p, (a, b) -> a));
+
+		boolean puedeRentar = true;
+		boolean puedeVender = true;
+		boolean huboInfo = false;
+		for (SlotComando slot : slots) {
+			List<ConsultaDeInventario.PrendaValuada> candidatas = candidatasDe(slot, catalogo, porId);
+			if (candidatas.isEmpty()) {
+				continue;
+			}
+			huboInfo = true;
+			if (slot.ejePrenda() == EjeDePrenda.FIJA) {
+				// La pieza fija va sí o sí: si no se puede rentar, el disfraz tampoco.
+				puedeRentar &= candidatas.get(0).sirveParaRenta();
+				puedeVender &= candidatas.get(0).sirveParaVenta();
+			} else {
+				// El cliente elige UNA opción: basta con que exista alguna que sirva.
+				puedeRentar &= candidatas.stream().anyMatch(ConsultaDeInventario.PrendaValuada::sirveParaRenta);
+				puedeVender &= candidatas.stream().anyMatch(ConsultaDeInventario.PrendaValuada::sirveParaVenta);
+			}
+		}
+		if (!huboInfo) {
+			// Nada con qué decidir (pools vacíos, o prendas que no existen): se deja abierto, como antes.
+			return TipoDeDisfraz.AMBOS;
+		}
+		if (puedeRentar && puedeVender) {
+			return TipoDeDisfraz.AMBOS;
+		}
+		if (puedeRentar) {
+			return TipoDeDisfraz.RENTA;
+		}
+		if (puedeVender) {
+			return TipoDeDisfraz.VENTA;
+		}
+		// Ni renta ni venta: hay un slot que solo se renta y otro que solo se vende.
+		throw new DisfrazSinTipoPosible();
+	}
+
+	/**
+	 * Las prendas que pueden ocupar el slot hoy: la fija, las opciones explícitas, o las del pool
+	 * (categoría + etiquetas) resueltas contra el catálogo ya cargado. Se usa solo para derivar el tipo,
+	 * por eso no mira stock: una prenda sin unidades igual dice para qué sirve el disfraz.
+	 */
+	private static List<ConsultaDeInventario.PrendaValuada> candidatasDe(SlotComando slot,
+			List<ConsultaDeInventario.PrendaValuada> catalogo,
+			Map<UUID, ConsultaDeInventario.PrendaValuada> porId) {
+		if (slot.ejePrenda() == EjeDePrenda.FIJA) {
+			ConsultaDeInventario.PrendaValuada fija = slot.prendaFijaId() == null ? null
+					: porId.get(slot.prendaFijaId());
+			return fija == null ? List.of() : List.of(fija);
+		}
+		if (!slot.prendasOpcion().isEmpty()) {
+			return slot.prendasOpcion().stream().map(porId::get).filter(java.util.Objects::nonNull).toList();
+		}
+		PoolComando pool = slot.pool();
+		if (pool == null || pool.categoriaId() == null) {
+			return List.of();
+		}
+		return catalogo.stream()
+				.filter(p -> pool.categoriaId().equals(p.categoriaId()))
+				.filter(p -> cumpleEtiquetas(p.etiquetas(), pool.etiquetasPermitidas()))
+				.toList();
 	}
 
 	/**
@@ -117,14 +202,20 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 		return disfraces.guardar(disfraz);
 	}
 
-	/** §5.4: toda referencia por id (prenda fija, categoría y valores del pool) debe ser del tenant. */
-	private void validarSlotDelTenant(UUID empresaId, SlotComando slot) {
+	/**
+	 * §5.4: toda referencia por id (prenda fija, categoría y valores del pool) debe ser del tenant. Y
+	 * RF-2.1 + RF-2.3: la pieza tiene que servir para lo que sirve el disfraz — uno de renta no puede
+	 * llevar prendas de solo venta, uno de venta no puede llevar prendas de solo renta, y uno de AMBOS
+	 * exige piezas que sirvan para las dos cosas. Sin esto se podían armar disfraces que no se podían
+	 * cobrar: las prendas de solo renta no tienen precio de venta, así que el disfraz salía valuado en 0.
+	 */
+	private void validarSlotDelTenant(UUID empresaId, SlotComando slot, TipoDeDisfraz tipo) {
 		switch (slot.ejePrenda()) {
-			case FIJA -> exigirPrendaDelTenant(empresaId, slot.prendaFijaId(), "La prenda fija");
+			case FIJA -> exigirPrendaDelTenant(empresaId, slot.prendaFijaId(), "La prenda fija", tipo);
 			case PERSONALIZABLE -> {
 				// Opciones explícitas: cada prenda elegida debe ser del tenant. Es la forma preferida.
 				if (!slot.prendasOpcion().isEmpty()) {
-					slot.prendasOpcion().forEach(id -> exigirPrendaDelTenant(empresaId, id, "Una opción del slot"));
+					slot.prendasOpcion().forEach(id -> exigirPrendaDelTenant(empresaId, id, "Una opción del slot", tipo));
 					return;
 				}
 				PoolComando pool = slot.pool();
@@ -132,8 +223,8 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 						|| !taxonomia.categoriaExiste(empresaId, pool.categoriaId())) {
 					throw new IllegalArgumentException("La categoría del pool no existe en esta empresa");
 				}
-				pool.etiquetasPermitidas().forEach((tipo, valores) -> valores.forEach(valor -> {
-					if (!taxonomia.valorPerteneceATipo(empresaId, tipo, valor)) {
+				pool.etiquetasPermitidas().forEach((tipoEtiqueta, valores) -> valores.forEach(valor -> {
+					if (!taxonomia.valorPerteneceATipo(empresaId, tipoEtiqueta, valor)) {
 						throw new IllegalArgumentException("Un valor permitido del pool no pertenece a su tipo en esta empresa");
 					}
 				}));
@@ -141,9 +232,13 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 		}
 	}
 
-	private void exigirPrendaDelTenant(UUID empresaId, UUID prendaId, String descripcion) {
+	private void exigirPrendaDelTenant(UUID empresaId, UUID prendaId, String descripcion, TipoDeDisfraz tipo) {
 		if (prendaId == null || !inventario.prendaExiste(empresaId, prendaId)) {
 			throw new IllegalArgumentException(descripcion + " no existe en esta empresa");
+		}
+		TipoDeDisfraz efectivo = tipo == null ? TipoDeDisfraz.AMBOS : tipo;
+		if (!inventario.prendaSirvePara(empresaId, prendaId, efectivo.permiteRenta(), efectivo.permiteVenta())) {
+			throw new PrendaNoSirveParaElDisfraz(prendaId, efectivo, descripcion);
 		}
 	}
 
@@ -300,6 +395,13 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 		} else {
 			opciones = opcionesElegibles(empresaId, slot);
 		}
+		// La opción tiene que servir para lo que sirve el disfraz (RF-2.1 + RF-2.3). Se filtra aquí ademas
+		// de validarlo al crear porque un slot de pool NO lista prendas: las resuelve ahora, y el pool
+		// (categoría + etiquetas) puede contener prendas de un tipo que este disfraz no admite.
+		opciones = opciones.stream()
+				.filter(opcion -> !disfraz.tipo().permiteRenta() || opcion.sirveParaRenta())
+				.filter(opcion -> !disfraz.tipo().permiteVenta() || opcion.sirveParaVenta())
+				.toList();
 		// Filtro adicional de la ruleta: la opción debe incluir TODOS los valores de etiqueta elegidos.
 		if (valoresFiltro != null && !valoresFiltro.isEmpty()) {
 			Set<UUID> requeridos = new HashSet<>(valoresFiltro);

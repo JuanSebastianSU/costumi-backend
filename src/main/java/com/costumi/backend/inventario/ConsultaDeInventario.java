@@ -18,6 +18,14 @@ public interface ConsultaDeInventario {
 	/** ¿La prenda existe y pertenece a la empresa? (validación de referencia cruzada por tenant, §5.4). */
 	boolean prendaExiste(UUID empresaId, UUID prendaId);
 
+	/**
+	 * ¿La prenda (de la empresa) sirve para el uso pedido? {@code exigeRenta}/{@code exigeVenta} son los
+	 * usos que la prenda <b>debe</b> soportar (ambos true = tiene que servir para las dos cosas). Sirve
+	 * para que Disfraces exija que las piezas de un disfraz de renta se puedan rentar, y las de uno de
+	 * venta se puedan vender (RF-2.1 + RF-2.3), sin conocer el tipo de artículo de Inventario.
+	 */
+	boolean prendaSirvePara(UUID empresaId, UUID prendaId, boolean exigeRenta, boolean exigeVenta);
+
 	/** ¿La prenda (de la empresa) tiene al menos una unidad disponible en algún grupo de stock? */
 	boolean prendaTieneStockDisponible(UUID empresaId, UUID prendaId);
 
@@ -56,7 +64,7 @@ public interface ConsultaDeInventario {
 	 * para que el cliente pueda ver la imagen y filtrar por talla/color/modelo.
 	 */
 	record OpcionDePool(UUID prendaId, String nombre, String fotoUrl, BigDecimal precioRenta,
-			int unidadesDisponibles, Map<UUID, UUID> etiquetas) {
+			int unidadesDisponibles, Map<UUID, UUID> etiquetas, boolean sirveParaRenta, boolean sirveParaVenta) {
 	}
 
 	/**
@@ -75,7 +83,8 @@ public interface ConsultaDeInventario {
 	 * Es lo que basta para el rango sugerido (una pista, no un checkout); el stock se valida aparte.
 	 */
 	record PrendaValuada(UUID prendaId, UUID categoriaId, Map<UUID, UUID> etiquetas, BigDecimal precioRenta,
-			BigDecimal precioVenta, BigDecimal valorDano, BigDecimal valorReposicion) {
+			BigDecimal precioVenta, BigDecimal valorDano, BigDecimal valorReposicion,
+			boolean sirveParaRenta, boolean sirveParaVenta) {
 	}
 
 	/**
