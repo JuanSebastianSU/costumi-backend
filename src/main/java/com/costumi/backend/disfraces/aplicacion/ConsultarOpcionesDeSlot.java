@@ -16,9 +16,21 @@ public interface ConsultarOpcionesDeSlot {
 	/** Opciones de un slot del disfraz; {@code valoresFiltro} (opcional) acota por valores de etiqueta. */
 	OpcionesDeSlot opciones(UUID empresaId, UUID disfrazId, int orden, List<UUID> valoresFiltro);
 
-	/** Un slot con sus opciones concretas disponibles. */
+	/** Un slot con sus opciones concretas disponibles y las facetas para filtrarlas. */
 	record OpcionesDeSlot(int orden, String nombre, EjeDePrenda ejePrenda, boolean opcional,
-			List<OpcionElegible> opciones) {
+			List<OpcionElegible> opciones, List<Faceta> facetas) {
+	}
+
+	/**
+	 * Una dimensión por la que el cliente puede filtrar la ruleta (RF-2.7.2): un tipo de etiqueta
+	 * <b>seleccionable por el cliente</b> presente en las opciones, con sus valores y cuántas opciones
+	 * quedan por valor (conteo <b>dinámico</b>: ya considera los filtros de las demás dimensiones).
+	 */
+	record Faceta(UUID tipoEtiquetaId, String tipoNombre, List<ValorDeFaceta> valores) {
+	}
+
+	/** Un valor de una faceta y cuántas opciones lo tienen dado el resto de filtros. */
+	record ValorDeFaceta(UUID valorEtiquetaId, String valorNombre, int cantidad) {
 	}
 
 	/**
