@@ -234,7 +234,7 @@ class DisfrazController {
 								.toList()))
 				.toList();
 		List<RentarVariosDisfracesComando.LineaDePrenda> lineas = (request.lineas() == null ? List
-				.<RentarVariosDisfracesRequest.LineaPrendaDto>of() : request.lineas()).stream()
+				.<RentarVariosDisfracesRequest.LineaPrendaRentaDto>of() : request.lineas()).stream()
 				.map(l -> new RentarVariosDisfracesComando.LineaDePrenda(l.prendaId(),
 						(l.cantidad() == null || l.cantidad() < 1) ? 1 : l.cantidad(), l.precioPorDia()))
 				.toList();
@@ -263,7 +263,7 @@ class DisfrazController {
 								.toList()))
 				.toList();
 		List<VenderVariosDisfracesComando.LineaDePrenda> lineas = (request.lineas() == null ? List
-				.<VenderVariosDisfracesRequest.LineaPrendaDto>of() : request.lineas()).stream()
+				.<VenderVariosDisfracesRequest.LineaPrendaVentaDto>of() : request.lineas()).stream()
 				.map(l -> new VenderVariosDisfracesComando.LineaDePrenda(l.prendaId(),
 						(l.cantidad() == null || l.cantidad() < 1) ? 1 : l.cantidad(), l.precioUnitario()))
 				.toList();
