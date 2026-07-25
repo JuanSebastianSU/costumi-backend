@@ -46,7 +46,7 @@ class MembresiaService implements GestionarMembresias {
 	}
 
 	@Override
-	@Transactional(readOnly = true)
+	@Transactional
 	public Credenciales cambiarContexto(UUID usuarioId, ModoDeSesion modo) {
 		Usuario usuario = usuarios.buscarPorId(usuarioId)
 				.orElseThrow(() -> new IllegalArgumentException("La cuenta no existe"));

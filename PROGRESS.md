@@ -8,6 +8,25 @@
 > `CLAUDE.md`) para retomar sin perder el hilo. Regla: mueve ítems entre secciones,
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
+## RED-21 (Fase B) — el modo Comprando/Trabajando sobrevive al refresh (+ fix bug del switch) (2026-07-25)
+
+Cierra el follow-up anotado desde RED-19: el contexto elegido (Comprando/Trabajando) ya no se pierde al
+refrescar el token.
+
+- **Refresh preserva el contexto**: el refresh JWT ya llevaba `empresa_id`+`rol`; ahora `ValidadorDeRefreshJwt`
+  los extrae (`RefreshDecodificado` gana `empresaId`+`rol`) y `ContextoDeTrabajo.paraRefresh(...)` re-proyecta:
+  modo compra (rol CLIENTE) → sigue cliente; modo trabajo → **re-valida** que la membresía siga ACTIVA con ese
+  rol y lo mantiene (si ya no, cae a cliente). Token base / sin contexto → proyección normal. Seguro para
+  cuentas sin membresía (semilla): sin cambios.
+- **Fix (bug latente de RED-19)**: `MembresiaService.cambiarContexto` estaba en `@Transactional(readOnly=true)`
+  pero **escribe** el token de refresco (vía `nuevaSesion`); con readOnly no se persistía, así que un token
+  emitido por el switch **no se podía refrescar** (401). Ahora es read-write. Lo destapó el test nuevo.
+- Sin migración. Tests: `RefrescarContextoIntegrationTest` (compra y trabajo sobreviven al refresh,
+  decodificando el JWT). **Suite 598/598**.
+- Quedan de Fase B los pasos **5** (permisos de gestión + rediseño de la pantalla) y **6** (re-auth/biometría),
+  ambos **acoplados al front** (la pantalla de permisos y el prompt de re-auth) → se harán junto con el front
+  para que el modelo calce con la UI. Después de eso, conectar el front (regenerar `:api-client`, cablear).
+
 ## RED-20 (Fase B, 3+4) — invitación/aceptación con T&C + alta=invitar + desvinculación de dos vías + pirámide de sucursales (2026-07-25)
 
 Cierra los pasos 3 y 4 del plan (`PLAN_IDENTIDAD_PERMISOS.md` §7.3/§7.4) en un lote. Todo aditivo salvo que
