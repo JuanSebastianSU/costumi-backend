@@ -8,6 +8,21 @@
 > `CLAUDE.md`) para retomar sin perder el hilo. Regla: mueve ítems entre secciones,
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
+## RED-4 — ingresos y ganancia por período (desde/hasta) (2026-07-25)
+
+Bloque B3 (núcleo). El hallazgo sistémico **C**: `/reportes/ingresos` y `/reportes/ganancia` eran acumulado
+histórico sin período, así que Reportes «mentía» al elegir un rango y el Panel no podía mostrar «hoy».
+
+- `GET /reportes/ingresos` y `/reportes/ganancia` aceptan `desde`/`hasta` (ISO date, opcionales), replicando
+  el patrón de `ingresos-por-metodo`. Ingresos filtran por `pago.fecha`; el costo de la ganancia por
+  `venta.creada_en` (fecha de la venta). Sin migración.
+- Con esto Reportes filtra coherente y el Panel puede pedir «hoy» (desde=hasta=hoy) o «7 días».
+- Test de integración (pago de hoy dentro/fuera del rango, ingresos y ganancia). **Suite 551/551**, verdes.
+
+**Al mergear: regenerar `:api-client`** y cablear el selector de período en Reportes/Panel. **Pendiente
+B3b/B2**: serie de ingresos por día (gráfico), contar rentas `DEVUELTA`, totales del período en ventas, y el
+historial del cliente paginado.
+
 ## RED-3 — filtros server-side de gestión: bandejas de rentas, ventas, auditoría, reembolsos (2026-07-24)
 
 Bloque B1 del lote del rediseño. Cuatro listados de gestión ganan filtro server-side (el patrón `?param` que
