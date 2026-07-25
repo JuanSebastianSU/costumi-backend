@@ -19,6 +19,9 @@ public interface ConsultarDisfraces {
 	/** Solo los disfraces activos: vista pública (vitrina del marketplace). */
 	List<Disfraz> activosDeEmpresa(UUID empresaId);
 
+	/** Cuántos disfraces de la empresa usan la prenda (pieza fija u opción explícita): aviso antes de archivarla. */
+	long cuantosDisfracesUsanPrenda(UUID empresaId, UUID prendaId);
+
 	/**
 	 * Todos los valores SUGERIDOS de un disfraz en un solo cálculo: rango (mín–máx) de renta y venta y multa
 	 * por tipo (daño/reposición), a partir de los precios/valores de sus elementos (RF-2.10). Con slots fijos

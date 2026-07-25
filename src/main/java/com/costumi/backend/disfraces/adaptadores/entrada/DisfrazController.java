@@ -178,6 +178,16 @@ class DisfrazController {
 		return new DisponibilidadResponse(disfrazId, disponible);
 	}
 
+	/** Cuántos disfraces usan la prenda (aviso de impacto antes de archivarla, RF-2.7.6). */
+	@GetMapping("/conteo-por-prenda/{prendaId}")
+	ConteoPorPrendaResponse conteoPorPrenda(@PathVariable UUID prendaId, @AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = tenant.empresaIdRequerida();
+		return new ConteoPorPrendaResponse(consultarDisfraces.cuantosDisfracesUsanPrenda(empresaId, prendaId));
+	}
+
+	record ConteoPorPrendaResponse(long total) {
+	}
+
 	/** Rentar un disfraz (RF-2.3/3.1): lo resuelve a sus prendas y crea la renta. Personal o CLIENTE. */
 	@PostMapping("/{disfrazId}/rentar")
 	RentarDisfrazResponse rentar(@PathVariable UUID disfrazId, @Valid @RequestBody RentarDisfrazRequest request,
