@@ -9,7 +9,7 @@ import com.costumi.backend.disfraces.dominio.PoolDeSlot;
 import com.costumi.backend.disfraces.dominio.Slot;
 import com.costumi.backend.disfraces.dominio.TipoDeDisfraz;
 import com.costumi.backend.catalogo.ConsultaDeTaxonomia;
-import com.costumi.backend.inventario.AlmacenDeImagenesPublico;
+import com.costumi.backend.compartido.AlmacenDeImagenesPublico;
 import com.costumi.backend.inventario.ConsultaDeInventario;
 import com.costumi.backend.rentas.RegistroDeRentas;
 import com.costumi.backend.ventas.RegistroDeVentas;

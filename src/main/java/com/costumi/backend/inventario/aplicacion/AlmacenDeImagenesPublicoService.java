@@ -1,6 +1,6 @@
 package com.costumi.backend.inventario.aplicacion;
 
-import com.costumi.backend.inventario.AlmacenDeImagenesPublico;
+import com.costumi.backend.compartido.AlmacenDeImagenesPublico;
 import com.costumi.backend.inventario.dominio.TipoDeImagen;
 import org.springframework.stereotype.Service;
 
