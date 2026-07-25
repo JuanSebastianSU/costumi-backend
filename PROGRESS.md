@@ -8,6 +8,22 @@
 > `CLAUDE.md`) para retomar sin perder el hilo. Regla: mueve ítems entre secciones,
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
+## RED-16 (A7-v) — carrito: depósito por línea/total + fecha de creación (2026-07-25)
+
+- **Depósito sugerido** (aditivo a la valorización, sin tocar el checkout): `ConsultaDeInventario` expone
+  `depositoSugerido` (de `Prenda.depositoSugerido`, ya existía). `CarritoService` lo calcula en RENTA de
+  prendas = depósito × cantidad (venta/disfraz = null); `CarritoValorizado`/`CarritoResponse` ganan
+  `deposito` por línea + `totalDeposito`. Es informativo (el depósito real se fija en el pago).
+- **Fecha de creación** (sin tocar el aggregate `Carrito`): columna `carrito.creado_en` (**V75**, default
+  `now()`), expuesta en el read de "Mis carritos" (`GET /carritos/mios` → `creadoEn`), que además ordena por
+  recencia. Gotcha: el driver PG no soporta `getObject(col, Instant.class)` para timestamptz → se usa
+  `getTimestamp(...).toInstant()`.
+- Migración **V75**. Tests: depósito por línea/total en RENTA, `creadoEn` en mis-carritos. **Suite 579/579**.
+
+**⬜ Único pendiente de A7**: carrito **variante talla/color por línea**. Decisión abierta con Juan: capturar
++ mostrar la elección (rápido; el stock se sigue contando por prenda, no por variante) vs. reserva de stock
+por variante (cambia inventario/checkout). Es lo último de todo el lote de rediseño (antes del épico Fase B).
+
 ## RED-15 (A7) — horario de tienda + carrusel de destacados (2026-07-25)
 
 Cierra casi todo lo que quedaba de A7. Un solo lote.

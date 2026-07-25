@@ -24,7 +24,7 @@ class CarritosAbiertosJdbcAdapter implements CarritosAbiertosReadRepository {
 
 	private static final String SQL = """
 			select c.empresa_id, e.nombre as empresa_nombre, c.sucursal_id, s.nombre as sucursal_nombre,
-			       c.tipo, sum(l.cantidad) as articulos
+			       c.tipo, sum(l.cantidad) as articulos, max(c.creado_en) as creado_en
 			from carrito c
 			join cliente cl on cl.id = c.cliente_id
 			join empresa e on e.id = c.empresa_id
@@ -32,7 +32,7 @@ class CarritosAbiertosJdbcAdapter implements CarritosAbiertosReadRepository {
 			join linea_de_carrito l on l.carrito_id = c.id
 			where cl.usuario_id = :usuarioId and c.estado = 'PENDIENTE'
 			group by c.empresa_id, e.nombre, c.sucursal_id, s.nombre, c.tipo
-			order by e.nombre, s.nombre, c.tipo
+			order by max(c.creado_en) desc, e.nombre, s.nombre, c.tipo
 			""";
 
 	private final JdbcClient jdbc;
@@ -50,7 +50,8 @@ class CarritosAbiertosJdbcAdapter implements CarritosAbiertosReadRepository {
 						rs.getObject("sucursal_id", UUID.class),
 						rs.getString("sucursal_nombre"),
 						TipoPedido.valueOf(rs.getString("tipo")),
-						rs.getInt("articulos")))
+						rs.getInt("articulos"),
+						rs.getTimestamp("creado_en").toInstant()))
 				.list();
 	}
 }

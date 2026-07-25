@@ -18,5 +18,5 @@ import java.util.UUID;
  * real al abrirlo.
  */
 public record CarritoAbierto(UUID empresaId, String empresaNombre, UUID sucursalId, String sucursalNombre,
-		TipoPedido tipo, int articulos) {
+		TipoPedido tipo, int articulos, java.time.Instant creadoEn) {
 }

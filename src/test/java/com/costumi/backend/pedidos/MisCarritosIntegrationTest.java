@@ -66,7 +66,9 @@ class MisCarritosIntegrationTest {
 				.andExpect(jsonPath("$[?(@.tipo == 'RENTA')].empresaId").value(b.empresa().toString()))
 				.andExpect(jsonPath("$[?(@.tipo == 'RENTA')].articulos").value(1))
 				.andExpect(jsonPath("$[0].empresaNombre").isNotEmpty())
-				.andExpect(jsonPath("$[0].sucursalNombre").isNotEmpty());
+				.andExpect(jsonPath("$[0].sucursalNombre").isNotEmpty())
+				// Cada carrito abierto trae cuándo se creó (para "hace 2 días" y ordenar por recencia).
+				.andExpect(jsonPath("$[0].creadoEn").isNotEmpty());
 	}
 
 	/** Renta y venta son carritos distintos en la MISMA tienda (RF-16.3): tienen que verse los dos. */
