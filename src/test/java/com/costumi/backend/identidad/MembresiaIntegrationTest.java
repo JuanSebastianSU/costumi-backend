@@ -88,20 +88,21 @@ class MembresiaIntegrationTest {
 	}
 
 	@Test
-	void dar_de_alta_un_empleado_le_crea_su_membresia() throws Exception {
+	void aceptar_una_invitacion_le_crea_su_membresia() throws Exception {
 		UUID empresa = crearEmpresaAprobada("Alta");
 		String dueno = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.DUENO);
 		String correo = "emp-" + UUID.randomUUID() + "@costumi.test";
-		mvc.perform(post("/api/v1/empleados").header("Authorization", "Bearer " + dueno)
+		String invRes = mvc.perform(post("/api/v1/empleados").header("Authorization", "Bearer " + dueno)
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"email\":\"" + correo + "\",\"password\":\"secret123\",\"rol\":\"MOSTRADOR\"}"))
-				.andExpect(status().isCreated());
+						.content("{\"email\":\"" + correo + "\",\"rol\":\"MOSTRADOR\"}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		String enlace = json.readTree(invRes).get("enlace").asText();
 
-		// El empleado inicia sesión y ve su tienda en sus membresías.
-		String login = mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
-						.content("{\"email\":\"" + correo + "\",\"password\":\"secret123\"}"))
+		// La persona acepta (crea su cuenta) y queda logueada; ve su tienda en sus membresías.
+		String aceptRes = mvc.perform(post("/api/v1/invitaciones/aceptar").contentType(MediaType.APPLICATION_JSON)
+						.content("{\"token\":\"" + enlace + "\",\"password\":\"secret123\",\"aceptaTerminos\":true}"))
 				.andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-		String tok = json.readTree(login).get("accessToken").asText();
+		String tok = json.readTree(aceptRes).get("accessToken").asText();
 		mvc.perform(get("/api/v1/auth/me/membresias").header("Authorization", "Bearer " + tok))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$[?(@.empresaId == '" + empresa + "')].rol", hasItem("MOSTRADOR")));

@@ -10,10 +10,11 @@ import java.util.UUID;
 public interface AsignarSucursales {
 
 	/**
-	 * Reemplaza las sucursales del empleado; valida que empleado y sucursales sean del tenant y que el actor
-	 * ({@code actorRol}) tenga autoridad sobre el empleado (pirámide, RF-1.3/B3).
+	 * Reemplaza las sucursales del empleado; valida que empleado y sucursales sean del tenant, que el actor
+	 * tenga autoridad sobre el empleado (pirámide, RF-1.3/B3) y que las sucursales estén dentro de su alcance
+	 * (el encargado solo reasigna entre las suyas, paso 4).
 	 */
-	void asignar(UUID empresaId, Rol actorRol, UUID usuarioId, Set<UUID> sucursalIds);
+	void asignar(UUID empresaId, Rol actorRol, UUID actorId, UUID usuarioId, Set<UUID> sucursalIds);
 
 	/** Sucursales asignadas al empleado (mismas restricciones de jerarquía). */
 	List<UUID> sucursalesDe(UUID empresaId, Rol actorRol, UUID usuarioId);

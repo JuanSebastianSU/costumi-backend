@@ -2,6 +2,7 @@ package com.costumi.backend.identidad.adaptadores.entrada;
 
 import com.costumi.backend.identidad.aplicacion.Credenciales;
 import com.costumi.backend.identidad.aplicacion.GestionarMembresias;
+import com.costumi.backend.identidad.aplicacion.GestionarMembresiaDeEmpleado;
 import com.costumi.backend.identidad.aplicacion.ModoDeSesion;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -25,9 +26,11 @@ import java.util.UUID;
 class MembresiaController {
 
 	private final GestionarMembresias membresias;
+	private final GestionarMembresiaDeEmpleado desvinculacion;
 
-	MembresiaController(GestionarMembresias membresias) {
+	MembresiaController(GestionarMembresias membresias, GestionarMembresiaDeEmpleado desvinculacion) {
 		this.membresias = membresias;
+		this.desvinculacion = desvinculacion;
 	}
 
 	/** Las tiendas del usuario con su rol en cada una (historial de trabajo; a lo sumo una ACTIVA). */
@@ -49,6 +52,13 @@ class MembresiaController {
 		UUID usuarioId = UUID.fromString(jwt.getSubject());
 		Credenciales cred = membresias.cambiarContexto(usuarioId, request.modo());
 		return new TokenResponse(cred.accessToken(), cred.refreshToken(), "Bearer");
+	}
+
+	/** El empleado se desvincula de su tienda (Fase B, paso 3): queda solo-cliente. Por su propio token. */
+	@PostMapping("/me/desvincularme")
+	MembresiaEstadoResponse desvincularme(@AuthenticationPrincipal Jwt jwt) {
+		UUID usuarioId = UUID.fromString(jwt.getSubject());
+		return MembresiaEstadoResponse.desde(desvinculacion.desvincularme(usuarioId));
 	}
 
 	record MembresiaResponse(UUID empresaId, String empresaNombre, String rol, String estado) {

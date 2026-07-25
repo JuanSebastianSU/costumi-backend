@@ -88,6 +88,24 @@ public class Usuario {
 		return new Usuario(id, empresaId, email, nuevoPasswordHash, rol, activo, nombre, telefono, fotoUrl);
 	}
 
+	/**
+	 * Vuelve a ser <b>solo cliente</b> (H1, desvinculación): pierde su empresa+rol de trabajo base y queda como
+	 * persona (CLIENTE, sin empresa). Misma cuenta: conserva id/email/contraseña/perfil y su faceta de compra.
+	 * Idempotente (si ya es cliente, no cambia nada).
+	 */
+	public Usuario volverASoloCliente() {
+		return new Usuario(id, null, email, passwordHash, Rol.CLIENTE, activo, nombre, telefono, fotoUrl);
+	}
+
+	/**
+	 * Vincula a la persona como empleado de una empresa con un rol de trabajo (al aceptar una invitación, o al
+	 * reactivar una membresía). Misma cuenta; el contexto base pasa a esa empresa+rol. {@code validarTenant}
+	 * rechaza roles que no pertenecen a una empresa (SuperAdmin/Cliente).
+	 */
+	public Usuario vincularComoEmpleado(UUID nuevaEmpresaId, Rol nuevoRol) {
+		return new Usuario(id, nuevaEmpresaId, email, passwordHash, nuevoRol, activo, nombre, telefono, fotoUrl);
+	}
+
 	/** Da de baja al usuario: no podrá autenticarse ni renovar sesión (RF-8). Misma cuenta, se conserva. */
 	public Usuario desactivar() {
 		return new Usuario(id, empresaId, email, passwordHash, rol, false, nombre, telefono, fotoUrl);
