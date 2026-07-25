@@ -6,5 +6,6 @@ import java.util.UUID;
  * Modelo de lectura de una sucursal (punto de retiro) visible en el marketplace del cliente
  * (RF-18.5). El cliente elige en qué sucursal retira su renta/compra; el stock se reserva ahí.
  */
-public record SucursalEnVitrina(UUID id, String nombre, String direccion) {
+public record SucursalEnVitrina(UUID id, String nombre, String direccion, String ubicacionMaps, String descripcion,
+		Double latitud, Double longitud, String fotoUrl) {
 }

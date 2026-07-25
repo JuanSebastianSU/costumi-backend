@@ -8,6 +8,22 @@
 > `CLAUDE.md`) para retomar sin perder el hilo. Regla: mueve ítems entre secciones,
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
+## RED-12 (A7-sucursal) — media y ubicación de la sucursal (2026-07-25)
+
+Segundo lote de A7: el punto físico (sucursal) para el mapa/punto de retiro del marketplace. Un solo lote.
+
+- `Sucursal` gana `descripcion`, `latitud`, `longitud` (con validación de rango en el dominio) y `fotoUrl`
+  (**V72**). `crear` se mantiene en 4 args (no rompe los provisionamientos «Casa Matriz» ni los tests); los
+  datos ricos se cargan al **editar** + subir foto.
+- `PATCH /empresas/{empresaId}/sucursales/{id}` acepta descripción/lat/lng; `POST …/{id}/foto` (multipart)
+  sube la foto reusando el almacén compartido. `SucursalResponse` expone todo. Puerto nuevo
+  `AsignarFotoDeSucursal` (impl en `MantenimientoDeSucursalService`).
+- **Vitrina**: `SucursalVitrinaResponse`/`SucursalEnVitrina` pasan de {id,nombre,direccion} a incluir
+  `ubicacionMaps`, `descripcion`, `latitud`, `longitud`, `fotoUrl` (+ SQL del marketplace) → el cliente puede
+  pintar el punto en el mapa con foto.
+- Coordenada fuera de rango → 400 (validación de dominio). Migración **V72**. Tests: editar+foto+reflejo en
+  vitrina, 400 por lat inválida. **Suite 569/569** (ArchUnit + Modulith; sin ciclo).
+
 ## RED-11 (A7-media) — identidad/media de tienda + foto de perfil + almacén compartido (2026-07-25)
 
 Primer lote de A7 (coherente: todo lo de "media/imágenes"). Un solo lote.

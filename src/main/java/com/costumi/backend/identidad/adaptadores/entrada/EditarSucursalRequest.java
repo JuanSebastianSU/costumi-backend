@@ -3,7 +3,7 @@ package com.costumi.backend.identidad.adaptadores.entrada;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
-/** DTO de entrada para editar una Sucursal (RF-15.1). */
+/** DTO de entrada para editar una Sucursal (RF-15.1/A7). Las coordenadas se validan en el dominio. */
 public record EditarSucursalRequest(
 
 		@NotBlank(message = "El nombre de la sucursal es obligatorio")
@@ -14,5 +14,12 @@ public record EditarSucursalRequest(
 		String direccion,
 
 		@Size(max = 500, message = "El enlace de ubicación no puede exceder 500 caracteres")
-		String ubicacionMaps) {
+		String ubicacionMaps,
+
+		@Size(max = 1000, message = "La descripción no puede exceder 1000 caracteres")
+		String descripcion,
+
+		Double latitud,
+
+		Double longitud) {
 }

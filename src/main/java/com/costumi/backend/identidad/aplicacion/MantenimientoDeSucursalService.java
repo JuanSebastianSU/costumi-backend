@@ -1,5 +1,6 @@
 package com.costumi.backend.identidad.aplicacion;
 
+import com.costumi.backend.compartido.AlmacenDeImagenesPublico;
 import com.costumi.backend.identidad.DependenciasDeSucursal;
 import com.costumi.backend.identidad.dominio.Sucursal;
 import com.costumi.backend.identidad.dominio.SucursalRepository;
@@ -21,21 +22,33 @@ import java.util.UUID;
  * dependieran de Identidad (cerraría un ciclo): queda como decisión abierta documentada.
  */
 @Service
-class MantenimientoDeSucursalService implements EditarSucursal, GestionarEstadoDeSucursal {
+class MantenimientoDeSucursalService implements EditarSucursal, GestionarEstadoDeSucursal, AsignarFotoDeSucursal {
 
 	private final SucursalRepository sucursales;
 	private final DependenciasDeSucursal dependencias;
+	private final AlmacenDeImagenesPublico imagenes;
 
-	MantenimientoDeSucursalService(SucursalRepository sucursales, DependenciasDeSucursal dependencias) {
+	MantenimientoDeSucursalService(SucursalRepository sucursales, DependenciasDeSucursal dependencias,
+			AlmacenDeImagenesPublico imagenes) {
 		this.sucursales = sucursales;
 		this.dependencias = dependencias;
+		this.imagenes = imagenes;
 	}
 
 	@Override
 	@Transactional
 	public Sucursal ejecutar(EditarSucursalComando comando) {
 		Sucursal sucursal = sucursalDelTenant(comando.empresaId(), comando.sucursalId());
-		sucursal.editar(comando.nombre(), comando.direccion(), comando.ubicacionMaps());
+		sucursal.editar(comando.nombre(), comando.direccion(), comando.ubicacionMaps(), comando.descripcion(),
+				comando.latitud(), comando.longitud());
+		return sucursales.guardar(sucursal);
+	}
+
+	@Override
+	@Transactional
+	public Sucursal asignarFoto(UUID empresaId, UUID sucursalId, byte[] contenido) {
+		Sucursal sucursal = sucursalDelTenant(empresaId, sucursalId);
+		sucursal.asignarFoto(imagenes.subir(contenido, "sucursales/" + sucursalId + "/foto/"));
 		return sucursales.guardar(sucursal);
 	}
 

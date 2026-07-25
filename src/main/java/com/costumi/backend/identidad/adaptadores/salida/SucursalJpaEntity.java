@@ -40,18 +40,32 @@ class SucursalJpaEntity {
 	@Column(nullable = false)
 	private boolean archivada;
 
+	@Column(length = 1000)
+	private String descripcion;
+
+	private Double latitud;
+
+	private Double longitud;
+
+	@Column(name = "foto_url", length = 500)
+	private String fotoUrl;
+
 	protected SucursalJpaEntity() {
 		// requerido por JPA
 	}
 
 	SucursalJpaEntity(UUID id, UUID empresaId, String nombre, String direccion, String ubicacionMaps,
-			boolean archivada) {
+			boolean archivada, String descripcion, Double latitud, Double longitud, String fotoUrl) {
 		this.id = id;
 		this.empresaId = empresaId;
 		this.nombre = nombre;
 		this.direccion = direccion;
 		this.ubicacionMaps = ubicacionMaps;
 		this.archivada = archivada;
+		this.descripcion = descripcion;
+		this.latitud = latitud;
+		this.longitud = longitud;
+		this.fotoUrl = fotoUrl;
 	}
 
 	UUID getId() {
@@ -76,5 +90,21 @@ class SucursalJpaEntity {
 
 	boolean isArchivada() {
 		return archivada;
+	}
+
+	String getDescripcion() {
+		return descripcion;
+	}
+
+	Double getLatitud() {
+		return latitud;
+	}
+
+	Double getLongitud() {
+		return longitud;
+	}
+
+	String getFotoUrl() {
+		return fotoUrl;
 	}
 }

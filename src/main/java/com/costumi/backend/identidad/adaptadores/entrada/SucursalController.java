@@ -1,6 +1,7 @@
 package com.costumi.backend.identidad.adaptadores.entrada;
 
 import com.costumi.backend.identidad.aplicacion.AccesoAlTenantDenegado;
+import com.costumi.backend.identidad.aplicacion.AsignarFotoDeSucursal;
 import com.costumi.backend.identidad.aplicacion.EditarSucursal;
 import com.costumi.backend.identidad.aplicacion.EditarSucursalComando;
 import com.costumi.backend.identidad.aplicacion.GestionarEstadoDeSucursal;
@@ -18,9 +19,12 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.io.IOException;
 import java.net.URI;
 import java.util.List;
 import java.util.UUID;
@@ -32,13 +36,16 @@ class SucursalController {
 
 	private final RegistrarSucursal registrarSucursal;
 	private final EditarSucursal editarSucursal;
+	private final AsignarFotoDeSucursal asignarFotoDeSucursal;
 	private final GestionarEstadoDeSucursal gestionarEstadoDeSucursal;
 	private final ListarSucursales listarSucursales;
 
 	SucursalController(RegistrarSucursal registrarSucursal, EditarSucursal editarSucursal,
-			GestionarEstadoDeSucursal gestionarEstadoDeSucursal, ListarSucursales listarSucursales) {
+			AsignarFotoDeSucursal asignarFotoDeSucursal, GestionarEstadoDeSucursal gestionarEstadoDeSucursal,
+			ListarSucursales listarSucursales) {
 		this.registrarSucursal = registrarSucursal;
 		this.editarSucursal = editarSucursal;
+		this.asignarFotoDeSucursal = asignarFotoDeSucursal;
 		this.gestionarEstadoDeSucursal = gestionarEstadoDeSucursal;
 		this.listarSucursales = listarSucursales;
 	}
@@ -80,8 +87,19 @@ class SucursalController {
 		verificarDuenoDelTenant(jwt, empresaId);
 		Sucursal sucursal = editarSucursal.ejecutar(
 				new EditarSucursalComando(empresaId, id, request.nombre(), request.direccion(),
-						request.ubicacionMaps()));
+						request.ubicacionMaps(), request.descripcion(), request.latitud(), request.longitud()));
 		return SucursalResponse.desde(sucursal);
+	}
+
+	/** Sube la foto de la sucursal (multipart, campo {@code archivo}); reusa el almacén de imágenes (S3). */
+	@PostMapping("/{id}/foto")
+	SucursalResponse subirFoto(@PathVariable UUID empresaId, @PathVariable UUID id,
+			@RequestParam("archivo") MultipartFile archivo, @AuthenticationPrincipal Jwt jwt) throws IOException {
+		verificarDuenoDelTenant(jwt, empresaId);
+		if (archivo == null || archivo.isEmpty()) {
+			throw new IllegalArgumentException("El archivo de la foto es obligatorio");
+		}
+		return SucursalResponse.desde(asignarFotoDeSucursal.asignarFoto(empresaId, id, archivo.getBytes()));
 	}
 
 	/**
