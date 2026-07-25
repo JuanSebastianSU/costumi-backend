@@ -388,6 +388,34 @@ class CarritoIntegrationTest {
 	}
 
 	@Test
+	void el_carrito_de_renta_muestra_el_deposito_por_linea_y_total() throws Exception {
+		Ctx c = montar();
+		UUID cat = postId("/api/v1/categorias", c.dueno(), "{\"nombre\":\"Dep " + UUID.randomUUID() + "\"}");
+		UUID prenda = postId("/api/v1/prendas", c.dueno(), "{\"categoriaId\":\"" + cat
+				+ "\",\"nombre\":\"Traje Dep\",\"tipoArticulo\":\"RENTA\",\"precioRenta\":30.00,\"depositoSugerido\":50.00}");
+		mvc.perform(post("/api/v1/prendas/{id}/grupos-stock", prenda).header("Authorization", "Bearer " + c.dueno())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + c.sucursal() + "\",\"combinacion\":[],\"cantidadInicial\":9}"))
+				.andExpect(status().isCreated());
+
+		mvc.perform(post("/api/v1/carritos/items").header("Authorization", "Bearer " + c.dueno())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + c.sucursal() + "\",\"clienteId\":\"" + c.cliente()
+								+ "\",\"tipo\":\"RENTA\",\"prendaId\":\"" + prenda + "\",\"cantidad\":2,"
+								+ "\"fechaRetiro\":\"2026-08-01\",\"fechaDevolucion\":\"2026-08-03\"}"))
+				.andExpect(status().isOk());
+
+		// Depósito por línea = depósito sugerido (50) × cantidad (2) = 100; total del carrito = 100.
+		mvc.perform(get("/api/v1/carritos").header("Authorization", "Bearer " + c.dueno())
+						.param("sucursalId", c.sucursal().toString())
+						.param("clienteId", c.cliente().toString())
+						.param("tipo", "RENTA"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.lineas[0].deposito").value(100.00))
+				.andExpect(jsonPath("$.totalDeposito").value(100.00));
+	}
+
+	@Test
 	void el_cliente_puede_editar_la_cantidad_de_una_linea() throws Exception {
 		Ctx c = montar();
 		stock(c, 9);

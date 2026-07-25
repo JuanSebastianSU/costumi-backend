@@ -160,9 +160,10 @@ transversal. Un solo lote (no PRs minúsculos).
   `PerfilResponse.fotoUrl` (reusa el almacén compartido).
 - ✅ **(A7-iv) Favoritos sincronizados** (`C4`): tabla `favorito_disfraz` (V73, por usuario) +
   `GET/POST/DELETE /clientes/me/favoritos` (snapshot del disfraz, idempotente) (RED-13).
-- 🚧 **(A7-v) Carrito (`C5`)**: ✅ **editar cantidad** (`PUT /carritos/items/{lineaId}`, RED-14) · ⬜ depósito
-  reembolsable por línea + total · ⬜ **variante (talla/color) por línea** (reusa `CombinacionDeVariante`;
-  estructural, toca agrupación + checkout/stock) · ⬜ **fecha de creación** del carrito.
+- 🚧 **(A7-v) Carrito (`C5`)**: ✅ **editar cantidad** (RED-14) · ✅ **depósito por línea + total** (RED-16,
+  informativo) · ✅ **fecha de creación** (`carrito.creado_en` V75, en `/carritos/mios`, RED-16) · ⬜
+  **variante (talla/color) por línea** — **ÚLTIMO pendiente de A7**; decisión: captura+display vs reserva de
+  stock por variante (toca inventario/checkout).
 - ✅ **(A7-vi) Reportes: gráficas de serie + `fotoUrl` en rankings** (`G15`): `fotoUrl` en los 4 rankings +
   `GET /reportes/ventas-por-dia` y `/rentas-por-dia` (RED-14).
 

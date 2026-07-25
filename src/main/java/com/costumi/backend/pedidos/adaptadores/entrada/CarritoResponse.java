@@ -20,17 +20,18 @@ import java.util.UUID;
  * {@code nombre} y {@code fotoUrl} (de la prenda o del disfraz) para mostrar QUÉ se agregó, con imagen.
  */
 public record CarritoResponse(UUID id, UUID sucursalId, UUID clienteId, String tipo, String estado,
-		List<LineaDeCarritoResponse> lineas, BigDecimal total) {
+		List<LineaDeCarritoResponse> lineas, BigDecimal total, BigDecimal totalDeposito) {
 
 	/**
 	 * {@code id} identifica la línea dentro del carrito: es lo que se manda a {@code DELETE
-	 * /api/v1/carritos/items/{lineaId}} para quitarla. {@code motivoNoDisponible} viene con texto cuando
-	 * esa línea ya no se puede valorizar (el dueño cambió el artículo después de que el cliente lo agregó);
-	 * en ese caso {@code precioUnitario} y {@code subtotal} son nulos y la línea hay que quitarla.
+	 * /api/v1/carritos/items/{lineaId}} para quitarla. {@code deposito} = depósito sugerido de la línea
+	 * (solo RENTA de prendas; informativo, el real se fija en el pago). {@code motivoNoDisponible} viene con
+	 * texto cuando esa línea ya no se puede valorizar (el dueño cambió el artículo después de que el cliente
+	 * lo agregó); en ese caso {@code precioUnitario} y {@code subtotal} son nulos y la línea hay que quitarla.
 	 */
 	public record LineaDeCarritoResponse(UUID id, UUID prendaId, UUID disfrazId, String nombre, String fotoUrl,
 			int cantidad, LocalDate fechaRetiro, LocalDate fechaDevolucion, BigDecimal precioUnitario,
-			BigDecimal subtotal, String motivoNoDisponible, List<SeleccionResponse> selecciones) {
+			BigDecimal subtotal, BigDecimal deposito, String motivoNoDisponible, List<SeleccionResponse> selecciones) {
 	}
 
 	/** Elección de prenda por slot del disfraz (para reflejar QUÉ eligió el cliente). */
@@ -44,13 +45,14 @@ public record CarritoResponse(UUID id, UUID sucursalId, UUID clienteId, String t
 				.map(l -> l.esDisfraz()
 						? new LineaDeCarritoResponse(l.id(), null, l.disfrazId(),
 								nombreDisfraz(disfraces, l.disfrazId()), fotoDisfraz(disfraces, l.disfrazId()),
-								l.cantidad(), l.fechaRetiro(), l.fechaDevolucion(), null, null, null, selecciones(l))
+								l.cantidad(), l.fechaRetiro(), l.fechaDevolucion(), null, null, null, null,
+								selecciones(l))
 						: new LineaDeCarritoResponse(l.id(), l.prendaId(), null, nombrePrenda(prendas, l.prendaId()),
 								fotoPrenda(prendas, l.prendaId()), l.cantidad(), l.fechaRetiro(),
-								l.fechaDevolucion(), null, null, null, List.of()))
+								l.fechaDevolucion(), null, null, null, null, List.of()))
 				.toList();
 		return new CarritoResponse(carrito.id(), carrito.sucursalId(), carrito.clienteId(),
-				carrito.tipo().name(), carrito.estado().name(), lineas, null);
+				carrito.tipo().name(), carrito.estado().name(), lineas, null, null);
 	}
 
 	/** Respuesta del carrito pendiente: con precio por línea y total calculados por el backend. */
@@ -61,14 +63,14 @@ public record CarritoResponse(UUID id, UUID sucursalId, UUID clienteId, String t
 						? new LineaDeCarritoResponse(l.id(), null, l.disfrazId(),
 								nombreDisfraz(disfraces, l.disfrazId()), fotoDisfraz(disfraces, l.disfrazId()),
 								l.cantidad(), l.fechaRetiro(), l.fechaDevolucion(), l.precioUnitario(), l.subtotal(),
-								l.motivoNoDisponible(), seleccionesValorizadas(l))
+								l.deposito(), l.motivoNoDisponible(), seleccionesValorizadas(l))
 						: new LineaDeCarritoResponse(l.id(), l.prendaId(), null, nombrePrenda(prendas, l.prendaId()),
 								fotoPrenda(prendas, l.prendaId()), l.cantidad(), l.fechaRetiro(),
-								l.fechaDevolucion(), l.precioUnitario(), l.subtotal(), l.motivoNoDisponible(),
-								List.of()))
+								l.fechaDevolucion(), l.precioUnitario(), l.subtotal(), l.deposito(),
+								l.motivoNoDisponible(), List.of()))
 				.toList();
 		return new CarritoResponse(carrito.id(), carrito.sucursalId(), carrito.clienteId(),
-				carrito.tipo().name(), carrito.estado().name(), lineas, carrito.total());
+				carrito.tipo().name(), carrito.estado().name(), lineas, carrito.total(), carrito.totalDeposito());
 	}
 
 	private static List<SeleccionResponse> selecciones(LineaDeCarrito linea) {

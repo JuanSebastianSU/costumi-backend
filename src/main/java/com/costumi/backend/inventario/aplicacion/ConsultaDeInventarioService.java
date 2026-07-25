@@ -104,6 +104,14 @@ class ConsultaDeInventarioService implements ConsultaDeInventario {
 
 	@Override
 	@Transactional(readOnly = true)
+	public java.util.Optional<java.math.BigDecimal> depositoSugerido(UUID empresaId, UUID prendaId) {
+		return prendas.buscarPorId(prendaId)
+				.filter(prenda -> prenda.empresaId().equals(empresaId))
+				.map(com.costumi.backend.inventario.dominio.Prenda::depositoSugerido);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
 	public java.util.Optional<java.math.BigDecimal> valorDano(UUID empresaId, UUID prendaId) {
 		return prendas.buscarPorId(prendaId)
 				.filter(prenda -> prenda.empresaId().equals(empresaId))

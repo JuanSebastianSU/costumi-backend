@@ -110,15 +110,19 @@ class CarritoService implements AgregarItemAlCarrito, QuitarItemDelCarrito, Edit
 				carrito.lineas().stream().filter(LineaDeCarrito::esDisfraz).map(LineaDeCarrito::disfrazId).toList());
 		List<CarritoValorizado.LineaValorizada> lineas = new ArrayList<>();
 		BigDecimal total = BigDecimal.ZERO;
+		BigDecimal totalDeposito = BigDecimal.ZERO;
 		for (LineaDeCarrito linea : carrito.lineas()) {
 			CarritoValorizado.LineaValorizada valorizada = valorizar(empresaId, tipo, linea, resumenes);
 			if (valorizada.subtotal() != null) {
 				total = total.add(valorizada.subtotal());
 			}
+			if (valorizada.deposito() != null) {
+				totalDeposito = totalDeposito.add(valorizada.deposito());
+			}
 			lineas.add(valorizada);
 		}
 		return new CarritoValorizado(carrito.id(), carrito.sucursalId(), carrito.clienteId(),
-				carrito.tipo(), carrito.estado(), lineas, total);
+				carrito.tipo(), carrito.estado(), lineas, total, totalDeposito);
 	}
 
 	/**
@@ -151,7 +155,7 @@ class CarritoService implements AgregarItemAlCarrito, QuitarItemDelCarrito, Edit
 
 	private static CarritoValorizado.LineaValorizada noDisponible(LineaDeCarrito linea, String motivo) {
 		return new CarritoValorizado.LineaValorizada(linea.id(), linea.prendaId(), linea.disfrazId(),
-				linea.selecciones(), linea.cantidad(), linea.fechaRetiro(), linea.fechaDevolucion(), null, null,
+				linea.selecciones(), linea.cantidad(), linea.fechaRetiro(), linea.fechaDevolucion(), null, null, null,
 				motivo);
 	}
 
@@ -171,8 +175,14 @@ class CarritoService implements AgregarItemAlCarrito, QuitarItemDelCarrito, Edit
 				? (tipo == TipoPedido.VENTA ? "Esta prenda ya no tiene precio de venta"
 						: "Esta prenda ya no tiene precio de renta")
 				: null;
+		// Depósito sugerido: solo aplica a la RENTA de prendas (informativo; el depósito real se fija en el pago).
+		BigDecimal deposito = null;
+		if (tipo == TipoPedido.RENTA && precioUnitario != null) {
+			deposito = inventario.depositoSugerido(empresaId, linea.prendaId())
+					.map(d -> d.multiply(BigDecimal.valueOf(linea.cantidad()))).orElse(null);
+		}
 		return new CarritoValorizado.LineaValorizada(linea.id(), linea.prendaId(), null, List.of(), linea.cantidad(),
-				linea.fechaRetiro(), linea.fechaDevolucion(), precioUnitario, subtotal, motivo);
+				linea.fechaRetiro(), linea.fechaDevolucion(), precioUnitario, subtotal, deposito, motivo);
 	}
 
 	/**
@@ -192,7 +202,7 @@ class CarritoService implements AgregarItemAlCarrito, QuitarItemDelCarrito, Edit
 			subtotal = subtotal.multiply(BigDecimal.valueOf(dias(linea.fechaRetiro(), linea.fechaDevolucion())));
 		}
 		return new CarritoValorizado.LineaValorizada(linea.id(), null, linea.disfrazId(), linea.selecciones(),
-				linea.cantidad(), linea.fechaRetiro(), linea.fechaDevolucion(), precioUnitario, subtotal, null);
+				linea.cantidad(), linea.fechaRetiro(), linea.fechaDevolucion(), precioUnitario, subtotal, null, null);
 	}
 
 	/**

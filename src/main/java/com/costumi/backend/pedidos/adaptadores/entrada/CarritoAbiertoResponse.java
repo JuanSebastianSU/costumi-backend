@@ -10,10 +10,10 @@ import java.util.UUID;
  * que {@code GET /carritos} exige: empresa, sucursal y tipo).
  */
 public record CarritoAbiertoResponse(UUID empresaId, String empresaNombre, UUID sucursalId,
-		String sucursalNombre, TipoPedido tipo, int articulos) {
+		String sucursalNombre, TipoPedido tipo, int articulos, java.time.Instant creadoEn) {
 
 	static CarritoAbiertoResponse desde(CarritoAbierto c) {
 		return new CarritoAbiertoResponse(c.empresaId(), c.empresaNombre(), c.sucursalId(), c.sucursalNombre(),
-				c.tipo(), c.articulos());
+				c.tipo(), c.articulos(), c.creadoEn());
 	}
 }
