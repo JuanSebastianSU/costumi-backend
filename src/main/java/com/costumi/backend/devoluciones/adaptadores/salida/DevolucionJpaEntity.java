@@ -9,6 +9,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 
 /** Mapeo JPA de la cabecera de la Devolución. Lleva {@code empresa_id} (tenant). */
@@ -38,12 +40,18 @@ class DevolucionJpaEntity {
 	@Column(nullable = false, precision = 12, scale = 2)
 	private BigDecimal remanente;
 
+	@Column(name = "registrada_en", nullable = false)
+	private Instant registradaEn;
+
+	@Column(name = "fecha_devolucion_real")
+	private LocalDate fechaDevolucionReal;
+
 	protected DevolucionJpaEntity() {
 		// requerido por JPA
 	}
 
 	DevolucionJpaEntity(UUID id, UUID empresaId, UUID rentaId, BigDecimal deposito, BigDecimal cargoPorDanos,
-			BigDecimal cargoPorRetraso, BigDecimal remanente) {
+			BigDecimal cargoPorRetraso, BigDecimal remanente, Instant registradaEn, LocalDate fechaDevolucionReal) {
 		this.id = id;
 		this.empresaId = empresaId;
 		this.rentaId = rentaId;
@@ -51,6 +59,8 @@ class DevolucionJpaEntity {
 		this.cargoPorDanos = cargoPorDanos;
 		this.cargoPorRetraso = cargoPorRetraso;
 		this.remanente = remanente;
+		this.registradaEn = registradaEn;
+		this.fechaDevolucionReal = fechaDevolucionReal;
 	}
 
 	UUID getId() {
@@ -79,5 +89,13 @@ class DevolucionJpaEntity {
 
 	BigDecimal getRemanente() {
 		return remanente;
+	}
+
+	Instant getRegistradaEn() {
+		return registradaEn;
+	}
+
+	LocalDate getFechaDevolucionReal() {
+		return fechaDevolucionReal;
 	}
 }

@@ -51,6 +51,27 @@ class RentaTest {
 	}
 
 	@Test
+	void los_hitos_del_ciclo_se_registran_en_cada_transicion() {
+		Renta renta = nueva(LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 4));
+		// Recién reservada: solo tiene fecha de registro; los demás hitos son nulos.
+		assertThat(renta.creadaEn()).isNotNull();
+		assertThat(renta.entregadaEn()).isNull();
+		assertThat(renta.devueltaRealEn()).isNull();
+		assertThat(renta.cerradaEn()).isNull();
+
+		renta.entregar();
+		assertThat(renta.entregadaEn()).isNotNull();
+		assertThat(renta.devueltaRealEn()).isNull();
+
+		renta.devolver();
+		assertThat(renta.devueltaRealEn()).isNotNull();
+		assertThat(renta.cerradaEn()).isNull();
+
+		renta.cerrar();
+		assertThat(renta.cerradaEn()).isNotNull();
+	}
+
+	@Test
 	void no_se_puede_devolver_una_reservada() {
 		Renta renta = nueva(LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 4));
 

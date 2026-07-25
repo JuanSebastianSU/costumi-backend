@@ -43,6 +43,16 @@ class TurnoTest {
 	}
 
 	@Test
+	void registra_cuando_se_abre_y_cuando_se_cierra() {
+		Turno turno = abierto("100.00");
+		assertThat(turno.abiertoEn()).isNotNull();
+		assertThat(turno.cerradoEn()).isNull();
+
+		turno.cerrar(new BigDecimal("100.00"));
+		assertThat(turno.cerradoEn()).isNotNull();
+	}
+
+	@Test
 	void no_se_puede_registrar_ni_cerrar_un_turno_cerrado() {
 		Turno turno = abierto("0.00");
 		turno.cerrar(new BigDecimal("0.00"));

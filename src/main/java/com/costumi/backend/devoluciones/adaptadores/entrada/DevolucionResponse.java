@@ -4,13 +4,16 @@ import com.costumi.backend.devoluciones.dominio.Devolucion;
 import com.costumi.backend.inventario.ConsultaDeInventario.ResumenDePrenda;
 
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 /** DTO de salida de la Devolución con su liquidación y checklist (cada pieza con nombre y foto de la prenda). */
 public record DevolucionResponse(UUID id, UUID rentaId, BigDecimal deposito, BigDecimal cargoPorDanos,
-		BigDecimal cargoPorRetraso, BigDecimal remanente, BigDecimal multa, List<PiezaResponse> piezas) {
+		BigDecimal cargoPorRetraso, BigDecimal remanente, BigDecimal multa, List<PiezaResponse> piezas,
+		Instant registradaEn, LocalDate fechaDevolucionReal) {
 
 	public record PiezaResponse(UUID prendaId, String nombre, String fotoUrl, String descripcion, boolean llego,
 			String estado, boolean perdidaCobrada, boolean resuelta) {
@@ -32,6 +35,6 @@ public record DevolucionResponse(UUID id, UUID rentaId, BigDecimal deposito, Big
 				})
 				.toList();
 		return new DevolucionResponse(d.id(), d.rentaId(), d.deposito(), d.cargoPorDanos(), d.cargoPorRetraso(),
-				d.remanente(), d.multa(), piezas);
+				d.remanente(), d.multa(), piezas, d.registradaEn(), d.fechaDevolucionReal());
 	}
 }

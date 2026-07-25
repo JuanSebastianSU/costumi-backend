@@ -29,10 +29,15 @@ public class Renta {
 	private EstadoRenta estado;
 	private final String claveIdempotencia;
 	private final Instant creadaEn;
+	// Hitos reales del ciclo (RF-3.5): nulos hasta que ocurre la transición. Se setean al entregar/devolver/cerrar.
+	private Instant entregadaEn;
+	private Instant devueltaRealEn;
+	private Instant cerradaEn;
 
 	private Renta(UUID id, UUID empresaId, UUID sucursalId, UUID clienteId, UUID empleadoId, List<RentaLinea> lineas,
 			LocalDate fechaRetiro, LocalDate fechaDevolucion, BigDecimal deposito, BigDecimal importe,
-			EstadoRenta estado, String claveIdempotencia, Instant creadaEn) {
+			EstadoRenta estado, String claveIdempotencia, Instant creadaEn, Instant entregadaEn,
+			Instant devueltaRealEn, Instant cerradaEn) {
 		this.id = Objects.requireNonNull(id, "id");
 		this.empresaId = Objects.requireNonNull(empresaId, "empresaId");
 		this.sucursalId = Objects.requireNonNull(sucursalId, "sucursalId");
@@ -51,6 +56,9 @@ public class Renta {
 		this.claveIdempotencia = (claveIdempotencia == null || claveIdempotencia.isBlank()) ? null
 				: claveIdempotencia.trim();
 		this.creadaEn = Objects.requireNonNull(creadaEn, "creadaEn");
+		this.entregadaEn = entregadaEn;
+		this.devueltaRealEn = devueltaRealEn;
+		this.cerradaEn = cerradaEn;
 	}
 
 	/** Conveniencia: renta de un solo artículo (cantidad 1). */
@@ -86,14 +94,15 @@ public class Renta {
 		}
 		BigDecimal importe = importeDe(lineas, fechaRetiro, fechaDevolucion);
 		return new Renta(UUID.randomUUID(), empresaId, sucursalId, clienteId, empleadoId, lineas, fechaRetiro,
-				fechaDevolucion, dep, importe, EstadoRenta.RESERVADA, claveIdempotencia, Instant.now());
+				fechaDevolucion, dep, importe, EstadoRenta.RESERVADA, claveIdempotencia, Instant.now(), null, null, null);
 	}
 
 	public static Renta rehidratar(UUID id, UUID empresaId, UUID sucursalId, UUID clienteId, UUID empleadoId,
 			List<RentaLinea> lineas, LocalDate fechaRetiro, LocalDate fechaDevolucion, BigDecimal deposito,
-			BigDecimal importe, EstadoRenta estado, String claveIdempotencia, Instant creadaEn) {
+			BigDecimal importe, EstadoRenta estado, String claveIdempotencia, Instant creadaEn, Instant entregadaEn,
+			Instant devueltaRealEn, Instant cerradaEn) {
 		return new Renta(id, empresaId, sucursalId, clienteId, empleadoId, lineas, fechaRetiro, fechaDevolucion,
-				deposito, importe, estado, claveIdempotencia, creadaEn);
+				deposito, importe, estado, claveIdempotencia, creadaEn, entregadaEn, devueltaRealEn, cerradaEn);
 	}
 
 	private static BigDecimal importeDe(List<RentaLinea> lineas, LocalDate retiro, LocalDate devolucion) {
@@ -114,14 +123,17 @@ public class Renta {
 
 	public void entregar() {
 		transicionarA(EstadoRenta.ACTIVA);
+		this.entregadaEn = Instant.now();
 	}
 
 	public void devolver() {
 		transicionarA(EstadoRenta.DEVUELTA);
+		this.devueltaRealEn = Instant.now();
 	}
 
 	public void cerrar() {
 		transicionarA(EstadoRenta.CERRADA);
+		this.cerradaEn = Instant.now();
 	}
 
 	public void cancelar() {
@@ -213,5 +225,20 @@ public class Renta {
 	/** Momento en que se registró la renta; base para ordenar por recencia (regla «más reciente primero»). */
 	public Instant creadaEn() {
 		return creadaEn;
+	}
+
+	/** Cuándo se entregó (RESERVADA→ACTIVA); null si aún no se entregó. */
+	public Instant entregadaEn() {
+		return entregadaEn;
+	}
+
+	/** Cuándo se devolvió de verdad (no la fecha pactada); null si aún no volvió. */
+	public Instant devueltaRealEn() {
+		return devueltaRealEn;
+	}
+
+	/** Cuándo se cerró el proceso; null si sigue abierta. */
+	public Instant cerradaEn() {
+		return cerradaEn;
 	}
 }

@@ -8,6 +8,27 @@
 > `CLAUDE.md`) para retomar sin perder el hilo. Regla: mueve ítems entre secciones,
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
+## RED-2 — hitos del ciclo (renta/turno/devolución) + flag «renta en curso» del cliente (2026-07-24)
+
+Segundo PR del lote del rediseño (Bloque A; `PLAN_REDISENO_BACKEND.md` A1-bis + A3). Expone las fechas
+reales del ciclo que faltaban y un indicador en la ficha de cliente.
+
+- **Hitos de la RENTA** (V67, nullable): `entregadaEn` (RESERVADA→ACTIVA), `devueltaRealEn` (la real, no la
+  pactada) y `cerradaEn`, seteados en cada transición del dominio y expuestos en `RentaResponse`.
+- **Timestamps del TURNO** (V68): `abiertoEn`/`cerradoEn` en `Turno` + `TurnoResponse` (para «cuánto lleva
+  abierto» y fechar el corte, G14).
+- **Fechas de la DEVOLUCIÓN** (V69): `registradaEn` (ordena G10 por recencia) y `fechaDevolucionReal` (la que
+  el usuario ingresa para el recargo por retraso, antes se descartaba); ambas en `DevolucionResponse`, y la
+  lista de devoluciones ordena por `registradaEn` DESC.
+- **Cliente con renta en curso**: `ClienteResponse.tieneRentaEnCurso` (RESERVADA o ACTIVA), resuelto en la
+  misma consulta de carga (`bool_or`, sin N+1) — la fila de Clientes puede marcar «renta activa» (RF-11.5).
+- Tests de dominio (hitos de renta, timestamps de turno, fechas de devolución) + integración (flag del
+  cliente). **Suite 546/546** (Docker/JDK21), ArchUnit + Modulith verdes.
+
+**Al mergear: regenerar `:api-client`** y cablear el front (fechas del ciclo en G9/G10/G14/C8, indicador de
+renta activa en G11). **Sacado del Bloque A** (va en un PR aparte junto con el actor de auditoría, mismo tema
+«nombres/trazabilidad en respuestas»): nombre del solicitante en reembolsos y `clienteNombre` en notificaciones.
+
 ## RED-1 — recencia: fecha de registro expuesta + orden «más reciente primero» (2026-07-24)
 
 Primer PR del lote del rediseño (ver `PLAN_REDISENO_BACKEND.md`, ítem **A1**). La app rediseñada exige la

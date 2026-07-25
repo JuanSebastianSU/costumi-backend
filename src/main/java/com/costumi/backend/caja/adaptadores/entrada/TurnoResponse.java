@@ -5,6 +5,7 @@ import com.costumi.backend.caja.dominio.MetodoDePago;
 import com.costumi.backend.caja.dominio.Turno;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -13,7 +14,7 @@ import java.util.UUID;
 /** DTO de salida del Turno: cabecera + corte por método + cuadre de efectivo (si está cerrado). */
 public record TurnoResponse(UUID id, UUID sucursalId, UUID empleadoId, BigDecimal fondoInicial, String estado,
 		BigDecimal efectivoContado, Map<String, BigDecimal> corte, BigDecimal diferenciaEfectivo,
-		List<MovimientoResponse> movimientos) {
+		List<MovimientoResponse> movimientos, Instant abiertoEn, Instant cerradoEn) {
 
 	public record MovimientoResponse(String tipo, String concepto, BigDecimal monto, String metodo) {
 	}
@@ -28,6 +29,6 @@ public record TurnoResponse(UUID id, UUID sucursalId, UUID empleadoId, BigDecima
 				.map(m -> new MovimientoResponse(m.tipo().name(), m.concepto(), m.monto(), m.metodo().name()))
 				.toList();
 		return new TurnoResponse(t.id(), t.sucursalId(), t.empleadoId(), t.fondoInicial(), t.estado().name(),
-				t.efectivoContado(), corte, diferencia, movimientos);
+				t.efectivoContado(), corte, diferencia, movimientos, t.abiertoEn(), t.cerradoEn());
 	}
 }

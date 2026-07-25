@@ -129,7 +129,8 @@ class RentaRepositoryAdapter implements RentaRepository {
 	private static RentaJpaEntity aEntidad(Renta r) {
 		return new RentaJpaEntity(r.id(), r.empresaId(), r.sucursalId(), r.clienteId(), r.prendaId(),
 				r.fechaRetiro(), r.fechaDevolucion(), r.precioPorDia(), r.deposito(), r.importe(), r.estado(),
-				r.claveIdempotencia(), r.empleadoId(), r.creadaEn());
+				r.claveIdempotencia(), r.empleadoId(), r.creadaEn(), r.entregadaEn(), r.devueltaRealEn(),
+				r.cerradaEn());
 	}
 
 	private Renta aDominio(RentaJpaEntity e) {
@@ -146,7 +147,7 @@ class RentaRepositoryAdapter implements RentaRepository {
 		}
 		return Renta.rehidratar(e.getId(), e.getEmpresaId(), e.getSucursalId(), e.getClienteId(), e.getEmpleadoId(),
 				lineas, e.getFechaRetiro(), e.getFechaDevolucion(), e.getDeposito(), e.getImporte(), e.getEstado(),
-				e.getClaveIdempotencia(), e.getCreadaEn());
+				e.getClaveIdempotencia(), e.getCreadaEn(), e.getEntregadaEn(), e.getDevueltaRealEn(), e.getCerradaEn());
 	}
 
 	/**
