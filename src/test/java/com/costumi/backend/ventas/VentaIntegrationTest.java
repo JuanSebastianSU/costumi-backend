@@ -131,6 +131,42 @@ class VentaIntegrationTest {
 	}
 
 	@Test
+	void las_ventas_se_filtran_por_periodo_y_los_totales_del_periodo_suman() throws Exception {
+		UUID[] ctx = montar();
+		UUID sucursal = ctx[0];
+		UUID prenda = ctx[1];
+		// Dos ventas de hoy, 50 cada una.
+		postId("/api/v1/ventas", dueno, "{\"sucursalId\":\"" + sucursal + "\",\"lineas\":[{\"prendaId\":\""
+				+ prenda + "\",\"cantidad\":1,\"precioUnitario\":50.00}]}");
+		postId("/api/v1/ventas", dueno, "{\"sucursalId\":\"" + sucursal + "\",\"lineas\":[{\"prendaId\":\""
+				+ prenda + "\",\"cantidad\":1,\"precioUnitario\":50.00}]}");
+
+		// Rango del pasado: la lista sale vacía.
+		mvc.perform(get("/api/v1/ventas").param("desde", "2020-01-01").param("hasta", "2020-12-31")
+						.header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.total").value(0));
+		// Rango que incluye hoy: las dos.
+		mvc.perform(get("/api/v1/ventas").param("desde", "2026-01-01").param("hasta", "2030-12-31")
+						.header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.total").value(2));
+
+		// Totales del período que incluye hoy: 2 ventas, suma 100.
+		mvc.perform(get("/api/v1/ventas/totales").param("desde", "2026-01-01").param("hasta", "2030-12-31")
+						.header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.cantidad").value(2))
+				.andExpect(jsonPath("$.total").value(100.00));
+		// Totales del pasado: cero.
+		mvc.perform(get("/api/v1/ventas/totales").param("desde", "2020-01-01").param("hasta", "2020-12-31")
+						.header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.cantidad").value(0))
+				.andExpect(jsonPath("$.total").value(0));
+	}
+
+	@Test
 	void confirmar_venta_descuenta_el_stock() throws Exception {
 		UUID[] ctx = montar();
 		UUID sucursal = ctx[0];

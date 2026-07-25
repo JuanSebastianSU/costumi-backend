@@ -11,6 +11,7 @@ import com.costumi.backend.ventas.aplicacion.RegistrarVentaComando;
 import com.costumi.backend.ventas.dominio.LineaDeVenta;
 import com.costumi.backend.ventas.dominio.Venta;
 import jakarta.validation.Valid;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
+import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -105,6 +107,8 @@ class VentaController {
 	@GetMapping
 	RespuestaPaginada<VentaResponse> listar(@RequestParam(required = false) String buscar,
 			@RequestParam(required = false) com.costumi.backend.ventas.dominio.EstadoVenta estado,
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
 			@RequestParam(required = false) Integer pagina,
 			@RequestParam(required = false) Integer tamano, @AuthenticationPrincipal Jwt jwt) {
 		String empresaId = jwt.getClaimAsString("empresa_id");
@@ -113,7 +117,21 @@ class VentaController {
 		}
 		UUID empresa = UUID.fromString(empresaId);
 		return RespuestaPaginada.desde(
-				consultarVentas.listar(empresa, buscar, estado, SolicitudDePagina.de(pagina, tamano)),
+				consultarVentas.listar(empresa, buscar, estado, desde, hasta, SolicitudDePagina.de(pagina, tamano)),
 				v -> resp(empresa, v));
+	}
+
+	/** Totales del período (cantidad + suma) con los mismos filtros que la lista (G8). Sin empresa: cero. */
+	@GetMapping("/totales")
+	TotalesDeVentasResponse totales(
+			@RequestParam(required = false) com.costumi.backend.ventas.dominio.EstadoVenta estado,
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+			@AuthenticationPrincipal Jwt jwt) {
+		String empresaId = jwt.getClaimAsString("empresa_id");
+		if (empresaId == null) {
+			return new TotalesDeVentasResponse(0, java.math.BigDecimal.ZERO);
+		}
+		return TotalesDeVentasResponse.desde(consultarVentas.totales(UUID.fromString(empresaId), estado, desde, hasta));
 	}
 }
