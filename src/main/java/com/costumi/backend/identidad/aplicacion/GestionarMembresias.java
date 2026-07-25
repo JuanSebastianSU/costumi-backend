@@ -4,24 +4,29 @@ import com.costumi.backend.identidad.dominio.EstadoMembresia;
 import com.costumi.backend.identidad.dominio.Rol;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Puerto de entrada: las tiendas a las que pertenece el usuario y el cambio de contexto (Fase B). Todo por
- * el usuario del token.
+ * Puerto de entrada: la membresía de trabajo del usuario y el cambio de contexto «Comprando ↔ Trabajando»
+ * (Fase B, H1). Todo por el usuario del token.
  */
 public interface GestionarMembresias {
 
-	/** Una tienda del usuario con su rol allí (para la pantalla "elegir tienda"). */
+	/** Una tienda del usuario con su rol allí (para mostrar «Trabajando en …» y el historial de membresías). */
 	record MembresiaConTienda(UUID empresaId, String empresaNombre, Rol rol, EstadoMembresia estado) {
 	}
 
-	/** Las membresías del usuario (todas sus tiendas). */
+	/** Las membresías del usuario (su historial de trabajo; a lo sumo una ACTIVA). */
 	List<MembresiaConTienda> deUsuario(UUID usuarioId);
 
+	/** La membresía de trabajo ACTIVA del usuario, si tiene una (para «entrar a trabajar»). */
+	Optional<MembresiaConTienda> activaDeUsuario(UUID usuarioId);
+
 	/**
-	 * Cambia el contexto activo a la tienda dada: valida que el usuario tenga una membresía ACTIVA ahí y
-	 * emite una sesión nueva (token) con esa empresa+rol. Falla si no tiene membresía activa en esa empresa.
+	 * Cambia el contexto de la sesión y emite un token nuevo (H1): {@code COMPRA} → token de cliente (sin
+	 * empresa); {@code TRABAJO} → token con la empresa+rol de la membresía activa. Falla (400) si se pide
+	 * TRABAJO y el usuario no tiene una membresía de trabajo activa.
 	 */
-	Credenciales cambiarContexto(UUID usuarioId, UUID empresaId);
+	Credenciales cambiarContexto(UUID usuarioId, ModoDeSesion modo);
 }

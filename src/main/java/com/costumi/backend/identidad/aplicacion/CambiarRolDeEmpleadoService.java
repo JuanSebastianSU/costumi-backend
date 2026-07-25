@@ -1,5 +1,6 @@
 package com.costumi.backend.identidad.aplicacion;
 
+import com.costumi.backend.identidad.dominio.MembresiaRepository;
 import com.costumi.backend.identidad.dominio.Rol;
 import com.costumi.backend.identidad.dominio.Usuario;
 import com.costumi.backend.identidad.dominio.UsuarioRepository;
@@ -17,9 +18,11 @@ import java.util.UUID;
 class CambiarRolDeEmpleadoService implements CambiarRolDeEmpleado {
 
 	private final UsuarioRepository usuarios;
+	private final MembresiaRepository membresias;
 
-	CambiarRolDeEmpleadoService(UsuarioRepository usuarios) {
+	CambiarRolDeEmpleadoService(UsuarioRepository usuarios, MembresiaRepository membresias) {
 		this.usuarios = usuarios;
+		this.membresias = membresias;
 	}
 
 	@Override
@@ -35,6 +38,10 @@ class CambiarRolDeEmpleadoService implements CambiarRolDeEmpleado {
 		if (!actorRol.puedeGestionarA(empleado.rol()) || !actorRol.puedeGestionarA(nuevoRol)) {
 			throw new GestionDeEmpleadoNoPermitida();
 		}
-		return usuarios.guardar(empleado.cambiarRol(nuevoRol));
+		Usuario actualizado = usuarios.guardar(empleado.cambiarRol(nuevoRol));
+		// Mantiene la membresía de trabajo en sync con el rol base (si no, "Trabajando" usaría el rol viejo).
+		membresias.buscar(usuarioId, empresaId)
+				.ifPresent(m -> membresias.guardar(m.conRol(nuevoRol)));
+		return actualizado;
 	}
 }

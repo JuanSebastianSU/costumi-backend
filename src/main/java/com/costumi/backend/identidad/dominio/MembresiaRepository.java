@@ -13,6 +13,9 @@ public interface MembresiaRepository {
 	/** La membresía del usuario en esa empresa, si existe (para validar el cambio de contexto). */
 	Optional<Membresia> buscar(UUID usuarioId, UUID empresaId);
 
+	/** La (única) membresía de trabajo ACTIVA del usuario, si tiene una (para entrar a «Trabajando»). */
+	Optional<Membresia> activaDeUsuario(UUID usuarioId);
+
 	/** Crea o actualiza la membresía (upsert por usuario+empresa). */
 	Membresia guardar(Membresia membresia);
 }

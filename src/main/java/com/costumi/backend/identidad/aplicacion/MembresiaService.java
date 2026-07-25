@@ -4,12 +4,14 @@ import com.costumi.backend.identidad.dominio.Empresa;
 import com.costumi.backend.identidad.dominio.EmpresaRepository;
 import com.costumi.backend.identidad.dominio.Membresia;
 import com.costumi.backend.identidad.dominio.MembresiaRepository;
+import com.costumi.backend.identidad.dominio.Rol;
 import com.costumi.backend.identidad.dominio.Usuario;
 import com.costumi.backend.identidad.dominio.UsuarioRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /** Membresías del usuario y cambio de contexto (Fase B). Aditivo: no toca el login ni el Usuario base. */
@@ -33,25 +35,44 @@ class MembresiaService implements GestionarMembresias {
 	@Transactional(readOnly = true)
 	public List<MembresiaConTienda> deUsuario(UUID usuarioId) {
 		return membresias.deUsuario(usuarioId).stream()
-				.map(m -> new MembresiaConTienda(m.empresaId(), nombreDe(m.empresaId()), m.rol(), m.estado()))
+				.map(this::conTienda)
 				.toList();
 	}
 
 	@Override
 	@Transactional(readOnly = true)
-	public Credenciales cambiarContexto(UUID usuarioId, UUID empresaId) {
-		Membresia membresia = membresias.buscar(usuarioId, empresaId)
-				.filter(Membresia::activa)
-				.orElseThrow(() -> new IllegalArgumentException("No tenés una membresía activa en esa tienda"));
+	public Optional<MembresiaConTienda> activaDeUsuario(UUID usuarioId) {
+		return membresias.activaDeUsuario(usuarioId).map(this::conTienda);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public Credenciales cambiarContexto(UUID usuarioId, ModoDeSesion modo) {
 		Usuario usuario = usuarios.buscarPorId(usuarioId)
 				.orElseThrow(() -> new IllegalArgumentException("La cuenta no existe"));
 		if (!usuario.activo()) {
 			throw new CuentaDesactivada();
 		}
-		// Usuario "proyectado" al contexto elegido (misma identidad; empresa+rol de la membresía) → token nuevo.
-		Usuario enContexto = Usuario.rehidratar(usuario.id(), empresaId, usuario.email(), usuario.passwordHash(),
-				membresia.rol(), usuario.activo(), usuario.nombre(), usuario.telefono(), usuario.fotoUrl());
+		Usuario enContexto = (modo == ModoDeSesion.TRABAJO) ? proyectarATrabajo(usuario) : proyectarACompra(usuario);
 		return sesiones.nuevaSesion(enContexto);
+	}
+
+	/** «Trabajando»: proyecta la identidad a la empresa+rol de la membresía activa (400 si no tiene una). */
+	private Usuario proyectarATrabajo(Usuario usuario) {
+		Membresia membresia = membresias.activaDeUsuario(usuario.id())
+				.orElseThrow(() -> new IllegalArgumentException("No tenés una membresía de trabajo activa"));
+		return Usuario.rehidratar(usuario.id(), membresia.empresaId(), usuario.email(), usuario.passwordHash(),
+				membresia.rol(), usuario.activo(), usuario.nombre(), usuario.telefono(), usuario.fotoUrl());
+	}
+
+	/** «Comprando»: proyecta la identidad a cliente (sin empresa) — la faceta que toda persona tiene (H1). */
+	private Usuario proyectarACompra(Usuario usuario) {
+		return Usuario.rehidratar(usuario.id(), null, usuario.email(), usuario.passwordHash(),
+				Rol.CLIENTE, usuario.activo(), usuario.nombre(), usuario.telefono(), usuario.fotoUrl());
+	}
+
+	private MembresiaConTienda conTienda(Membresia m) {
+		return new MembresiaConTienda(m.empresaId(), nombreDe(m.empresaId()), m.rol(), m.estado());
 	}
 
 	private String nombreDe(UUID empresaId) {
