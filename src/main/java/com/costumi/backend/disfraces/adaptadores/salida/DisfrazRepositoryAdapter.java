@@ -54,6 +54,11 @@ class DisfrazRepositoryAdapter implements DisfrazRepository {
 	}
 
 	@Override
+	public long contarQueUsanPrenda(UUID empresaId, UUID prendaId) {
+		return slots.contarQueUsanPrenda(empresaId, prendaId);
+	}
+
+	@Override
 	public List<Disfraz> listarPorEmpresa(UUID empresaId) {
 		return conSlots(cabeceras.findByEmpresaId(empresaId));
 	}

@@ -137,6 +137,9 @@ class ConsultaDeInventarioService implements ConsultaDeInventario {
 	public Optional<OpcionDePool> opcionDePrenda(UUID empresaId, UUID prendaId) {
 		return prendas.buscarPorId(prendaId)
 				.filter(prenda -> prenda.empresaId().equals(empresaId))
+				// Una prenda archivada ya no se ofrece como opción de un slot (ni fija ni explícita) — era la
+				// única consulta del inventario que no lo filtraba, y por eso el disfraz seguía ofreciéndola.
+				.filter(prenda -> !prenda.archivada())
 				.map(this::aOpcion);
 	}
 

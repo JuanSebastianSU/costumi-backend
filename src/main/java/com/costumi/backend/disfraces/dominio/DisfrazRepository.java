@@ -15,4 +15,7 @@ public interface DisfrazRepository {
 
 	/** Página de disfraces por nombre, filtrando opcionalmente por texto y por categoría. */
 	com.costumi.backend.compartido.Pagina<Disfraz> listarPorEmpresa(UUID empresaId, String buscar, UUID categoriaId, com.costumi.backend.compartido.SolicitudDePagina pagina);
+
+	/** Cuántos disfraces de la empresa usan la prenda (como pieza fija o opción explícita), para el aviso de impacto. */
+	long contarQueUsanPrenda(UUID empresaId, UUID prendaId);
 }

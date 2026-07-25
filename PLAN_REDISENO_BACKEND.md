@@ -129,19 +129,11 @@ transversal (los eventos no llevan el actor → hay que hacerlo llegar al sink):
   que `POST /pagos/intento/cliente` acepte cobrar el **saldo con multa** (hoy calcula sobre el importe
   original y exige monto == pendiente sin multa).
 
-### A6 — Fixes de dominio
-- ⬜ **★ Archivar una prenda que usa un disfraz** — **BUG CONFIRMADO VIVO EN MAIN**. Raíces exactas:
-  - `ConsultaDeInventarioService.opcionDePrenda` (`:137-141`) es la **única** consulta que **no** filtra
-    `archivada` → un slot FIJO (`DisfrazService:398`) y las opciones explícitas (`:372`) siguen ofreciendo la
-    prenda archivada.
-  - `DisfrazService.resolverPrenda` (`:804-807`) devuelve la pieza FIJA **sin validar** archivada → se sigue
-    vendiendo/rentando en el checkout (`itemsRentaDe/itemsVentaDe` solo validan `disfraz.activo()`).
-  - No hay conteo prenda→disfraz (`ConteoDeDependenciasController` solo cubre taxonomía→prenda) → falta el
-    aviso de impacto antes de archivar.
-  - **DECIDIDO** (2026-07-23): regla «el disfraz tiene todas sus piezas disponibles», al vuelo (detalle en
-    `AppCustomi2/PROGRESS.md`). Pide: `G3/G5/G6/C2/C4`.
-- ⬜ **«Nuevo cliente» en línea desde el POS** (`G7`): registrar un walk-in con nombre/teléfono/email sin
-  salir del ticket. *(Por verificar si `CrearClienteRequest` ya acepta teléfono/email; ajustar si no.)*
+### A6 — Fixes de dominio  · 🚧 HECHO en `feat/a6-prenda-archivada-en-disfraz` (RED-6, sin mergear)
+- ✅ **Archivar una prenda que usa un disfraz** (bug): `opcionDePrenda` filtra archivada (no se ofrece) +
+  `resolverPrenda` rechaza la fija/explícita archivada (no se vende/renta) + `GET
+  /disfraces/conteo-por-prenda/{id}` para el aviso de impacto.
+- ✅ **«Nuevo cliente» en línea desde el POS**: `crear-cliente` ya aceptaba teléfono/email — nada que hacer.
 
 ### A7 — Media & identidad de tienda  · regen + migraciones
 - ⬜ **★ (A7-i) IDENTIDAD DE TIENDA** (tu «primer frente») — **falta entero**. Desbloquea `C1/C2/G17`:

@@ -213,6 +213,44 @@ class DisfrazIntegrationTest {
 	}
 
 	@Test
+	void una_prenda_archivada_no_se_vende_como_pieza_de_un_disfraz_y_el_conteo_avisa() throws Exception {
+		UUID empresa = crearEmpresa("DisfrazArch " + UUID.randomUUID());
+		String dueno = duenoDe(empresa);
+		UUID categoria = crearCategoria(dueno, "Cat " + UUID.randomUUID());
+		UUID sucursal = AuthTestHelper.sucursal(sucursales, empresa);
+		UUID prenda = UUID.fromString(json.readTree(mvc.perform(post("/api/v1/prendas")
+						.header("Authorization", "Bearer " + dueno).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"categoriaId\":\"" + categoria + "\",\"nombre\":\"Traje\",\"tipoArticulo\":\"VENTA\","
+								+ "\"precioVenta\":100.00}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asText());
+		crearGrupo(dueno, empresa, prenda, 3);
+		UUID disfraz = crearDisfrazConTipo(dueno, prenda, "Traje", "VENTA");
+		UUID cliente = UUID.fromString(json.readTree(mvc.perform(post("/api/v1/clientes")
+						.header("Authorization", "Bearer " + dueno).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Cliente\"}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asText());
+
+		// El conteo avisa que el disfraz usa esta prenda (aviso de impacto antes de archivar).
+		mvc.perform(get("/api/v1/disfraces/conteo-por-prenda/{prendaId}", prenda)
+						.header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.total").value(1));
+
+		// Se archiva la prenda fija del disfraz.
+		mvc.perform(post("/api/v1/prendas/{id}/archivar", prenda).header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk());
+
+		// Ya NO se puede vender el disfraz: su pieza fija está archivada (antes se colaba la venta).
+		mvc.perform(post("/api/v1/disfraces/{id}/vender", disfraz).header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + sucursal + "\",\"clienteId\":\"" + cliente + "\"}"))
+				.andExpect(status().isBadRequest());
+
+		// Y la disponibilidad derivada lo refleja (la pieza fija archivada no cubre el slot obligatorio).
+		org.assertj.core.api.Assertions.assertThat(disponible(dueno, disfraz)).isFalse();
+	}
+
+	@Test
 	void el_catalogo_publico_de_disfraces_los_muestra_con_su_precio_sin_token() throws Exception {
 		UUID empresa = crearEmpresa("Disfraz Vitrina " + UUID.randomUUID());
 		String dueno = duenoDe(empresa);

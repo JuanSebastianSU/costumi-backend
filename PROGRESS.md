@@ -8,6 +8,25 @@
 > `CLAUDE.md`) para retomar sin perder el hilo. Regla: mueve ítems entre secciones,
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
+## RED-6 — prenda archivada usada por un disfraz: ya no se ofrece ni se vende (2026-07-25)
+
+Bug de **correctitud** (A6): una prenda ARCHIVADA que un disfraz usa como pieza FIJA o como opción explícita
+se seguía **ofreciendo** en la ruleta y **vendiendo/rentando** al cobrar. Raíz: `opcionDePrenda` era la única
+consulta del inventario que no filtraba `archivada`, y `resolverPrenda` devolvía la pieza fija sin validar.
+
+- **Ofrecer**: `ConsultaDeInventarioService.opcionDePrenda` ahora filtra `!archivada` → la ruleta ya no ofrece
+  prendas archivadas (ni fijas ni opciones explícitas; el pool ya estaba a salvo).
+- **Vender/rentar**: `DisfrazService.resolverPrenda` rechaza al cobrar la pieza fija u opción explícita
+  archivada (antes solo miraba `disfraz.activo()` + precio).
+- La disponibilidad derivada (`estaDisponible`) ya trataba la fija archivada como no disponible; el bug era
+  que la ruleta y el checkout **no la consultaban**.
+- **Aviso de impacto**: nuevo `GET /disfraces/conteo-por-prenda/{prendaId}` → `{total}` de disfraces que usan
+  la prenda (como fija u opción explícita), para avisar antes de archivarla. El pool no cuenta.
+- `crear-cliente` **ya** aceptaba teléfono/email → «nuevo cliente desde el POS» no necesitaba backend.
+- Sin migración. Test (archivar → conteo 1 → vender 400 → no disponible). **Suite 554/554**, verdes.
+
+**Al mergear: regenerar `:api-client`** y usar el conteo en el aviso antes de archivar.
+
 ## RED-5 — datos del panel: serie de ingresos por día + rentas por cerrar (2026-07-25)
 
 Bloque B3b. Completa los datos que el panel (G1) necesitaba y que faltaban tras B3.

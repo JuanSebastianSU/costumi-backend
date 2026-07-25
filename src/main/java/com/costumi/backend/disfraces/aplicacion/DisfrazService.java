@@ -260,6 +260,12 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 
 	@Override
 	@Transactional(readOnly = true)
+	public long cuantosDisfracesUsanPrenda(UUID empresaId, UUID prendaId) {
+		return disfraces.contarQueUsanPrenda(empresaId, prendaId);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
 	public com.costumi.backend.compartido.Pagina<Disfraz> deEmpresa(UUID empresaId, String buscar, UUID categoriaId, com.costumi.backend.compartido.SolicitudDePagina pagina) {
 		return disfraces.listarPorEmpresa(empresaId, buscar, categoriaId, pagina);
 	}
@@ -803,18 +809,28 @@ class DisfrazService implements CrearDisfraz, EditarDisfraz, CambiarEstadoDisfra
 	/** Prenda concreta de un slot: la fija, o la elegida por el cliente validada contra sus opciones (RF-2.3). */
 	private UUID resolverPrenda(UUID empresaId, Slot slot, UUID prendaElegida) {
 		if (slot.ejePrenda() == EjeDePrenda.FIJA) {
-			return slot.prendaFijaId();
+			UUID fija = slot.prendaFijaId();
+			// La pieza fija no puede estar archivada al cobrar: opcionDePrenda filtra archivadas, así que si
+			// no la encuentra, ya no está disponible y no se puede armar/vender/rentar el disfraz.
+			if (inventario.opcionDePrenda(empresaId, fija).isEmpty()) {
+				throw new IllegalArgumentException(
+						"La pieza fija del slot '" + slot.nombre() + "' ya no está disponible (archivada)");
+			}
+			return fija;
 		}
 		if (prendaElegida == null) {
 			throw new IllegalArgumentException("Falta elegir la prenda del slot '" + slot.nombre() + "'");
 		}
 		boolean valida = slot.tieneOpcionesExplicitas()
+				// Debe ser una opción del slot Y no estar archivada (opcionDePrenda filtra archivadas): antes
+				// el .contains no consultaba inventario y dejaba pasar una opción explícita archivada.
 				? slot.prendasOpcion().contains(prendaElegida)
+						&& inventario.opcionDePrenda(empresaId, prendaElegida).isPresent()
 				: inventario.prendaEnPool(empresaId, prendaElegida, slot.pool().categoriaId(),
 						slot.pool().etiquetasPermitidas());
 		if (!valida) {
 			throw new IllegalArgumentException(
-					"La prenda elegida no es una opción del slot '" + slot.nombre() + "'");
+					"La prenda elegida no es una opción disponible del slot '" + slot.nombre() + "'");
 		}
 		return prendaElegida;
 	}
