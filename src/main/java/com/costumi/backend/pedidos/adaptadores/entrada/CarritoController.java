@@ -8,6 +8,7 @@ import com.costumi.backend.pedidos.aplicacion.AgregarItemAlCarritoComando;
 import com.costumi.backend.pedidos.aplicacion.CarritoValorizado;
 import com.costumi.backend.pedidos.aplicacion.ConsultarCarrito;
 import com.costumi.backend.pedidos.aplicacion.ConsultarMisCarritos;
+import com.costumi.backend.pedidos.aplicacion.EditarCantidadDelItem;
 import com.costumi.backend.pedidos.aplicacion.HacerCheckout;
 import com.costumi.backend.pedidos.aplicacion.HacerCheckoutDeRenta;
 import com.costumi.backend.pedidos.aplicacion.QuitarItemDelCarrito;
@@ -15,6 +16,7 @@ import com.costumi.backend.pedidos.dominio.Carrito;
 import com.costumi.backend.pedidos.dominio.SeleccionDeSlot;
 import com.costumi.backend.pedidos.dominio.TipoPedido;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -23,6 +25,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -48,6 +51,7 @@ class CarritoController {
 
 	private final AgregarItemAlCarrito agregarItemAlCarrito;
 	private final QuitarItemDelCarrito quitarItemDelCarrito;
+	private final EditarCantidadDelItem editarCantidadDelItem;
 	private final ConsultarCarrito consultarCarrito;
 	private final ConsultarMisCarritos consultarMisCarritos;
 	private final HacerCheckout hacerCheckout;
@@ -57,12 +61,13 @@ class CarritoController {
 	private final ResolucionDeDisfraces disfraces;
 
 	CarritoController(AgregarItemAlCarrito agregarItemAlCarrito, QuitarItemDelCarrito quitarItemDelCarrito,
-			ConsultarCarrito consultarCarrito, ConsultarMisCarritos consultarMisCarritos,
-			HacerCheckout hacerCheckout, HacerCheckoutDeRenta hacerCheckoutDeRenta,
-			ResolucionDeClientes resolucionDeClientes, ConsultaDeInventario inventario,
-			ResolucionDeDisfraces disfraces) {
+			EditarCantidadDelItem editarCantidadDelItem, ConsultarCarrito consultarCarrito,
+			ConsultarMisCarritos consultarMisCarritos, HacerCheckout hacerCheckout,
+			HacerCheckoutDeRenta hacerCheckoutDeRenta, ResolucionDeClientes resolucionDeClientes,
+			ConsultaDeInventario inventario, ResolucionDeDisfraces disfraces) {
 		this.agregarItemAlCarrito = agregarItemAlCarrito;
 		this.quitarItemDelCarrito = quitarItemDelCarrito;
+		this.editarCantidadDelItem = editarCantidadDelItem;
 		this.consultarCarrito = consultarCarrito;
 		this.consultarMisCarritos = consultarMisCarritos;
 		this.hacerCheckout = hacerCheckout;
@@ -99,6 +104,21 @@ class CarritoController {
 		Carrito carrito = quitarItemDelCarrito.ejecutar(actor.empresaId(), sucursalId, actor.clienteId(), tipo,
 				lineaId);
 		return responder(actor.empresaId(), carrito);
+	}
+
+	/** Edita la cantidad de una línea del carrito pendiente (RF-16), sin tener que quitarla y volver a agregar. */
+	@PutMapping("/items/{lineaId}")
+	CarritoResponse editarCantidad(@PathVariable UUID lineaId, @Valid @RequestBody EditarCantidadRequest request,
+			@AuthenticationPrincipal Jwt jwt) {
+		Actor actor = resolver(jwt, request.empresaId(), request.clienteId());
+		Carrito carrito = editarCantidadDelItem.ejecutar(actor.empresaId(), request.sucursalId(), actor.clienteId(),
+				request.tipo(), lineaId, request.cantidad());
+		return responder(actor.empresaId(), carrito);
+	}
+
+	/** Body para editar la cantidad de una línea. empresa/cliente se resuelven por rol, igual que agregar. */
+	record EditarCantidadRequest(@NotNull UUID sucursalId, UUID empresaId, UUID clienteId, @NotNull TipoPedido tipo,
+			@Min(1) int cantidad) {
 	}
 
 	/**

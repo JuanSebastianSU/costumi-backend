@@ -146,8 +146,9 @@ transversal. Un solo lote (no PRs minúsculos).
   - `EmpresaVitrinaResponse`: ✅ ahora trae `logoUrl`/`ciudad`/`descripcion` (+ SQL del marketplace).
   - ✅ **Sucursal** (`G17`): `descripcion`, `latitud`/`longitud` (validadas), `fotoUrl` (V72) + `PATCH …/
     sucursales/{id}` + `POST …/{id}/foto`; vitrina de sucursal enriquecida (RED-12).
-  - ⬜ **Falta de A7-i**: `horario` por día (empresa/sucursal) + `disfracesCount` en Empresa; `C1`
-    **destacados** + **facetas** públicas + ciudad del usuario.
+  - ✅ **Vitrina rica** (RED-14): `EmpresaVitrinaResponse` suma `portadaUrl`+`disfracesCount`; **detalle
+    público** `GET /marketplace/empresas/{id}` + **facetas** `GET …/{id}/categorias`.
+  - ⬜ **Falta de A7-i**: `horario` por día (empresa/sucursal); `C1` **destacados** + ciudad del usuario.
   - 🔧 Estructural: se movió el puerto `AlmacenDeImagenesPublico` a `compartido` (evita ciclo
     identidad↔inventario); impl sigue en inventario.
 - ✅ **(A7-ii) Paginar el marketplace de tiendas** (`C1`): `GET /marketplace/empresas` →
@@ -156,10 +157,11 @@ transversal. Un solo lote (no PRs minúsculos).
   `PerfilResponse.fotoUrl` (reusa el almacén compartido).
 - ✅ **(A7-iv) Favoritos sincronizados** (`C4`): tabla `favorito_disfraz` (V73, por usuario) +
   `GET/POST/DELETE /clientes/me/favoritos` (snapshot del disfraz, idempotente) (RED-13).
-- ⬜ **(A7-v) Carrito (`C5`)**: depósito reembolsable por línea + total (no existe) · **variante (talla/color)
-  por línea** (`SeleccionDeSlot` solo trae `orden`+`prendaId`) · **editar cantidad** (hoy solo add/delete) ·
-  **fecha de creación** del carrito/línea (no se guarda).
-- ⬜ **(A7-vi) Reportes: gráficas de serie + `fotoUrl` en rankings** (`G15`) — usa la serie de A2.
+- 🚧 **(A7-v) Carrito (`C5`)**: ✅ **editar cantidad** (`PUT /carritos/items/{lineaId}`, RED-14) · ⬜ depósito
+  reembolsable por línea + total · ⬜ **variante (talla/color) por línea** (reusa `CombinacionDeVariante`;
+  estructural, toca agrupación + checkout/stock) · ⬜ **fecha de creación** del carrito.
+- ✅ **(A7-vi) Reportes: gráficas de serie + `fotoUrl` en rankings** (`G15`): `fotoUrl` en los 4 rankings +
+  `GET /reportes/ventas-por-dia` y `/rentas-por-dia` (RED-14).
 
 ---
 

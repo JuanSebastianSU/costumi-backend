@@ -52,8 +52,8 @@ class ReporteService
 
 	@Override
 	public java.util.List<com.costumi.backend.reportes.dominio.IngresoDelDia> porDia(UUID empresaId, UUID sucursalId,
-			java.time.LocalDate desde, java.time.LocalDate hasta) {
-		return ingresos.porDia(empresaId, sucursalId, desde, hasta);
+			java.time.LocalDate desde, java.time.LocalDate hasta, String tipoConcepto) {
+		return ingresos.porDia(empresaId, sucursalId, desde, hasta, tipoConcepto);
 	}
 
 	@Override

@@ -22,8 +22,8 @@ import java.util.UUID;
 
 /** Casos de uso del carrito, acotados a la empresa (tenant) y segmentados por RF-16. */
 @Service
-class CarritoService implements AgregarItemAlCarrito, QuitarItemDelCarrito, ConsultarCarrito, HacerCheckout,
-		HacerCheckoutDeRenta {
+class CarritoService implements AgregarItemAlCarrito, QuitarItemDelCarrito, EditarCantidadDelItem, ConsultarCarrito,
+		HacerCheckout, HacerCheckoutDeRenta {
 
 	private final CarritoRepository carritos;
 	private final ConsultaDeInventario inventario;
@@ -84,6 +84,16 @@ class CarritoService implements AgregarItemAlCarrito, QuitarItemDelCarrito, Cons
 		Carrito carrito = carritos.buscarPendiente(empresaId, sucursalId, clienteId, tipo)
 				.orElseThrow(CarritoNoEncontrado::new);
 		carrito.quitarLinea(lineaId);
+		return carritos.guardar(carrito);
+	}
+
+	@Override
+	@Transactional
+	public Carrito ejecutar(UUID empresaId, UUID sucursalId, UUID clienteId, TipoPedido tipo, UUID lineaId,
+			int cantidad) {
+		Carrito carrito = carritos.buscarPendiente(empresaId, sucursalId, clienteId, tipo)
+				.orElseThrow(CarritoNoEncontrado::new);
+		carrito.editarCantidad(lineaId, cantidad);
 		return carritos.guardar(carrito);
 	}
 

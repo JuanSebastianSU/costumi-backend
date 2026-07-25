@@ -8,6 +8,30 @@
 > `CLAUDE.md`) para retomar sin perder el hilo. Regla: mueve ítems entre secciones,
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
+## RED-14 (A7-resto) — reportes (fotoUrl+series) + vitrina (detalle/facetas/portada/#disfraces) + carrito editar cantidad (2026-07-25)
+
+Cuarto lote de A7, grande: cierra la mayoría de lo que faltaba. Un solo lote.
+
+- **Reportes (A7-vi)**: `fotoUrl` en los 4 rankings (`ArticuloRanking`/`DisfrazRanking` + `p.foto_url`/
+  `d.foto_url` en el SQL; la prenda/disfraz ya estaban en el join). Series separadas por tipo:
+  `GET /reportes/ventas-por-dia` y `/rentas-por-dia` (el `porDia` gana un `tipoConcepto`; `/ingresos-por-dia`
+  sigue siendo el total).
+- **Vitrina de tienda (A7-i resto)**: `EmpresaVitrinaResponse` suma `portadaUrl` y `disfracesCount`
+  (subconsulta `count(disfraz activo)`). Nuevo **detalle público** `GET /marketplace/empresas/{id}` (cabecera
+  de la vitrina; 404 si no existe/activa) y **facetas** `GET /marketplace/empresas/{id}/categorias`
+  (categorías presentes en el catálogo). `MarketplaceReadRepository`/`DescubrirEmpresas` ganan `empresa(id)`
+  y `categoriasDe(id)`.
+- **Carrito (A7-v, parcial)**: **editar cantidad** de una línea sin quitar+reagregar — `PUT /carritos/items/
+  {lineaId}` + `Carrito.editarCantidad`/`LineaDeCarrito.fijarCantidad` + puerto `EditarCantidadDelItem`.
+- **Sin migración**. Tests: series por tipo, detalle+facetas+404, editar cantidad (+400 si 0). **Suite 575/575**
+  (ArchUnit + Modulith).
+
+**⬜ Queda de A7 (estructural/decisión, lo hago aparte con cuidado):** carrito **depósito por línea + total**
+(expone `Prenda.depositoSugerido` vía `ConsultaDeInventario` + valorización) y **variante talla/color por
+línea** (reusa `CombinacionDeVariante`; toca agrupación + checkout/stock — riesgoso); **horario de tienda por
+día** (tabla hija nueva); **ciudad del usuario** (toca el agregado `Usuario` de auth); **destacados** (necesita
+tu decisión de criterio: ¿más vendidos/rentados, o flag manual?).
+
 ## RED-13 (A7-marketplace) — paginar la vitrina + favoritos del cliente (2026-07-25)
 
 Tercer lote de A7 (marketplace del cliente). Un solo lote.

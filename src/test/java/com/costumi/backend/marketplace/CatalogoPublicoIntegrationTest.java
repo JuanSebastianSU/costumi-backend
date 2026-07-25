@@ -118,6 +118,39 @@ class CatalogoPublicoIntegrationTest {
 				.andExpect(jsonPath("$[?(@.nombre == 'Hada')]").doesNotExist());
 	}
 
+	@Test
+	void el_detalle_publico_y_las_facetas_de_una_tienda() throws Exception {
+		String correo = "duenodetalle-" + UUID.randomUUID() + "@correo.com";
+		String tokenCliente = accessToken(mvc.perform(post("/api/v1/auth/registro").contentType(MediaType.APPLICATION_JSON)
+				.content("{\"email\":\"" + correo + "\",\"password\":\"clave1234\"}")).andReturn().getResponse().getContentAsString());
+		UUID empresaId = UUID.fromString(json.readTree(mvc.perform(post("/api/v1/empresas")
+						.header("Authorization", "Bearer " + tokenCliente).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Detalle " + UUID.randomUUID() + "\"}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asText());
+		String superAdmin = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, null, Rol.SUPERADMIN);
+		mvc.perform(post("/api/v1/empresas/{id}/aprobar", empresaId).header("Authorization", "Bearer " + superAdmin))
+				.andExpect(status().isOk());
+		String dueno = accessToken(mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+				.content("{\"email\":\"" + correo + "\",\"password\":\"clave1234\"}")).andReturn().getResponse().getContentAsString());
+		UUID cat = crearCategoria(dueno, "Terror");
+		crearPrenda(dueno, cat, "Vampiro");
+
+		// Detalle público (cabecera de la vitrina): la tienda existe y trae el conteo de disfraces (0, no tiene).
+		mvc.perform(get("/api/v1/marketplace/empresas/{id}", empresaId))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.id").value(empresaId.toString()))
+				.andExpect(jsonPath("$.disfracesCount").value(0));
+
+		// Facetas: la categoría que tiene prenda en el catálogo aparece como filtro disponible.
+		mvc.perform(get("/api/v1/marketplace/empresas/{id}/categorias", empresaId))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[?(@.id == '" + cat + "')]").exists());
+
+		// Una tienda inexistente no tiene detalle → 404.
+		mvc.perform(get("/api/v1/marketplace/empresas/{id}", UUID.randomUUID()))
+				.andExpect(status().isNotFound());
+	}
+
 	private UUID crearCategoria(String dueno, String nombre) throws Exception {
 		return UUID.fromString(json.readTree(mvc.perform(post("/api/v1/categorias")
 						.header("Authorization", "Bearer " + dueno).contentType(MediaType.APPLICATION_JSON)

@@ -16,6 +16,10 @@ public interface ConsultarIngresos {
 	 */
 	ResumenDeIngresos deEmpresa(UUID empresaId, UUID sucursalId, LocalDate desde, LocalDate hasta);
 
-	/** Serie de ingreso total por día (para la tendencia del panel), en el rango y sucursal dados. */
-	List<IngresoDelDia> porDia(UUID empresaId, UUID sucursalId, LocalDate desde, LocalDate hasta);
+	/**
+	 * Serie de ingreso por día (tendencia del panel). {@code tipoConcepto} null = todos; 'VENTA'/'RENTA'
+	 * separan la serie (para graficar ventas vs rentas por día).
+	 */
+	List<IngresoDelDia> porDia(UUID empresaId, UUID sucursalId, LocalDate desde, LocalDate hasta,
+			String tipoConcepto);
 }

@@ -1,5 +1,6 @@
 package com.costumi.backend.marketplace.adaptadores.salida;
 
+import com.costumi.backend.marketplace.dominio.CategoriaEnVitrina;
 import com.costumi.backend.marketplace.dominio.EmpresaEnVitrina;
 import com.costumi.backend.marketplace.dominio.MarketplaceReadRepository;
 import com.costumi.backend.marketplace.dominio.PrendaEnVitrina;
@@ -8,6 +9,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /** Adaptador de lectura: lista las empresas ACTIVAS (visibles públicamente, RF-15.6). */
@@ -24,8 +26,23 @@ class MarketplaceJdbcAdapter implements MarketplaceReadRepository {
 
 	private static final String EMPRESAS_COUNT = "select count(*) " + EMPRESAS_WHERE;
 
-	private static final String EMPRESAS_PAGINA = "select id, nombre, logo_url, ciudad, descripcion "
-			+ EMPRESAS_WHERE + " order by nombre limit :tamano offset :offset";
+	// Columnas de la vitrina: incluye la portada y cuántos disfraces activos tiene la tienda (para la tarjeta).
+	private static final String EMPRESAS_COLS = "select id, nombre, logo_url, portada_url, ciudad, descripcion, "
+			+ "(select count(*) from disfraz d where d.empresa_id = e.id and d.activo = true) as disfraces_count ";
+
+	private static final String EMPRESAS_PAGINA = EMPRESAS_COLS + EMPRESAS_WHERE
+			+ " order by nombre limit :tamano offset :offset";
+
+	// Detalle público de UNA tienda ACTIVA (con punto de retiro): para la cabecera de su vitrina.
+	private static final String EMPRESA_DETALLE = EMPRESAS_COLS
+			+ "from empresa e where e.id = :empresaId and e.estado = 'ACTIVA' "
+			+ "and exists (select 1 from sucursal s where s.empresa_id = e.id and s.archivada = false)";
+
+	// Facetas: categorías (de prenda) que realmente aparecen en el catálogo público de la tienda.
+	private static final String CATEGORIAS_DE_TIENDA = "select distinct c.id, c.nombre "
+			+ "from prenda p join categoria c on c.id = p.categoria_id join empresa e on e.id = p.empresa_id "
+			+ "where p.empresa_id = :empresaId and p.archivada = false and c.archivada = false "
+			+ "and e.estado = 'ACTIVA' order by c.nombre";
 
 	// Catálogo público: prendas no archivadas de una empresa, solo si la empresa está ACTIVA.
 	// Opcionalmente filtrado por categoría (RF-18.1); el ORDER BY se agrega al final en el método.
@@ -63,6 +80,19 @@ class MarketplaceJdbcAdapter implements MarketplaceReadRepository {
 	}
 
 	@Override
+	public Optional<EmpresaEnVitrina> empresa(UUID empresaId) {
+		return jdbc.sql(EMPRESA_DETALLE).param("empresaId", empresaId).query(MarketplaceJdbcAdapter::mapear)
+				.optional();
+	}
+
+	@Override
+	public List<CategoriaEnVitrina> categoriasDe(UUID empresaId) {
+		return jdbc.sql(CATEGORIAS_DE_TIENDA).param("empresaId", empresaId)
+				.query((rs, rowNum) -> new CategoriaEnVitrina(rs.getObject("id", UUID.class), rs.getString("nombre")))
+				.list();
+	}
+
+	@Override
 	public List<PrendaEnVitrina> catalogoDe(UUID empresaId, UUID categoriaId) {
 		String sql = CATALOGO + (categoriaId != null ? " and p.categoria_id = :categoriaId" : "") + " order by p.nombre";
 		JdbcClient.StatementSpec spec = jdbc.sql(sql).param("empresaId", empresaId);
@@ -79,7 +109,8 @@ class MarketplaceJdbcAdapter implements MarketplaceReadRepository {
 
 	private static EmpresaEnVitrina mapear(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
 		return EmpresaEnVitrina.de(rs.getObject("id", UUID.class), rs.getString("nombre"),
-				rs.getString("logo_url"), rs.getString("ciudad"), rs.getString("descripcion"));
+				rs.getString("logo_url"), rs.getString("portada_url"), rs.getString("ciudad"),
+				rs.getString("descripcion"), rs.getLong("disfraces_count"));
 	}
 
 	private static PrendaEnVitrina mapearPrenda(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {

@@ -95,6 +95,23 @@ public class Carrito {
 		}
 	}
 
+	/**
+	 * Fija la cantidad de una línea del carrito pendiente (RF-16): el cliente edita la cantidad sin tener
+	 * que quitar el artículo y volver a agregarlo.
+	 */
+	public void editarCantidad(UUID lineaId, int cantidad) {
+		if (estado != EstadoCarrito.PENDIENTE) {
+			throw new IllegalStateException("El carrito ya no está pendiente");
+		}
+		for (LineaDeCarrito linea : lineas) {
+			if (linea.id().equals(lineaId)) {
+				linea.fijarCantidad(cantidad);
+				return;
+			}
+		}
+		throw new IllegalArgumentException("Ese artículo no está en el carrito");
+	}
+
 	/** En un carrito de RENTA las fechas del artículo son obligatorias; en uno de VENTA deben ser nulas. */
 	private void validarPeriodo(java.time.LocalDate fechaRetiro, java.time.LocalDate fechaDevolucion) {
 		if (tipo == TipoPedido.RENTA && (fechaRetiro == null || fechaDevolucion == null)) {
