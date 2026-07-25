@@ -59,8 +59,8 @@ class RefrescarTokenService implements RefrescarToken, CerrarSesion {
 		}
 		fila.marcarRotado();
 		tokens.guardar(fila);
-		// H1: si fue desvinculado, el refresco tampoco reabre su contexto de trabajo (cae a cliente).
-		return sesiones.rotarEnFamilia(contexto.paraSesion(usuario), fila.familiaId());
+		// H1: preserva el modo (Comprando/Trabajando) que llevaba el token; y si fue desvinculado, cae a cliente.
+		return sesiones.rotarEnFamilia(contexto.paraRefresh(usuario, datos.empresaId(), datos.rol()), fila.familiaId());
 	}
 
 	/** Logout (C2): revoca la familia del refresco. Idempotente y sin filtrar información. */

@@ -33,7 +33,8 @@ class ValidadorDeRefreshJwt implements ValidadorDeRefresh {
 			if (email == null || email.isBlank() || jti == null || jti.isBlank()) {
 				throw new RefreshInvalido(); // sin jti no se puede registrar/revocar server-side (C2)
 			}
-			return new RefreshDecodificado(email, jti);
+			// Contexto que llevaba el token (para preservar el modo al refrescar): empresa_id puede faltar (compra).
+			return new RefreshDecodificado(email, jti, jwt.getClaimAsString("empresa_id"), jwt.getClaimAsString("rol"));
 		} catch (JwtException e) {
 			throw new RefreshInvalido();
 		}
