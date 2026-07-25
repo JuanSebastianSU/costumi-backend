@@ -18,10 +18,11 @@ public interface ConsultarRentas {
 	 * Página de rentas de la empresa, opcionalmente por cliente (C3). {@code buscar} filtra por código de
 	 * retiro; {@code filtro} es la bandeja del ciclo (POR_ENTREGAR/ACTIVAS/VENCIDAS/CERRADAS; nulo = todas).
 	 */
-	Pagina<Renta> listar(UUID empresaId, UUID clienteId, String buscar, String filtro, SolicitudDePagina solicitud);
+	Pagina<Renta> listar(UUID empresaId, UUID sucursalId, UUID clienteId, String buscar, String filtro,
+			SolicitudDePagina solicitud);
 
 	/** Conteo de rentas por bandeja, para las pestañas de G9. */
-	ResumenDeRentas resumen(UUID empresaId);
+	ResumenDeRentas resumen(UUID empresaId, UUID sucursalId);
 
 	/** Una renta de la empresa por su id (scoped por tenant). Vacío si no existe o es de otra empresa. */
 	Optional<Renta> buscarPorId(UUID empresaId, UUID rentaId);

@@ -28,6 +28,7 @@ interface RentaJpaRepository extends JpaRepository<RentaJpaEntity, UUID> {
 	 * los 8 primeros caracteres del id: se busca por prefijo. {@code clienteId} es opcional.
 	 */
 	@org.springframework.data.jpa.repository.Query("select r from RentaJpaEntity r where r.empresaId = :empresaId "
+			+ "and (:sucursalId is null or r.sucursalId = :sucursalId) "
 			+ "and (:clienteId is null or r.clienteId = :clienteId) "
 			+ "and r.estado in :estados "
 			// soloVencidas: solo ACTIVAS ya pasadas de fecha (la bandeja VENCIDAS).
@@ -39,6 +40,7 @@ interface RentaJpaRepository extends JpaRepository<RentaJpaEntity, UUID> {
 			+ "and (cast(:buscar as string) is null or lower(cast(r.id as string)) like concat(cast(:buscar as string), '%'))")
 	Page<RentaJpaEntity> buscarPagina(
 			@org.springframework.data.repository.query.Param("empresaId") UUID empresaId,
+			@org.springframework.data.repository.query.Param("sucursalId") UUID sucursalId,
 			@org.springframework.data.repository.query.Param("clienteId") UUID clienteId,
 			@org.springframework.data.repository.query.Param("estados") java.util.Collection<com.costumi.backend.rentas.dominio.EstadoRenta> estados,
 			@org.springframework.data.repository.query.Param("soloVencidas") boolean soloVencidas,
@@ -54,8 +56,10 @@ interface RentaJpaRepository extends JpaRepository<RentaJpaEntity, UUID> {
 			+ "coalesce(sum(case when r.estado = com.costumi.backend.rentas.dominio.EstadoRenta.ACTIVA and r.fechaDevolucion < :hoy then 1L else 0L end), 0L), "
 			+ "coalesce(sum(case when r.estado in (com.costumi.backend.rentas.dominio.EstadoRenta.CERRADA, "
 			+ "     com.costumi.backend.rentas.dominio.EstadoRenta.CANCELADA) then 1L else 0L end), 0L) "
-			+ "from RentaJpaEntity r where r.empresaId = :empresaId")
+			+ "from RentaJpaEntity r where r.empresaId = :empresaId "
+			+ "and (:sucursalId is null or r.sucursalId = :sucursalId)")
 	List<Object[]> resumenRaw(@org.springframework.data.repository.query.Param("empresaId") UUID empresaId,
+			@org.springframework.data.repository.query.Param("sucursalId") UUID sucursalId,
 			@org.springframework.data.repository.query.Param("hoy") java.time.LocalDate hoy);
 
 	Optional<RentaJpaEntity> findByEmpresaIdAndClaveIdempotencia(UUID empresaId, String claveIdempotencia);

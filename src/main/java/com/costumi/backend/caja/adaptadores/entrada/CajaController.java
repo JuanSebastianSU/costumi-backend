@@ -66,8 +66,11 @@ class CajaController {
 
 	@GetMapping
 	List<TurnoResponse> listar() {
+		// Sucursal activa (cabecera X-Sucursal-Id): si viene, acota los turnos a esa sucursal; si no, todos.
+		UUID sucursal = tenant.sucursalActiva().orElse(null);
 		return tenant.empresaId()
-				.map(empresaId -> consultarTurnos.deEmpresa(empresaId).stream().map(TurnoResponse::desde).toList())
+				.map(empresaId -> consultarTurnos.deEmpresa(empresaId, sucursal).stream()
+						.map(TurnoResponse::desde).toList())
 				.orElseGet(List::of);
 	}
 

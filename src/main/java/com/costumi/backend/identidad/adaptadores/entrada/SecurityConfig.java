@@ -56,6 +56,9 @@ class SecurityConfig {
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers(HttpMethod.POST, "/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/auth/registro",
 								"/api/v1/auth/olvide", "/api/v1/auth/restablecer", "/api/v1/auth/logout").permitAll()
+						// Membresías y cambio de contexto (Fase B): cualquier usuario autenticado, por su token.
+						.requestMatchers(HttpMethod.GET, "/api/v1/auth/me/membresias").authenticated()
+						.requestMatchers(HttpMethod.POST, "/api/v1/auth/contexto").authenticated()
 						.requestMatchers(HttpMethod.POST, "/api/v1/empresas").permitAll()
 						.requestMatchers("/actuator/health", "/actuator/info").permitAll()
 						.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()

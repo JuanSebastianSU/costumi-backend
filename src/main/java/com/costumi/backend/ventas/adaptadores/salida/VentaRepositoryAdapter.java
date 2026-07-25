@@ -63,19 +63,20 @@ class VentaRepositoryAdapter implements VentaRepository {
 	}
 
 	@Override
-	public Pagina<Venta> listar(UUID empresaId, String buscar, EstadoVenta estado, LocalDate desde, LocalDate hasta,
-			SolicitudDePagina solicitud) {
+	public Pagina<Venta> listar(UUID empresaId, UUID sucursalId, String buscar, EstadoVenta estado, LocalDate desde,
+			LocalDate hasta, SolicitudDePagina solicitud) {
 		Pageable pageable = PageRequest.of(solicitud.pagina(), solicitud.tamano(),
 				Sort.by(Sort.Order.desc("creadaEn"), Sort.Order.asc("id")));
-		Page<VentaJpaEntity> pagina = cabeceras.buscarPagina(empresaId, normalizarCodigo(buscar), estado,
+		Page<VentaJpaEntity> pagina = cabeceras.buscarPagina(empresaId, sucursalId, normalizarCodigo(buscar), estado,
 				inicioDe(desde), finDe(hasta), pageable);
 		return new Pagina<>(aDominioEnLote(pagina.getContent()), pagina.getTotalElements(),
 				solicitud.pagina(), solicitud.tamano());
 	}
 
 	@Override
-	public TotalesDeVentas totales(UUID empresaId, EstadoVenta estado, LocalDate desde, LocalDate hasta) {
-		Object[] r = cabeceras.totalesRaw(empresaId, estado, inicioDe(desde), finDe(hasta)).get(0);
+	public TotalesDeVentas totales(UUID empresaId, UUID sucursalId, EstadoVenta estado, LocalDate desde,
+			LocalDate hasta) {
+		Object[] r = cabeceras.totalesRaw(empresaId, sucursalId, estado, inicioDe(desde), finDe(hasta)).get(0);
 		return new TotalesDeVentas((Long) r[0], (BigDecimal) r[1]);
 	}
 

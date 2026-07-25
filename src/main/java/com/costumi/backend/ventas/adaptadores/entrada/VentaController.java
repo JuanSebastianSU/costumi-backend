@@ -116,8 +116,11 @@ class VentaController {
 			return new RespuestaPaginada<>(List.of(), 0, 0, 0, 0);
 		}
 		UUID empresa = UUID.fromString(empresaId);
+		// Sucursal activa (cabecera X-Sucursal-Id): si viene, acota la lista a esa sucursal; si no, todas.
+		UUID sucursal = tenant.sucursalActiva().orElse(null);
 		return RespuestaPaginada.desde(
-				consultarVentas.listar(empresa, buscar, estado, desde, hasta, SolicitudDePagina.de(pagina, tamano)),
+				consultarVentas.listar(empresa, sucursal, buscar, estado, desde, hasta,
+						SolicitudDePagina.de(pagina, tamano)),
 				v -> resp(empresa, v));
 	}
 
@@ -132,6 +135,7 @@ class VentaController {
 		if (empresaId == null) {
 			return new TotalesDeVentasResponse(0, java.math.BigDecimal.ZERO);
 		}
-		return TotalesDeVentasResponse.desde(consultarVentas.totales(UUID.fromString(empresaId), estado, desde, hasta));
+		return TotalesDeVentasResponse.desde(consultarVentas.totales(UUID.fromString(empresaId),
+				tenant.sucursalActiva().orElse(null), estado, desde, hasta));
 	}
 }

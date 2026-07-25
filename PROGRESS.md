@@ -8,6 +8,32 @@
 > `CLAUDE.md`) para retomar sin perder el hilo. Regla: mueve ítems entre secciones,
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
+## RED-18 (Fase B, 2) — multi-sucursal (filtro X-Sucursal-Id) + membresía multi-tienda + cambio de contexto (2026-07-25)
+
+Dos pasos de la Fase B en un solo lote (aditivos, sin tocar login/refresh/token base).
+
+- **Multi-sucursal**: `X-Sucursal-Id` (cabecera, `ContextoDeTenant.sucursalActiva()`, que **no la usaba
+  nadie**) ahora acota los listados de **ventas** (lista + `/totales`), **rentas** (lista + `/resumen`) y
+  **caja** (turnos). Filtro OPCIONAL `(:sucursalId is null or ...)`: sin cabecera = comportamiento de hoy
+  (todos los tests siguen verdes). **Clientes NO aplica** (la tabla `cliente` no tiene `sucursal_id`; es por
+  empresa). Threading `sucursalId` por controller→puerto→service→repo→JPA en ventas/rentas + método nuevo
+  `findByEmpresaIdAndSucursalId` en turnos.
+- **Membresía multi-tienda** (H1, aditivo): tabla `membresia(usuario_id, empresa_id, rol, estado)` (**V76**,
+  con backfill de los usuarios staff actuales; unique(usuario_id, empresa_id); **sin @Filter** de tenant
+  porque cruza empresas). No se toca `Usuario` (sigue con su empresa+rol "base"). Nuevo agregado `Membresia`
+  + repo/adapter. Al **dar de alta** un empleado y al **promover** cliente→dueño se crea su membresía
+  (aditivo).
+- **Cambio de contexto**: `GET /api/v1/auth/me/membresias` (las tiendas del usuario con su rol) y
+  `POST /api/v1/auth/contexto {empresaId}` → valida membresía ACTIVA y emite un token con esa empresa+rol
+  (construye un `Usuario` "proyectado" y reusa `EmisorDeSesion` — NO toca el emisor ni el login). Como todo
+  lee empresa/rol **del token**, el sistema opera en esa tienda automáticamente. Reglas de seguridad:
+  ambos `authenticated()`.
+  - ⚠️ **Limitación anotada**: el refresh re-proyecta al contexto BASE del `Usuario` (la familia
+    `token_refresh` no guarda el contexto). Tras un refresh, el front re-llama `/auth/contexto`. Follow-up.
+- Sin migración salvo **V76**. Tests: filtro de ventas por sucursal (lista+totales), membresías multi-tienda
+  + cambio de contexto (decodifica el JWT: empresa_id+rol correctos) + 400 sin membresía + alta crea
+  membresía. **Suite 583/583** (ArchUnit + Modulith; login/refresh/me intactos).
+
 ## RED-17 (Fase B, 1) — permisos del propio usuario (nav por permisos) (2026-07-25)
 
 Primer paso del épico de identidad/permisos: que la app arme la navegación a partir de los **permisos**

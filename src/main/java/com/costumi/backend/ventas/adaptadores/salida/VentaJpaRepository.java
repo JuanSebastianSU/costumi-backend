@@ -21,11 +21,13 @@ interface VentaJpaRepository extends JpaRepository<VentaJpaEntity, UUID> {
 	 * prefijo; el llamador envía el texto ya normalizado (sin el prefijo y en minúsculas).
 	 */
 	@org.springframework.data.jpa.repository.Query("select v from VentaJpaEntity v where v.empresaId = :empresaId "
+			+ "and (:sucursalId is null or v.sucursalId = :sucursalId) "
 			+ "and (:estado is null or v.estado = :estado) "
 			+ "and v.creadaEn >= :desde and v.creadaEn < :hasta "
 			+ "and (cast(:buscar as string) is null or lower(cast(v.id as string)) like concat(cast(:buscar as string), '%'))")
 	Page<VentaJpaEntity> buscarPagina(
 			@org.springframework.data.repository.query.Param("empresaId") UUID empresaId,
+			@org.springframework.data.repository.query.Param("sucursalId") UUID sucursalId,
 			@org.springframework.data.repository.query.Param("buscar") String buscar,
 			@org.springframework.data.repository.query.Param("estado") com.costumi.backend.ventas.dominio.EstadoVenta estado,
 			@org.springframework.data.repository.query.Param("desde") Instant desde,
@@ -34,10 +36,12 @@ interface VentaJpaRepository extends JpaRepository<VentaJpaEntity, UUID> {
 
 	/** Cantidad y suma de {@code total} de las ventas de la empresa con los mismos filtros (para el período de G8). */
 	@org.springframework.data.jpa.repository.Query("select count(v), coalesce(sum(v.total), 0) from VentaJpaEntity v "
-			+ "where v.empresaId = :empresaId and (:estado is null or v.estado = :estado) "
+			+ "where v.empresaId = :empresaId and (:sucursalId is null or v.sucursalId = :sucursalId) "
+			+ "and (:estado is null or v.estado = :estado) "
 			+ "and v.creadaEn >= :desde and v.creadaEn < :hasta")
 	List<Object[]> totalesRaw(
 			@org.springframework.data.repository.query.Param("empresaId") UUID empresaId,
+			@org.springframework.data.repository.query.Param("sucursalId") UUID sucursalId,
 			@org.springframework.data.repository.query.Param("estado") com.costumi.backend.ventas.dominio.EstadoVenta estado,
 			@org.springframework.data.repository.query.Param("desde") Instant desde,
 			@org.springframework.data.repository.query.Param("hasta") Instant hasta);

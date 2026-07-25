@@ -44,6 +44,11 @@ class TurnoRepositoryAdapter implements TurnoRepository {
 		return turnos.findByEmpresaId(empresaId).stream().map(this::aDominio).toList();
 	}
 
+	@Override
+	public List<Turno> listarPorEmpresaYSucursal(UUID empresaId, UUID sucursalId) {
+		return turnos.findByEmpresaIdAndSucursalId(empresaId, sucursalId).stream().map(this::aDominio).toList();
+	}
+
 	private Turno aDominio(TurnoJpaEntity cabecera) {
 		List<MovimientoDeCaja> movimientosDominio = movimientos.findByTurnoIdOrderByOrden(cabecera.getId()).stream()
 				.map(m -> MovimientoDeCaja.de(m.getTipo(), m.getConcepto(), m.getMonto(), m.getMetodo()))
