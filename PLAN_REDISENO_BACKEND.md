@@ -86,8 +86,9 @@ por tamaño/afinidad. Si preferís invertir PR-1↔PR-2, es un cambio de una lí
 ### A2/B3 — Períodos financieros  · regen · 🚧 núcleo HECHO en `feat/bloque-b3-periodos-financieros` (RED-4, sin mergear)
 - ✅ `/reportes/ingresos` y `/ganancia`: aceptan `desde`/`hasta` (ingresos por `pago.fecha`, costo por
   `venta.creada_en`). Con esto Reportes filtra coherente y el Panel puede pedir «hoy».
-- ⬜ **B3b**: Panel (`G1`) serie de 7 días + variación vs. ayer (endpoint de ingresos por día) · contar
-  rentas `DEVUELTA` (alerta del panel) · totales del período en ventas (`/ventas/totales`).
+- ✅ **B3b** (RED-5, sin mergear): serie de ingresos por día (`/reportes/ingresos-por-dia`, para el gráfico
+  + variación) · contar rentas `DEVUELTA` (`/reportes/devoluciones-por-cerrar`, alerta del panel).
+- ⬜ **Totales del período en ventas** (`/ventas/totales?estado=&desde=&hasta=`) — chico, pendiente.
 
 ### A3 — Campos que faltan en respuestas  · aditivo puro · regen
 - ✅ `ClienteResponse.tieneRentaEnCurso` (RESERVADA/ACTIVA), resuelto en la consulta de carga con `bool_or`
