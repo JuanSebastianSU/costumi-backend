@@ -217,7 +217,7 @@ class HistorialJdbcAdapter implements HistorialReadRepository {
 	 * cliente compró.
 	 */
 	private static final String ESTADO_DE_CUENTA_DE_USUARIO = """
-			select e.id as empresa_id, e.nombre as empresa_nombre,
+			select e.id as empresa_id, e.nombre as empresa_nombre, r.sucursal_id,
 			       r.id as renta_id, r.estado, r.fecha_retiro, r.fecha_devolucion, r.importe,
 			       coalesce((select sum(d.cargo_por_danos) from devolucion d
 			                 where d.renta_id = r.id and d.empresa_id = r.empresa_id), 0) as danos,
@@ -248,7 +248,7 @@ class HistorialJdbcAdapter implements HistorialReadRepository {
 							rs.getBigDecimal("danos"), rs.getBigDecimal("retraso"), rs.getBigDecimal("deposito"),
 							rs.getBigDecimal("multa"), rs.getBigDecimal("pagado"), rs.getBigDecimal("saldo"));
 					return new DeudaEnTienda(rs.getObject("empresa_id", UUID.class),
-							rs.getString("empresa_nombre"), linea);
+							rs.getObject("sucursal_id", UUID.class), rs.getString("empresa_nombre"), linea);
 				})
 				.list().stream()
 				// Mismo criterio que el estado de cuenta de la tienda: solo lo que debe o lo que le multaron.
