@@ -115,13 +115,15 @@ transversal. Un solo lote (no PRs minúsculos).
 - ✅ **Auditoría (`G21`)**: `GET /auditoria?tipo=<primera palabra>` · **Reembolsos (`G13`)**:
   `GET /reembolsos?filtro=PENDIENTES|RESUELTAS`. *(`GET /disfraces?categoriaId=` ✅ ya estaba.)*
 
-### B2 — Historial del cliente paginado (reescribe el read-model)  · regen
-- ⬜ **★ Historial del cliente (`C8`/`C7`)**: paginar `GET /clientes/me/historial` (hoy lista plana concatenada
-  en memoria) con UNA consulta por `cliente.usuario_id` (molde: `estadoDeCuentaDeUsuario`) + `?filtro=
-  POR_PAGAR|POR_RETIRAR|ACTIVOS|CERRADOS` + `saldoPendiente`/`estadoPago` en `HistorialItem` (falta el
-  fragmento de saldo de VENTAS, hoy solo existe para rentas).
-- ⬜ **Operación por id para el cliente** (`C7`): `GET /clientes/me/operaciones/{id}` (por `usuario_id`,
-  patrón `misDeudas`).
+### B2 — Historial del cliente paginado (reescribe el read-model)  · regen · 🚧 HECHO en `feat/b2-historial-cliente-paginado` (RED-10, sin mergear)
+- ✅ **★ Historial del cliente (`C8`/`C7`)**: `GET /clientes/me/historial` paginado (`RespuestaPaginada`) en UNA
+  consulta por `cliente.usuario_id` (union renta ∪ venta, `count(*)`+`limit/offset`, orden por `creada_en`) +
+  `?filtro=TODOS|POR_PAGAR|POR_RETIRAR|ACTIVOS|CERRADOS` (`FiltroDeHistorial`) + `saldoPendiente`/`estadoPago`
+  en `HistorialItem`. Se añadió el fragmento de saldo de VENTA (`PAGOS_NETOS_DE_VENTA`) que no existía.
+- ✅ **Operación por id para el cliente** (`C7`): `GET /clientes/me/operaciones/{id}` (por `usuario_id`) → ítem
+  con líneas o 404 si no es suya.
+  - ⚠️ **Semántica de pestañas a validar con el front**: "por retirar" = renta RESERVADA; renta DEVUELTA sin
+    cerrar cae en ACTIVOS. Ajustable en `FiltroDeHistorial`/`HistorialJdbcAdapter` sin tocar contrato.
 
 ### A5 — Cobros, saldos y comprobante del servidor  · 🚧 HECHO en `feat/a5-cobros-y-saldos` (RED-7, sin mergear)
 - ✅ **«Pendiente» del servidor** en `ComprobanteResponse` (`pendiente` = importe + multa − cobrado neto,

@@ -153,17 +153,18 @@ class ClienteService implements CrearCliente, ConsultarClientes, CambiarListaNeg
 
 	@Override
 	@Transactional(readOnly = true)
-	public List<HistorialItem> historialDeUsuario(UUID usuarioId) {
-		List<HistorialItem> todo = new java.util.ArrayList<>();
-		for (Cliente ficha : clientes.buscarPorUsuario(usuarioId)) {
-			todo.addAll(historial.deCliente(ficha.empresaId(), ficha.id()));
-		}
-		// Recencia global entre tiendas: cada ficha ya viene ordenada por el servidor, pero al concatenar
-		// varias hay que reordenar el total (más reciente primero). La paginación server-side del historial
-		// (otro PR) llevará este orden a la consulta.
-		todo.sort(java.util.Comparator.comparing(HistorialItem::fecha,
-				java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder())));
-		return todo;
+	public com.costumi.backend.compartido.Pagina<HistorialItem> historialDeUsuario(UUID usuarioId,
+			com.costumi.backend.clientes.dominio.FiltroDeHistorial filtro,
+			com.costumi.backend.compartido.SolicitudDePagina solicitud) {
+		// Una sola consulta que cruza sus fichas y ordena por recencia: ficha por ficha con orden en memoria
+		// era un N+1 que crecía con cada tienda y no paginaba.
+		return historial.historialDeUsuario(usuarioId, filtro, solicitud);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public java.util.Optional<HistorialItem> operacionDeUsuario(UUID usuarioId, UUID operacionId) {
+		return historial.operacionDeUsuario(usuarioId, operacionId);
 	}
 
 	@Override

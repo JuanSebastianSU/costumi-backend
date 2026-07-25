@@ -8,6 +8,35 @@
 > `CLAUDE.md`) para retomar sin perder el hilo. Regla: mueve ítems entre secciones,
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
+## RED-10 (B2) — "Mis Pedidos" del cliente: historial paginado + saldo/estado + detalle (2026-07-25)
+
+Cierra B2. Un solo lote (no PRs minúsculos).
+
+- **Paginación server-side** de `GET /clientes/me/historial`: antes `ClienteService.historialDeUsuario`
+  concatenaba en memoria una lista plana por ficha (N+1 por tienda) y reordenaba. Ahora es **UNA** consulta
+  (`HistorialJdbcAdapter.historialDeUsuario`) que cruza las fichas por `cliente.usuario_id` (union all
+  renta ∪ venta), ordena por `creada_en` desc y pagina con `count(*)` + `limit/offset`. Devuelve
+  `RespuestaPaginada<HistorialItem>` (antes array crudo → `CarritoIntegrationTest` pasó de `$.length()` a
+  `$.contenido.length()`).
+- **Filtro por pestaña** `?filtro=TODOS|POR_PAGAR|POR_RETIRAR|ACTIVOS|CERRADOS` (`FiltroDeHistorial`,
+  desconocido→TODOS). Categoría por estado: renta RESERVADA→POR_RETIRAR, ACTIVA/DEVUELTA→ACTIVO,
+  CERRADA/CANCELADA→CERRADO; venta CONFIRMADA/PARCIALMENTE_DEVUELTA→ACTIVO, DEVUELTA→CERRADO. POR_PAGAR es
+  transversal (saldo>0).
+- **`saldoPendiente` + `estadoPago` por operación** en `HistorialItem` (también en `/{id}/historial` del
+  personal, para que cuadre). Saldo renta = importe + multa − cobrado neto (mientras no cerrada/cancelada);
+  **saldo venta = total − cobrado neto** (fragmento nuevo `PAGOS_NETOS_DE_VENTA`, análogo al de renta, que
+  **no existía**). `estadoPago` = PAGADO (saldo 0) / PARCIAL (algo cobrado) / PENDIENTE (nada). Las cifras
+  reusan los mismos subselects sobre `pago`/`devolucion`, así que cuadran con lo que ve la tienda.
+- **Detalle de operación propia**: `GET /clientes/me/operaciones/{id}` (`operacionDeUsuario`) resuelto por
+  las fichas del usuario del token → 200 con el ítem (líneas incluidas) o **404** si no es suya/no existe.
+- Líneas del historial paginado resueltas **por lote** (`... in (:ids)`), no N+1.
+- **Nota de semántica** (a validar con el front): "por retirar" solo aplica a rentas RESERVADA; una renta
+  DEVUELTA sin cerrar cae en ACTIVOS (no en CERRADOS). Ajustable en `FiltroDeHistorial`/`HistorialJdbcAdapter`.
+- **Sin migración** (todo read-model + campos aditivos). Tests: paginación+saldo+estadoPago, las 4 pestañas,
+  detalle propio vs 404 ajeno. **Suite 563/563**, verdes (ArchUnit + Modulith; sin dependencia de módulo nueva).
+
+**Al mergear: regenerar `:api-client`** y cablear "Mis Pedidos" con paginación + pestañas + el detalle del pedido.
+
 ## RED-9 (A3-bis) — nombres en reembolso/notificación + actor en auditoría (2026-07-25)
 
 Cierra el último "chico" del lote A: que los listados muestren **quién** sin ids opacos y que la
