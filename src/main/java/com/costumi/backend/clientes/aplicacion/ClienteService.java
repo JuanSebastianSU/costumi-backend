@@ -158,6 +158,11 @@ class ClienteService implements CrearCliente, ConsultarClientes, CambiarListaNeg
 		for (Cliente ficha : clientes.buscarPorUsuario(usuarioId)) {
 			todo.addAll(historial.deCliente(ficha.empresaId(), ficha.id()));
 		}
+		// Recencia global entre tiendas: cada ficha ya viene ordenada por el servidor, pero al concatenar
+		// varias hay que reordenar el total (más reciente primero). La paginación server-side del historial
+		// (otro PR) llevará este orden a la consulta.
+		todo.sort(java.util.Comparator.comparing(HistorialItem::fecha,
+				java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder())));
 		return todo;
 	}
 

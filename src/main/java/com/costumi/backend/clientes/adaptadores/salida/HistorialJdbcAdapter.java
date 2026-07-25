@@ -29,17 +29,22 @@ import java.util.stream.Stream;
 @Repository
 class HistorialJdbcAdapter implements HistorialReadRepository {
 
+	// Recencia (regla «más reciente primero»): la fecha del ítem y el orden salen de cuándo se REGISTRÓ la
+	// operación (creada_en), igual para renta y venta. Antes la venta traía fecha nula (caía al final) y la
+	// renta ordenaba por su fecha de retiro pactada, no por cuándo se hizo el pedido.
 	private static final String HISTORIAL = """
-			select 'RENTA' as tipo, r.id as operacion_id, r.importe as monto, r.estado, r.fecha_retiro as fecha,
+			select 'RENTA' as tipo, r.id as operacion_id, r.importe as monto, r.estado,
+			       r.creada_en::date as fecha, r.creada_en as registrada_en,
 			       e.id as empresa_id, e.nombre as empresa_nombre
 			from renta r join empresa e on e.id = r.empresa_id
 			where r.empresa_id = :empresaId and r.cliente_id = :clienteId
 			union all
-			select 'VENTA' as tipo, v.id as operacion_id, v.total as monto, v.estado, null::date as fecha,
+			select 'VENTA' as tipo, v.id as operacion_id, v.total as monto, v.estado,
+			       v.creada_en::date as fecha, v.creada_en as registrada_en,
 			       e.id as empresa_id, e.nombre as empresa_nombre
 			from venta v join empresa e on e.id = v.empresa_id
 			where v.empresa_id = :empresaId and v.cliente_id = :clienteId
-			order by fecha desc nulls last
+			order by registrada_en desc
 			""";
 
 	private static final String LINEAS_RENTA = """

@@ -8,7 +8,8 @@ import java.util.UUID;
 
 interface PagoJpaRepository extends JpaRepository<PagoJpaEntity, UUID> {
 
-	List<PagoJpaEntity> findByEmpresaIdAndConceptoId(UUID empresaId, UUID conceptoId);
+	/** Pagos de un concepto, más reciente primero (recencia, regla global): ordena por {@code fecha} DESC. */
+	List<PagoJpaEntity> findByEmpresaIdAndConceptoIdOrderByFechaDesc(UUID empresaId, UUID conceptoId);
 
 	Optional<PagoJpaEntity> findByEmpresaIdAndClaveIdempotencia(UUID empresaId, String claveIdempotencia);
 

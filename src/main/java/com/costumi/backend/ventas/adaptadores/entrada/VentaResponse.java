@@ -7,6 +7,7 @@ import com.costumi.backend.ventas.dominio.Venta;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -14,7 +15,7 @@ import java.util.UUID;
 /** DTO de salida de la Venta con sus líneas (cada una con nombre y foto) y el {@code codigoRetiro} para retirar. {@code montoReembolsado} es el total ya devuelto (RF-4.5). */
 public record VentaResponse(UUID id, String codigoRetiro, UUID sucursalId, UUID empleadoId, UUID clienteId,
 		String clienteNombre, BigDecimal descuento, BigDecimal total, String estado, BigDecimal montoReembolsado,
-		List<LineaResponse> lineas) {
+		List<LineaResponse> lineas, Instant creadaEn) {
 
 	/**
 	 * Una línea de la venta. Si salió de armar un disfraz, {@code disfrazId}/{@code disfrazNombre} dicen
@@ -49,7 +50,7 @@ public record VentaResponse(UUID id, String codigoRetiro, UUID sucursalId, UUID 
 				})
 				.toList();
 		return new VentaResponse(v.id(), CodigoDeRetiro.de("V", v.id()), v.sucursalId(), v.empleadoId(), v.clienteId(),
-				clienteNombre, v.descuento(), v.total(), v.estado().name(), montoReembolsado(v), lineas);
+				clienteNombre, v.descuento(), v.total(), v.estado().name(), montoReembolsado(v), lineas, v.creadaEn());
 	}
 
 	/** Dinero ya reembolsado: la porción del total que corresponde a las unidades devueltas (proporcional). */

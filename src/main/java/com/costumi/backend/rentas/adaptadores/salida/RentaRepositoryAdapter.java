@@ -83,8 +83,10 @@ class RentaRepositoryAdapter implements RentaRepository {
 
 	@Override
 	public Pagina<Renta> listar(UUID empresaId, UUID clienteId, String buscar, SolicitudDePagina solicitud) {
+		// Recencia (regla «más reciente primero»): se ordena por cuándo se REGISTRÓ la renta (creadaEn),
+		// no por la fecha de retiro pactada. Las bandejas por estado (su propio orden) van en otro PR.
 		Pageable pageable = PageRequest.of(solicitud.pagina(), solicitud.tamano(),
-				Sort.by(Sort.Order.desc("fechaRetiro"), Sort.Order.asc("id")));
+				Sort.by(Sort.Order.desc("creadaEn"), Sort.Order.asc("id")));
 		Page<RentaJpaEntity> pagina = jpa.buscarPagina(empresaId, clienteId, normalizarCodigo(buscar), pageable);
 		return new Pagina<>(aDominioEnLote(pagina.getContent()), pagina.getTotalElements(),
 				solicitud.pagina(), solicitud.tamano());
@@ -127,7 +129,7 @@ class RentaRepositoryAdapter implements RentaRepository {
 	private static RentaJpaEntity aEntidad(Renta r) {
 		return new RentaJpaEntity(r.id(), r.empresaId(), r.sucursalId(), r.clienteId(), r.prendaId(),
 				r.fechaRetiro(), r.fechaDevolucion(), r.precioPorDia(), r.deposito(), r.importe(), r.estado(),
-				r.claveIdempotencia(), r.empleadoId());
+				r.claveIdempotencia(), r.empleadoId(), r.creadaEn());
 	}
 
 	private Renta aDominio(RentaJpaEntity e) {
@@ -144,7 +146,7 @@ class RentaRepositoryAdapter implements RentaRepository {
 		}
 		return Renta.rehidratar(e.getId(), e.getEmpresaId(), e.getSucursalId(), e.getClienteId(), e.getEmpleadoId(),
 				lineas, e.getFechaRetiro(), e.getFechaDevolucion(), e.getDeposito(), e.getImporte(), e.getEstado(),
-				e.getClaveIdempotencia());
+				e.getClaveIdempotencia(), e.getCreadaEn());
 	}
 
 	/**

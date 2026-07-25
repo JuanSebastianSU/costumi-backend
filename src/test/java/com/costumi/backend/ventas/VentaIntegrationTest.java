@@ -104,7 +104,9 @@ class VentaIntegrationTest {
 				.andExpect(jsonPath("$.total").value(90.00))
 				.andExpect(jsonPath("$.estado").value("CONFIRMADA"))
 				.andExpect(jsonPath("$.lineas.length()").value(1))
-				.andExpect(jsonPath("$.empleadoId").exists());
+				.andExpect(jsonPath("$.empleadoId").exists())
+				// Recencia (regla #1): la venta expone cuándo se registró.
+				.andExpect(jsonPath("$.creadaEn").exists());
 
 		mvc.perform(get("/api/v1/ventas").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())

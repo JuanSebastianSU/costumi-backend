@@ -30,7 +30,7 @@ class PagoRepositoryAdapter implements PagoRepository {
 
 	@Override
 	public List<Pago> listarPorConcepto(UUID empresaId, UUID conceptoId) {
-		return jpa.findByEmpresaIdAndConceptoId(empresaId, conceptoId).stream()
+		return jpa.findByEmpresaIdAndConceptoIdOrderByFechaDesc(empresaId, conceptoId).stream()
 				.map(PagoRepositoryAdapter::aDominio).toList();
 	}
 
@@ -41,7 +41,7 @@ class PagoRepositoryAdapter implements PagoRepository {
 
 	@Override
 	public java.math.BigDecimal saldoNetoPorConcepto(UUID empresaId, UUID conceptoId) {
-		return jpa.findByEmpresaIdAndConceptoId(empresaId, conceptoId).stream()
+		return jpa.findByEmpresaIdAndConceptoIdOrderByFechaDesc(empresaId, conceptoId).stream()
 				.map(PagoRepositoryAdapter::aDominio)
 				.map(Pago::montoNeto)
 				.reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
