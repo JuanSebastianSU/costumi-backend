@@ -119,15 +119,13 @@ transversal (los eventos no llevan el actor → hay que hacerlo llegar al sink):
 - ⬜ **Operación por id para el cliente** (`C7`): `GET /clientes/me/operaciones/{id}` (por `usuario_id`,
   patrón `misDeudas`).
 
-### A5 — Cobros, saldos y comprobante del servidor  · regen
-- ⬜ **«Pendiente» calculado por el servidor** en `ComprobanteResponse` (hoy solo `saldoNeto`; la app
-  recomputa `importe + multa − saldoNeto`). El número que se cobra sale del servidor.
-- ⬜ **«Cobrado hoy por método»** (agregado del día) en Pagos (`G12`) — hoy no existe (lo más cercano es el
-  corte por turno).
-- ⬜ **Código de retiro en la respuesta del cobro** (hoy viene en venta/renta, no en el `PagoResponse`/cobro). (`G7`)
-- ⬜ **Pagar una multa online (`C9`)**: la pasarela ✅ ya existe; falta `sucursalId` en `MiDeudaResponse` **y**
-  que `POST /pagos/intento/cliente` acepte cobrar el **saldo con multa** (hoy calcula sobre el importe
-  original y exige monto == pendiente sin multa).
+### A5 — Cobros, saldos y comprobante del servidor  · 🚧 HECHO en `feat/a5-cobros-y-saldos` (RED-7, sin mergear)
+- ✅ **«Pendiente» del servidor** en `ComprobanteResponse` (`pendiente` = importe + multa − cobrado neto,
+  calculado en `PagoService`). La app deja de recomputarlo.
+- ✅ **Código de retiro en la respuesta del cobro** (`PagoResponse.codigoRetiro`, en cobro simple/mixto/comprobante).
+- ✅ **Pagar la multa online (`C9`)**: `MiDeudaResponse.sucursalId` + `CrearIntentoDePagoService` suma la multa
+  al pendiente de una renta.
+- ⏭ **«Cobrado hoy por método»**: ya es posible con `/reportes/ingresos-por-metodo?desde=hoy&hasta=hoy` — sin backend nuevo.
 
 ### A6 — Fixes de dominio  · 🚧 HECHO en `feat/a6-prenda-archivada-en-disfraz` (RED-6, sin mergear)
 - ✅ **Archivar una prenda que usa un disfraz** (bug): `opcionDePrenda` filtra archivada (no se ofrece) +

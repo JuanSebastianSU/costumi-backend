@@ -7,5 +7,6 @@ package com.costumi.backend.clientes.dominio;
  * tiendas —tiene una ficha en cada una—, así que sin el nombre de la empresa no se podría saber a quién
  * le debe cada multa.
  */
-public record DeudaEnTienda(java.util.UUID empresaId, String empresaNombre, LineaDeEstadoDeCuenta linea) {
+public record DeudaEnTienda(java.util.UUID empresaId, java.util.UUID sucursalId, String empresaNombre,
+		LineaDeEstadoDeCuenta linea) {
 }

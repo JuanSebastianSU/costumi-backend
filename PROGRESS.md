@@ -8,6 +8,23 @@
 > `CLAUDE.md`) para retomar sin perder el hilo. Regla: mueve ítems entre secciones,
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
+## RED-7 — cobros/saldos: pendiente y código del servidor + pagar la multa online (2026-07-25)
+
+Bloque A5 (hallazgo **D**: que el dinero salga del servidor, no que la app lo recompute).
+
+- **Pendiente del servidor** en `ComprobanteResponse`: nuevo campo `pendiente` = importe del concepto +
+  multa (solo renta) − cobrado neto, calculado en `PagoService` (deriva el tipo probando renta y si no,
+  venta). La app deja de recomputarlo.
+- **Código de retiro en la respuesta del cobro**: `PagoResponse` gana `codigoRetiro` (derivado de
+  tipoConcepto + conceptoId) → cae en el cobro simple, el mixto y el comprobante.
+- **Pagar la multa online (C9)**: `MiDeudaResponse` gana `sucursalId` (de la renta, que el intento exige), y
+  `CrearIntentoDePagoService` ahora suma la multa al pendiente de una renta (antes solo importe − pagado),
+  así el cliente puede pagar en línea también el saldo con multa. Sin dependencia de módulo nueva.
+- Sin migración. Tests (comprobante.pendiente=70, código en el cobro, sucursalId en la deuda). **Suite 555/555**.
+
+**Al mergear: regenerar `:api-client`** y que la app use el `pendiente` del comprobante + ofrezca «pagar
+ahora». Nota: «cobrado hoy por método» ya es posible con `/reportes/ingresos-por-metodo?desde=hoy&hasta=hoy`.
+
 ## RED-6 — prenda archivada usada por un disfraz: ya no se ofrece ni se vende (2026-07-25)
 
 Bug de **correctitud** (A6): una prenda ARCHIVADA que un disfraz usa como pieza FIJA o como opción explícita

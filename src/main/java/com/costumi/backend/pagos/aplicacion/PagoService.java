@@ -153,8 +153,19 @@ class PagoService implements RegistrarPago, ConsultarPagos, RegistrarCobroMixto 
 		BigDecimal tasa = configuracion.tasaImpuesto(empresaId);
 		BigDecimal base = totalCobrado.divide(BigDecimal.ONE.add(tasa), 2, RoundingMode.HALF_UP);
 		BigDecimal impuesto = totalCobrado.subtract(base);
+		// Pendiente por cobrar, calculado por el servidor (la app ya no lo recompone): importe del concepto
+		// + multa (solo renta) − cobrado neto. Se deriva el tipo probando renta y, si no, venta.
+		Optional<BigDecimal> importeRenta = rentas.importeDeRenta(empresaId, conceptoId);
+		BigDecimal pendiente;
+		if (importeRenta.isPresent()) {
+			BigDecimal multa = multas.totalMultaDeRenta(empresaId, conceptoId);
+			pendiente = importeRenta.get().add(multa).subtract(saldoNeto).max(BigDecimal.ZERO);
+		} else {
+			BigDecimal totalVenta = ventas.totalDeVenta(empresaId, conceptoId).orElse(BigDecimal.ZERO);
+			pendiente = totalVenta.subtract(saldoNeto).max(BigDecimal.ZERO);
+		}
 		return new Comprobante(conceptoId, delConcepto, totalCobrado, totalReembolsado, saldoNeto,
-				estadoDeposito(conceptoId, delConcepto), tasa, base, impuesto);
+				estadoDeposito(conceptoId, delConcepto), tasa, base, impuesto, pendiente);
 	}
 
 	private static EstadoDeposito estadoDeposito(UUID conceptoId, List<Pago> delConcepto) {

@@ -11,8 +11,10 @@ import java.util.UUID;
  * cobrado, reembolsado, saldo neto y estado de la garantía. Es un modelo de lectura (no persiste).
  * El impuesto es configurable por empresa (RF-6.5/12.2) con precios <b>impuesto-incluido</b>: el
  * total cobrado ya lo incluye, y aquí se desglosa en base imponible + impuesto según la tasa.
+ * {@code pendiente} es lo que aún falta cobrar (importe del concepto + multa − cobrado neto), calculado
+ * por el servidor para que la app no lo recompute con datos que podrían estar desactualizados.
  */
 public record Comprobante(UUID conceptoId, List<Pago> pagos, BigDecimal totalCobrado, BigDecimal totalReembolsado,
 		BigDecimal saldoNeto, EstadoDeposito deposito, BigDecimal tasaImpuesto, BigDecimal baseImponible,
-		BigDecimal impuesto) {
+		BigDecimal impuesto, BigDecimal pendiente) {
 }

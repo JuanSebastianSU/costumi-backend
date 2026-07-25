@@ -56,7 +56,9 @@ class MisDeudasIntegrationTest {
 				.andExpect(jsonPath("$[0].cargoPorDanos").value(150))
 				.andExpect(jsonPath("$[0].deposito").value(50))
 				.andExpect(jsonPath("$[0].multa").value(100))
-				.andExpect(jsonPath("$[0].codigoRetiro").isNotEmpty());
+				.andExpect(jsonPath("$[0].codigoRetiro").isNotEmpty())
+				// La sucursal de la renta viaja en la deuda (la necesita el pago online de la multa, C9).
+				.andExpect(jsonPath("$[0].sucursalId").isNotEmpty());
 	}
 
 	/** Se resuelve por el usuario del token: nadie ve lo que debe otro. */

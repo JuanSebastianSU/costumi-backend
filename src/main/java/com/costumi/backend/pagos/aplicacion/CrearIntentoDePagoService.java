@@ -2,6 +2,7 @@ package com.costumi.backend.pagos.aplicacion;
 
 import com.costumi.backend.clientes.ResolucionDeClientes;
 import com.costumi.backend.configuracion.ConsultaDeConfiguracion;
+import com.costumi.backend.devoluciones.ConsultaDeMultas;
 import com.costumi.backend.pagos.dominio.IntentoDePago;
 import com.costumi.backend.pagos.dominio.IntentoDePagoRepository;
 import com.costumi.backend.pagos.dominio.PagoRepository;
@@ -31,10 +32,11 @@ class CrearIntentoDePagoService implements CrearIntentoDePago, CrearIntentoDePag
 	private final ConsultaDeVentas ventas;
 	private final PagoRepository pagos;
 	private final ResolucionDeClientes clientes;
+	private final ConsultaDeMultas multas;
 
 	CrearIntentoDePagoService(IntentoDePagoRepository intentos, PasarelaDePago pasarela,
 			ConsultaDeConfiguracion configuracion, ConsultaDeRentas rentas, ConsultaDeVentas ventas,
-			PagoRepository pagos, ResolucionDeClientes clientes) {
+			PagoRepository pagos, ResolucionDeClientes clientes, ConsultaDeMultas multas) {
 		this.intentos = intentos;
 		this.pasarela = pasarela;
 		this.configuracion = configuracion;
@@ -42,6 +44,7 @@ class CrearIntentoDePagoService implements CrearIntentoDePago, CrearIntentoDePag
 		this.ventas = ventas;
 		this.pagos = pagos;
 		this.clientes = clientes;
+		this.multas = multas;
 	}
 
 	@Override
@@ -52,7 +55,11 @@ class CrearIntentoDePagoService implements CrearIntentoDePago, CrearIntentoDePag
 			throw new PagoEnLineaDeshabilitado();
 		}
 		BigDecimal total = totalDelConcepto(empresaId, tipoConcepto, conceptoId);
-		BigDecimal pendiente = total.subtract(pagos.saldoNetoPorConcepto(empresaId, conceptoId));
+		// Para una renta, lo pendiente incluye la multa (daños/retraso sobre el depósito) además del importe;
+		// una venta no tiene multa. Así el cliente puede pagar en línea también el saldo con multa (C9).
+		BigDecimal multa = tipoConcepto == TipoConcepto.RENTA
+				? multas.totalMultaDeRenta(empresaId, conceptoId) : BigDecimal.ZERO;
+		BigDecimal pendiente = total.add(multa).subtract(pagos.saldoNetoPorConcepto(empresaId, conceptoId));
 		if (pendiente.signum() <= 0) {
 			throw new IllegalArgumentException("La operación no tiene saldo pendiente por cobrar");
 		}
