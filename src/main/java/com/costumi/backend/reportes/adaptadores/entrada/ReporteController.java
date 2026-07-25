@@ -55,20 +55,26 @@ class ReporteController {
 	}
 
 	@GetMapping("/ingresos")
-	IngresosResponse ingresos(@RequestParam(required = false) UUID sucursalId, @AuthenticationPrincipal Jwt jwt) {
+	IngresosResponse ingresos(@RequestParam(required = false) UUID sucursalId,
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+			@AuthenticationPrincipal Jwt jwt) {
 		String empresaId = jwt.getClaimAsString("empresa_id");
 		ResumenDeIngresos resumen = (empresaId == null)
 				? ResumenDeIngresos.de(BigDecimal.ZERO, BigDecimal.ZERO)
-				: consultarIngresos.deEmpresa(UUID.fromString(empresaId), sucursalId);
+				: consultarIngresos.deEmpresa(UUID.fromString(empresaId), sucursalId, desde, hasta);
 		return IngresosResponse.desde(resumen);
 	}
 
 	@GetMapping("/ganancia")
-	GananciaResponse ganancia(@RequestParam(required = false) UUID sucursalId, @AuthenticationPrincipal Jwt jwt) {
+	GananciaResponse ganancia(@RequestParam(required = false) UUID sucursalId,
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+			@AuthenticationPrincipal Jwt jwt) {
 		String empresaId = jwt.getClaimAsString("empresa_id");
 		ResumenDeGanancia resumen = (empresaId == null)
 				? ResumenDeGanancia.de(BigDecimal.ZERO, BigDecimal.ZERO)
-				: consultarGanancia.gananciaDeEmpresa(UUID.fromString(empresaId), sucursalId);
+				: consultarGanancia.gananciaDeEmpresa(UUID.fromString(empresaId), sucursalId, desde, hasta);
 		return GananciaResponse.desde(resumen);
 	}
 

@@ -45,14 +45,16 @@ class ReporteService
 
 	@Override
 	@Transactional(readOnly = true)
-	public ResumenDeIngresos deEmpresa(UUID empresaId, UUID sucursalId) {
-		return ingresos.deEmpresa(empresaId, sucursalId);
+	public ResumenDeIngresos deEmpresa(UUID empresaId, UUID sucursalId, java.time.LocalDate desde,
+			java.time.LocalDate hasta) {
+		return ingresos.deEmpresa(empresaId, sucursalId, desde, hasta);
 	}
 
 	@Override
 	@Transactional(readOnly = true)
-	public ResumenDeGanancia gananciaDeEmpresa(UUID empresaId, UUID sucursalId) {
-		return ganancia.deEmpresa(empresaId, sucursalId);
+	public ResumenDeGanancia gananciaDeEmpresa(UUID empresaId, UUID sucursalId, java.time.LocalDate desde,
+			java.time.LocalDate hasta) {
+		return ganancia.deEmpresa(empresaId, sucursalId, desde, hasta);
 	}
 
 	@Override
