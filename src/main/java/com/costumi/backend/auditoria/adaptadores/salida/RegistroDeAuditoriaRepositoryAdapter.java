@@ -20,7 +20,7 @@ class RegistroDeAuditoriaRepositoryAdapter implements RegistroDeAuditoriaReposit
 	@Override
 	public RegistroDeAuditoria guardar(RegistroDeAuditoria registro) {
 		return aDominio(jpa.save(new RegistroDeAuditoriaJpaEntity(registro.id(), registro.empresaId(),
-				registro.accion(), registro.detalle(), registro.fecha())));
+				registro.actorUsuarioId(), registro.accion(), registro.detalle(), registro.fecha())));
 	}
 
 	@Override
@@ -41,6 +41,7 @@ class RegistroDeAuditoriaRepositoryAdapter implements RegistroDeAuditoriaReposit
 	}
 
 	private static RegistroDeAuditoria aDominio(RegistroDeAuditoriaJpaEntity e) {
-		return RegistroDeAuditoria.rehidratar(e.getId(), e.getEmpresaId(), e.getAccion(), e.getDetalle(), e.getFecha());
+		return RegistroDeAuditoria.rehidratar(e.getId(), e.getEmpresaId(), e.getActorUsuarioId(), e.getAccion(),
+				e.getDetalle(), e.getFecha());
 	}
 }

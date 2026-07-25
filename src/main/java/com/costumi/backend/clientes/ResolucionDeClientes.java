@@ -47,4 +47,11 @@ public interface ResolucionDeClientes {
 	 * de la empresa.
 	 */
 	java.util.Optional<String> nombreDeCliente(UUID empresaId, UUID clienteId);
+
+	/**
+	 * Nombres de varias fichas de la empresa por id, en una sola consulta. Lo usan Reembolsos/Notificaciones
+	 * para mostrar «quién» en sus listados sin un round-trip por fila (N+1). Solo incluye los ids que existen
+	 * y son de la empresa; los {@code null} de la colección se ignoran.
+	 */
+	java.util.Map<UUID, String> nombresDeClientes(UUID empresaId, java.util.Collection<UUID> ids);
 }

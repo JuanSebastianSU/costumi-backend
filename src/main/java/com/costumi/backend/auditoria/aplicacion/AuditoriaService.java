@@ -13,15 +13,21 @@ import java.util.UUID;
 class AuditoriaService implements RegistrarAuditoria, ConsultarAuditoria {
 
 	private final RegistroDeAuditoriaRepository registros;
+	private final com.costumi.backend.compartido.ContextoDeTenant tenant;
 
-	AuditoriaService(RegistroDeAuditoriaRepository registros) {
+	AuditoriaService(RegistroDeAuditoriaRepository registros,
+			com.costumi.backend.compartido.ContextoDeTenant tenant) {
 		this.registros = registros;
+		this.tenant = tenant;
 	}
 
 	@Override
 	@Transactional
 	public void registrar(UUID empresaId, String accion, String detalle) {
-		registros.guardar(RegistroDeAuditoria.de(empresaId, accion, detalle));
+		// El «quién»: el usuario autenticado de la petición. Los listeners de auditoría corren AFTER_COMMIT
+		// en el mismo hilo, así que el SecurityContext sigue disponible; en jobs sin sesión queda null.
+		UUID actor = tenant.usuarioId().orElse(null);
+		registros.guardar(RegistroDeAuditoria.de(empresaId, actor, accion, detalle));
 	}
 
 	@Override

@@ -10,12 +10,19 @@ import java.util.UUID;
 
 /** DTO de salida de una solicitud de reembolso. */
 public record SolicitudDeReembolsoResponse(UUID id, TipoConcepto tipoConcepto, UUID conceptoId,
-		UUID solicitanteClienteId, BigDecimal monto, String motivoSolicitud, EstadoSolicitudReembolso estado,
-		String motivoDecision, UUID decididoPorUsuarioId, String rolDecision, Instant creadaEn, Instant decididaEn) {
+		UUID solicitanteClienteId, String solicitanteNombre, BigDecimal monto, String motivoSolicitud,
+		EstadoSolicitudReembolso estado, String motivoDecision, UUID decididoPorUsuarioId, String rolDecision,
+		Instant creadaEn, Instant decididaEn) {
 
-	static SolicitudDeReembolsoResponse desde(SolicitudDeReembolso s) {
+	/** Con el nombre del solicitante ya resuelto (listados: se resuelve por lote para evitar N+1). */
+	static SolicitudDeReembolsoResponse desde(SolicitudDeReembolso s, String solicitanteNombre) {
 		return new SolicitudDeReembolsoResponse(s.id(), s.tipoConcepto(), s.conceptoId(), s.solicitanteClienteId(),
-				s.monto(), s.motivoSolicitud(), s.estado(), s.motivoDecision(), s.decididoPorUsuarioId(),
-				s.rolDecision(), s.creadaEn(), s.decididaEn());
+				solicitanteNombre, s.monto(), s.motivoSolicitud(), s.estado(), s.motivoDecision(),
+				s.decididoPorUsuarioId(), s.rolDecision(), s.creadaEn(), s.decididaEn());
+	}
+
+	/** Sin nombre resuelto (respuestas de una sola solicitud recién creada/decidida). */
+	static SolicitudDeReembolsoResponse desde(SolicitudDeReembolso s) {
+		return desde(s, null);
 	}
 }

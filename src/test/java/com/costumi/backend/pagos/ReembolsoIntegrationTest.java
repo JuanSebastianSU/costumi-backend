@@ -126,6 +126,31 @@ class ReembolsoIntegrationTest {
 	}
 
 	@Test
+	void la_bandeja_resuelve_el_nombre_del_solicitante() throws Exception {
+		UUID empresa = crearEmpresa("Reemb Nombre " + UUID.randomUUID());
+		String dueno = token(empresa, Rol.DUENO);
+		UUID venta = cobrar(empresa, dueno, "100.00");
+		// Ficha con nombre conocido a la que se le solicita el reembolso.
+		String cliBody = mvc.perform(post("/api/v1/clientes").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Ana Torres\",\"documento\":\"" + UUID.randomUUID() + "\"}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		UUID cliente = UUID.fromString(json.readTree(cliBody).get("id").asText());
+
+		String body = mvc.perform(post("/api/v1/reembolsos").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"tipoConcepto\":\"VENTA\",\"conceptoId\":\"" + venta + "\",\"solicitanteClienteId\":\""
+								+ cliente + "\",\"monto\":80.00,\"motivo\":\"no quedó conforme\"}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		UUID solicitud = UUID.fromString(json.readTree(body).get("id").asText());
+
+		mvc.perform(get("/api/v1/reembolsos").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.contenido[?(@.id == '" + solicitud + "')].solicitanteNombre")
+						.value("Ana Torres"));
+	}
+
+	@Test
 	void solicitar_por_mas_del_saldo_devuelve_409() throws Exception {
 		UUID empresa = crearEmpresa("Reemb Saldo " + UUID.randomUUID());
 		String dueno = token(empresa, Rol.DUENO);

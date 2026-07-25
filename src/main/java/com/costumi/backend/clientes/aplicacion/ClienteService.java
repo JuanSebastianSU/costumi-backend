@@ -213,4 +213,15 @@ class ClienteService implements CrearCliente, ConsultarClientes, CambiarListaNeg
 				.filter(cliente -> empresaId.equals(cliente.empresaId()))
 				.map(Cliente::nombre);
 	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public java.util.Map<UUID, String> nombresDeClientes(UUID empresaId, java.util.Collection<UUID> ids) {
+		if (ids == null || ids.isEmpty()) {
+			return java.util.Map.of();
+		}
+		java.util.Set<UUID> unicos = ids.stream().filter(java.util.Objects::nonNull)
+				.collect(java.util.stream.Collectors.toSet());
+		return clientes.nombresPorIds(empresaId, unicos);
+	}
 }
