@@ -8,6 +8,31 @@
 > `CLAUDE.md`) para retomar sin perder el hilo. Regla: mueve ítems entre secciones,
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
+## RED-22 (Fase B, 5) — permisos granulares expandidos: catálogo de capacidades (2026-07-25)
+
+Backend del paso 5 del plan: la matriz de permisos pasa de "sección × (VER/ACCION)" (2 acciones, demasiado
+grueso) a un **catálogo exhaustivo de capacidades** (65 toggles), una por operación real. Spec:
+`AppCustomi2/PLAN_PERMISOS_CATALOGO.md`. Principio: el rol es solo el **preset**, la verdad es la matriz
+efectiva por persona (no se puede saber en quién confía cada dueño para qué → todo es un toggle).
+
+- **Modelo**: `Seccion` expandida (agrega CATALOGO, REEMBOLSOS, SUCURSALES, IDENTIDAD_TIENDA, AUDITORIA), nuevo
+  enum `Capacidad` (65 valores, cada uno con su sección y su texto de "qué habilita"), `PlantillaDeRol.capacidadesDe(Rol)`
+  con los presets del catálogo. Se eliminó `Permiso`/`AccionDePermiso`.
+- **Matriz efectiva** = preset ± overrides. `GET /empleados/{id}/permisos` devuelve TODAS las capacidades
+  (seccion, capacidad, descripción, concedido) para la pantalla rediseñada; `GET /empleados/me/permisos` las
+  concedidas del propio (para la navegación por permisos). `PUT /empleados/{id}/permisos {capacidad, concedido}`.
+- **Invariantes**: pirámide (solo hacia abajo, ya existía) + **"no podés conceder lo que no tenés"** (al otorgar,
+  el actor debe tener la capacidad efectiva) + el dueño/superadmin no son restringibles.
+- **Enforcement**: `MapaDeSecciones` mapea cada ruta a su capacidad fina y el `InterceptorDePermisos` bloquea
+  (403) si el dueño **negó** esa capacidad al empleado. Comportamiento igual que antes (solo bloquea con override
+  explícito `false`), re-keyeado a capacidad → la operación normal no cambia (598/598). Migración **V79** (recrea
+  `permiso_empleado` con columna `capacidad`; la matriz estaba desconectada, sin overrides en uso).
+- ⚠️ **Enforcement pendiente (con el front)**: (a) capacidades a **nivel de campo**, no de ruta —
+  `VENTAS_DESCUENTO` (el descuento va en el body de la venta), decisión de depósito en `RENTAS_CERRAR`— necesitan
+  un chequeo en el service; (b) **conceder por encima del piso del rol**: hoy `SecurityConfig` (hasAnyRole) sigue
+  siendo piso, así que la matriz puede **restringir** hacia abajo pero no expandir más allá del rol. Ambos se
+  cierran al conectar el front (verificando pantalla por pantalla). Falta el paso **6** (re-auth). Suite 598/598.
+
 ## RED-21 (Fase B) — el modo Comprando/Trabajando sobrevive al refresh (+ fix bug del switch) (2026-07-25)
 
 Cierra el follow-up anotado desde RED-19: el contexto elegido (Comprando/Trabajando) ya no se pierde al

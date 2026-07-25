@@ -11,8 +11,9 @@ import jakarta.persistence.Table;
 import java.util.UUID;
 
 /**
- * Mapeo JPA de un override de permiso por empleado (RF-1.5): una casilla activada/desactivada por el
- * dueño encima de la plantilla del rol. Su ausencia = se usa el valor por defecto del rol.
+ * Mapeo JPA de un override de capacidad por empleado (Fase B, paso 5): una capacidad concedida/negada por
+ * encima del preset del rol. Su ausencia = se usa el preset del rol. {@code capacidad} guarda el nombre del
+ * enum {@code Capacidad}.
  */
 @Entity
 @Table(name = "permiso_empleado")
@@ -28,11 +29,8 @@ class PermisoEmpleadoJpaEntity {
 	@Column(name = "usuario_id", nullable = false)
 	private UUID usuarioId;
 
-	@Column(nullable = false, length = 20)
-	private String seccion;
-
-	@Column(nullable = false, length = 10)
-	private String accion;
+	@Column(nullable = false, length = 50)
+	private String capacidad;
 
 	@Column(nullable = false)
 	private boolean concedido;
@@ -41,13 +39,11 @@ class PermisoEmpleadoJpaEntity {
 		// requerido por JPA
 	}
 
-	PermisoEmpleadoJpaEntity(UUID id, UUID empresaId, UUID usuarioId, String seccion, String accion,
-			boolean concedido) {
+	PermisoEmpleadoJpaEntity(UUID id, UUID empresaId, UUID usuarioId, String capacidad, boolean concedido) {
 		this.id = id;
 		this.empresaId = empresaId;
 		this.usuarioId = usuarioId;
-		this.seccion = seccion;
-		this.accion = accion;
+		this.capacidad = capacidad;
 		this.concedido = concedido;
 	}
 
@@ -55,12 +51,8 @@ class PermisoEmpleadoJpaEntity {
 		return id;
 	}
 
-	String getSeccion() {
-		return seccion;
-	}
-
-	String getAccion() {
-		return accion;
+	String getCapacidad() {
+		return capacidad;
 	}
 
 	boolean isConcedido() {

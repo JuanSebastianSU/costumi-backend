@@ -1,11 +1,9 @@
 package com.costumi.backend.identidad.aplicacion;
 
-import com.costumi.backend.identidad.dominio.AccionDePermiso;
-import com.costumi.backend.identidad.dominio.Permiso;
+import com.costumi.backend.identidad.dominio.Capacidad;
 import com.costumi.backend.identidad.dominio.PermisoDeEmpleadoRepository;
 import com.costumi.backend.identidad.dominio.PlantillaDeRol;
 import com.costumi.backend.identidad.dominio.Rol;
-import com.costumi.backend.identidad.dominio.Seccion;
 import com.costumi.backend.identidad.dominio.Usuario;
 import com.costumi.backend.identidad.dominio.UsuarioRepository;
 import org.springframework.stereotype.Service;
@@ -13,11 +11,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
-/** Permisos granulares por empleado (RF-1.5): editor (matriz plantilla ± overrides) y chequeo. */
+/** Matriz de capacidades por empleado (Fase B, paso 5): editor (preset ± overrides) y chequeo de bloqueo. */
 @Service
 class PermisosDeEmpleadoService implements GestionarPermisosDeEmpleado, ConsultaDePermisos {
 
@@ -31,55 +28,54 @@ class PermisosDeEmpleadoService implements GestionarPermisosDeEmpleado, Consulta
 
 	@Override
 	@Transactional(readOnly = true)
-	public boolean bloqueado(UUID usuarioId, Seccion seccion, AccionDePermiso accion) {
-		return overrides.valor(usuarioId, seccion, accion).map(concedido -> !concedido).orElse(false);
+	public boolean bloqueado(UUID usuarioId, Capacidad capacidad) {
+		return overrides.valor(usuarioId, capacidad).map(concedido -> !concedido).orElse(false);
 	}
 
 	@Override
 	@Transactional(readOnly = true)
-	public List<PermisoEfectivo> matriz(UUID empresaId, Rol actorRol, UUID usuarioId) {
+	public List<CapacidadEfectiva> matriz(UUID empresaId, Rol actorRol, UUID usuarioId) {
 		Rol rol = empleadoGestionable(empresaId, actorRol, usuarioId).rol();
-		Set<Permiso> plantilla = PlantillaDeRol.permisosDe(rol);
-		List<PermisoEfectivo> matriz = new ArrayList<>();
-		for (Seccion seccion : Seccion.values()) {
-			for (AccionDePermiso accion : AccionDePermiso.values()) {
-				Optional<Boolean> override = overrides.valor(usuarioId, seccion, accion);
-				boolean concedido = override.orElseGet(() -> plantilla.contains(new Permiso(seccion, accion)));
-				matriz.add(new PermisoEfectivo(seccion, accion, concedido));
-			}
+		List<CapacidadEfectiva> matriz = new ArrayList<>();
+		for (Capacidad capacidad : Capacidad.values()) {
+			matriz.add(new CapacidadEfectiva(capacidad, efectiva(usuarioId, rol, capacidad)));
 		}
 		return matriz;
 	}
 
 	@Override
 	@Transactional(readOnly = true)
-	public List<Permiso> mios(UUID usuarioId, Rol rol) {
-		Set<Permiso> plantilla = PlantillaDeRol.permisosDe(rol);
-		List<Permiso> concedidos = new ArrayList<>();
-		for (Seccion seccion : Seccion.values()) {
-			for (AccionDePermiso accion : AccionDePermiso.values()) {
-				boolean concedido = overrides.valor(usuarioId, seccion, accion)
-						.orElseGet(() -> plantilla.contains(new Permiso(seccion, accion)));
-				if (concedido) {
-					concedidos.add(new Permiso(seccion, accion));
-				}
+	public List<Capacidad> mias(UUID usuarioId, Rol rol) {
+		List<Capacidad> concedidas = new ArrayList<>();
+		for (Capacidad capacidad : Capacidad.values()) {
+			if (efectiva(usuarioId, rol, capacidad)) {
+				concedidas.add(capacidad);
 			}
 		}
-		return concedidos;
+		return concedidas;
 	}
 
 	@Override
 	@Transactional
-	public void establecer(UUID empresaId, Rol actorRol, UUID usuarioId, Seccion seccion, AccionDePermiso accion,
+	public void establecer(UUID empresaId, Rol actorRol, UUID actorId, UUID usuarioId, Capacidad capacidad,
 			boolean concedido) {
-		empleadoGestionable(empresaId, actorRol, usuarioId); // §5.4 + pirámide (B3)
-		overrides.establecer(empresaId, usuarioId, seccion, accion, concedido);
+		empleadoGestionable(empresaId, actorRol, usuarioId); // pirámide (B3): solo hacia abajo
+		// "No podés conceder lo que no tenés": al otorgar, el actor debe tener la capacidad (efectiva).
+		if (concedido && !efectiva(actorId, actorRol, capacidad)) {
+			throw new GestionDeEmpleadoNoPermitida();
+		}
+		overrides.establecer(empresaId, usuarioId, capacidad, concedido);
+	}
+
+	/** Capacidad efectiva = override si existe, si no el preset del rol. */
+	private boolean efectiva(UUID usuarioId, Rol rol, Capacidad capacidad) {
+		Set<Capacidad> preset = PlantillaDeRol.capacidadesDe(rol);
+		return overrides.valor(usuarioId, capacidad).orElseGet(() -> preset.contains(capacidad));
 	}
 
 	/**
 	 * Carga el empleado del tenant y exige que el actor tenga autoridad jerárquica sobre él (RF-1.3, B3):
-	 * así un empleado no edita sus propios permisos ni los de un igual/superior (p. ej. re-concederse lo
-	 * que el dueño le quitó).
+	 * así un empleado no edita sus propios permisos ni los de un igual/superior.
 	 */
 	private Usuario empleadoGestionable(UUID empresaId, Rol actorRol, UUID usuarioId) {
 		Usuario empleado = usuarios.buscarPorId(usuarioId)

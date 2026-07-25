@@ -22,8 +22,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Los permisos del propio usuario (B-permisos): cualquier rol ve los suyos (por el token), y reflejan los
- * bloqueos que le puso el dueño. La app arma la nav a partir de esto, no del rol.
+ * Las capacidades del propio usuario (Fase B, paso 5): cualquier rol ve las suyas (por el token) y reflejan
+ * los bloqueos que le puso el dueño. La app arma la navegación a partir de esto, no del rol.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -43,34 +43,34 @@ class MisPermisosIntegrationTest {
 	PasswordEncoder passwordEncoder;
 
 	@Test
-	void cada_usuario_ve_sus_permisos_y_reflejan_los_bloqueos() throws Exception {
+	void cada_usuario_ve_sus_capacidades_y_reflejan_los_bloqueos() throws Exception {
 		UUID empresa = crearEmpresaAprobada();
 		AuthTestHelper.Sesion dueno = AuthTestHelper.sesion(mvc, json, usuarios, passwordEncoder, empresa, Rol.DUENO);
 		AuthTestHelper.Sesion mostrador = AuthTestHelper.sesion(mvc, json, usuarios, passwordEncoder, empresa,
 				Rol.MOSTRADOR);
 
-		// El MOSTRADOR ve los suyos (200, no 403): tiene VENTAS/ACCION, NO tiene REPORTES/ACCION.
+		// El MOSTRADOR ve las suyas (200, no 403): tiene VENTAS_REGISTRAR, NO tiene REPORTES_VER.
 		mvc.perform(get("/api/v1/empleados/me/permisos").header("Authorization", "Bearer " + mostrador.token()))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.seccion == 'VENTAS' && @.accion == 'ACCION')]").exists())
-				.andExpect(jsonPath("$[?(@.seccion == 'REPORTES' && @.accion == 'ACCION')]").doesNotExist());
+				.andExpect(jsonPath("$[?(@.capacidad == 'VENTAS_REGISTRAR')]").exists())
+				.andExpect(jsonPath("$[?(@.capacidad == 'REPORTES_VER')]").doesNotExist());
 
-		// El DUEÑO tiene todo (incluye REPORTES/ACCION).
+		// El DUEÑO tiene todo (incluye REPORTES_VER).
 		mvc.perform(get("/api/v1/empleados/me/permisos").header("Authorization", "Bearer " + dueno.token()))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.seccion == 'REPORTES' && @.accion == 'ACCION')]").exists());
+				.andExpect(jsonPath("$[?(@.capacidad == 'REPORTES_VER')]").exists());
 
-		// El dueño le BLOQUEA VENTAS/ACCION al mostrador.
+		// El dueño le BLOQUEA VENTAS_REGISTRAR al mostrador.
 		mvc.perform(put("/api/v1/empleados/{id}/permisos", mostrador.usuarioId())
 						.header("Authorization", "Bearer " + dueno.token()).contentType(MediaType.APPLICATION_JSON)
-						.content("{\"seccion\":\"VENTAS\",\"accion\":\"ACCION\",\"concedido\":false}"))
+						.content("{\"capacidad\":\"VENTAS_REGISTRAR\",\"concedido\":false}"))
 				.andExpect(status().isOk());
 
-		// Ahora el mostrador ya NO tiene VENTAS/ACCION en sus permisos (pero sí conserva VENTAS/VER).
+		// Ahora el mostrador ya NO tiene VENTAS_REGISTRAR (pero sí conserva VENTAS_VER).
 		mvc.perform(get("/api/v1/empleados/me/permisos").header("Authorization", "Bearer " + mostrador.token()))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.seccion == 'VENTAS' && @.accion == 'ACCION')]").doesNotExist())
-				.andExpect(jsonPath("$[?(@.seccion == 'VENTAS' && @.accion == 'VER')]").exists());
+				.andExpect(jsonPath("$[?(@.capacidad == 'VENTAS_REGISTRAR')]").doesNotExist())
+				.andExpect(jsonPath("$[?(@.capacidad == 'VENTAS_VER')]").exists());
 	}
 
 	@Test

@@ -1,20 +1,26 @@
 package com.costumi.backend.identidad.dominio;
 
 /**
- * Sección/operación sobre la que se conceden permisos granulares por empleado (RF-1.5). Cada request
- * operativo se mapea a una sección + una {@link AccionDePermiso} (ver / actuar).
+ * Sección de la app usada para <b>agrupar</b> las capacidades configurables en la pantalla de permisos
+ * (Fase B, paso 5). Cada {@link Capacidad} pertenece a una sección. Reemplaza el enfoque anterior de
+ * "sección × (VER/ACCION)" por un catálogo de capacidades finas (ver {@code PLAN_PERMISOS_CATALOGO.md}).
  */
 public enum Seccion {
 	INVENTARIO,
+	CATALOGO,
 	DISFRACES,
 	VENTAS,
 	RENTAS,
 	DEVOLUCIONES,
 	PAGOS,
 	CAJA,
-	REPORTES,
+	REEMBOLSOS,
 	CLIENTES,
+	REPORTES,
+	AUDITORIA,
 	CONFIGURACION,
+	SUCURSALES,
+	IDENTIDAD_TIENDA,
 	NOTIFICACIONES,
 	EMPLEADOS
 }

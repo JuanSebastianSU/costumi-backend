@@ -1,54 +1,51 @@
 package com.costumi.backend.identidad.dominio;
 
-import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
- * Plantilla de permisos por rol (RF-1.3/1.5): lo que cada rol puede por defecto. Es la base sobre la
- * que el dueño activa/desactiva casillas puntuales por empleado. El Dueño y el SuperAdmin tienen todo.
- * Las {@code ACCION} reflejan la autorización por rol ya existente; las {@code VER} son abiertas al
- * personal de la empresa salvo Reportes/Configuración (solo Dueño/Encargado).
+ * Preset de capacidades por rol (Fase B, paso 5): lo que cada rol tiene <b>por defecto</b>. Es el punto de
+ * partida editable por persona (matriz efectiva = preset ± overrides). El rol NO es la autoridad: es solo el
+ * preset. DUEÑO/ENCARGADO parten con todo; los operativos con lo suyo. Fuente: PLAN_PERMISOS_CATALOGO.md.
  */
 public final class PlantillaDeRol {
 
 	private PlantillaDeRol() {
 	}
 
-	/** Permisos por defecto del rol (matriz completa efectiva antes de overrides por empleado). */
-	public static Set<Permiso> permisosDe(Rol rol) {
+	/** Capacidades por defecto del rol (antes de los overrides por empleado). */
+	public static Set<Capacidad> capacidadesDe(Rol rol) {
 		return switch (rol) {
-			case SUPERADMIN, DUENO, ENCARGADO -> todos();
-			case MOSTRADOR, ATENCION -> unir(verOperativas(),
-					acciones(Seccion.VENTAS, Seccion.RENTAS, Seccion.DEVOLUCIONES, Seccion.PAGOS, Seccion.CAJA,
-							Seccion.CLIENTES));
-			case BODEGA -> unir(verOperativas(), acciones(Seccion.INVENTARIO, Seccion.DISFRACES));
-			case CLIENTE -> Set.of();
+			case SUPERADMIN, DUENO, ENCARGADO -> EnumSet.allOf(Capacidad.class);
+			case MOSTRADOR -> EnumSet.copyOf(OPERATIVO_MOSTRADOR);
+			case ATENCION -> conNotificacionEnviar(OPERATIVO_MOSTRADOR);
+			case BODEGA -> EnumSet.copyOf(OPERATIVO_BODEGA);
+			case CLIENTE -> EnumSet.noneOf(Capacidad.class);
 		};
 	}
 
-	private static Set<Permiso> todos() {
-		return Arrays.stream(Seccion.values())
-				.flatMap(s -> Arrays.stream(AccionDePermiso.values()).map(a -> new Permiso(s, a)))
-				.collect(Collectors.toSet());
-	}
+	private static final Set<Capacidad> OPERATIVO_MOSTRADOR = EnumSet.of(
+			Capacidad.INVENTARIO_VER,
+			Capacidad.DISFRACES_VER,
+			Capacidad.VENTAS_VER, Capacidad.VENTAS_REGISTRAR, Capacidad.VENTAS_DEVOLVER,
+			Capacidad.RENTAS_VER, Capacidad.RENTAS_REGISTRAR, Capacidad.RENTAS_ENTREGAR,
+			Capacidad.RENTAS_DEVOLVER, Capacidad.RENTAS_CERRAR,
+			Capacidad.DEVOLUCIONES_VER, Capacidad.DEVOLUCIONES_REGISTRAR,
+			Capacidad.PAGOS_VER, Capacidad.PAGOS_REGISTRAR, Capacidad.PAGOS_COBRAR_EN_LINEA,
+			Capacidad.CAJA_VER, Capacidad.CAJA_ABRIR_TURNO, Capacidad.CAJA_MOVIMIENTO, Capacidad.CAJA_CERRAR_TURNO,
+			Capacidad.REEMBOLSOS_VER, Capacidad.REEMBOLSOS_SOLICITAR,
+			Capacidad.CLIENTES_VER, Capacidad.CLIENTES_CREAR, Capacidad.CLIENTES_EDITAR);
 
-	/** VER de todas las secciones operativas del personal salvo Reportes y Configuración. */
-	private static Set<Permiso> verOperativas() {
-		return Arrays.stream(Seccion.values())
-				.filter(s -> s != Seccion.REPORTES && s != Seccion.CONFIGURACION && s != Seccion.EMPLEADOS)
-				.map(s -> new Permiso(s, AccionDePermiso.VER))
-				.collect(Collectors.toSet());
-	}
+	private static final Set<Capacidad> OPERATIVO_BODEGA = EnumSet.of(
+			Capacidad.INVENTARIO_VER, Capacidad.INVENTARIO_PRENDA_GESTIONAR, Capacidad.INVENTARIO_PRENDA_ARCHIVAR,
+			Capacidad.INVENTARIO_STOCK_ENTRADA, Capacidad.INVENTARIO_STOCK_AJUSTAR, Capacidad.INVENTARIO_STOCK_MOVER,
+			Capacidad.INVENTARIO_STOCK_TRANSFERIR,
+			Capacidad.CATALOGO_VER,
+			Capacidad.DISFRACES_VER);
 
-	private static Set<Permiso> acciones(Seccion... secciones) {
-		return EnumSet.copyOf(Arrays.asList(secciones)).stream()
-				.map(s -> new Permiso(s, AccionDePermiso.ACCION))
-				.collect(Collectors.toSet());
-	}
-
-	private static Set<Permiso> unir(Set<Permiso> a, Set<Permiso> b) {
-		return java.util.stream.Stream.concat(a.stream(), b.stream()).collect(Collectors.toSet());
+	private static Set<Capacidad> conNotificacionEnviar(Set<Capacidad> base) {
+		Set<Capacidad> set = EnumSet.copyOf(base);
+		set.add(Capacidad.NOTIFICACIONES_ENVIAR);
+		return set;
 	}
 }

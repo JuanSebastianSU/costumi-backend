@@ -1,7 +1,7 @@
 package com.costumi.backend.identidad.adaptadores.entrada;
 
 import com.costumi.backend.identidad.aplicacion.ConsultaDePermisos;
-import com.costumi.backend.identidad.dominio.Permiso;
+import com.costumi.backend.identidad.dominio.Capacidad;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.core.Authentication;
@@ -15,9 +15,9 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Aplica los permisos granulares por empleado (RF-1.5): si el dueño desactivó la casilla de la sección
- * y acción del request para ese empleado, responde 403. Sin override, no interfiere (la autorización por
- * rol la resuelve {@code SecurityConfig}). El Dueño y el SuperAdmin no son restringibles.
+ * Aplica los permisos granulares por empleado (Fase B, paso 5): si el dueño negó la capacidad que exige el
+ * request para ese empleado, responde 403. Sin override, no interfiere (la autorización por rol la resuelve
+ * {@code SecurityConfig}). El Dueño y el SuperAdmin no son restringibles.
  */
 @Component
 class InterceptorDePermisos implements HandlerInterceptor {
@@ -43,13 +43,12 @@ class InterceptorDePermisos implements HandlerInterceptor {
 		if (subject == null) {
 			return true;
 		}
-		Optional<Permiso> requerido = MapaDeSecciones.permisoRequerido(request.getMethod(),
+		Optional<Capacidad> requerida = MapaDeSecciones.capacidadRequerida(request.getMethod(),
 				rutaSinContexto(request));
-		if (requerido.isEmpty()) {
+		if (requerida.isEmpty()) {
 			return true; // ruta no sujeta a permiso granular
 		}
-		Permiso permiso = requerido.get();
-		if (permisos.bloqueado(UUID.fromString(subject), permiso.seccion(), permiso.accion())) {
+		if (permisos.bloqueado(UUID.fromString(subject), requerida.get())) {
 			response.setStatus(HttpServletResponse.SC_FORBIDDEN);
 			return false;
 		}
