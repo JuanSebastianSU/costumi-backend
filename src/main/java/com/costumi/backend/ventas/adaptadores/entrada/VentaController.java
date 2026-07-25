@@ -104,6 +104,7 @@ class VentaController {
 
 	@GetMapping
 	RespuestaPaginada<VentaResponse> listar(@RequestParam(required = false) String buscar,
+			@RequestParam(required = false) com.costumi.backend.ventas.dominio.EstadoVenta estado,
 			@RequestParam(required = false) Integer pagina,
 			@RequestParam(required = false) Integer tamano, @AuthenticationPrincipal Jwt jwt) {
 		String empresaId = jwt.getClaimAsString("empresa_id");
@@ -112,7 +113,7 @@ class VentaController {
 		}
 		UUID empresa = UUID.fromString(empresaId);
 		return RespuestaPaginada.desde(
-				consultarVentas.listar(empresa, buscar, SolicitudDePagina.de(pagina, tamano)),
+				consultarVentas.listar(empresa, buscar, estado, SolicitudDePagina.de(pagina, tamano)),
 				v -> resp(empresa, v));
 	}
 }

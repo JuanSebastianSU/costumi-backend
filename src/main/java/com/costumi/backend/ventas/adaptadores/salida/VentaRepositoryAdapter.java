@@ -2,6 +2,7 @@ package com.costumi.backend.ventas.adaptadores.salida;
 
 import com.costumi.backend.compartido.Pagina;
 import com.costumi.backend.compartido.SolicitudDePagina;
+import com.costumi.backend.ventas.dominio.EstadoVenta;
 import com.costumi.backend.ventas.dominio.LineaDeVenta;
 import com.costumi.backend.ventas.dominio.Venta;
 import com.costumi.backend.ventas.dominio.VentaRepository;
@@ -57,10 +58,10 @@ class VentaRepositoryAdapter implements VentaRepository {
 	}
 
 	@Override
-	public Pagina<Venta> listar(UUID empresaId, String buscar, SolicitudDePagina solicitud) {
+	public Pagina<Venta> listar(UUID empresaId, String buscar, EstadoVenta estado, SolicitudDePagina solicitud) {
 		Pageable pageable = PageRequest.of(solicitud.pagina(), solicitud.tamano(),
 				Sort.by(Sort.Order.desc("creadaEn"), Sort.Order.asc("id")));
-		Page<VentaJpaEntity> pagina = cabeceras.buscarPagina(empresaId, normalizarCodigo(buscar), pageable);
+		Page<VentaJpaEntity> pagina = cabeceras.buscarPagina(empresaId, normalizarCodigo(buscar), estado, pageable);
 		return new Pagina<>(aDominioEnLote(pagina.getContent()), pagina.getTotalElements(),
 				solicitud.pagina(), solicitud.tamano());
 	}

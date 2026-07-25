@@ -2,6 +2,7 @@ package com.costumi.backend.ventas.aplicacion;
 
 import com.costumi.backend.compartido.Pagina;
 import com.costumi.backend.compartido.SolicitudDePagina;
+import com.costumi.backend.ventas.dominio.EstadoVenta;
 import com.costumi.backend.ventas.dominio.Venta;
 
 import java.util.List;
@@ -13,9 +14,11 @@ public interface ConsultarVentas {
 
 	List<Venta> deEmpresa(UUID empresaId);
 
-	/** Página de ventas de la empresa, más recientes primero (C3). */
-	/** Página de ventas; {@code buscar} (opcional) filtra por código de retiro. */
-	Pagina<Venta> listar(UUID empresaId, String buscar, SolicitudDePagina solicitud);
+	/**
+	 * Página de ventas de la empresa, más recientes primero (C3). {@code buscar} filtra por código de retiro;
+	 * {@code estado} (opcional) acota por estado de la venta (CONFIRMADA/PARCIALMENTE_DEVUELTA/DEVUELTA).
+	 */
+	Pagina<Venta> listar(UUID empresaId, String buscar, EstadoVenta estado, SolicitudDePagina solicitud);
 
 	/** Una venta del tenant por id (para su detalle con líneas y foto). */
 	Optional<Venta> buscarPorId(UUID empresaId, UUID ventaId);
