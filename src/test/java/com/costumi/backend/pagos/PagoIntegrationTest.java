@@ -86,12 +86,34 @@ class PagoIntegrationTest {
 								+ concepto + "\",\"monto\":40.00,\"metodo\":\"EFECTIVO\"}"))
 				.andExpect(status().isCreated())
 				.andExpect(jsonPath("$.monto").value(40.00))
-				.andExpect(jsonPath("$.metodo").value("EFECTIVO"));
+				.andExpect(jsonPath("$.metodo").value("EFECTIVO"))
+				// El cobro devuelve el código de retiro de la operación (aquí una renta).
+				.andExpect(jsonPath("$.codigoRetiro").value(org.hamcrest.Matchers.startsWith("R-")));
 
 		mvc.perform(get("/api/v1/pagos").param("conceptoId", concepto.toString())
 						.header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.length()").value(1));
+	}
+
+	@Test
+	void el_comprobante_devuelve_el_pendiente_por_cobrar_calculado_por_el_servidor() throws Exception {
+		UUID sucursal = sucursalDePrueba();
+		UUID venta = ventaReal(sucursal, 100, 1); // total 100
+
+		// Cobro parcial de 30 → queda pendiente 70.
+		mvc.perform(post("/api/v1/pagos").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + sucursal + "\",\"tipoConcepto\":\"VENTA\",\"conceptoId\":\""
+								+ venta + "\",\"monto\":30.00,\"metodo\":\"EFECTIVO\"}"))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.codigoRetiro").value(org.hamcrest.Matchers.startsWith("V-")));
+
+		// El servidor calcula el pendiente (total 100 − cobrado 30 = 70); la app ya no lo recompone.
+		mvc.perform(get("/api/v1/pagos/comprobante").param("conceptoId", venta.toString())
+						.header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.pendiente").value(70.00));
 	}
 
 	@Test
