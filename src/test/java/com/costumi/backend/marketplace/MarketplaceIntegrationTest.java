@@ -67,11 +67,13 @@ class MarketplaceIntegrationTest {
 						.header("Authorization", "Bearer " + superAdmin))
 				.andExpect(status().isOk());
 
-		// Endpoint público: sin token.
-		mvc.perform(get("/api/v1/marketplace/empresas"))
+		// Endpoint público: sin token. Se filtra por nombre (único) para no depender de la paginación.
+		mvc.perform(get("/api/v1/marketplace/empresas").param("buscar", activa))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.nombre == '" + activa + "')]").exists())
-				.andExpect(jsonPath("$[?(@.nombre == '" + pendiente + "')]").doesNotExist());
+				.andExpect(jsonPath("$.contenido[?(@.nombre == '" + activa + "')]").exists());
+		mvc.perform(get("/api/v1/marketplace/empresas").param("buscar", pendiente))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.contenido[?(@.nombre == '" + pendiente + "')]").doesNotExist());
 	}
 
 	@Test
@@ -83,9 +85,9 @@ class MarketplaceIntegrationTest {
 		mvc.perform(post("/api/v1/empresas/{id}/aprobar", empresa).header("Authorization", "Bearer " + superAdmin))
 				.andExpect(status().isOk());
 
-		// Con su Casa Matriz recién creada, la tienda aparece.
-		mvc.perform(get("/api/v1/marketplace/empresas"))
-				.andExpect(jsonPath("$[?(@.nombre == '" + nombre + "')]").exists());
+		// Con su Casa Matriz recién creada, la tienda aparece (se filtra por su nombre, no por paginación).
+		mvc.perform(get("/api/v1/marketplace/empresas").param("buscar", nombre))
+				.andExpect(jsonPath("$.contenido[?(@.nombre == '" + nombre + "')]").exists());
 
 		// Se archiva su única sucursal (vacía, sin inventario) -> ya no puede operar.
 		String sucJson = mvc.perform(get("/api/v1/marketplace/empresas/{id}/sucursales", empresa))
@@ -97,9 +99,9 @@ class MarketplaceIntegrationTest {
 				.andExpect(status().isOk());
 
 		// Ya no aparece en la vitrina.
-		mvc.perform(get("/api/v1/marketplace/empresas"))
+		mvc.perform(get("/api/v1/marketplace/empresas").param("buscar", nombre))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.nombre == '" + nombre + "')]").doesNotExist());
+				.andExpect(jsonPath("$.contenido[?(@.nombre == '" + nombre + "')]").doesNotExist());
 	}
 
 	@Test
@@ -116,8 +118,8 @@ class MarketplaceIntegrationTest {
 		// Búsqueda por texto (RF-18.1): solo la que coincide en el nombre.
 		mvc.perform(get("/api/v1/marketplace/empresas").param("buscar", marca))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.nombre == '" + marca + " Centro')]").exists())
-				.andExpect(jsonPath("$.length()").value(1));
+				.andExpect(jsonPath("$.contenido[?(@.nombre == '" + marca + " Centro')]").exists())
+				.andExpect(jsonPath("$.total").value(1));
 	}
 
 	/**

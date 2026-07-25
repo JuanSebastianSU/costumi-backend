@@ -21,12 +21,15 @@ class MarketplaceController {
 		this.descubrirEmpresas = descubrirEmpresas;
 	}
 
+	/** Vitrina de tiendas ACTIVAS, paginada (RF-18.1). {@code buscar} filtra por nombre. */
 	@GetMapping("/empresas")
-	List<EmpresaVitrinaResponse> empresas(@RequestParam(name = "buscar", required = false) String buscar) {
-		List<com.costumi.backend.marketplace.dominio.EmpresaEnVitrina> empresas = (buscar == null || buscar.isBlank())
-				? descubrirEmpresas.activas()
-				: descubrirEmpresas.buscar(buscar);
-		return empresas.stream().map(EmpresaVitrinaResponse::desde).toList();
+	com.costumi.backend.compartido.RespuestaPaginada<EmpresaVitrinaResponse> empresas(
+			@RequestParam(name = "buscar", required = false) String buscar,
+			@RequestParam(name = "pagina", required = false) Integer pagina,
+			@RequestParam(name = "tamano", required = false) Integer tamano) {
+		return com.costumi.backend.compartido.RespuestaPaginada.desde(
+				descubrirEmpresas.empresas(buscar, com.costumi.backend.compartido.SolicitudDePagina.de(pagina, tamano)),
+				EmpresaVitrinaResponse::desde);
 	}
 
 	/** Catálogo público de una tienda: el cliente ve las prendas de cualquier empresa ACTIVA (RF-18). */

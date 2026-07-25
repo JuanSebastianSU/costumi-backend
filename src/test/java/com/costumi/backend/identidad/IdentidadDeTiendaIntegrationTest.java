@@ -92,11 +92,12 @@ class IdentidadDeTiendaIntegrationTest {
 				.andExpect(jsonPath("$.ciudad").value("Pasto"))
 				.andExpect(jsonPath("$.logoUrl").value(org.hamcrest.Matchers.endsWith(".png")));
 
-		// La vitrina pública del marketplace muestra la marca (logo/ciudad/descripción).
+		// La vitrina pública del marketplace (paginada) muestra la marca (logo/ciudad/descripción).
 		mvc.perform(get("/api/v1/marketplace/empresas"))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.nombre == 'Mi Tienda')].ciudad").value(org.hamcrest.Matchers.hasItem("Pasto")))
-				.andExpect(jsonPath("$[?(@.nombre == 'Mi Tienda')].logoUrl",
+				.andExpect(jsonPath("$.contenido[?(@.nombre == 'Mi Tienda')].ciudad")
+						.value(org.hamcrest.Matchers.hasItem("Pasto")))
+				.andExpect(jsonPath("$.contenido[?(@.nombre == 'Mi Tienda')].logoUrl",
 						org.hamcrest.Matchers.hasItem(org.hamcrest.Matchers.endsWith(".png"))));
 	}
 
