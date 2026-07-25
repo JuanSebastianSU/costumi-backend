@@ -8,6 +8,35 @@
 > `CLAUDE.md`) para retomar sin perder el hilo. Regla: mueve ítems entre secciones,
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
+## RED-19 (Fase B, 2 — COMPLETADO) — separación identidad/empresa (H1) + una-membresía-activa + switch Comprando↔Trabajando (2026-07-25)
+
+Cierra bien el **paso 2** del plan (`PLAN_IDENTIDAD_PERMISOS.md` §7.2): lo de RED-18 tenía plomería de
+membresía pero le faltaban las dos piezas que DEFINEN el paso 2, y el switch estaba divergido. Corregido,
+todo aditivo y sin tocar el login base.
+
+- **Switch corregido a «Comprando ↔ Trabajando» (H1)**: `POST /api/v1/auth/contexto` ahora recibe
+  `{modo: COMPRA | TRABAJO}` (enum `ModoDeSesion`), **no** `{empresaId}`. `COMPRA` → proyecta la identidad a
+  **cliente** (rol=CLIENTE, sin empresa) y emite token → *la misma persona ya puede comprar* (era el problema
+  de H1). `TRABAJO` → proyecta a la **empresa+rol de su membresía activa** y emite token; **400** si no tiene
+  membresía de trabajo activa. Antes el switch era tienda-A↔tienda-B (multi-tienda), que contradice la
+  decisión #2 del plan. Reusa `EmisorDeSesion` (no toca el emisor ni el login).
+- **Regla «una membresía de trabajo ACTIVA» (seguridad #2)**: índice único **parcial** V77
+  `uq_membresia_una_activa on membresia (usuario_id) where estado='ACTIVA'` — garantía a nivel DB (seguro
+  sobre los datos: el backfill V76 dejó una sola ACTIVA por usuario). Puerto/adapter `activaDeUsuario(usuarioId)`
+  (`findFirstByUsuarioIdAndEstado`).
+- **H1 en `/auth/me`**: `UsuarioActualResponse` gana `membresiaActiva {empresaId, empresaNombre, rol}` (o null)
+  — la app sabe si ofrecer el switch y en qué tienda trabaja la persona, independiente del contexto actual del
+  token. Aditivo (los tests que asertan email/rol/empresaId siguen verdes; para cliente va null → omitido).
+- **Sync rol base ↔ membresía**: `CambiarRolDeEmpleadoService` ahora también actualiza la membresía activa
+  (antes quedaban desincronizados y «Trabajando» habría usado el rol viejo). `Membresia.conRol(...)`.
+- Migración **V77**. Tests: `MembresiaIntegrationTest` reescrito (alterna Comprando/Trabajando decodificando el
+  JWT; cliente sin membresía → 400; `/me` expone la membresía activa; alta crea membresía). **Suite 587/587**
+  (ArchUnit + Modulith; login/refresh/registro/promoción a dueño intactos).
+- ⚠️ **Follow-up (aparte, no es del paso 2)**: el **refresh** sigue re-proyectando al contexto BASE del
+  `Usuario`. El refresh JWT YA lleva los claims empresa_id+rol del contexto, pero `RefrescarTokenService` los
+  ignora y recarga por email. Para que el modo (Comprando/Trabajando) sobreviva al refresh: leer esos claims +
+  re-validar que la membresía siga ACTIVA + re-proyectar. Delicado (toca el core del refresh) → lote propio.
+
 ## RED-18 (Fase B, 2) — multi-sucursal (filtro X-Sucursal-Id) + membresía multi-tienda + cambio de contexto (2026-07-25)
 
 Dos pasos de la Fase B en un solo lote (aditivos, sin tocar login/refresh/token base).

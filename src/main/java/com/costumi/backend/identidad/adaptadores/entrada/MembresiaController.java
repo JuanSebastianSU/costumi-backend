@@ -2,6 +2,7 @@ package com.costumi.backend.identidad.adaptadores.entrada;
 
 import com.costumi.backend.identidad.aplicacion.Credenciales;
 import com.costumi.backend.identidad.aplicacion.GestionarMembresias;
+import com.costumi.backend.identidad.aplicacion.ModoDeSesion;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -29,7 +30,7 @@ class MembresiaController {
 		this.membresias = membresias;
 	}
 
-	/** Las tiendas del usuario con su rol en cada una (para la pantalla "elegir tienda"). */
+	/** Las tiendas del usuario con su rol en cada una (historial de trabajo; a lo sumo una ACTIVA). */
 	@GetMapping("/me/membresias")
 	List<MembresiaResponse> mias(@AuthenticationPrincipal Jwt jwt) {
 		UUID usuarioId = UUID.fromString(jwt.getSubject());
@@ -38,18 +39,21 @@ class MembresiaController {
 				.toList();
 	}
 
-	/** Cambia el contexto activo a una tienda: devuelve un token nuevo con la empresa+rol de esa membresía. */
+	/**
+	 * Alterna el contexto de la sesión (H1): {@code COMPRA} → token de cliente; {@code TRABAJO} → token con
+	 * la empresa+rol de la membresía activa. Devuelve un token nuevo (400 si pide TRABAJO sin membresía activa).
+	 */
 	@PostMapping("/contexto")
 	TokenResponse cambiarContexto(@Valid @RequestBody CambiarContextoRequest request,
 			@AuthenticationPrincipal Jwt jwt) {
 		UUID usuarioId = UUID.fromString(jwt.getSubject());
-		Credenciales cred = membresias.cambiarContexto(usuarioId, request.empresaId());
+		Credenciales cred = membresias.cambiarContexto(usuarioId, request.modo());
 		return new TokenResponse(cred.accessToken(), cred.refreshToken(), "Bearer");
 	}
 
 	record MembresiaResponse(UUID empresaId, String empresaNombre, String rol, String estado) {
 	}
 
-	record CambiarContextoRequest(@NotNull UUID empresaId) {
+	record CambiarContextoRequest(@NotNull ModoDeSesion modo) {
 	}
 }

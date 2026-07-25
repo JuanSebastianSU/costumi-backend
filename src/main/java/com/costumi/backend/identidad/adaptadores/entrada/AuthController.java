@@ -3,6 +3,7 @@ package com.costumi.backend.identidad.adaptadores.entrada;
 import com.costumi.backend.identidad.aplicacion.AutenticarUsuario;
 import com.costumi.backend.identidad.aplicacion.CerrarSesion;
 import com.costumi.backend.identidad.aplicacion.Credenciales;
+import com.costumi.backend.identidad.aplicacion.GestionarMembresias;
 import com.costumi.backend.identidad.aplicacion.RecuperarContrasena;
 import com.costumi.backend.identidad.aplicacion.RefrescarToken;
 import com.costumi.backend.identidad.aplicacion.RegistrarCliente;
@@ -16,6 +17,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.UUID;
+
 /** Puerta de entrada de autenticación (RF-1.1, RF-17.4). */
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -27,16 +30,18 @@ class AuthController {
 	private final RegistrarCliente registrarCliente;
 	private final RecuperarContrasena recuperarContrasena;
 	private final LimitadorDeIntentos limitador;
+	private final GestionarMembresias membresias;
 
 	AuthController(AutenticarUsuario autenticarUsuario, RefrescarToken refrescarToken, CerrarSesion cerrarSesion,
 			RegistrarCliente registrarCliente, RecuperarContrasena recuperarContrasena,
-			LimitadorDeIntentos limitador) {
+			LimitadorDeIntentos limitador, GestionarMembresias membresias) {
 		this.autenticarUsuario = autenticarUsuario;
 		this.refrescarToken = refrescarToken;
 		this.cerrarSesion = cerrarSesion;
 		this.registrarCliente = registrarCliente;
 		this.recuperarContrasena = recuperarContrasena;
 		this.limitador = limitador;
+		this.membresias = membresias;
 	}
 
 	/** Login: email + contraseña → token de acceso + token de refresco. Limitado por cuenta (A2). */
@@ -92,13 +97,19 @@ class AuthController {
 		}
 	}
 
-	/** Identidad del usuario autenticado (requiere token válido). */
+	/** Identidad del usuario autenticado (H1): persona + contexto actual del token + membresía activa si tiene. */
 	@GetMapping("/me")
 	UsuarioActualResponse me(@AuthenticationPrincipal Jwt jwt) {
+		UUID usuarioId = UUID.fromString(jwt.getSubject());
+		UsuarioActualResponse.MembresiaActiva activa = membresias.activaDeUsuario(usuarioId)
+				.map(m -> new UsuarioActualResponse.MembresiaActiva(
+						m.empresaId().toString(), m.empresaNombre(), m.rol().name()))
+				.orElse(null);
 		return new UsuarioActualResponse(
 				jwt.getSubject(),
 				jwt.getClaimAsString("email"),
 				jwt.getClaimAsString("rol"),
-				jwt.getClaimAsString("empresa_id"));
+				jwt.getClaimAsString("empresa_id"),
+				activa);
 	}
 }

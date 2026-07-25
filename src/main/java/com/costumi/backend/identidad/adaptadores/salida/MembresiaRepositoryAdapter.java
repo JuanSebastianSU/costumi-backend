@@ -1,5 +1,6 @@
 package com.costumi.backend.identidad.adaptadores.salida;
 
+import com.costumi.backend.identidad.dominio.EstadoMembresia;
 import com.costumi.backend.identidad.dominio.Membresia;
 import com.costumi.backend.identidad.dominio.MembresiaRepository;
 import org.springframework.stereotype.Repository;
@@ -26,6 +27,12 @@ class MembresiaRepositoryAdapter implements MembresiaRepository {
 	@Override
 	public Optional<Membresia> buscar(UUID usuarioId, UUID empresaId) {
 		return jpa.findByUsuarioIdAndEmpresaId(usuarioId, empresaId).map(MembresiaRepositoryAdapter::aDominio);
+	}
+
+	@Override
+	public Optional<Membresia> activaDeUsuario(UUID usuarioId) {
+		return jpa.findFirstByUsuarioIdAndEstado(usuarioId, EstadoMembresia.ACTIVA)
+				.map(MembresiaRepositoryAdapter::aDominio);
 	}
 
 	@Override

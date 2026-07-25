@@ -26,7 +26,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** Membresías multi-tienda y cambio de contexto (Fase B). */
+/**
+ * Membresía de trabajo (H1, Fase B paso 2): una persona es siempre cliente y, si tiene una membresía activa,
+ * alterna entre «Comprando» (token de cliente) y «Trabajando» (token con la empresa+rol de su membresía).
+ */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
@@ -48,35 +51,39 @@ class MembresiaIntegrationTest {
 	PasswordEncoder passwordEncoder;
 
 	@Test
-	void el_usuario_ve_sus_tiendas_y_cambia_de_contexto() throws Exception {
-		UUID empresaA = crearEmpresaAprobada("A");
-		UUID empresaB = crearEmpresaAprobada("B");
-		AuthTestHelper.Sesion m = AuthTestHelper.sesion(mvc, json, usuarios, passwordEncoder, empresaA, Rol.MOSTRADOR);
-		// Es MOSTRADOR en A y ENCARGADO en B.
-		membresias.guardar(Membresia.crear(m.usuarioId(), empresaA, Rol.MOSTRADOR));
-		membresias.guardar(Membresia.crear(m.usuarioId(), empresaB, Rol.ENCARGADO));
+	void el_empleado_alterna_entre_comprar_y_trabajar() throws Exception {
+		UUID empresa = crearEmpresaAprobada("A");
+		AuthTestHelper.Sesion m = AuthTestHelper.sesion(mvc, json, usuarios, passwordEncoder, empresa, Rol.MOSTRADOR);
+		membresias.guardar(Membresia.crear(m.usuarioId(), empresa, Rol.MOSTRADOR));
 
-		// Ve sus dos tiendas con su rol en cada una.
-		mvc.perform(get("/api/v1/auth/me/membresias").header("Authorization", "Bearer " + m.token()))
+		// Trabajando → token con la empresa+rol de la membresía.
+		JsonNode trabajo = claimsDe(postContexto(m.token(), "TRABAJO"));
+		assertThat(trabajo.get("empresa_id").asText()).isEqualTo(empresa.toString());
+		assertThat(trabajo.get("rol").asText()).isEqualTo("MOSTRADOR");
+
+		// Comprando → token de cliente (sin empresa, rol CLIENTE): la misma persona ahora puede comprar (H1).
+		JsonNode compra = claimsDe(postContexto(m.token(), "COMPRA"));
+		assertThat(compra.get("rol").asText()).isEqualTo("CLIENTE");
+		assertThat(compra.has("empresa_id")).isFalse();
+	}
+
+	@Test
+	void me_expone_la_membresia_activa() throws Exception {
+		UUID empresa = crearEmpresaAprobada("Me");
+		AuthTestHelper.Sesion m = AuthTestHelper.sesion(mvc, json, usuarios, passwordEncoder, empresa, Rol.ENCARGADO);
+		membresias.guardar(Membresia.crear(m.usuarioId(), empresa, Rol.ENCARGADO));
+
+		mvc.perform(get("/api/v1/auth/me").header("Authorization", "Bearer " + m.token()))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.length()").value(2))
-				.andExpect(jsonPath("$[?(@.empresaId == '" + empresaA + "')].rol", hasItem("MOSTRADOR")))
-				.andExpect(jsonPath("$[?(@.empresaId == '" + empresaB + "')].rol", hasItem("ENCARGADO")));
+				.andExpect(jsonPath("$.membresiaActiva.empresaId").value(empresa.toString()))
+				.andExpect(jsonPath("$.membresiaActiva.rol").value("ENCARGADO"));
+	}
 
-		// Cambia de contexto a B → token con empresa B + rol ENCARGADO.
-		String res = mvc.perform(post("/api/v1/auth/contexto").header("Authorization", "Bearer " + m.token())
-						.contentType(MediaType.APPLICATION_JSON).content("{\"empresaId\":\"" + empresaB + "\"}"))
-				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.accessToken").isNotEmpty())
-				.andReturn().getResponse().getContentAsString();
-		JsonNode claims = json.readTree(new String(Base64.getUrlDecoder().decode(
-				json.readTree(res).get("accessToken").asText().split("\\.")[1])));
-		assertThat(claims.get("empresa_id").asText()).isEqualTo(empresaB.toString());
-		assertThat(claims.get("rol").asText()).isEqualTo("ENCARGADO");
-
-		// A una tienda donde no tiene membresía → 400.
-		mvc.perform(post("/api/v1/auth/contexto").header("Authorization", "Bearer " + m.token())
-						.contentType(MediaType.APPLICATION_JSON).content("{\"empresaId\":\"" + UUID.randomUUID() + "\"}"))
+	@Test
+	void un_cliente_sin_membresia_no_puede_entrar_a_trabajar() throws Exception {
+		AuthTestHelper.Sesion c = AuthTestHelper.sesion(mvc, json, usuarios, passwordEncoder, null, Rol.CLIENTE);
+		mvc.perform(post("/api/v1/auth/contexto").header("Authorization", "Bearer " + c.token())
+						.contentType(MediaType.APPLICATION_JSON).content("{\"modo\":\"TRABAJO\"}"))
 				.andExpect(status().isBadRequest());
 	}
 
@@ -103,6 +110,21 @@ class MembresiaIntegrationTest {
 	@Test
 	void sin_token_devuelve_401() throws Exception {
 		mvc.perform(get("/api/v1/auth/me/membresias")).andExpect(status().isUnauthorized());
+	}
+
+	/** POST /auth/contexto con el modo dado; devuelve el accessToken emitido. */
+	private String postContexto(String token, String modo) throws Exception {
+		String res = mvc.perform(post("/api/v1/auth/contexto").header("Authorization", "Bearer " + token)
+						.contentType(MediaType.APPLICATION_JSON).content("{\"modo\":\"" + modo + "\"}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.accessToken").isNotEmpty())
+				.andReturn().getResponse().getContentAsString();
+		return json.readTree(res).get("accessToken").asText();
+	}
+
+	/** Decodifica el payload (claims) de un JWT sin verificar la firma. */
+	private JsonNode claimsDe(String jwt) throws Exception {
+		return json.readTree(new String(Base64.getUrlDecoder().decode(jwt.split("\\.")[1])));
 	}
 
 	private UUID crearEmpresaAprobada(String nombre) throws Exception {
