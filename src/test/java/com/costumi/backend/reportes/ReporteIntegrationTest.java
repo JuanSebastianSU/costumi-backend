@@ -151,6 +151,16 @@ class ReporteIntegrationTest {
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.length()").value(1))
 				.andExpect(jsonPath("$[0].monto").value(100.00));
+
+		// Las series separadas por tipo (para graficar ventas vs rentas): 40 y 60 respectivamente.
+		mvc.perform(get("/api/v1/reportes/ventas-por-dia").header("Authorization", "Bearer " + dueno)
+						.param("desde", "2026-01-01").param("hasta", "2030-12-31"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[0].monto").value(40.00));
+		mvc.perform(get("/api/v1/reportes/rentas-por-dia").header("Authorization", "Bearer " + dueno)
+						.param("desde", "2026-01-01").param("hasta", "2030-12-31"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$[0].monto").value(60.00));
 	}
 
 	@Test

@@ -10,5 +10,5 @@ import java.util.UUID;
  * agrupar por el disfraz de origen, el dueño solo puede ver qué prenda se vende más, nunca qué disfraz.
  * {@code unidades} cuenta disfraces (grupos), no piezas.
  */
-public record DisfrazRanking(UUID disfrazId, String nombre, long unidades, BigDecimal monto) {
+public record DisfrazRanking(UUID disfrazId, String nombre, String fotoUrl, long unidades, BigDecimal monto) {
 }

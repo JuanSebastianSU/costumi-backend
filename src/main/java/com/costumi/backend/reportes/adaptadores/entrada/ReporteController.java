@@ -86,7 +86,27 @@ class ReporteController {
 			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
 			@AuthenticationPrincipal Jwt jwt) {
 		UUID empresaId = tenant.empresaIdRequerida();
-		return consultarIngresos.porDia(empresaId, sucursalId, desde, hasta);
+		return consultarIngresos.porDia(empresaId, sucursalId, desde, hasta, null);
+	}
+
+	/** Serie de VENTAS por día (para graficar ventas vs rentas por separado, G1/G8). */
+	@GetMapping("/ventas-por-dia")
+	List<com.costumi.backend.reportes.dominio.IngresoDelDia> ventasPorDia(
+			@RequestParam(required = false) UUID sucursalId,
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+			@AuthenticationPrincipal Jwt jwt) {
+		return consultarIngresos.porDia(tenant.empresaIdRequerida(), sucursalId, desde, hasta, "VENTA");
+	}
+
+	/** Serie de RENTAS por día. */
+	@GetMapping("/rentas-por-dia")
+	List<com.costumi.backend.reportes.dominio.IngresoDelDia> rentasPorDia(
+			@RequestParam(required = false) UUID sucursalId,
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+			@AuthenticationPrincipal Jwt jwt) {
+		return consultarIngresos.porDia(tenant.empresaIdRequerida(), sucursalId, desde, hasta, "RENTA");
 	}
 
 	@GetMapping("/rentas-vencidas")

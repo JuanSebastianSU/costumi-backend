@@ -83,6 +83,14 @@ public class LineaDeCarrito {
 		this.cantidad += cantidad;
 	}
 
+	/** Fija la cantidad (editar sin quitar y volver a agregar). Debe ser mayor a 0. */
+	void fijarCantidad(int nuevaCantidad) {
+		if (nuevaCantidad <= 0) {
+			throw new IllegalArgumentException("La cantidad debe ser mayor a 0");
+		}
+		this.cantidad = nuevaCantidad;
+	}
+
 	/** ¿Agrupa con (prenda, periodo)? Solo aplica a líneas de prenda. */
 	boolean mismaClave(UUID prendaId, LocalDate fechaRetiro, LocalDate fechaDevolucion) {
 		return esPrenda()

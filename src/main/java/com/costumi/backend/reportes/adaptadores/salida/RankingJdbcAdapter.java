@@ -24,14 +24,14 @@ class RankingJdbcAdapter implements RankingReadRepository {
 
 	@Override
 	public List<ArticuloRanking> masVendidos(UUID empresaId, UUID sucursalId, int limite) {
-		String sql = "select lv.prenda_id, p.nombre,"
+		String sql = "select lv.prenda_id, p.nombre, p.foto_url,"
 				+ " sum(lv.cantidad) as unidades, coalesce(sum(lv.cantidad * lv.precio_unitario), 0) as monto"
 				+ " from linea_de_venta lv"
 				+ " join venta v on v.id = lv.venta_id"
 				+ " join prenda p on p.id = lv.prenda_id"
 				+ " where lv.empresa_id = :empresaId"
 				+ (sucursalId == null ? "" : " and v.sucursal_id = :sucursalId")
-				+ " group by lv.prenda_id, p.nombre order by unidades desc limit :limite";
+				+ " group by lv.prenda_id, p.nombre, p.foto_url order by unidades desc limit :limite";
 		JdbcClient.StatementSpec spec = jdbc.sql(sql).param("empresaId", empresaId).param("limite", limite);
 		if (sucursalId != null) {
 			spec = spec.param("sucursalId", sucursalId);
@@ -44,7 +44,7 @@ class RankingJdbcAdapter implements RankingReadRepository {
 			int limite) {
 		// Multi-artículo (RF-3.1): cuenta las unidades por línea (renta_linea), no las rentas. El monto
 		// es Σ precio×cantidad×días de cada línea (mismo criterio que el importe de la renta).
-		String sql = "select l.prenda_id, p.nombre, sum(l.cantidad) as unidades,"
+		String sql = "select l.prenda_id, p.nombre, p.foto_url, sum(l.cantidad) as unidades,"
 				+ " coalesce(sum(l.cantidad * l.precio_por_dia"
 				+ "   * greatest(1, (r.fecha_devolucion - r.fecha_retiro))), 0) as monto"
 				+ " from renta_linea l"
@@ -54,7 +54,7 @@ class RankingJdbcAdapter implements RankingReadRepository {
 				+ (sucursalId == null ? "" : " and r.sucursal_id = :sucursalId")
 				+ (desde == null ? "" : " and r.fecha_retiro >= :desde")
 				+ (hasta == null ? "" : " and r.fecha_retiro <= :hasta")
-				+ " group by l.prenda_id, p.nombre order by unidades desc limit :limite";
+				+ " group by l.prenda_id, p.nombre, p.foto_url order by unidades desc limit :limite";
 		JdbcClient.StatementSpec spec = jdbc.sql(sql).param("empresaId", empresaId).param("limite", limite);
 		if (sucursalId != null) {
 			spec = spec.param("sucursalId", sucursalId);
@@ -72,7 +72,7 @@ class RankingJdbcAdapter implements RankingReadRepository {
 	public List<DisfrazRanking> disfracesMasVendidos(UUID empresaId, UUID sucursalId, int limite) {
 		// Cuenta DISFRACES, no piezas: cada grupo es una instancia cobrada, y su cantidad se repite en
 		// todas sus líneas, asi que se toma una sola vez por grupo (max) y el monto es la suma del grupo.
-		String sql = "select g.disfraz_id, d.nombre, sum(g.unidades) as unidades, sum(g.monto) as monto"
+		String sql = "select g.disfraz_id, d.nombre, d.foto_url, sum(g.unidades) as unidades, sum(g.monto) as monto"
 				+ " from (select lv.disfraz_id, lv.disfraz_grupo, max(lv.disfraz_cantidad) as unidades,"
 				+ "              coalesce(sum(lv.cantidad * lv.precio_unitario), 0) as monto"
 				+ "       from linea_de_venta lv"
@@ -81,7 +81,7 @@ class RankingJdbcAdapter implements RankingReadRepository {
 				+ (sucursalId == null ? "" : " and v.sucursal_id = :sucursalId")
 				+ "       group by lv.disfraz_id, lv.disfraz_grupo) g"
 				+ " join disfraz d on d.id = g.disfraz_id"
-				+ " group by g.disfraz_id, d.nombre order by unidades desc limit :limite";
+				+ " group by g.disfraz_id, d.nombre, d.foto_url order by unidades desc limit :limite";
 		JdbcClient.StatementSpec spec = jdbc.sql(sql).param("empresaId", empresaId).param("limite", limite);
 		if (sucursalId != null) {
 			spec = spec.param("sucursalId", sucursalId);
@@ -92,7 +92,7 @@ class RankingJdbcAdapter implements RankingReadRepository {
 	@Override
 	public List<DisfrazRanking> disfracesMasRentados(UUID empresaId, UUID sucursalId, LocalDate desde,
 			LocalDate hasta, int limite) {
-		String sql = "select g.disfraz_id, d.nombre, sum(g.unidades) as unidades, sum(g.monto) as monto"
+		String sql = "select g.disfraz_id, d.nombre, d.foto_url, sum(g.unidades) as unidades, sum(g.monto) as monto"
 				+ " from (select l.disfraz_id, l.disfraz_grupo, max(l.disfraz_cantidad) as unidades,"
 				+ "              coalesce(sum(l.cantidad * l.precio_por_dia"
 				+ "                * greatest(1, (r.fecha_devolucion - r.fecha_retiro))), 0) as monto"
@@ -104,7 +104,7 @@ class RankingJdbcAdapter implements RankingReadRepository {
 				+ (hasta == null ? "" : " and r.fecha_retiro <= :hasta")
 				+ "       group by l.disfraz_id, l.disfraz_grupo) g"
 				+ " join disfraz d on d.id = g.disfraz_id"
-				+ " group by g.disfraz_id, d.nombre order by unidades desc limit :limite";
+				+ " group by g.disfraz_id, d.nombre, d.foto_url order by unidades desc limit :limite";
 		JdbcClient.StatementSpec spec = jdbc.sql(sql).param("empresaId", empresaId).param("limite", limite);
 		if (sucursalId != null) {
 			spec = spec.param("sucursalId", sucursalId);

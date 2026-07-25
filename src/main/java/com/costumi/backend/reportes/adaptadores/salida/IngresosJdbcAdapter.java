@@ -60,10 +60,15 @@ class IngresosJdbcAdapter implements IngresosReadRepository {
 	}
 
 	@Override
-	public List<IngresoDelDia> porDia(UUID empresaId, UUID sucursalId, LocalDate desde, LocalDate hasta) {
-		// Ingreso total por día (todos los pagos de la empresa), para la tendencia del panel.
+	public List<IngresoDelDia> porDia(UUID empresaId, UUID sucursalId, LocalDate desde, LocalDate hasta,
+			String tipoConcepto) {
+		// Ingreso por día para la tendencia del panel. tipoConcepto null = todos los pagos; 'VENTA'/'RENTA'
+		// separan la serie (para graficar ventas vs rentas por día).
 		StringBuilder sql = new StringBuilder(
 				"select fecha::date as fecha, coalesce(sum(monto), 0) as monto from pago where empresa_id = :empresaId");
+		if (tipoConcepto != null) {
+			sql.append(" and tipo_concepto = :tipo");
+		}
 		if (sucursalId != null) {
 			sql.append(" and sucursal_id = :sucursalId");
 		}
@@ -75,6 +80,9 @@ class IngresosJdbcAdapter implements IngresosReadRepository {
 		}
 		sql.append(" group by fecha::date order by fecha::date");
 		JdbcClient.StatementSpec spec = jdbc.sql(sql.toString()).param("empresaId", empresaId);
+		if (tipoConcepto != null) {
+			spec = spec.param("tipo", tipoConcepto);
+		}
 		if (sucursalId != null) {
 			spec = spec.param("sucursalId", sucursalId);
 		}

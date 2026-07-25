@@ -29,6 +29,18 @@ class MarketplaceService implements DescubrirEmpresas {
 
 	@Override
 	@Transactional(readOnly = true)
+	public java.util.Optional<EmpresaEnVitrina> empresa(UUID empresaId) {
+		return marketplace.empresa(empresaId);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<com.costumi.backend.marketplace.dominio.CategoriaEnVitrina> categoriasDe(UUID empresaId) {
+		return marketplace.categoriasDe(empresaId);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
 	public List<PrendaEnVitrina> catalogo(UUID empresaId, UUID categoriaId) {
 		return marketplace.catalogoDe(empresaId, categoriaId);
 	}

@@ -388,6 +388,37 @@ class CarritoIntegrationTest {
 	}
 
 	@Test
+	void el_cliente_puede_editar_la_cantidad_de_una_linea() throws Exception {
+		Ctx c = montar();
+		stock(c, 9);
+		// Agrega una prenda de VENTA con cantidad 1.
+		String carrito = mvc.perform(post("/api/v1/carritos/items").header("Authorization", "Bearer " + c.dueno())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + c.sucursal() + "\",\"clienteId\":\"" + c.cliente()
+								+ "\",\"tipo\":\"VENTA\",\"prendaId\":\"" + c.prenda() + "\",\"cantidad\":1}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.lineas[0].cantidad").value(1))
+				.andReturn().getResponse().getContentAsString();
+		String lineaId = json.readTree(carrito).get("lineas").get(0).get("id").asText();
+
+		// Edita la cantidad a 3 sin tener que quitar y volver a agregar.
+		mvc.perform(put("/api/v1/carritos/items/{lineaId}", lineaId).header("Authorization", "Bearer " + c.dueno())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + c.sucursal() + "\",\"clienteId\":\"" + c.cliente()
+								+ "\",\"tipo\":\"VENTA\",\"cantidad\":3}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.lineas.length()").value(1))
+				.andExpect(jsonPath("$.lineas[0].cantidad").value(3));
+
+		// Cantidad inválida (0) → 400.
+		mvc.perform(put("/api/v1/carritos/items/{lineaId}", lineaId).header("Authorization", "Bearer " + c.dueno())
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalId\":\"" + c.sucursal() + "\",\"clienteId\":\"" + c.cliente()
+								+ "\",\"tipo\":\"VENTA\",\"cantidad\":0}"))
+				.andExpect(status().isBadRequest());
+	}
+
+	@Test
 	void no_se_puede_agregar_prenda_y_disfraz_a_la_vez() throws Exception {
 		Ctx c = montar();
 		mvc.perform(post("/api/v1/carritos/items").header("Authorization", "Bearer " + c.dueno())

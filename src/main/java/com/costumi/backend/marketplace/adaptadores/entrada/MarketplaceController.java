@@ -1,6 +1,7 @@
 package com.costumi.backend.marketplace.adaptadores.entrada;
 
 import com.costumi.backend.marketplace.aplicacion.DescubrirEmpresas;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -30,6 +31,19 @@ class MarketplaceController {
 		return com.costumi.backend.compartido.RespuestaPaginada.desde(
 				descubrirEmpresas.empresas(buscar, com.costumi.backend.compartido.SolicitudDePagina.de(pagina, tamano)),
 				EmpresaVitrinaResponse::desde);
+	}
+
+	/** Detalle público de UNA tienda ACTIVA (cabecera de su vitrina): logo/portada/ciudad/#disfraces (RF-18.1). */
+	@GetMapping("/empresas/{empresaId}")
+	ResponseEntity<EmpresaVitrinaResponse> empresa(@PathVariable UUID empresaId) {
+		return descubrirEmpresas.empresa(empresaId).map(EmpresaVitrinaResponse::desde)
+				.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+	}
+
+	/** Facetas: categorías presentes en el catálogo público de la tienda (para filtrar, RF-18.1). */
+	@GetMapping("/empresas/{empresaId}/categorias")
+	List<CategoriaVitrinaResponse> categorias(@PathVariable UUID empresaId) {
+		return descubrirEmpresas.categoriasDe(empresaId).stream().map(CategoriaVitrinaResponse::desde).toList();
 	}
 
 	/** Catálogo público de una tienda: el cliente ve las prendas de cualquier empresa ACTIVA (RF-18). */
