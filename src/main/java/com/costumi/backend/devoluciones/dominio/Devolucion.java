@@ -1,6 +1,8 @@
 package com.costumi.backend.devoluciones.dominio;
 
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -19,10 +21,13 @@ public class Devolucion {
 	private final BigDecimal cargoPorDanos;
 	private final BigDecimal cargoPorRetraso;
 	private final BigDecimal remanente;
+	private final Instant registradaEn;
+	private final LocalDate fechaDevolucionReal;
 	private final List<PiezaRevisada> piezas;
 
 	private Devolucion(UUID id, UUID empresaId, UUID rentaId, BigDecimal deposito, BigDecimal cargoPorDanos,
-			BigDecimal cargoPorRetraso, BigDecimal remanente, List<PiezaRevisada> piezas) {
+			BigDecimal cargoPorRetraso, BigDecimal remanente, Instant registradaEn, LocalDate fechaDevolucionReal,
+			List<PiezaRevisada> piezas) {
 		this.id = Objects.requireNonNull(id, "id");
 		this.empresaId = Objects.requireNonNull(empresaId, "empresaId");
 		this.rentaId = Objects.requireNonNull(rentaId, "rentaId");
@@ -30,18 +35,20 @@ public class Devolucion {
 		this.cargoPorDanos = cargoPorDanos;
 		this.cargoPorRetraso = cargoPorRetraso;
 		this.remanente = remanente;
+		this.registradaEn = registradaEn;
+		this.fechaDevolucionReal = fechaDevolucionReal;
 		this.piezas = new ArrayList<>(piezas);
 	}
 
 	public static Devolucion crear(UUID empresaId, UUID rentaId, BigDecimal deposito, BigDecimal cargoPorDanos,
-			BigDecimal cargoPorRetraso, List<PiezaRevisada> piezas) {
+			BigDecimal cargoPorRetraso, LocalDate fechaDevolucionReal, List<PiezaRevisada> piezas) {
 		BigDecimal dep = noNegativo(deposito, "depósito");
 		BigDecimal danos = noNegativo(cargoPorDanos, "cargo por daños");
 		BigDecimal retraso = noNegativo(cargoPorRetraso, "cargo por retraso");
 		// Remanente a devolver = garantía − daños − recargos, nunca por debajo de 0 (RF-5.3).
 		BigDecimal remanente = dep.subtract(danos).subtract(retraso).max(BigDecimal.ZERO);
 		return new Devolucion(UUID.randomUUID(), empresaId, rentaId, dep, danos, retraso, remanente,
-				List.copyOf(piezas));
+				Instant.now(), fechaDevolucionReal, List.copyOf(piezas));
 	}
 
 	/**
@@ -53,8 +60,10 @@ public class Devolucion {
 	}
 
 	public static Devolucion rehidratar(UUID id, UUID empresaId, UUID rentaId, BigDecimal deposito,
-			BigDecimal cargoPorDanos, BigDecimal cargoPorRetraso, BigDecimal remanente, List<PiezaRevisada> piezas) {
-		return new Devolucion(id, empresaId, rentaId, deposito, cargoPorDanos, cargoPorRetraso, remanente, piezas);
+			BigDecimal cargoPorDanos, BigDecimal cargoPorRetraso, BigDecimal remanente, Instant registradaEn,
+			LocalDate fechaDevolucionReal, List<PiezaRevisada> piezas) {
+		return new Devolucion(id, empresaId, rentaId, deposito, cargoPorDanos, cargoPorRetraso, remanente,
+				registradaEn, fechaDevolucionReal, piezas);
 	}
 
 	private static BigDecimal noNegativo(BigDecimal valor, String concepto) {
@@ -95,5 +104,15 @@ public class Devolucion {
 
 	public BigDecimal remanente() {
 		return remanente;
+	}
+
+	/** Momento en que se registró la devolución; base para ordenar la lista por recencia. */
+	public Instant registradaEn() {
+		return registradaEn;
+	}
+
+	/** Fecha real en que el cliente devolvió (la ingresada al registrar); puede ser null en datos previos. */
+	public LocalDate fechaDevolucionReal() {
+		return fechaDevolucionReal;
 	}
 }

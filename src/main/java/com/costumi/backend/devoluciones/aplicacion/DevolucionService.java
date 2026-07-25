@@ -128,7 +128,7 @@ class DevolucionService implements RegistrarDevolucion, ConsultarDevoluciones,
 			cargoPorRetraso = BigDecimal.ZERO;
 		}
 		Devolucion devolucion = devoluciones.guardar(Devolucion.crear(empresaId, rentaId,
-				comando.deposito(), cargoPorDanos, cargoPorRetraso, comando.piezas()));
+				comando.deposito(), cargoPorDanos, cargoPorRetraso, comando.fechaDevolucionReal(), comando.piezas()));
 
 		// Cierra la renta (RF-5.1) SOLO cuando se han RESUELTO todas las unidades; si falta alguna (por
 		// devolver, o perdida sin cobrar) sigue ACTIVA para admitir más devoluciones (RF-5.5).

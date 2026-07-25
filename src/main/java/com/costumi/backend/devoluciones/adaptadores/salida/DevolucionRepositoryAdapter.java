@@ -25,7 +25,7 @@ class DevolucionRepositoryAdapter implements DevolucionRepository {
 	public Devolucion guardar(Devolucion devolucion) {
 		cabeceras.save(new DevolucionJpaEntity(devolucion.id(), devolucion.empresaId(), devolucion.rentaId(),
 				devolucion.deposito(), devolucion.cargoPorDanos(), devolucion.cargoPorRetraso(),
-				devolucion.remanente()));
+				devolucion.remanente(), devolucion.registradaEn(), devolucion.fechaDevolucionReal()));
 		for (PiezaRevisada pieza : devolucion.piezas()) {
 			piezas.save(new PiezaRevisadaJpaEntity(UUID.randomUUID(), devolucion.id(), devolucion.empresaId(),
 					pieza.prendaId(), pieza.descripcion(), pieza.llego(), pieza.estado(), pieza.perdidaCobrada()));
@@ -45,9 +45,13 @@ class DevolucionRepositoryAdapter implements DevolucionRepository {
 
 	@Override
 	public com.costumi.backend.compartido.Pagina<Devolucion> listarPorEmpresa(UUID empresaId, String buscar, com.costumi.backend.compartido.SolicitudDePagina pagina) {
+		// Recencia (regla «más reciente primero»): la más recién registrada arriba.
 		org.springframework.data.domain.Page<DevolucionJpaEntity> page = cabeceras.buscarPagina(empresaId,
 				buscar == null || buscar.isBlank() ? null : buscar.trim(),
-				org.springframework.data.domain.PageRequest.of(pagina.pagina(), pagina.tamano()));
+				org.springframework.data.domain.PageRequest.of(pagina.pagina(), pagina.tamano(),
+						org.springframework.data.domain.Sort.by(
+								org.springframework.data.domain.Sort.Order.desc("registradaEn"),
+								org.springframework.data.domain.Sort.Order.asc("id"))));
 		return com.costumi.backend.compartido.Pagina.de(page.getContent().stream().map(this::aDominio).toList(),
 				page.getTotalElements(), pagina);
 	}
@@ -64,6 +68,6 @@ class DevolucionRepositoryAdapter implements DevolucionRepository {
 				.toList();
 		return Devolucion.rehidratar(cabecera.getId(), cabecera.getEmpresaId(), cabecera.getRentaId(),
 				cabecera.getDeposito(), cabecera.getCargoPorDanos(), cabecera.getCargoPorRetraso(),
-				cabecera.getRemanente(), checklist);
+				cabecera.getRemanente(), cabecera.getRegistradaEn(), cabecera.getFechaDevolucionReal(), checklist);
 	}
 }
