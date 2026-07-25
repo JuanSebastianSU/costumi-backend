@@ -8,6 +8,20 @@
 > `CLAUDE.md`) para retomar sin perder el hilo. Regla: mueve ítems entre secciones,
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
+## RED-5 — datos del panel: serie de ingresos por día + rentas por cerrar (2026-07-25)
+
+Bloque B3b. Completa los datos que el panel (G1) necesitaba y que faltaban tras B3.
+
+- `GET /reportes/ingresos-por-dia?desde=&hasta=&sucursalId=` → serie `{fecha, monto}` agrupada por día,
+  para el gráfico de tendencia (y de ahí la variación vs. ayer).
+- `GET /reportes/devoluciones-por-cerrar?sucursalId=` → `{total}` de rentas en estado DEVUELTA (devueltas
+  sin cerrar), la alerta accionable del panel.
+- Sin migración. Tests de integración (serie agrupada por día; conteo con el flujo real hasta DEVUELTA).
+  **Suite 553/553**, ArchUnit + Modulith verdes.
+
+**Al mergear: regenerar `:api-client`** y cablear el gráfico + la alerta en el panel. **Pendiente**: totales
+del período en ventas (`/ventas/totales`) — chico, otro PR.
+
 ## RED-4 — ingresos y ganancia por período (desde/hasta) (2026-07-25)
 
 Bloque B3 (núcleo). El hallazgo sistémico **C**: `/reportes/ingresos` y `/reportes/ganancia` eran acumulado

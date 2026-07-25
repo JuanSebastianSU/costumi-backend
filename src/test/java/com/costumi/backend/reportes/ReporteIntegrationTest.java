@@ -131,6 +131,56 @@ class ReporteIntegrationTest {
 				.andExpect(jsonPath("$.ganancia").value(100.00));
 	}
 
+	private UUID crear(String path, String token, String body) throws Exception {
+		String res = mvc.perform(post(path).header("Authorization", "Bearer " + token)
+						.contentType(MediaType.APPLICATION_JSON).content(body))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		return UUID.fromString(json.readTree(res).get("id").asText());
+	}
+
+	@Test
+	void la_serie_de_ingresos_por_dia_agrupa_los_pagos_del_dia() throws Exception {
+		montar();
+		String dueno = tokenRol(Rol.DUENO);
+		pago(dueno, "VENTA", "40.00");
+		pago(dueno, "RENTA", "60.00");
+
+		// Ambos pagos son de hoy → un solo día con el total agrupado.
+		mvc.perform(get("/api/v1/reportes/ingresos-por-dia").header("Authorization", "Bearer " + dueno)
+						.param("desde", "2026-01-01").param("hasta", "2030-12-31"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(1))
+				.andExpect(jsonPath("$[0].monto").value(100.00));
+	}
+
+	@Test
+	void cuenta_las_rentas_devueltas_sin_cerrar() throws Exception {
+		montar();
+		String dueno = tokenRol(Rol.DUENO);
+		UUID categoria = crear("/api/v1/categorias", dueno, "{\"nombre\":\"Cat " + UUID.randomUUID() + "\"}");
+		UUID prenda = crear("/api/v1/prendas", dueno, "{\"categoriaId\":\"" + categoria
+				+ "\",\"nombre\":\"Traje\",\"tipoArticulo\":\"RENTA\",\"precioRenta\":20.00}");
+		crear("/api/v1/prendas/" + prenda + "/grupos-stock", dueno,
+				"{\"sucursalId\":\"" + sucursal + "\",\"combinacion\":[],\"cantidadInicial\":2}");
+		UUID cliente = crear("/api/v1/clientes", dueno, "{\"nombre\":\"Cli\"}");
+		UUID renta = crear("/api/v1/rentas", dueno, "{\"sucursalId\":\"" + sucursal + "\",\"clienteId\":\"" + cliente
+				+ "\",\"prendaId\":\"" + prenda + "\",\"fechaRetiro\":\"2026-09-01\",\"fechaDevolucion\":\"2026-09-03\","
+				+ "\"precioPorDia\":20.00,\"deposito\":50.00}");
+		mvc.perform(post("/api/v1/rentas/{id}/entregar", renta).header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk());
+		// Devolución que resuelve la pieza → la renta queda DEVUELTA (devuelta pero sin cerrar).
+		mvc.perform(post("/api/v1/devoluciones").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"rentaId\":\"" + renta + "\",\"deposito\":50.00,\"cargoPorDanos\":0.00,"
+								+ "\"cargoPorRetraso\":0.00,\"piezas\":[{\"prendaId\":\"" + prenda
+								+ "\",\"descripcion\":\"Traje\",\"llego\":true,\"estado\":\"BIEN\",\"perdidaCobrada\":false}]}"))
+				.andExpect(status().isCreated());
+
+		mvc.perform(get("/api/v1/reportes/devoluciones-por-cerrar").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.total").value(1));
+	}
+
 	/** Registra un pago en una sucursal concreta (no la de por defecto de la prueba). */
 	private void pagoEn(UUID suc, String token, String tipo, String monto) throws Exception {
 		mvc.perform(post("/api/v1/pagos").header("Authorization", "Bearer " + token)

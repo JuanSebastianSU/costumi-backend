@@ -5,8 +5,11 @@ import com.costumi.backend.reportes.dominio.ResumenDeIngresos;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
+import com.costumi.backend.reportes.dominio.IngresoDelDia;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -54,5 +57,33 @@ class IngresosJdbcAdapter implements IngresosReadRepository {
 			spec = spec.param("hasta", hasta);
 		}
 		return spec.query(BigDecimal.class).single();
+	}
+
+	@Override
+	public List<IngresoDelDia> porDia(UUID empresaId, UUID sucursalId, LocalDate desde, LocalDate hasta) {
+		// Ingreso total por día (todos los pagos de la empresa), para la tendencia del panel.
+		StringBuilder sql = new StringBuilder(
+				"select fecha::date as fecha, coalesce(sum(monto), 0) as monto from pago where empresa_id = :empresaId");
+		if (sucursalId != null) {
+			sql.append(" and sucursal_id = :sucursalId");
+		}
+		if (desde != null) {
+			sql.append(" and fecha::date >= :desde");
+		}
+		if (hasta != null) {
+			sql.append(" and fecha::date <= :hasta");
+		}
+		sql.append(" group by fecha::date order by fecha::date");
+		JdbcClient.StatementSpec spec = jdbc.sql(sql.toString()).param("empresaId", empresaId);
+		if (sucursalId != null) {
+			spec = spec.param("sucursalId", sucursalId);
+		}
+		if (desde != null) {
+			spec = spec.param("desde", desde);
+		}
+		if (hasta != null) {
+			spec = spec.param("hasta", hasta);
+		}
+		return spec.query(IngresoDelDia.class).list();
 	}
 }
