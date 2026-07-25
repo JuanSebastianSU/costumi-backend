@@ -37,12 +37,18 @@ Dos pasos de la Fase B en un solo lote (aditivos, sin tocar login/refresh/token 
 ## RED-17 (Fase B, 1) — permisos del propio usuario (nav por permisos) (2026-07-25)
 
 Primer paso del épico de identidad/permisos: que la app arme la navegación a partir de los **permisos**
-del usuario, no de su rol. (Rama propia `feat/faseb-permisos-del-usuario`, sin mergear al escribir esto.)
+del usuario, no de su rol.
 
 - `GET /api/v1/empleados/me/permisos` → lista de permisos **concedidos** del usuario del token
-  (`{seccion, accion}`) = `PlantillaDeRol.permisosDe(rol)` ± overrides del empleado. Sin chequeo de autoridad.
-  `GestionarPermisosDeEmpleado.mios(usuarioId, rol)` + `MisPermisosController`. Regla de seguridad literal
-  `/empleados/me/permisos` → `authenticated()` **antes** de la del comodín. Suite 581/581.
+  (`{seccion, accion}`), calculados como `PlantillaDeRol.permisosDe(rol)` ± los overrides del empleado. Sin
+  chequeo de autoridad (uno siempre ve los suyos); se resuelve por el token, nunca por un id del request.
+- Nuevo método `GestionarPermisosDeEmpleado.mios(usuarioId, rol)` (reusa el cálculo de `matriz`, sin el guard
+  de pirámide) + `MisPermisosController`.
+- **Seguridad**: regla literal `GET /empleados/me/permisos` → `authenticated()` **antes** de la del comodín
+  `/empleados/*/permisos` (DUENO/ENCARGADO), si no un MOSTRADOR no vería los suyos. Spring enruta el literal
+  "me" a este controller, no al de `{usuarioId}`.
+- Sin migración. Tests: mostrador/dueño ven los suyos, y reflejan un bloqueo del dueño; 401 sin token.
+  **Suite 581/581**.
 
 ## RED-16 (A7-v) — carrito: depósito por línea/total + fecha de creación (2026-07-25)
 
