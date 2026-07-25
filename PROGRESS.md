@@ -8,6 +8,28 @@
 > `CLAUDE.md`) para retomar sin perder el hilo. Regla: mueve ítems entre secciones,
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
+## RED-1 — recencia: fecha de registro expuesta + orden «más reciente primero» (2026-07-24)
+
+Primer PR del lote del rediseño (ver `PLAN_REDISENO_BACKEND.md`, ítem **A1**). La app rediseñada exige la
+regla global #1 (lo más reciente arriba), pero el backend no exponía cuándo se registró cada operación y
+algunas listas no ordenaban por eso.
+
+- **`VentaResponse` y `RentaResponse` ganan `creadaEn`** (Instant): antes la venta no traía ninguna fecha y
+  la renta solo las pactadas. `Renta` (dominio) ahora lleva `creadaEn` como `Venta`; `RentaJpaEntity` mapea
+  la columna `creada_en` (existía desde V57 pero JPA no la leía). **Sin migración nueva**: las columnas ya
+  estaban (`venta.creada_en` V47, `renta.creada_en` V57, `pago.fecha` V13).
+- **Orden por recencia:** la lista de **rentas** pasa a ordenar por `creadaEn` DESC (antes por `fechaRetiro`
+  pactada); **ventas** ya ordenaba por `creadaEn`; **pagos por concepto** ahora ordena por `fecha` DESC.
+- **Historial del cliente arreglado:** la venta salía con `fecha` **null** (caía al fondo) y la renta
+  ordenaba por su fecha de retiro. Ahora ambas usan `creada_en` para fechar y ordenar, y
+  `historialDeUsuario` reordena el total al cruzar tiendas.
+- Tests nuevos: recencia del historial (venta más reciente primero, con fecha no nula), orden de la lista de
+  rentas + `creadaEn` expuesto, `creadaEn` en la venta. **Suite 544/544** (Docker, JDK21). ArchUnit + Modulith verdes.
+
+**Al mergear: regenerar `:api-client`** (`VentaResponse`/`RentaResponse` ganan `creadaEn`) y cablear en el
+front las fechas + el orden. **Pendiente A1-bis** (otro PR, con migración): hitos reales de la renta
+(entregada/devuelta-real/cerrada), timestamps del turno de caja y fecha de la devolución.
+
 ## OP-6 — el tipo del disfraz y el de sus piezas son coherentes (2026-07-22)
 
 Detectado revisando el modelo con el responsable: **se podía armar un disfraz de VENTA con prendas de

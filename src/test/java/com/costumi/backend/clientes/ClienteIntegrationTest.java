@@ -110,6 +110,41 @@ class ClienteIntegrationTest {
 	}
 
 	@Test
+	void el_historial_ordena_por_recencia_y_la_venta_trae_fecha() throws Exception {
+		UUID empresa = crearEmpresa("Cli Recencia " + UUID.randomUUID());
+		String superAdmin = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, null, Rol.SUPERADMIN);
+		mvc.perform(post("/api/v1/empresas/{id}/aprobar", empresa).header("Authorization", "Bearer " + superAdmin))
+				.andExpect(status().isOk());
+		String dueno = token(empresa, Rol.DUENO);
+		UUID sucursal = postId("/api/v1/empresas/" + empresa + "/sucursales", dueno, "{\"nombre\":\"Centro\"}");
+		UUID cliente = crearCliente(dueno, "Cliente", "DOC-" + UUID.randomUUID());
+		UUID categoria = postId("/api/v1/categorias", dueno, "{\"nombre\":\"Cat " + UUID.randomUUID() + "\"}");
+		UUID prenda = postId("/api/v1/prendas", dueno, "{\"categoriaId\":\"" + categoria
+				+ "\",\"nombre\":\"Traje\",\"tipoArticulo\":\"AMBOS\",\"precioRenta\":20.00,\"precioVenta\":50.00}");
+		postId("/api/v1/prendas/" + prenda + "/grupos-stock", dueno,
+				"{\"sucursalId\":\"" + sucursal + "\",\"combinacion\":[],\"cantidadInicial\":5}");
+
+		// Primero una RENTA...
+		postId("/api/v1/rentas", dueno, "{\"sucursalId\":\"" + sucursal + "\",\"clienteId\":\"" + cliente
+				+ "\",\"prendaId\":\"" + prenda + "\",\"fechaRetiro\":\"2026-09-01\",\"fechaDevolucion\":\"2026-09-03\","
+				+ "\"precioPorDia\":20.00,\"deposito\":100.00}");
+		// ...y después (más reciente) una VENTA. La pausa garantiza instantes de registro distintos.
+		Thread.sleep(10);
+		postId("/api/v1/ventas", dueno, "{\"sucursalId\":\"" + sucursal + "\",\"clienteId\":\"" + cliente
+				+ "\",\"lineas\":[{\"prendaId\":\"" + prenda + "\",\"cantidad\":1,\"precioUnitario\":50.00}]}");
+
+		// Recencia (regla #1): la venta —más reciente— va primero, y AMBOS traen fecha (antes la venta salía
+		// con fecha null y caía al fondo del historial).
+		mvc.perform(get("/api/v1/clientes/{id}/historial", cliente).header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(2))
+				.andExpect(jsonPath("$[0].tipo").value("VENTA"))
+				.andExpect(jsonPath("$[0].fecha").isNotEmpty())
+				.andExpect(jsonPath("$[1].tipo").value("RENTA"))
+				.andExpect(jsonPath("$[1].fecha").isNotEmpty());
+	}
+
+	@Test
 	void filtros_de_pendientes_por_categoria_vencidas_multas_y_saldos() throws Exception {
 		UUID empresa = crearEmpresa("Cli Filtros " + UUID.randomUUID());
 		String superAdmin = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, null, Rol.SUPERADMIN);

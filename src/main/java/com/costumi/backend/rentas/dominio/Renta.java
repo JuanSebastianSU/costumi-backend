@@ -1,6 +1,7 @@
 package com.costumi.backend.rentas.dominio;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -27,10 +28,11 @@ public class Renta {
 	private BigDecimal importe;
 	private EstadoRenta estado;
 	private final String claveIdempotencia;
+	private final Instant creadaEn;
 
 	private Renta(UUID id, UUID empresaId, UUID sucursalId, UUID clienteId, UUID empleadoId, List<RentaLinea> lineas,
 			LocalDate fechaRetiro, LocalDate fechaDevolucion, BigDecimal deposito, BigDecimal importe,
-			EstadoRenta estado, String claveIdempotencia) {
+			EstadoRenta estado, String claveIdempotencia, Instant creadaEn) {
 		this.id = Objects.requireNonNull(id, "id");
 		this.empresaId = Objects.requireNonNull(empresaId, "empresaId");
 		this.sucursalId = Objects.requireNonNull(sucursalId, "sucursalId");
@@ -48,6 +50,7 @@ public class Renta {
 		this.estado = Objects.requireNonNull(estado, "estado");
 		this.claveIdempotencia = (claveIdempotencia == null || claveIdempotencia.isBlank()) ? null
 				: claveIdempotencia.trim();
+		this.creadaEn = Objects.requireNonNull(creadaEn, "creadaEn");
 	}
 
 	/** Conveniencia: renta de un solo artículo (cantidad 1). */
@@ -83,14 +86,14 @@ public class Renta {
 		}
 		BigDecimal importe = importeDe(lineas, fechaRetiro, fechaDevolucion);
 		return new Renta(UUID.randomUUID(), empresaId, sucursalId, clienteId, empleadoId, lineas, fechaRetiro,
-				fechaDevolucion, dep, importe, EstadoRenta.RESERVADA, claveIdempotencia);
+				fechaDevolucion, dep, importe, EstadoRenta.RESERVADA, claveIdempotencia, Instant.now());
 	}
 
 	public static Renta rehidratar(UUID id, UUID empresaId, UUID sucursalId, UUID clienteId, UUID empleadoId,
 			List<RentaLinea> lineas, LocalDate fechaRetiro, LocalDate fechaDevolucion, BigDecimal deposito,
-			BigDecimal importe, EstadoRenta estado, String claveIdempotencia) {
+			BigDecimal importe, EstadoRenta estado, String claveIdempotencia, Instant creadaEn) {
 		return new Renta(id, empresaId, sucursalId, clienteId, empleadoId, lineas, fechaRetiro, fechaDevolucion,
-				deposito, importe, estado, claveIdempotencia);
+				deposito, importe, estado, claveIdempotencia, creadaEn);
 	}
 
 	private static BigDecimal importeDe(List<RentaLinea> lineas, LocalDate retiro, LocalDate devolucion) {
@@ -205,5 +208,10 @@ public class Renta {
 
 	public EstadoRenta estado() {
 		return estado;
+	}
+
+	/** Momento en que se registró la renta; base para ordenar por recencia (regla «más reciente primero»). */
+	public Instant creadaEn() {
+		return creadaEn;
 	}
 }

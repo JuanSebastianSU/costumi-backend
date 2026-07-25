@@ -12,6 +12,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
@@ -61,13 +62,16 @@ class RentaJpaEntity {
 	@Column(name = "empleado_id")
 	private UUID empleadoId;
 
+	@Column(name = "creada_en", nullable = false)
+	private Instant creadaEn;
+
 	protected RentaJpaEntity() {
 		// requerido por JPA
 	}
 
 	RentaJpaEntity(UUID id, UUID empresaId, UUID sucursalId, UUID clienteId, UUID prendaId, LocalDate fechaRetiro,
 			LocalDate fechaDevolucion, BigDecimal precioPorDia, BigDecimal deposito, BigDecimal importe,
-			EstadoRenta estado, String claveIdempotencia, UUID empleadoId) {
+			EstadoRenta estado, String claveIdempotencia, UUID empleadoId, Instant creadaEn) {
 		this.id = id;
 		this.empresaId = empresaId;
 		this.sucursalId = sucursalId;
@@ -81,6 +85,7 @@ class RentaJpaEntity {
 		this.estado = estado;
 		this.claveIdempotencia = claveIdempotencia;
 		this.empleadoId = empleadoId;
+		this.creadaEn = creadaEn;
 	}
 
 	String getClaveIdempotencia() {
@@ -133,5 +138,9 @@ class RentaJpaEntity {
 
 	EstadoRenta getEstado() {
 		return estado;
+	}
+
+	Instant getCreadaEn() {
+		return creadaEn;
 	}
 }

@@ -98,6 +98,23 @@ class RentaIntegrationTest {
 	}
 
 	@Test
+	void la_lista_de_rentas_ordena_por_recencia_y_expone_creada_en() throws Exception {
+		Ctx c = montar(5);
+		UUID primera = crearRenta(c);
+		// La pausa garantiza instantes de registro distintos entre las dos rentas.
+		Thread.sleep(10);
+		UUID segunda = postId("/api/v1/rentas", c.dueno(), rentaBody(c, "2026-08-10", "2026-08-12"));
+
+		// Recencia (regla #1): se ordena por cuándo se REGISTRÓ la renta (no por la fecha de retiro pactada):
+		// la última creada va primera, y cada renta expone su creadaEn.
+		mvc.perform(get("/api/v1/rentas").header("Authorization", "Bearer " + c.dueno()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.contenido[0].id").value(segunda.toString()))
+				.andExpect(jsonPath("$.contenido[0].creadaEn").isNotEmpty())
+				.andExpect(jsonPath("$.contenido[1].id").value(primera.toString()));
+	}
+
+	@Test
 	void crear_renta_en_sucursal_inexistente_devuelve_400() throws Exception {
 		Ctx c = montar();
 		// SEC-1: la renta no puede anclarse a una sucursal inexistente/ajena/archivada.
