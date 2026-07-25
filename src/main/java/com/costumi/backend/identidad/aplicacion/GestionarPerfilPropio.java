@@ -20,6 +20,9 @@ public interface GestionarPerfilPropio {
 	/** Actualiza nombre y teléfono. Vacío borra el dato: son opcionales. */
 	Usuario actualizarPerfil(UUID usuarioId, String nombre, String telefono);
 
+	/** Sube y asigna la foto de perfil de la cuenta autenticada (reusa el almacén de imágenes compartido). */
+	Usuario asignarFoto(UUID usuarioId, byte[] contenido);
+
 	/**
 	 * Cambia la contraseña estando dentro de la sesión. Exige la actual: sin eso, quien se siente frente a
 	 * una sesión abierta podría dejar al dueño fuera de su propia cuenta.

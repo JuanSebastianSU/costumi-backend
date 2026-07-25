@@ -40,11 +40,11 @@ class UsuarioRepositoryAdapter implements UsuarioRepository {
 
 	private static UsuarioJpaEntity aEntidad(Usuario u) {
 		return new UsuarioJpaEntity(u.id(), u.empresaId(), u.email(), u.passwordHash(), u.rol(), u.activo(),
-				u.nombre(), u.telefono());
+				u.nombre(), u.telefono(), u.fotoUrl());
 	}
 
 	private static Usuario aDominio(UsuarioJpaEntity e) {
 		return Usuario.rehidratar(e.getId(), e.getEmpresaId(), e.getEmail(), e.getPasswordHash(), e.getRol(),
-				e.isActivo(), e.getNombre(), e.getTelefono());
+				e.isActivo(), e.getNombre(), e.getTelefono(), e.getFotoUrl());
 	}
 }

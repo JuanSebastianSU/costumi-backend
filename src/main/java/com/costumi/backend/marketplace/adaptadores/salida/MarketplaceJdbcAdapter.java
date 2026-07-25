@@ -17,11 +17,11 @@ class MarketplaceJdbcAdapter implements MarketplaceReadRepository {
 	// Solo tiendas que PUEDEN operar: ACTIVA y con al menos un punto de retiro (sucursal no archivada).
 	// Así el cliente no entra a una tienda sin sucursal, que no le dejaría armar el pedido.
 	private static final String EMPRESAS_ACTIVAS =
-			"select id, nombre from empresa e where e.estado = 'ACTIVA' "
+			"select id, nombre, logo_url, ciudad, descripcion from empresa e where e.estado = 'ACTIVA' "
 			+ "and exists (select 1 from sucursal s where s.empresa_id = e.id and s.archivada = false) "
 			+ "order by nombre";
 
-	private static final String BUSCAR_EMPRESAS = "select id, nombre from empresa e "
+	private static final String BUSCAR_EMPRESAS = "select id, nombre, logo_url, ciudad, descripcion from empresa e "
 			+ "where e.estado = 'ACTIVA' and lower(e.nombre) like lower('%' || :texto || '%') "
 			+ "and exists (select 1 from sucursal s where s.empresa_id = e.id and s.archivada = false) "
 			+ "order by nombre";
@@ -74,7 +74,8 @@ class MarketplaceJdbcAdapter implements MarketplaceReadRepository {
 	}
 
 	private static EmpresaEnVitrina mapear(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
-		return EmpresaEnVitrina.de(rs.getObject("id", UUID.class), rs.getString("nombre"));
+		return EmpresaEnVitrina.de(rs.getObject("id", UUID.class), rs.getString("nombre"),
+				rs.getString("logo_url"), rs.getString("ciudad"), rs.getString("descripcion"));
 	}
 
 	private static PrendaEnVitrina mapearPrenda(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {

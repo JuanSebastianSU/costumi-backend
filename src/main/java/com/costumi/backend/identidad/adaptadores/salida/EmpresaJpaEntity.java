@@ -38,12 +38,25 @@ class EmpresaJpaEntity {
 	@Column(name = "solicitante_id")
 	private UUID solicitanteId;
 
+	@Column(length = 1000)
+	private String descripcion;
+
+	@Column(length = 120)
+	private String ciudad;
+
+	@Column(name = "logo_url", length = 500)
+	private String logoUrl;
+
+	@Column(name = "portada_url", length = 500)
+	private String portadaUrl;
+
 	protected EmpresaJpaEntity() {
 		// requerido por JPA
 	}
 
 	EmpresaJpaEntity(UUID id, String nombre, EstadoEmpresa estado, Instant fechaRegistro,
-			String ubicacion, String contacto, UUID solicitanteId) {
+			String ubicacion, String contacto, UUID solicitanteId, String descripcion, String ciudad,
+			String logoUrl, String portadaUrl) {
 		this.id = id;
 		this.nombre = nombre;
 		this.estado = estado;
@@ -51,6 +64,10 @@ class EmpresaJpaEntity {
 		this.ubicacion = ubicacion;
 		this.contacto = contacto;
 		this.solicitanteId = solicitanteId;
+		this.descripcion = descripcion;
+		this.ciudad = ciudad;
+		this.logoUrl = logoUrl;
+		this.portadaUrl = portadaUrl;
 	}
 
 	UUID getId() {
@@ -79,5 +96,21 @@ class EmpresaJpaEntity {
 
 	UUID getSolicitanteId() {
 		return solicitanteId;
+	}
+
+	String getDescripcion() {
+		return descripcion;
+	}
+
+	String getCiudad() {
+		return ciudad;
+	}
+
+	String getLogoUrl() {
+		return logoUrl;
+	}
+
+	String getPortadaUrl() {
+		return portadaUrl;
 	}
 }

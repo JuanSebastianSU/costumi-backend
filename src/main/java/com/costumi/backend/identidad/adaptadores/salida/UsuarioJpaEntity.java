@@ -45,12 +45,15 @@ class UsuarioJpaEntity {
 	@Column(length = 40)
 	private String telefono;
 
+	@Column(name = "foto_url", length = 500)
+	private String fotoUrl;
+
 	protected UsuarioJpaEntity() {
 		// requerido por JPA
 	}
 
 	UsuarioJpaEntity(UUID id, UUID empresaId, String email, String passwordHash, Rol rol, boolean activo,
-			String nombre, String telefono) {
+			String nombre, String telefono, String fotoUrl) {
 		this.id = id;
 		this.empresaId = empresaId;
 		this.email = email;
@@ -59,6 +62,7 @@ class UsuarioJpaEntity {
 		this.activo = activo;
 		this.nombre = nombre;
 		this.telefono = telefono;
+		this.fotoUrl = fotoUrl;
 	}
 
 	String getNombre() {
@@ -67,6 +71,10 @@ class UsuarioJpaEntity {
 
 	String getTelefono() {
 		return telefono;
+	}
+
+	String getFotoUrl() {
+		return fotoUrl;
 	}
 
 	UUID getId() {

@@ -8,6 +8,32 @@
 > `CLAUDE.md`) para retomar sin perder el hilo. Regla: mueve ítems entre secciones,
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
+## RED-11 (A7-media) — identidad/media de tienda + foto de perfil + almacén compartido (2026-07-25)
+
+Primer lote de A7 (coherente: todo lo de "media/imágenes"). Un solo lote.
+
+- **Almacén de imágenes compartido**: la interfaz `AlmacenDeImagenesPublico` se movió de `inventario` a
+  `compartido` (la impl y todo lo demás siguen en inventario). Motivo: `inventario→identidad` ya existía;
+  que `identidad` usara el puerto en `inventario` habría creado un **ciclo** (rompe Modulith). Con el puerto
+  en el kernel, identidad/marketplace lo usan sin acoplarse a inventario. Cero cambios de comportamiento
+  (prenda/disfraz siguen igual).
+- **Identidad de tienda (A7-i)**: `Empresa` gana `descripcion`, `ciudad`, `logoUrl`, `portadaUrl` (V71) +
+  mutadores (`editarIdentidad`, `asignarLogo`, `asignarPortada`). Endpoints del Dueño sobre SU tienda (del
+  token): `PATCH /empresas/mia` (editar), `POST /empresas/mia/logo` y `/mia/portada` (multipart, reusan el
+  almacén). `EmpresaResponse` expone todo. Caso de uso nuevo `GestionarIdentidadDeTienda`.
+- **Vitrina del marketplace**: `EmpresaVitrinaResponse` pasa de {id,nombre} a incluir `logoUrl`, `ciudad`,
+  `descripcion`; `MarketplaceJdbcAdapter` los selecciona. Así la lista de tiendas ya no sale "pelada".
+- **Foto de perfil (A7-iii)**: `Usuario` gana `fotoUrl` (V71) propagado por todos sus copy-methods +
+  `asignarFoto`. `POST /perfil/foto` (multipart) + `PerfilResponse.fotoUrl`. Reusa el almacén compartido.
+- Uploads validan por **magic bytes** (imagen real, no el content-type del cliente) → no-imagen = 415;
+  almacén sin configurar = 503 (manejador de errores global existente).
+- Migración **V71** (empresa: descripcion/ciudad/logo_url/portada_url; usuario: foto_url). Tests: editar+
+  logo+reflejo en vitrina, 415, foto de perfil. **Suite 567/567** (ArchUnit + Modulith; sin ciclo).
+
+**Pendiente de A7 (próximos lotes):** sucursal (foto/lat-lng/horario), horario de tienda por día,
+destacados/facetas, paginar el marketplace, favoritos sincronizados, carrito (depósito/variante/cantidad/
+fecha), reportes con gráficas + fotoUrl en rankings.
+
 ## RED-10 (B2) — "Mis Pedidos" del cliente: historial paginado + saldo/estado + detalle (2026-07-25)
 
 Cierra B2. Un solo lote (no PRs minúsculos).
