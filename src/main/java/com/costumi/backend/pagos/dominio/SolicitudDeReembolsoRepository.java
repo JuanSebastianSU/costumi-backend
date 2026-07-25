@@ -16,7 +16,7 @@ public interface SolicitudDeReembolsoRepository {
 
 	/** Página de solicitudes (más recientes primero), con búsqueda opcional por motivo. */
 	com.costumi.backend.compartido.Pagina<SolicitudDeReembolso> listarPorEmpresa(UUID empresaId, String buscar,
-			com.costumi.backend.compartido.SolicitudDePagina pagina);
+			java.util.Collection<EstadoSolicitudReembolso> estados, com.costumi.backend.compartido.SolicitudDePagina pagina);
 
 	/** ¿Ya hay una solicitud PENDIENTE para ese concepto? (evita duplicados). */
 	boolean existePendientePorConcepto(UUID empresaId, UUID conceptoId);
