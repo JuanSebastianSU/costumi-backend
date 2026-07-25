@@ -8,6 +8,27 @@
 > `CLAUDE.md`) para retomar sin perder el hilo. Regla: mueve ítems entre secciones,
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
+## RED-15 (A7) — horario de tienda + carrusel de destacados (2026-07-25)
+
+Cierra casi todo lo que quedaba de A7. Un solo lote.
+
+- **Horario de tienda (A7-i)**: agregado propio `horario_atencion` (**V74**, una franja por día ISO 1-7, sin
+  tocar el aggregate `Empresa` de auth). Dominio `HorarioDeDia` + repo/adapter + `GestionarHorario`/service.
+  `GET/PUT /empresas/mia/horario` (el dueño lo fija) y **público** `GET /marketplace/empresas/{id}/horario`
+  (el cliente ve "Abierto · cierra 18:00" derivándolo en la app). Valida cierre>apertura y no repetir día.
+- **Destacados (C1)**: carrusel público `GET /marketplace/destacados` — disfraces de tiendas ACTIVAS,
+  ordenados por **movimiento** (venta+renta, contando grupos distintos), con tienda/foto/precios. Sin
+  movimiento aún → van al final (el carrusel no queda vacío en un marketplace joven). **Criterio elegido:
+  derivado del ranking** (no un flag manual); ajustable después.
+- **Corrección de scope**: se eliminó del plan "ciudad del usuario" — era sobre-scope mío; el front solo usa
+  la ciudad de la **empresa** (ya hecha), no una del usuario.
+- Migración **V74**. Tests: horario set/get/público + 400 por cierre<apertura, destacados incluye el disfraz.
+  **Suite 578/578** (ArchUnit + Modulith).
+
+**⬜ Único pendiente de A7**: **carrito** — depósito por línea + total, **variante talla/color** por línea,
+fecha de creación. Va como **lote propio** (toca la valorización y el checkout/stock = flujo de dinero; no lo
+mezclo con lo demás para no arriesgarlo).
+
 ## RED-14 (A7-resto) — reportes (fotoUrl+series) + vitrina (detalle/facetas/portada/#disfraces) + carrito editar cantidad (2026-07-25)
 
 Cuarto lote de A7, grande: cierra la mayoría de lo que faltaba. Un solo lote.

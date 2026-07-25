@@ -5,10 +5,12 @@ import com.costumi.backend.identidad.aplicacion.ConsultarMiEmpresa;
 import com.costumi.backend.identidad.aplicacion.ConsultarEmpresas;
 import com.costumi.backend.identidad.aplicacion.ConsultarEmpresasPendientes;
 import com.costumi.backend.identidad.aplicacion.GestionarEmpresa;
+import com.costumi.backend.identidad.aplicacion.GestionarHorario;
 import com.costumi.backend.identidad.aplicacion.GestionarIdentidadDeTienda;
 import com.costumi.backend.identidad.aplicacion.RegistrarEmpresa;
 import com.costumi.backend.identidad.aplicacion.RegistrarEmpresaComando;
 import com.costumi.backend.identidad.dominio.Empresa;
+import com.costumi.backend.identidad.dominio.HorarioDeDia;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -37,18 +40,20 @@ class EmpresaController {
 	private final RegistrarEmpresa registrarEmpresa;
 	private final GestionarEmpresa gestionarEmpresa;
 	private final GestionarIdentidadDeTienda gestionarIdentidadDeTienda;
+	private final GestionarHorario gestionarHorario;
 	private final ConsultarEmpresasPendientes consultarEmpresasPendientes;
 	private final ConsultarEmpresas consultarEmpresas;
 	private final ConsultarMiEmpresa consultarMiEmpresa;
 	private final ContextoDeTenant tenant;
 
 	EmpresaController(RegistrarEmpresa registrarEmpresa, GestionarEmpresa gestionarEmpresa,
-			GestionarIdentidadDeTienda gestionarIdentidadDeTienda,
+			GestionarIdentidadDeTienda gestionarIdentidadDeTienda, GestionarHorario gestionarHorario,
 			ConsultarEmpresasPendientes consultarEmpresasPendientes, ConsultarEmpresas consultarEmpresas,
 			ConsultarMiEmpresa consultarMiEmpresa, ContextoDeTenant tenant) {
 		this.registrarEmpresa = registrarEmpresa;
 		this.gestionarEmpresa = gestionarEmpresa;
 		this.gestionarIdentidadDeTienda = gestionarIdentidadDeTienda;
+		this.gestionarHorario = gestionarHorario;
 		this.consultarEmpresasPendientes = consultarEmpresasPendientes;
 		this.consultarEmpresas = consultarEmpresas;
 		this.consultarMiEmpresa = consultarMiEmpresa;
@@ -71,6 +76,22 @@ class EmpresaController {
 		UUID empresaId = tenant.empresaIdRequerida();
 		return EmpresaResponse.desde(gestionarIdentidadDeTienda.editar(empresaId, request.nombre(),
 				request.ubicacion(), request.contacto(), request.descripcion(), request.ciudad()));
+	}
+
+	/** El horario de atención de MI tienda (A7). */
+	@GetMapping("/mia/horario")
+	List<HorarioResponse> horarioMio() {
+		return gestionarHorario.deEmpresa(tenant.empresaIdRequerida()).stream().map(HorarioResponse::desde).toList();
+	}
+
+	/** Fija el horario de atención de MI tienda (reemplaza el anterior). */
+	@PutMapping("/mia/horario")
+	List<HorarioResponse> fijarHorarioMio(@Valid @RequestBody FijarHorarioRequest request) {
+		UUID empresaId = tenant.empresaIdRequerida();
+		List<HorarioDeDia> horario = (request.dias() == null ? List.<FijarHorarioRequest.Franja>of() : request.dias())
+				.stream().map(f -> new HorarioDeDia(f.diaSemana(), f.abre(), f.cierra())).toList();
+		gestionarHorario.fijar(empresaId, horario);
+		return gestionarHorario.deEmpresa(empresaId).stream().map(HorarioResponse::desde).toList();
 	}
 
 	/** Sube el logo de la tienda (multipart, campo {@code archivo}); reusa el almacén de imágenes (S3). */

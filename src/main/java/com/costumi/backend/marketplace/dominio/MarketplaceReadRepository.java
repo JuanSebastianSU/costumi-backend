@@ -22,6 +22,15 @@ public interface MarketplaceReadRepository {
 	/** Facetas: categorías presentes en el catálogo público de la tienda (RF-18.1). */
 	List<CategoriaEnVitrina> categoriasDe(UUID empresaId);
 
+	/** Horario de atención público de la tienda (A7), una franja por día que abre, ordenado por día. */
+	List<HorarioEnVitrina> horarioDe(UUID empresaId);
+
+	/**
+	 * Disfraces destacados del marketplace (carrusel, C1): cruza tiendas ACTIVAS, ordenados por movimiento
+	 * (venta+renta) y luego por nombre. {@code limite} = cuántos traer.
+	 */
+	List<DisfrazDestacado> destacados(int limite);
+
 	/** Catálogo público (prendas no archivadas) de una empresa ACTIVA. Vacío si no está activa. */
 	List<PrendaEnVitrina> catalogoDe(UUID empresaId, UUID categoriaId);
 

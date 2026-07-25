@@ -23,6 +23,12 @@ public interface DescubrirEmpresas {
 	/** Facetas: categorías del catálogo público de la tienda. */
 	List<CategoriaEnVitrina> categoriasDe(UUID empresaId);
 
+	/** Horario de atención público de la tienda (A7). */
+	List<com.costumi.backend.marketplace.dominio.HorarioEnVitrina> horarioDe(UUID empresaId);
+
+	/** Disfraces destacados del marketplace (carrusel, C1), ordenados por movimiento. */
+	List<com.costumi.backend.marketplace.dominio.DisfrazDestacado> destacados(int limite);
+
 	/** Catálogo público de una tienda (empresa ACTIVA). Vacío si no existe o no está activa. */
 	/** Catálogo público de una tienda; si {@code categoriaId} no es null, filtra por esa categoría (RF-18.1). */
 	List<PrendaEnVitrina> catalogo(UUID empresaId, UUID categoriaId);
