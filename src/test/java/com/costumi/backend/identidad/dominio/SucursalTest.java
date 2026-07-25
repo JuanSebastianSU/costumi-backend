@@ -48,7 +48,7 @@ class SucursalTest {
 		Sucursal sucursal = Sucursal.crear(UUID.randomUUID(), "Centro", "Calle 1", null);
 		UUID id = sucursal.id();
 
-		sucursal.editar("Centro Renovado", "Calle 2", "https://maps.google.com/?q=calle2");
+		sucursal.editar("Centro Renovado", "Calle 2", "https://maps.google.com/?q=calle2", null, null, null);
 
 		assertThat(sucursal.id()).isEqualTo(id);
 		assertThat(sucursal.nombre()).isEqualTo("Centro Renovado");
@@ -59,7 +59,7 @@ class SucursalTest {
 	@Test
 	void editar_exige_nombre() {
 		Sucursal sucursal = Sucursal.crear(UUID.randomUUID(), "Centro", null, null);
-		assertThatThrownBy(() -> sucursal.editar("  ", "Calle 2", null)).isInstanceOf(IllegalArgumentException.class);
+		assertThatThrownBy(() -> sucursal.editar("  ", "Calle 2", null, null, null, null)).isInstanceOf(IllegalArgumentException.class);
 	}
 
 	@Test

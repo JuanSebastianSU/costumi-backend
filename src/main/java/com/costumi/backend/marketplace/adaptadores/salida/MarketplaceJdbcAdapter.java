@@ -34,7 +34,8 @@ class MarketplaceJdbcAdapter implements MarketplaceReadRepository {
 			+ "where p.empresa_id = :empresaId and p.archivada = false and e.estado = 'ACTIVA'";
 
 	// Sucursales (puntos de retiro) no archivadas de una empresa, solo si la empresa está ACTIVA.
-	private static final String SUCURSALES = "select s.id, s.nombre, s.direccion "
+	private static final String SUCURSALES = "select s.id, s.nombre, s.direccion, s.ubicacion_maps, s.descripcion, "
+			+ "s.latitud, s.longitud, s.foto_url "
 			+ "from sucursal s join empresa e on e.id = s.empresa_id "
 			+ "where s.empresa_id = :empresaId and s.archivada = false and e.estado = 'ACTIVA' "
 			+ "order by s.nombre";
@@ -93,6 +94,11 @@ class MarketplaceJdbcAdapter implements MarketplaceReadRepository {
 		return new SucursalEnVitrina(
 				rs.getObject("id", UUID.class),
 				rs.getString("nombre"),
-				rs.getString("direccion"));
+				rs.getString("direccion"),
+				rs.getString("ubicacion_maps"),
+				rs.getString("descripcion"),
+				(Double) rs.getObject("latitud"),
+				(Double) rs.getObject("longitud"),
+				rs.getString("foto_url"));
 	}
 }

@@ -144,8 +144,10 @@ transversal. Un solo lote (no PRs minúsculos).
   - `Empresa`: ✅ `logoUrl`, `portadaUrl`, `descripcion`, `ciudad` (V71) + `PATCH /empresas/mia` +
     `POST /empresas/mia/logo` y `/portada` (reusan el almacén compartido). `EmpresaResponse` los expone.
   - `EmpresaVitrinaResponse`: ✅ ahora trae `logoUrl`/`ciudad`/`descripcion` (+ SQL del marketplace).
-  - ⬜ **Falta de A7-i**: `horario` por día + `disfracesCount` en Empresa; `Sucursal` (`G17`: foto/portada/
-    descripción/horario/**lat-lng**); `C1` **destacados** + **facetas** públicas + ciudad del usuario.
+  - ✅ **Sucursal** (`G17`): `descripcion`, `latitud`/`longitud` (validadas), `fotoUrl` (V72) + `PATCH …/
+    sucursales/{id}` + `POST …/{id}/foto`; vitrina de sucursal enriquecida (RED-12).
+  - ⬜ **Falta de A7-i**: `horario` por día (empresa/sucursal) + `disfracesCount` en Empresa; `C1`
+    **destacados** + **facetas** públicas + ciudad del usuario.
   - 🔧 Estructural: se movió el puerto `AlmacenDeImagenesPublico` a `compartido` (evita ciclo
     identidad↔inventario); impl sigue en inventario.
 - ⬜ **(A7-ii) Paginar el marketplace de tiendas** (`C1`): hoy `GET /marketplace/empresas` devuelve `List`
