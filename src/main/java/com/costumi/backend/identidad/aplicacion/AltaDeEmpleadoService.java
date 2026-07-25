@@ -1,5 +1,7 @@
 package com.costumi.backend.identidad.aplicacion;
 
+import com.costumi.backend.identidad.dominio.Membresia;
+import com.costumi.backend.identidad.dominio.MembresiaRepository;
 import com.costumi.backend.identidad.dominio.Rol;
 import com.costumi.backend.identidad.dominio.Usuario;
 import com.costumi.backend.identidad.dominio.UsuarioRepository;
@@ -15,10 +17,12 @@ import org.springframework.transaction.annotation.Transactional;
 class AltaDeEmpleadoService implements AltaDeEmpleado {
 
 	private final UsuarioRepository usuarios;
+	private final MembresiaRepository membresias;
 	private final PasswordEncoder passwordEncoder;
 
-	AltaDeEmpleadoService(UsuarioRepository usuarios, PasswordEncoder passwordEncoder) {
+	AltaDeEmpleadoService(UsuarioRepository usuarios, MembresiaRepository membresias, PasswordEncoder passwordEncoder) {
 		this.usuarios = usuarios;
+		this.membresias = membresias;
 		this.passwordEncoder = passwordEncoder;
 	}
 
@@ -42,7 +46,10 @@ class AltaDeEmpleadoService implements AltaDeEmpleado {
 		if (email != null && usuarios.buscarPorEmail(email).isPresent()) {
 			throw new EmailYaRegistrado(email);
 		}
-		return usuarios.guardar(
+		Usuario creado = usuarios.guardar(
 				Usuario.crear(comando.empresaId(), email, passwordEncoder.encode(comando.password()), comando.rol()));
+		// Membresía (Fase B): el empleado nuevo queda como miembro ACTIVO de la tienda, para "elegir tienda".
+		membresias.guardar(Membresia.crear(creado.id(), comando.empresaId(), comando.rol()));
+		return creado;
 	}
 }

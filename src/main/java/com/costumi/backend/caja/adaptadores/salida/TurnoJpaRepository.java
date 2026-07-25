@@ -10,6 +10,8 @@ interface TurnoJpaRepository extends JpaRepository<TurnoJpaEntity, UUID> {
 
 	List<TurnoJpaEntity> findByEmpresaId(UUID empresaId);
 
+	List<TurnoJpaEntity> findByEmpresaIdAndSucursalId(UUID empresaId, UUID sucursalId);
+
 	/** Carga por PK como QUERY (no em.find) para que el @Filter multi-tenant la acote (§5.4). */
 	Optional<TurnoJpaEntity> findFirstById(UUID id);
 }

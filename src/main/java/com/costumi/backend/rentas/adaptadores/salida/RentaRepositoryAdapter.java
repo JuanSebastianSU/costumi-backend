@@ -84,21 +84,21 @@ class RentaRepositoryAdapter implements RentaRepository {
 	}
 
 	@Override
-	public Pagina<Renta> listar(UUID empresaId, UUID clienteId, String buscar, FiltroDeBandeja bandeja, LocalDate hoy,
-			SolicitudDePagina solicitud) {
+	public Pagina<Renta> listar(UUID empresaId, UUID sucursalId, UUID clienteId, String buscar, FiltroDeBandeja bandeja,
+			LocalDate hoy, SolicitudDePagina solicitud) {
 		// Recencia (regla «más reciente primero»): se ordena por cuándo se REGISTRÓ la renta (creadaEn), no
 		// por la fecha de retiro pactada. La bandeja (POR_ENTREGAR/ACTIVAS/VENCIDAS/CERRADAS) filtra por estado.
 		Pageable pageable = PageRequest.of(solicitud.pagina(), solicitud.tamano(),
 				Sort.by(Sort.Order.desc("creadaEn"), Sort.Order.asc("id")));
-		Page<RentaJpaEntity> pagina = jpa.buscarPagina(empresaId, clienteId, bandeja.estados(),
+		Page<RentaJpaEntity> pagina = jpa.buscarPagina(empresaId, sucursalId, clienteId, bandeja.estados(),
 				bandeja.soloVencidas(), bandeja.soloActivasEnFecha(), hoy, normalizarCodigo(buscar), pageable);
 		return new Pagina<>(aDominioEnLote(pagina.getContent()), pagina.getTotalElements(),
 				solicitud.pagina(), solicitud.tamano());
 	}
 
 	@Override
-	public ResumenDeRentas resumen(UUID empresaId, LocalDate hoy) {
-		Object[] r = jpa.resumenRaw(empresaId, hoy).get(0);
+	public ResumenDeRentas resumen(UUID empresaId, UUID sucursalId, LocalDate hoy) {
+		Object[] r = jpa.resumenRaw(empresaId, sucursalId, hoy).get(0);
 		return new ResumenDeRentas((Long) r[0], (Long) r[1], (Long) r[2], (Long) r[3]);
 	}
 

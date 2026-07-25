@@ -58,8 +58,9 @@ class TurnoService implements AbrirTurno, RegistrarMovimiento, CerrarTurno, Cons
 
 	@Override
 	@Transactional(readOnly = true)
-	public List<Turno> deEmpresa(UUID empresaId) {
-		return turnos.listarPorEmpresa(empresaId);
+	public List<Turno> deEmpresa(UUID empresaId, UUID sucursalId) {
+		return sucursalId == null ? turnos.listarPorEmpresa(empresaId)
+				: turnos.listarPorEmpresaYSucursal(empresaId, sucursalId);
 	}
 
 	private Turno delTenant(UUID empresaId, UUID turnoId) {

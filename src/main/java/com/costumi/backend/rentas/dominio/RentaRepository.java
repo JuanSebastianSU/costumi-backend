@@ -24,11 +24,11 @@ public interface RentaRepository {
 	 * filtra por código de retiro; {@code bandeja} acota por estado del ciclo (G9); {@code hoy} es la fecha
 	 * del servidor para separar activas de vencidas.
 	 */
-	Pagina<Renta> listar(UUID empresaId, UUID clienteId, String buscar, FiltroDeBandeja bandeja, LocalDate hoy,
+	Pagina<Renta> listar(UUID empresaId, UUID sucursalId, UUID clienteId, String buscar, FiltroDeBandeja bandeja, LocalDate hoy,
 			SolicitudDePagina solicitud);
 
 	/** Conteo de rentas por bandeja (números de las pestañas de G9). */
-	ResumenDeRentas resumen(UUID empresaId, LocalDate hoy);
+	ResumenDeRentas resumen(UUID empresaId, UUID sucursalId, LocalDate hoy);
 
 	/** Cuántas <b>unidades</b> de la prenda están comprometidas por rentas vigentes que se traslapan con el periodo (RF-3.2). */
 	long cantidadSolapada(UUID empresaId, UUID prendaId, LocalDate retiro, LocalDate devolucion);

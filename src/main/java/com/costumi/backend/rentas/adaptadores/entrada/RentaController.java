@@ -133,8 +133,10 @@ class RentaController {
 			return new RespuestaPaginada<>(List.of(), 0, 0, 0, 0);
 		}
 		UUID empresa = UUID.fromString(empresaId);
+		// Sucursal activa (cabecera X-Sucursal-Id): si viene, acota la lista a esa sucursal; si no, todas.
+		UUID sucursal = tenant.sucursalActiva().orElse(null);
 		return RespuestaPaginada.desde(
-				consultarRentas.listar(empresa, clienteId, buscar, filtro, SolicitudDePagina.de(pagina, tamano)),
+				consultarRentas.listar(empresa, sucursal, clienteId, buscar, filtro, SolicitudDePagina.de(pagina, tamano)),
 				r -> resp(empresa, r));
 	}
 
@@ -145,7 +147,8 @@ class RentaController {
 		if (empresaId == null) {
 			return new ResumenDeRentasResponse(0, 0, 0, 0);
 		}
-		return ResumenDeRentasResponse.desde(consultarRentas.resumen(UUID.fromString(empresaId)));
+		return ResumenDeRentasResponse.desde(consultarRentas.resumen(UUID.fromString(empresaId),
+				tenant.sucursalActiva().orElse(null)));
 	}
 
 	/** Una renta por id, con sus líneas (nombre + foto), para el detalle de cobros/reembolsos. */

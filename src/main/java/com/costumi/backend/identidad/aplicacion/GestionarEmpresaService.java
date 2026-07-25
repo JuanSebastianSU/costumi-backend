@@ -21,13 +21,15 @@ class GestionarEmpresaService implements GestionarEmpresa {
 	private final EmpresaRepository empresas;
 	private final SucursalRepository sucursales;
 	private final UsuarioRepository usuarios;
+	private final com.costumi.backend.identidad.dominio.MembresiaRepository membresias;
 	private final ApplicationEventPublisher eventos;
 
 	GestionarEmpresaService(EmpresaRepository empresas, SucursalRepository sucursales, UsuarioRepository usuarios,
-			ApplicationEventPublisher eventos) {
+			com.costumi.backend.identidad.dominio.MembresiaRepository membresias, ApplicationEventPublisher eventos) {
 		this.empresas = empresas;
 		this.sucursales = sucursales;
 		this.usuarios = usuarios;
+		this.membresias = membresias;
 		this.eventos = eventos;
 	}
 
@@ -53,7 +55,12 @@ class GestionarEmpresaService implements GestionarEmpresa {
 		sucursales.guardar(Sucursal.crear(empresa.id(), "Casa Matriz", empresa.ubicacion(), null));
 		usuarios.buscarPorId(solicitanteId)
 				.filter(u -> u.rol().esCliente())
-				.ifPresent(cliente -> usuarios.guardar(cliente.promoverADueno(empresa.id())));
+				.ifPresent(cliente -> {
+					usuarios.guardar(cliente.promoverADueno(empresa.id()));
+					// Membresía (Fase B): además de promover la cuenta, queda como DUEÑO miembro de su tienda.
+					membresias.guardar(com.costumi.backend.identidad.dominio.Membresia.crear(
+							cliente.id(), empresa.id(), com.costumi.backend.identidad.dominio.Rol.DUENO));
+				});
 	}
 
 	@Override

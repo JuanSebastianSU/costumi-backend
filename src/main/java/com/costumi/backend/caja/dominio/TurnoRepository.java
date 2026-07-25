@@ -12,4 +12,7 @@ public interface TurnoRepository {
 	Optional<Turno> buscarPorId(UUID id);
 
 	List<Turno> listarPorEmpresa(UUID empresaId);
+
+	/** Turnos de la empresa en una sucursal puntual (para la sucursal activa). */
+	List<Turno> listarPorEmpresaYSucursal(UUID empresaId, UUID sucursalId);
 }
