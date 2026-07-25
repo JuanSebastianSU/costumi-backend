@@ -115,6 +115,47 @@ class RentaIntegrationTest {
 	}
 
 	@Test
+	void las_bandejas_separan_por_estado_y_el_resumen_cuenta() throws Exception {
+		Ctx c = montar(5);
+		// A: RESERVADA (por entregar), fechas futuras.
+		UUID porEntregar = postId("/api/v1/rentas", c.dueno(), rentaBody(c, "2026-09-01", "2026-09-05"));
+		// B: ACTIVA en fecha (entregada, devolución futura).
+		UUID activa = postId("/api/v1/rentas", c.dueno(), rentaBody(c, "2026-09-01", "2026-09-05"));
+		mvc.perform(post("/api/v1/rentas/{id}/entregar", activa).header("Authorization", "Bearer " + c.dueno()))
+				.andExpect(status().isOk());
+		// C: ACTIVA vencida (entregada, devolución en el pasado).
+		UUID vencida = postId("/api/v1/rentas", c.dueno(), rentaBody(c, "2020-01-01", "2020-01-05"));
+		mvc.perform(post("/api/v1/rentas/{id}/entregar", vencida).header("Authorization", "Bearer " + c.dueno()))
+				.andExpect(status().isOk());
+
+		// POR_ENTREGAR: solo la reservada.
+		mvc.perform(get("/api/v1/rentas").param("filtro", "POR_ENTREGAR").header("Authorization", "Bearer " + c.dueno()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.contenido[?(@.id == '" + porEntregar + "')]").exists())
+				.andExpect(jsonPath("$.contenido[?(@.id == '" + activa + "')]").doesNotExist())
+				.andExpect(jsonPath("$.contenido[?(@.id == '" + vencida + "')]").doesNotExist());
+		// ACTIVAS: la activa en fecha; NO la vencida ni la reservada.
+		mvc.perform(get("/api/v1/rentas").param("filtro", "ACTIVAS").header("Authorization", "Bearer " + c.dueno()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.contenido[?(@.id == '" + activa + "')]").exists())
+				.andExpect(jsonPath("$.contenido[?(@.id == '" + vencida + "')]").doesNotExist())
+				.andExpect(jsonPath("$.contenido[?(@.id == '" + porEntregar + "')]").doesNotExist());
+		// VENCIDAS: solo la vencida.
+		mvc.perform(get("/api/v1/rentas").param("filtro", "VENCIDAS").header("Authorization", "Bearer " + c.dueno()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.contenido[?(@.id == '" + vencida + "')]").exists())
+				.andExpect(jsonPath("$.contenido[?(@.id == '" + activa + "')]").doesNotExist());
+
+		// Resumen: 1 por entregar, 1 activa, 1 vencida, 0 cerradas (empresa recién creada).
+		mvc.perform(get("/api/v1/rentas/resumen").header("Authorization", "Bearer " + c.dueno()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.porEntregar").value(1))
+				.andExpect(jsonPath("$.activas").value(1))
+				.andExpect(jsonPath("$.vencidas").value(1))
+				.andExpect(jsonPath("$.cerradas").value(0));
+	}
+
+	@Test
 	void crear_renta_en_sucursal_inexistente_devuelve_400() throws Exception {
 		Ctx c = montar();
 		// SEC-1: la renta no puede anclarse a una sucursal inexistente/ajena/archivada.
