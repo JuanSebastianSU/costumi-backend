@@ -24,7 +24,7 @@ class TurnoRepositoryAdapter implements TurnoRepository {
 	@Override
 	public Turno guardar(Turno turno) {
 		turnos.save(new TurnoJpaEntity(turno.id(), turno.empresaId(), turno.sucursalId(), turno.empleadoId(),
-				turno.fondoInicial(), turno.estado(), turno.efectivoContado()));
+				turno.fondoInicial(), turno.estado(), turno.efectivoContado(), turno.abiertoEn(), turno.cerradoEn()));
 		movimientos.deleteByTurnoId(turno.id());
 		int orden = 0;
 		for (MovimientoDeCaja movimiento : turno.movimientos()) {
@@ -50,6 +50,6 @@ class TurnoRepositoryAdapter implements TurnoRepository {
 				.toList();
 		return Turno.rehidratar(cabecera.getId(), cabecera.getEmpresaId(), cabecera.getSucursalId(),
 				cabecera.getEmpleadoId(), cabecera.getFondoInicial(), cabecera.getEstado(),
-				cabecera.getEfectivoContado(), movimientosDominio);
+				cabecera.getEfectivoContado(), cabecera.getAbiertoEn(), cabecera.getCerradoEn(), movimientosDominio);
 	}
 }

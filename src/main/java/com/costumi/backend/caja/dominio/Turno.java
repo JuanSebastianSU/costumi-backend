@@ -1,6 +1,7 @@
 package com.costumi.backend.caja.dominio;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -20,10 +21,13 @@ public class Turno {
 	private final BigDecimal fondoInicial;
 	private EstadoTurno estado;
 	private BigDecimal efectivoContado;
+	private final Instant abiertoEn;
+	private Instant cerradoEn;
 	private final List<MovimientoDeCaja> movimientos;
 
 	private Turno(UUID id, UUID empresaId, UUID sucursalId, UUID empleadoId, BigDecimal fondoInicial,
-			EstadoTurno estado, BigDecimal efectivoContado, List<MovimientoDeCaja> movimientos) {
+			EstadoTurno estado, BigDecimal efectivoContado, Instant abiertoEn, Instant cerradoEn,
+			List<MovimientoDeCaja> movimientos) {
 		this.id = Objects.requireNonNull(id, "id");
 		this.empresaId = Objects.requireNonNull(empresaId, "empresaId");
 		this.sucursalId = Objects.requireNonNull(sucursalId, "sucursalId");
@@ -34,17 +38,21 @@ public class Turno {
 		this.fondoInicial = fondoInicial;
 		this.estado = Objects.requireNonNull(estado, "estado");
 		this.efectivoContado = efectivoContado;
+		this.abiertoEn = abiertoEn;
+		this.cerradoEn = cerradoEn;
 		this.movimientos = new ArrayList<>(movimientos);
 	}
 
 	public static Turno abrir(UUID empresaId, UUID sucursalId, UUID empleadoId, BigDecimal fondoInicial) {
 		return new Turno(UUID.randomUUID(), empresaId, sucursalId, empleadoId, fondoInicial, EstadoTurno.ABIERTO,
-				null, new ArrayList<>());
+				null, Instant.now(), null, new ArrayList<>());
 	}
 
 	public static Turno rehidratar(UUID id, UUID empresaId, UUID sucursalId, UUID empleadoId, BigDecimal fondoInicial,
-			EstadoTurno estado, BigDecimal efectivoContado, List<MovimientoDeCaja> movimientos) {
-		return new Turno(id, empresaId, sucursalId, empleadoId, fondoInicial, estado, efectivoContado, movimientos);
+			EstadoTurno estado, BigDecimal efectivoContado, Instant abiertoEn, Instant cerradoEn,
+			List<MovimientoDeCaja> movimientos) {
+		return new Turno(id, empresaId, sucursalId, empleadoId, fondoInicial, estado, efectivoContado, abiertoEn,
+				cerradoEn, movimientos);
 	}
 
 	/** Registra un movimiento; solo si el turno sigue abierto (RF-6.3). */
@@ -61,6 +69,7 @@ public class Turno {
 		}
 		this.efectivoContado = efectivoContado;
 		this.estado = EstadoTurno.CERRADO;
+		this.cerradoEn = Instant.now();
 	}
 
 	/** Corte: total esperado en la caja por método (el efectivo incluye el fondo inicial). */
@@ -121,5 +130,15 @@ public class Turno {
 
 	public BigDecimal efectivoContado() {
 		return efectivoContado;
+	}
+
+	/** Cuándo se abrió el turno; null en turnos previos a la columna. */
+	public Instant abiertoEn() {
+		return abiertoEn;
+	}
+
+	/** Cuándo se cerró el turno; null si sigue abierto (o previo a la columna). */
+	public Instant cerradoEn() {
+		return cerradoEn;
 	}
 }

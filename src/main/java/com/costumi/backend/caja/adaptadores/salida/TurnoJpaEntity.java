@@ -11,6 +11,7 @@ import jakarta.persistence.Table;
 import org.hibernate.annotations.Filter;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.UUID;
 
 /** Mapeo JPA de la cabecera del Turno de caja. Lleva {@code empresa_id} (tenant). */
@@ -41,12 +42,18 @@ class TurnoJpaEntity {
 	@Column(name = "efectivo_contado", precision = 12, scale = 2)
 	private BigDecimal efectivoContado;
 
+	@Column(name = "abierto_en")
+	private Instant abiertoEn;
+
+	@Column(name = "cerrado_en")
+	private Instant cerradoEn;
+
 	protected TurnoJpaEntity() {
 		// requerido por JPA
 	}
 
 	TurnoJpaEntity(UUID id, UUID empresaId, UUID sucursalId, UUID empleadoId, BigDecimal fondoInicial,
-			EstadoTurno estado, BigDecimal efectivoContado) {
+			EstadoTurno estado, BigDecimal efectivoContado, Instant abiertoEn, Instant cerradoEn) {
 		this.id = id;
 		this.empresaId = empresaId;
 		this.sucursalId = sucursalId;
@@ -54,6 +61,8 @@ class TurnoJpaEntity {
 		this.fondoInicial = fondoInicial;
 		this.estado = estado;
 		this.efectivoContado = efectivoContado;
+		this.abiertoEn = abiertoEn;
+		this.cerradoEn = cerradoEn;
 	}
 
 	UUID getId() {
@@ -82,5 +91,13 @@ class TurnoJpaEntity {
 
 	BigDecimal getEfectivoContado() {
 		return efectivoContado;
+	}
+
+	Instant getAbiertoEn() {
+		return abiertoEn;
+	}
+
+	Instant getCerradoEn() {
+		return cerradoEn;
 	}
 }
