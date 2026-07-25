@@ -3,9 +3,11 @@ package com.costumi.backend.rentas.adaptadores.salida;
 import com.costumi.backend.compartido.Pagina;
 import com.costumi.backend.compartido.SolicitudDePagina;
 import com.costumi.backend.rentas.dominio.EstadoRenta;
+import com.costumi.backend.rentas.dominio.FiltroDeBandeja;
 import com.costumi.backend.rentas.dominio.Renta;
 import com.costumi.backend.rentas.dominio.RentaLinea;
 import com.costumi.backend.rentas.dominio.RentaRepository;
+import com.costumi.backend.rentas.dominio.ResumenDeRentas;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.springframework.data.domain.Page;
@@ -82,14 +84,22 @@ class RentaRepositoryAdapter implements RentaRepository {
 	}
 
 	@Override
-	public Pagina<Renta> listar(UUID empresaId, UUID clienteId, String buscar, SolicitudDePagina solicitud) {
-		// Recencia (regla «más reciente primero»): se ordena por cuándo se REGISTRÓ la renta (creadaEn),
-		// no por la fecha de retiro pactada. Las bandejas por estado (su propio orden) van en otro PR.
+	public Pagina<Renta> listar(UUID empresaId, UUID clienteId, String buscar, FiltroDeBandeja bandeja, LocalDate hoy,
+			SolicitudDePagina solicitud) {
+		// Recencia (regla «más reciente primero»): se ordena por cuándo se REGISTRÓ la renta (creadaEn), no
+		// por la fecha de retiro pactada. La bandeja (POR_ENTREGAR/ACTIVAS/VENCIDAS/CERRADAS) filtra por estado.
 		Pageable pageable = PageRequest.of(solicitud.pagina(), solicitud.tamano(),
 				Sort.by(Sort.Order.desc("creadaEn"), Sort.Order.asc("id")));
-		Page<RentaJpaEntity> pagina = jpa.buscarPagina(empresaId, clienteId, normalizarCodigo(buscar), pageable);
+		Page<RentaJpaEntity> pagina = jpa.buscarPagina(empresaId, clienteId, bandeja.estados(),
+				bandeja.soloVencidas(), bandeja.soloActivasEnFecha(), hoy, normalizarCodigo(buscar), pageable);
 		return new Pagina<>(aDominioEnLote(pagina.getContent()), pagina.getTotalElements(),
 				solicitud.pagina(), solicitud.tamano());
+	}
+
+	@Override
+	public ResumenDeRentas resumen(UUID empresaId, LocalDate hoy) {
+		Object[] r = jpa.resumenRaw(empresaId, hoy).get(0);
+		return new ResumenDeRentas((Long) r[0], (Long) r[1], (Long) r[2], (Long) r[3]);
 	}
 
 	/** Rehidrata una página de rentas cargando TODAS sus líneas en una sola consulta (evita el N+1, C3). */

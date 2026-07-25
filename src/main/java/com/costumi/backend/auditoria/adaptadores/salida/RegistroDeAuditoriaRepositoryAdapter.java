@@ -31,9 +31,10 @@ class RegistroDeAuditoriaRepositoryAdapter implements RegistroDeAuditoriaReposit
 
 	@Override
 	public com.costumi.backend.compartido.Pagina<RegistroDeAuditoria> listarPorEmpresa(UUID empresaId, String buscar,
-			com.costumi.backend.compartido.SolicitudDePagina pagina) {
+			String tipo, com.costumi.backend.compartido.SolicitudDePagina pagina) {
 		org.springframework.data.domain.Page<RegistroDeAuditoriaJpaEntity> page = jpa.buscarPagina(empresaId,
 				buscar == null || buscar.isBlank() ? null : buscar.trim(),
+				tipo == null || tipo.isBlank() ? null : tipo.trim().toUpperCase(java.util.Locale.ROOT),
 				org.springframework.data.domain.PageRequest.of(pagina.pagina(), pagina.tamano()));
 		return com.costumi.backend.compartido.Pagina.de(page.getContent().stream()
 				.map(RegistroDeAuditoriaRepositoryAdapter::aDominio).toList(), page.getTotalElements(), pagina);

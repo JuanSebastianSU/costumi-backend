@@ -99,6 +99,7 @@ class ReembolsoController {
 	@GetMapping
 	com.costumi.backend.compartido.RespuestaPaginada<SolicitudDeReembolsoResponse> listar(
 			@org.springframework.web.bind.annotation.RequestParam(required = false) String buscar,
+			@org.springframework.web.bind.annotation.RequestParam(required = false) String filtro,
 			@org.springframework.web.bind.annotation.RequestParam(required = false) Integer pagina,
 			@org.springframework.web.bind.annotation.RequestParam(required = false) Integer tamano,
 			@AuthenticationPrincipal Jwt jwt) {
@@ -107,7 +108,7 @@ class ReembolsoController {
 			return new com.costumi.backend.compartido.RespuestaPaginada<>(List.of(), 0, 0, 0, 0);
 		}
 		return com.costumi.backend.compartido.RespuestaPaginada.desde(
-				consultarReembolsos.deEmpresa(UUID.fromString(empresaId), buscar,
+				consultarReembolsos.deEmpresa(UUID.fromString(empresaId), buscar, filtro,
 						com.costumi.backend.compartido.SolicitudDePagina.de(pagina, tamano)),
 				SolicitudDeReembolsoResponse::desde);
 	}

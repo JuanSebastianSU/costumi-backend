@@ -114,6 +114,23 @@ class VentaIntegrationTest {
 	}
 
 	@Test
+	void el_filtro_por_estado_acota_las_ventas() throws Exception {
+		UUID[] ctx = montar();
+		UUID sucursal = ctx[0];
+		UUID prenda = ctx[1];
+		UUID venta = postId("/api/v1/ventas", dueno, "{\"sucursalId\":\"" + sucursal + "\",\"lineas\":[{\"prendaId\":\""
+				+ prenda + "\",\"cantidad\":1,\"precioUnitario\":50.00}]}");
+
+		// Recién creada = CONFIRMADA: aparece con ?estado=CONFIRMADA, no con ?estado=DEVUELTA.
+		mvc.perform(get("/api/v1/ventas").param("estado", "CONFIRMADA").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.contenido[?(@.id == '" + venta + "')]").exists());
+		mvc.perform(get("/api/v1/ventas").param("estado", "DEVUELTA").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.contenido[?(@.id == '" + venta + "')]").doesNotExist());
+	}
+
+	@Test
 	void confirmar_venta_descuenta_el_stock() throws Exception {
 		UUID[] ctx = montar();
 		UUID sucursal = ctx[0];

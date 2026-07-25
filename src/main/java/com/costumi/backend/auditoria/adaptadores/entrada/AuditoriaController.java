@@ -28,11 +28,12 @@ class AuditoriaController {
 	@GetMapping
 	com.costumi.backend.compartido.RespuestaPaginada<AuditoriaResponse> listar(
 			@org.springframework.web.bind.annotation.RequestParam(required = false) String buscar,
+			@org.springframework.web.bind.annotation.RequestParam(required = false) String tipo,
 			@org.springframework.web.bind.annotation.RequestParam(required = false) Integer pagina,
 			@org.springframework.web.bind.annotation.RequestParam(required = false) Integer tamano) {
 		return tenant.empresaId()
 				.map(empresaId -> com.costumi.backend.compartido.RespuestaPaginada.desde(
-						consultarAuditoria.deEmpresa(empresaId, buscar,
+						consultarAuditoria.deEmpresa(empresaId, buscar, tipo,
 								com.costumi.backend.compartido.SolicitudDePagina.de(pagina, tamano)),
 						AuditoriaResponse::desde))
 				.orElseGet(() -> new com.costumi.backend.compartido.RespuestaPaginada<>(List.of(), 0, 0, 0, 0));

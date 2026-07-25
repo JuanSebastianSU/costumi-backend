@@ -10,6 +10,6 @@ public interface ConsultarReembolsos {
 
 	List<SolicitudDeReembolso> deEmpresa(UUID empresaId);
 
-	/** Página de solicitudes, con búsqueda opcional por motivo. */
-	com.costumi.backend.compartido.Pagina<SolicitudDeReembolso> deEmpresa(UUID empresaId, String buscar, com.costumi.backend.compartido.SolicitudDePagina pagina);
+	/** Página de solicitudes, con búsqueda opcional por motivo y filtro opcional (PENDIENTES|RESUELTAS). */
+	com.costumi.backend.compartido.Pagina<SolicitudDeReembolso> deEmpresa(UUID empresaId, String buscar, String filtro, com.costumi.backend.compartido.SolicitudDePagina pagina);
 }

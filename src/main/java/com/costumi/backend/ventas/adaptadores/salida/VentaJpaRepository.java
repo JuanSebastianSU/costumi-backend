@@ -20,10 +20,13 @@ interface VentaJpaRepository extends JpaRepository<VentaJpaEntity, UUID> {
 	 * prefijo; el llamador envía el texto ya normalizado (sin el prefijo y en minúsculas).
 	 */
 	@org.springframework.data.jpa.repository.Query("select v from VentaJpaEntity v where v.empresaId = :empresaId "
+			+ "and (:estado is null or v.estado = :estado) "
 			+ "and (cast(:buscar as string) is null or lower(cast(v.id as string)) like concat(cast(:buscar as string), '%'))")
 	Page<VentaJpaEntity> buscarPagina(
 			@org.springframework.data.repository.query.Param("empresaId") UUID empresaId,
-			@org.springframework.data.repository.query.Param("buscar") String buscar, Pageable pageable);
+			@org.springframework.data.repository.query.Param("buscar") String buscar,
+			@org.springframework.data.repository.query.Param("estado") com.costumi.backend.ventas.dominio.EstadoVenta estado,
+			Pageable pageable);
 
 	/** Carga por PK como QUERY (no em.find) para que el @Filter multi-tenant la acote (§5.4). */
 	Optional<VentaJpaEntity> findFirstById(UUID id);

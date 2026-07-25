@@ -125,7 +125,7 @@ class RentaController {
 
 	@GetMapping
 	RespuestaPaginada<RentaResponse> listar(@RequestParam(required = false) UUID clienteId,
-			@RequestParam(required = false) String buscar,
+			@RequestParam(required = false) String buscar, @RequestParam(required = false) String filtro,
 			@RequestParam(required = false) Integer pagina, @RequestParam(required = false) Integer tamano,
 			@AuthenticationPrincipal Jwt jwt) {
 		String empresaId = jwt.getClaimAsString("empresa_id");
@@ -134,8 +134,18 @@ class RentaController {
 		}
 		UUID empresa = UUID.fromString(empresaId);
 		return RespuestaPaginada.desde(
-				consultarRentas.listar(empresa, clienteId, buscar, SolicitudDePagina.de(pagina, tamano)),
+				consultarRentas.listar(empresa, clienteId, buscar, filtro, SolicitudDePagina.de(pagina, tamano)),
 				r -> resp(empresa, r));
+	}
+
+	/** Conteo de rentas por bandeja (para las pestañas de G9). Sin empresa (cliente): todo en cero. */
+	@GetMapping("/resumen")
+	ResumenDeRentasResponse resumen(@AuthenticationPrincipal Jwt jwt) {
+		String empresaId = jwt.getClaimAsString("empresa_id");
+		if (empresaId == null) {
+			return new ResumenDeRentasResponse(0, 0, 0, 0);
+		}
+		return ResumenDeRentasResponse.desde(consultarRentas.resumen(UUID.fromString(empresaId)));
 	}
 
 	/** Una renta por id, con sus líneas (nombre + foto), para el detalle de cobros/reembolsos. */

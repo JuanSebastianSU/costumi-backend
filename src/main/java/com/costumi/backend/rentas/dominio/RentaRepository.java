@@ -19,9 +19,16 @@ public interface RentaRepository {
 
 	List<Renta> listarPorCliente(UUID empresaId, UUID clienteId);
 
-	/** Página de rentas de la empresa (opcionalmente filtradas por cliente), más recientes primero (C3). */
-	/** Página de rentas; {@code buscar} (opcional) filtra por código de retiro. */
-	Pagina<Renta> listar(UUID empresaId, UUID clienteId, String buscar, SolicitudDePagina solicitud);
+	/**
+	 * Página de rentas de la empresa (opcionalmente por cliente), más recientes primero (C3). {@code buscar}
+	 * filtra por código de retiro; {@code bandeja} acota por estado del ciclo (G9); {@code hoy} es la fecha
+	 * del servidor para separar activas de vencidas.
+	 */
+	Pagina<Renta> listar(UUID empresaId, UUID clienteId, String buscar, FiltroDeBandeja bandeja, LocalDate hoy,
+			SolicitudDePagina solicitud);
+
+	/** Conteo de rentas por bandeja (números de las pestañas de G9). */
+	ResumenDeRentas resumen(UUID empresaId, LocalDate hoy);
 
 	/** Cuántas <b>unidades</b> de la prenda están comprometidas por rentas vigentes que se traslapan con el periodo (RF-3.2). */
 	long cantidadSolapada(UUID empresaId, UUID prendaId, LocalDate retiro, LocalDate devolucion);

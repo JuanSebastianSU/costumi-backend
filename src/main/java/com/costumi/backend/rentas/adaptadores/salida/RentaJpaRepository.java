@@ -29,11 +29,34 @@ interface RentaJpaRepository extends JpaRepository<RentaJpaEntity, UUID> {
 	 */
 	@org.springframework.data.jpa.repository.Query("select r from RentaJpaEntity r where r.empresaId = :empresaId "
 			+ "and (:clienteId is null or r.clienteId = :clienteId) "
+			+ "and r.estado in :estados "
+			// soloVencidas: solo ACTIVAS ya pasadas de fecha (la bandeja VENCIDAS).
+			+ "and (:soloVencidas = false or (r.estado = com.costumi.backend.rentas.dominio.EstadoRenta.ACTIVA "
+			+ "     and r.fechaDevolucion < :hoy)) "
+			// soloActivasEnFecha: excluye las ACTIVAS ya vencidas (van en su propia bandeja); no afecta a otros estados.
+			+ "and (:soloActivasEnFecha = false or r.estado <> com.costumi.backend.rentas.dominio.EstadoRenta.ACTIVA "
+			+ "     or r.fechaDevolucion >= :hoy) "
 			+ "and (cast(:buscar as string) is null or lower(cast(r.id as string)) like concat(cast(:buscar as string), '%'))")
 	Page<RentaJpaEntity> buscarPagina(
 			@org.springframework.data.repository.query.Param("empresaId") UUID empresaId,
 			@org.springframework.data.repository.query.Param("clienteId") UUID clienteId,
+			@org.springframework.data.repository.query.Param("estados") java.util.Collection<com.costumi.backend.rentas.dominio.EstadoRenta> estados,
+			@org.springframework.data.repository.query.Param("soloVencidas") boolean soloVencidas,
+			@org.springframework.data.repository.query.Param("soloActivasEnFecha") boolean soloActivasEnFecha,
+			@org.springframework.data.repository.query.Param("hoy") java.time.LocalDate hoy,
 			@org.springframework.data.repository.query.Param("buscar") String buscar, Pageable pageable);
+
+	/** Conteo por bandeja (para las pestañas de G9): una sola pasada sobre las rentas de la empresa. */
+	@org.springframework.data.jpa.repository.Query("select "
+			+ "coalesce(sum(case when r.estado = com.costumi.backend.rentas.dominio.EstadoRenta.RESERVADA then 1L else 0L end), 0L), "
+			+ "coalesce(sum(case when (r.estado = com.costumi.backend.rentas.dominio.EstadoRenta.ACTIVA and r.fechaDevolucion >= :hoy) "
+			+ "     or r.estado = com.costumi.backend.rentas.dominio.EstadoRenta.DEVUELTA then 1L else 0L end), 0L), "
+			+ "coalesce(sum(case when r.estado = com.costumi.backend.rentas.dominio.EstadoRenta.ACTIVA and r.fechaDevolucion < :hoy then 1L else 0L end), 0L), "
+			+ "coalesce(sum(case when r.estado in (com.costumi.backend.rentas.dominio.EstadoRenta.CERRADA, "
+			+ "     com.costumi.backend.rentas.dominio.EstadoRenta.CANCELADA) then 1L else 0L end), 0L) "
+			+ "from RentaJpaEntity r where r.empresaId = :empresaId")
+	List<Object[]> resumenRaw(@org.springframework.data.repository.query.Param("empresaId") UUID empresaId,
+			@org.springframework.data.repository.query.Param("hoy") java.time.LocalDate hoy);
 
 	Optional<RentaJpaEntity> findByEmpresaIdAndClaveIdempotencia(UUID empresaId, String claveIdempotencia);
 

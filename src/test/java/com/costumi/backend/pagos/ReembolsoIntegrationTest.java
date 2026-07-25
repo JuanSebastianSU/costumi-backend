@@ -96,6 +96,36 @@ class ReembolsoIntegrationTest {
 	}
 
 	@Test
+	void el_filtro_separa_pendientes_de_resueltas() throws Exception {
+		UUID empresa = crearEmpresa("Reemb Filtro " + UUID.randomUUID());
+		String dueno = token(empresa, Rol.DUENO);
+		UUID venta = cobrar(empresa, dueno, "100.00");
+		String body = mvc.perform(post("/api/v1/reembolsos").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON).content(solicitarBody(venta, "80.00")))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		UUID solicitud = UUID.fromString(json.readTree(body).get("id").asText());
+
+		// PENDIENTE: aparece en PENDIENTES, no en RESUELTAS.
+		mvc.perform(get("/api/v1/reembolsos").param("filtro", "PENDIENTES").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.contenido[?(@.id == '" + solicitud + "')]").exists());
+		mvc.perform(get("/api/v1/reembolsos").param("filtro", "RESUELTAS").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.contenido[?(@.id == '" + solicitud + "')]").doesNotExist());
+
+		// Tras rechazar pasa a RESUELTAS.
+		mvc.perform(post("/api/v1/reembolsos/{id}/rechazar", solicitud).header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON).content("{\"motivo\":\"fuera de plazo\"}"))
+				.andExpect(status().isOk());
+		mvc.perform(get("/api/v1/reembolsos").param("filtro", "RESUELTAS").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.contenido[?(@.id == '" + solicitud + "')]").exists());
+		mvc.perform(get("/api/v1/reembolsos").param("filtro", "PENDIENTES").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.contenido[?(@.id == '" + solicitud + "')]").doesNotExist());
+	}
+
+	@Test
 	void solicitar_por_mas_del_saldo_devuelve_409() throws Exception {
 		UUID empresa = crearEmpresa("Reemb Saldo " + UUID.randomUUID());
 		String dueno = token(empresa, Rol.DUENO);

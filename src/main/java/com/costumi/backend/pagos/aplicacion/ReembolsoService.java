@@ -126,8 +126,21 @@ class ReembolsoService implements SolicitarReembolso, SolicitarReembolsoDeClient
 	@Override
 	@Transactional(readOnly = true)
 	public com.costumi.backend.compartido.Pagina<SolicitudDeReembolso> deEmpresa(UUID empresaId, String buscar,
-			com.costumi.backend.compartido.SolicitudDePagina pagina) {
-		return solicitudes.listarPorEmpresa(empresaId, buscar, pagina);
+			String filtro, com.costumi.backend.compartido.SolicitudDePagina pagina) {
+		return solicitudes.listarPorEmpresa(empresaId, buscar, estadosDe(filtro), pagina);
+	}
+
+	// PENDIENTES = solo pendientes; RESUELTAS = aprobadas o rechazadas; nulo/otro = todas.
+	private static java.util.Collection<com.costumi.backend.pagos.dominio.EstadoSolicitudReembolso> estadosDe(String filtro) {
+		if (filtro == null || filtro.isBlank()) {
+			return java.util.List.of(com.costumi.backend.pagos.dominio.EstadoSolicitudReembolso.values());
+		}
+		return switch (filtro.trim().toUpperCase(java.util.Locale.ROOT)) {
+			case "PENDIENTES" -> java.util.List.of(com.costumi.backend.pagos.dominio.EstadoSolicitudReembolso.PENDIENTE);
+			case "RESUELTAS" -> java.util.List.of(com.costumi.backend.pagos.dominio.EstadoSolicitudReembolso.APROBADA,
+					com.costumi.backend.pagos.dominio.EstadoSolicitudReembolso.RECHAZADA);
+			default -> java.util.List.of(com.costumi.backend.pagos.dominio.EstadoSolicitudReembolso.values());
+		};
 	}
 
 	private boolean itemDevuelto(SolicitudDeReembolso solicitud) {
