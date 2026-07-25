@@ -171,11 +171,34 @@ class ClienteController {
 		return EstadoDeCuentaResponse.desde(id, consultarHistorial.estadoDeCuenta(empresaId, id));
 	}
 
-	/** "Mis Pedidos" del CLIENTE del marketplace: su historial en todas las tiendas (RF-14.4/18.9). */
+	/**
+	 * "Mis Pedidos" del CLIENTE del marketplace: su historial en todas las tiendas (RF-14.4/18.9), paginado
+	 * (más reciente primero) y por pestaña. {@code filtro}: TODOS|POR_PAGAR|POR_RETIRAR|ACTIVOS|CERRADOS
+	 * (desconocido = TODOS). Se pagina siempre: el historial crece con cada compra y devolverlo entero deja
+	 * de funcionar con el tiempo.
+	 */
 	@GetMapping("/me/historial")
-	List<HistorialItem> miHistorial(@AuthenticationPrincipal Jwt jwt) {
+	RespuestaPaginada<HistorialItem> miHistorial(@RequestParam(required = false) String filtro,
+			@RequestParam(required = false) Integer pagina, @RequestParam(required = false) Integer tamano,
+			@AuthenticationPrincipal Jwt jwt) {
 		UUID usuarioId = UUID.fromString(jwt.getSubject());
-		return consultarHistorial.historialDeUsuario(usuarioId);
+		return RespuestaPaginada.desde(
+				consultarHistorial.historialDeUsuario(usuarioId,
+						com.costumi.backend.clientes.dominio.FiltroDeHistorial.desde(filtro),
+						SolicitudDePagina.de(pagina, tamano)),
+				java.util.function.Function.identity());
+	}
+
+	/**
+	 * Detalle de UNA operación del propio cliente (para abrir un pedido desde "Mis Pedidos"). Se resuelve por
+	 * las fichas del usuario del token, nunca por un id del request: solo puede ver las suyas (404 si no).
+	 */
+	@GetMapping("/me/operaciones/{id}")
+	ResponseEntity<HistorialItem> miOperacion(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+		UUID usuarioId = UUID.fromString(jwt.getSubject());
+		return consultarHistorial.operacionDeUsuario(usuarioId, id)
+				.map(ResponseEntity::ok)
+				.orElseGet(() -> ResponseEntity.notFound().build());
 	}
 
 	/**
