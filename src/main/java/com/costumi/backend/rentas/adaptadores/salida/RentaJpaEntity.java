@@ -65,13 +65,23 @@ class RentaJpaEntity {
 	@Column(name = "creada_en", nullable = false)
 	private Instant creadaEn;
 
+	@Column(name = "entregada_en")
+	private Instant entregadaEn;
+
+	@Column(name = "devuelta_real_en")
+	private Instant devueltaRealEn;
+
+	@Column(name = "cerrada_en")
+	private Instant cerradaEn;
+
 	protected RentaJpaEntity() {
 		// requerido por JPA
 	}
 
 	RentaJpaEntity(UUID id, UUID empresaId, UUID sucursalId, UUID clienteId, UUID prendaId, LocalDate fechaRetiro,
 			LocalDate fechaDevolucion, BigDecimal precioPorDia, BigDecimal deposito, BigDecimal importe,
-			EstadoRenta estado, String claveIdempotencia, UUID empleadoId, Instant creadaEn) {
+			EstadoRenta estado, String claveIdempotencia, UUID empleadoId, Instant creadaEn, Instant entregadaEn,
+			Instant devueltaRealEn, Instant cerradaEn) {
 		this.id = id;
 		this.empresaId = empresaId;
 		this.sucursalId = sucursalId;
@@ -86,6 +96,9 @@ class RentaJpaEntity {
 		this.claveIdempotencia = claveIdempotencia;
 		this.empleadoId = empleadoId;
 		this.creadaEn = creadaEn;
+		this.entregadaEn = entregadaEn;
+		this.devueltaRealEn = devueltaRealEn;
+		this.cerradaEn = cerradaEn;
 	}
 
 	String getClaveIdempotencia() {
@@ -142,5 +155,17 @@ class RentaJpaEntity {
 
 	Instant getCreadaEn() {
 		return creadaEn;
+	}
+
+	Instant getEntregadaEn() {
+		return entregadaEn;
+	}
+
+	Instant getDevueltaRealEn() {
+		return devueltaRealEn;
+	}
+
+	Instant getCerradaEn() {
+		return cerradaEn;
 	}
 }
