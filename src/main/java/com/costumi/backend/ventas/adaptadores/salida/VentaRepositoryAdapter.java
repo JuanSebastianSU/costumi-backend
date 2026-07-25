@@ -4,6 +4,7 @@ import com.costumi.backend.compartido.Pagina;
 import com.costumi.backend.compartido.SolicitudDePagina;
 import com.costumi.backend.ventas.dominio.EstadoVenta;
 import com.costumi.backend.ventas.dominio.LineaDeVenta;
+import com.costumi.backend.ventas.dominio.TotalesDeVentas;
 import com.costumi.backend.ventas.dominio.Venta;
 import com.costumi.backend.ventas.dominio.VentaRepository;
 import org.springframework.data.domain.Page;
@@ -12,6 +13,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -58,12 +63,33 @@ class VentaRepositoryAdapter implements VentaRepository {
 	}
 
 	@Override
-	public Pagina<Venta> listar(UUID empresaId, String buscar, EstadoVenta estado, SolicitudDePagina solicitud) {
+	public Pagina<Venta> listar(UUID empresaId, String buscar, EstadoVenta estado, LocalDate desde, LocalDate hasta,
+			SolicitudDePagina solicitud) {
 		Pageable pageable = PageRequest.of(solicitud.pagina(), solicitud.tamano(),
 				Sort.by(Sort.Order.desc("creadaEn"), Sort.Order.asc("id")));
-		Page<VentaJpaEntity> pagina = cabeceras.buscarPagina(empresaId, normalizarCodigo(buscar), estado, pageable);
+		Page<VentaJpaEntity> pagina = cabeceras.buscarPagina(empresaId, normalizarCodigo(buscar), estado,
+				inicioDe(desde), finDe(hasta), pageable);
 		return new Pagina<>(aDominioEnLote(pagina.getContent()), pagina.getTotalElements(),
 				solicitud.pagina(), solicitud.tamano());
+	}
+
+	@Override
+	public TotalesDeVentas totales(UUID empresaId, EstadoVenta estado, LocalDate desde, LocalDate hasta) {
+		Object[] r = cabeceras.totalesRaw(empresaId, estado, inicioDe(desde), finDe(hasta)).get(0);
+		return new TotalesDeVentas((Long) r[0], (BigDecimal) r[1]);
+	}
+
+	// Rango de fechas → instantes: [desde 00:00, hasta+1 00:00) en UTC, para filtrar por creada_en (Instant).
+	// Sin límite se pasa un centinela (no null): un param null rompe la inferencia de tipo de Postgres.
+	private static final Instant SIN_LIMITE_INFERIOR = Instant.EPOCH; // 1970: no hay ventas antes
+	private static final Instant SIN_LIMITE_SUPERIOR = LocalDate.of(9999, 12, 31).atStartOfDay(ZoneOffset.UTC).toInstant();
+
+	private static Instant inicioDe(LocalDate desde) {
+		return desde == null ? SIN_LIMITE_INFERIOR : desde.atStartOfDay(ZoneOffset.UTC).toInstant();
+	}
+
+	private static Instant finDe(LocalDate hasta) {
+		return hasta == null ? SIN_LIMITE_SUPERIOR : hasta.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
 	}
 
 	/** Rehidrata una página de ventas cargando TODAS sus líneas en una sola consulta (evita el N+1, C3). */
