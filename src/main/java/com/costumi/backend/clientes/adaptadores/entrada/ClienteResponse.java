@@ -13,7 +13,7 @@ import java.util.UUID;
  */
 public record ClienteResponse(UUID id, UUID empresaId, String nombre, String telefono, String email,
 		String documento, String direccion, boolean enListaNegra, boolean archivada,
-		BigDecimal saldoPendiente, BigDecimal multaTotal) {
+		BigDecimal saldoPendiente, BigDecimal multaTotal, boolean tieneRentaEnCurso) {
 
 	static ClienteResponse desde(Cliente c) {
 		return desde(c, null);
@@ -23,6 +23,6 @@ public record ClienteResponse(UUID id, UUID empresaId, String nombre, String tel
 		CargaDeCliente cargaEfectiva = carga != null ? carga : CargaDeCliente.vacia();
 		return new ClienteResponse(c.id(), c.empresaId(), c.nombre(), c.telefono(), c.email(), c.documento(),
 				c.direccion(), c.enListaNegra(), c.archivada(),
-				cargaEfectiva.saldoPendiente(), cargaEfectiva.multaTotal());
+				cargaEfectiva.saldoPendiente(), cargaEfectiva.multaTotal(), cargaEfectiva.tieneRentaEnCurso());
 	}
 }

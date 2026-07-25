@@ -166,7 +166,8 @@ class HistorialJdbcAdapter implements HistorialReadRepository {
 			select r.cliente_id,
 			       coalesce(sum(case when r.estado in ('ACTIVA','DEVUELTA')
 			                         then greatest(r.importe + %1$s - %2$s, 0) else 0 end), 0) as saldo_pendiente,
-			       coalesce(sum(%1$s), 0) as multa_total
+			       coalesce(sum(%1$s), 0) as multa_total,
+			       coalesce(bool_or(r.estado in ('RESERVADA','ACTIVA')), false) as tiene_renta_en_curso
 			from renta r
 			where r.empresa_id = :empresaId and r.cliente_id in (:ids)
 			group by r.cliente_id
@@ -264,7 +265,8 @@ class HistorialJdbcAdapter implements HistorialReadRepository {
 		jdbc.sql(CARGA).param("empresaId", empresaId).param("ids", clienteIds)
 				.query((rs, rowNum) -> {
 					out.put(rs.getObject("cliente_id", UUID.class),
-							new CargaDeCliente(rs.getBigDecimal("saldo_pendiente"), rs.getBigDecimal("multa_total")));
+							new CargaDeCliente(rs.getBigDecimal("saldo_pendiente"), rs.getBigDecimal("multa_total"),
+							rs.getBoolean("tiene_renta_en_curso")));
 					return null;
 				})
 				.list();

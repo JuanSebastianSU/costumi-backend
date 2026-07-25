@@ -103,10 +103,13 @@ class ClienteIntegrationTest {
 				// ...y el código de retiro (que el cliente muestra en la tienda).
 				.andExpect(jsonPath("$[0].codigoRetiro").value(org.hamcrest.Matchers.startsWith("R-")));
 
-		// RF-11.5/11.6: con la renta ACTIVA, el cliente sale en el filtro de pendientes.
+		// RF-11.5/11.6: con la renta ACTIVA, el cliente sale en el filtro de pendientes...
 		mvc.perform(get("/api/v1/clientes").param("conPendientes", "true").header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.contenido[?(@.id == '" + cliente + "')]").exists());
+				.andExpect(jsonPath("$.contenido[?(@.id == '" + cliente + "')]").exists())
+				// ...y la fila marca que tiene una renta en curso (indicador de "renta activa").
+				.andExpect(jsonPath("$.contenido[?(@.id == '" + cliente
+						+ "' && @.tieneRentaEnCurso == true)]").exists());
 	}
 
 	@Test
