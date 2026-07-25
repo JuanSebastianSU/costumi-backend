@@ -76,13 +76,12 @@ por tamaño/afinidad. Si preferís invertir PR-1↔PR-2, es un cambio de una lí
   fechar/ordenar; `ClienteService` reordena el total al cruzar tiendas.
 - Sin migración (las columnas ya existían). **Suite 544/544.** Al mergear: regen `:api-client`.
 
-### A1-bis — Hitos del ciclo (necesita migración V67)  · regen
-- ⬜ **Hitos reales de la renta**: además de «registrada» (`creada_en`), cuándo se **entregó**
-  (RESERVADA→ACTIVA), **devolvió real** y **cerró**. Migración `renta.entregada_en`/`devuelta_real_en`/
-  `cerrada_en` + setear en las transiciones de `RentaService`. (Lo que pediste textual.)
-- ⬜ `DevolucionResponse`: la `Devolucion` **no persiste** la fecha real → agregar columna + exponerla.
-- ⬜ **Timestamps del turno de caja** (`G14`): `Turno` no guarda instantes — `abierto_en`/`cerrado_en`
-  (migración) + exponer en `TurnoResponse`.
+### A1-bis — Hitos del ciclo  · regen · 🚧 HECHO en `feat/bloque-a-fechas-del-ciclo-y-campos` (RED-2, sin mergear)
+- ✅ **Hitos reales de la renta** (V67): `entregadaEn`/`devueltaRealEn`/`cerradaEn`, seteados en las
+  transiciones del dominio y expuestos en `RentaResponse`.
+- ✅ **Fecha de la devolución** (V69): `Devolucion` ahora persiste `registradaEn` (ordena G10) y
+  `fechaDevolucionReal`; expuestas en `DevolucionResponse`; la lista ordena por `registradaEn` DESC.
+- ✅ **Timestamps del turno de caja** (V68, `G14`): `abiertoEn`/`cerradoEn` en `Turno` + `TurnoResponse`.
 
 ### A2 — Períodos financieros  · regen
 - ⬜ `/reportes/ingresos` y `/ganancia`: aceptar `desde`/`hasta` (filtrando `pago.fecha`); hoy son acumulado
@@ -91,13 +90,18 @@ por tamaño/afinidad. Si preferís invertir PR-1↔PR-2, es un cambio de una lí
 - ⬜ Contar rentas en estado `DEVUELTA` («devoluciones por cerrar») para la alerta del panel.
 
 ### A3 — Campos que faltan en respuestas  · aditivo puro · regen
-- ⬜ `ClienteResponse`: flag **tiene renta en curso** (el filtro `FiltroDeClientes.PENDIENTES` lo sabe; la
-  fila no). (`G11`)
-- ⬜ `SolicitudDeReembolsoResponse`: **nombre** del solicitante (hoy solo `solicitanteClienteId`). (`G13`)
+- ✅ `ClienteResponse.tieneRentaEnCurso` (RESERVADA/ACTIVA), resuelto en la consulta de carga con `bool_or`
+  (sin N+1). Hecho en RED-2 (`G11`).
+
+### A3-bis — Nombres + actor en respuestas  · su propio PR (mismo tema: trazabilidad)
+Se agrupan porque comparten el patrón «resolver quién es cada fila»; el actor de auditoría además es
+transversal (los eventos no llevan el actor → hay que hacerlo llegar al sink):
+- ⬜ `SolicitudDeReembolsoResponse`: **nombre** del solicitante (hoy solo `solicitanteClienteId`; resolver por
+  lote vía `ResolucionDeClientes`). (`G13`)
 - ⬜ `NotificacionResponse`: **`clienteNombre`** (hoy la app lo resuelve contra una lista topada en 100). (`G19`)
-- ⬜ **Usuario/actor en auditoría** (`G21`): ★ **más profundo de lo que parecía** — `RegistroDeAuditoria` **no
-  guarda quién** (solo accion/detalle/fecha). Hay que **agregar el actor al dominio + columna** (migración) y
-  empezar a registrarlo, luego exponerlo en `AuditoriaResponse`. No es solo un campo en el DTO.
+- ⬜ **Usuario/actor en auditoría** (`G21`): ★ **transversal** — `RegistroDeAuditoria` **no guarda quién**
+  (solo accion/detalle/fecha) y **los eventos de dominio no llevan el actor**. Hay que hacer llegar el actor
+  al sink (enriquecer eventos o capturar el usuario del contexto) + columna + exponerlo. No es un campo más.
 
 ### A4 — Filtrar + paginar en el SERVIDOR  · regen
 - ⬜ **Bandejas de rentas (`G9`)**: `GET /rentas?filtro=POR_ENTREGAR|ACTIVAS|VENCIDAS|CERRADAS` +
