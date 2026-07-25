@@ -1,16 +1,14 @@
 package com.costumi.backend.identidad.adaptadores.salida;
 
-import com.costumi.backend.identidad.dominio.AccionDePermiso;
-import com.costumi.backend.identidad.dominio.Permiso;
+import com.costumi.backend.identidad.dominio.Capacidad;
 import com.costumi.backend.identidad.dominio.PermisoDeEmpleadoRepository;
-import com.costumi.backend.identidad.dominio.Seccion;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-/** Adaptador de salida JPA del puerto de overrides de permisos por empleado (RF-1.5). */
+/** Adaptador de salida JPA del puerto de overrides de capacidades por empleado (Fase B, paso 5). */
 @Repository
 class PermisoDeEmpleadoRepositoryAdapter implements PermisoDeEmpleadoRepository {
 
@@ -21,29 +19,23 @@ class PermisoDeEmpleadoRepositoryAdapter implements PermisoDeEmpleadoRepository 
 	}
 
 	@Override
-	public Optional<Boolean> valor(UUID usuarioId, Seccion seccion, AccionDePermiso accion) {
-		return jpa.findByUsuarioIdAndSeccionAndAccion(usuarioId, seccion.name(), accion.name())
+	public Optional<Boolean> valor(UUID usuarioId, Capacidad capacidad) {
+		return jpa.findByUsuarioIdAndCapacidad(usuarioId, capacidad.name())
 				.map(PermisoEmpleadoJpaEntity::isConcedido);
 	}
 
 	@Override
-	public List<OverrideDePermiso> listar(UUID empresaId, UUID usuarioId) {
+	public List<OverrideDeCapacidad> listar(UUID empresaId, UUID usuarioId) {
 		return jpa.findByEmpresaIdAndUsuarioId(empresaId, usuarioId).stream()
-				.map(e -> new OverrideDePermiso(
-						new Permiso(Seccion.valueOf(e.getSeccion()), AccionDePermiso.valueOf(e.getAccion())),
-						e.isConcedido()))
+				.map(e -> new OverrideDeCapacidad(Capacidad.valueOf(e.getCapacidad()), e.isConcedido()))
 				.toList();
 	}
 
 	@Override
-	public void establecer(UUID empresaId, UUID usuarioId, Seccion seccion, AccionDePermiso accion,
-			boolean concedido) {
-		PermisoEmpleadoJpaEntity entidad = jpa
-				.findByUsuarioIdAndSeccionAndAccion(usuarioId, seccion.name(), accion.name())
-				.orElse(null);
+	public void establecer(UUID empresaId, UUID usuarioId, Capacidad capacidad, boolean concedido) {
+		PermisoEmpleadoJpaEntity entidad = jpa.findByUsuarioIdAndCapacidad(usuarioId, capacidad.name()).orElse(null);
 		if (entidad == null) {
-			jpa.save(new PermisoEmpleadoJpaEntity(UUID.randomUUID(), empresaId, usuarioId, seccion.name(),
-					accion.name(), concedido));
+			jpa.save(new PermisoEmpleadoJpaEntity(UUID.randomUUID(), empresaId, usuarioId, capacidad.name(), concedido));
 		} else {
 			entidad.setConcedido(concedido);
 			jpa.save(entidad);

@@ -2,9 +2,8 @@ package com.costumi.backend.identidad.adaptadores.entrada;
 
 import com.costumi.backend.compartido.ContextoDeTenant;
 import com.costumi.backend.identidad.aplicacion.GestionarPermisosDeEmpleado;
-import com.costumi.backend.identidad.dominio.AccionDePermiso;
+import com.costumi.backend.identidad.dominio.Capacidad;
 import com.costumi.backend.identidad.dominio.Rol;
-import com.costumi.backend.identidad.dominio.Seccion;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -18,7 +17,10 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.UUID;
 
-/** Editor de permisos granular por empleado (RF-1.5), acotado al tenant del dueño/encargado. */
+/**
+ * Editor de la matriz de capacidades por empleado (Fase B, paso 5), acotado al tenant y la pirámide. La matriz
+ * trae TODAS las capacidades agrupables por sección (con su descripción), para la pantalla rediseñada.
+ */
 @RestController
 @RequestMapping("/api/v1/empleados/{usuarioId}/permisos")
 class PermisosEmpleadoController {
@@ -32,11 +34,12 @@ class PermisosEmpleadoController {
 	}
 
 	@GetMapping
-	List<PermisoDto> matriz(@PathVariable UUID usuarioId, @AuthenticationPrincipal Jwt jwt) {
+	List<CapacidadDto> matriz(@PathVariable UUID usuarioId, @AuthenticationPrincipal Jwt jwt) {
 		UUID empresaId = tenant.empresaIdRequerida();
 		Rol actorRol = Rol.valueOf(jwt.getClaimAsString("rol"));
 		return permisos.matriz(empresaId, actorRol, usuarioId).stream()
-				.map(p -> new PermisoDto(p.seccion(), p.accion(), p.concedido()))
+				.map(c -> new CapacidadDto(c.capacidad().seccion().name(), c.capacidad().name(),
+						c.capacidad().descripcion(), c.concedido()))
 				.toList();
 	}
 
@@ -45,12 +48,13 @@ class PermisosEmpleadoController {
 			@AuthenticationPrincipal Jwt jwt) {
 		UUID empresaId = tenant.empresaIdRequerida();
 		Rol actorRol = Rol.valueOf(jwt.getClaimAsString("rol"));
-		permisos.establecer(empresaId, actorRol, usuarioId, request.seccion(), request.accion(), request.concedido());
+		UUID actorId = UUID.fromString(jwt.getSubject());
+		permisos.establecer(empresaId, actorRol, actorId, usuarioId, request.capacidad(), request.concedido());
 	}
 
-	record PermisoDto(Seccion seccion, AccionDePermiso accion, boolean concedido) {
+	record CapacidadDto(String seccion, String capacidad, String descripcion, boolean concedido) {
 	}
 
-	record EstablecerPermisoRequest(@NotNull Seccion seccion, @NotNull AccionDePermiso accion, boolean concedido) {
+	record EstablecerPermisoRequest(@NotNull Capacidad capacidad, boolean concedido) {
 	}
 }

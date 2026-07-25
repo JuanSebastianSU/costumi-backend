@@ -21,7 +21,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** Permisos granulares por empleado (RF-1.5): el dueño desactiva una casilla y el empleado pierde el acceso. */
+/** Matriz de capacidades por empleado (Fase B, paso 5): el dueño niega una capacidad y el empleado la pierde. */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
@@ -39,121 +39,48 @@ class PermisosEmpleadoIntegrationTest {
 	@Autowired
 	PasswordEncoder passwordEncoder;
 
-	private UUID crearEmpresaAprobada() throws Exception {
-		String res = mvc.perform(post("/api/v1/empresas").contentType(MediaType.APPLICATION_JSON)
-						.content("{\"nombre\":\"Permisos " + UUID.randomUUID() + "\"}"))
-				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
-		UUID empresa = UUID.fromString(json.readTree(res).get("id").asText());
-		String superAdmin = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, null, Rol.SUPERADMIN);
-		mvc.perform(post("/api/v1/empresas/{id}/aprobar", empresa).header("Authorization", "Bearer " + superAdmin))
-				.andExpect(status().isOk());
-		return empresa;
-	}
-
-	private void crearCliente(String token, int esperado) throws Exception {
-		mvc.perform(post("/api/v1/clientes").header("Authorization", "Bearer " + token)
-						.contentType(MediaType.APPLICATION_JSON).content("{\"nombre\":\"Cliente\"}"))
-				.andExpect(status().is(esperado));
-	}
-
 	@Test
-	void el_dueno_puede_revocar_una_casilla_y_el_empleado_pierde_el_acceso() throws Exception {
+	void el_dueno_puede_negar_una_capacidad_y_el_empleado_pierde_el_acceso() throws Exception {
 		UUID empresa = crearEmpresaAprobada();
 		String dueno = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.DUENO);
 		AuthTestHelper.Sesion mostrador = AuthTestHelper.sesion(mvc, json, usuarios, passwordEncoder, empresa,
 				Rol.MOSTRADOR);
 
-		// Por defecto (plantilla del rol) el Mostrador puede crear clientes.
+		// Por defecto (preset del rol) el Mostrador puede crear clientes.
 		crearCliente(mostrador.token(), 201);
 
-		// El dueño desactiva la casilla CLIENTES/ACCION para ese empleado.
-		mvc.perform(put("/api/v1/empleados/{id}/permisos", mostrador.usuarioId())
-						.header("Authorization", "Bearer " + dueno).contentType(MediaType.APPLICATION_JSON)
-						.content("{\"seccion\":\"CLIENTES\",\"accion\":\"ACCION\",\"concedido\":false}"))
-				.andExpect(status().isOk());
+		// El dueño niega la capacidad CLIENTES_CREAR para ese empleado.
+		establecer(dueno, mostrador.usuarioId(), "CLIENTES_CREAR", false).andExpect(status().isOk());
 
 		// Ahora el Mostrador ya no puede crear clientes (403 del interceptor de permisos).
 		crearCliente(mostrador.token(), 403);
 
-		// La matriz refleja la casilla desactivada.
+		// La matriz refleja la capacidad negada.
 		mvc.perform(get("/api/v1/empleados/{id}/permisos", mostrador.usuarioId())
 						.header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$[?(@.seccion == 'CLIENTES' && @.accion == 'ACCION' && @.concedido == false)]")
-						.exists());
+				.andExpect(jsonPath("$[?(@.capacidad == 'CLIENTES_CREAR' && @.concedido == false)]").exists());
 
-		// El dueño la reactiva y el acceso vuelve.
-		mvc.perform(put("/api/v1/empleados/{id}/permisos", mostrador.usuarioId())
-						.header("Authorization", "Bearer " + dueno).contentType(MediaType.APPLICATION_JSON)
-						.content("{\"seccion\":\"CLIENTES\",\"accion\":\"ACCION\",\"concedido\":true}"))
-				.andExpect(status().isOk());
+		// El dueño la vuelve a conceder y el acceso vuelve.
+		establecer(dueno, mostrador.usuarioId(), "CLIENTES_CREAR", true).andExpect(status().isOk());
 		crearCliente(mostrador.token(), 201);
 	}
 
 	@Test
-	void el_empleado_puede_ligarse_a_varias_sucursales() throws Exception {
+	void un_encargado_no_puede_conceder_lo_que_no_tiene() throws Exception {
 		UUID empresa = crearEmpresaAprobada();
 		String dueno = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.DUENO);
-		AuthTestHelper.Sesion mostrador = AuthTestHelper.sesion(mvc, json, usuarios, passwordEncoder, empresa,
-				Rol.MOSTRADOR);
-		// Habilita multi-sucursal (RF-12.4) para poder tener más de una sucursal.
-		mvc.perform(put("/api/v1/configuracion").header("Authorization", "Bearer " + dueno)
-						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"conteoStock\":true,\"multasActivo\":true,\"multiSucursal\":true,\"pagoEnLinea\":false}"))
-				.andExpect(status().isOk());
-		UUID sucA = crearSucursal(dueno, empresa, "A");
-		UUID sucB = crearSucursal(dueno, empresa, "B");
-
-		// RF-1.2: liga el empleado a dos sucursales.
-		mvc.perform(put("/api/v1/empleados/{id}/sucursales", mostrador.usuarioId())
-						.header("Authorization", "Bearer " + dueno).contentType(MediaType.APPLICATION_JSON)
-						.content("{\"sucursalIds\":[\"" + sucA + "\",\"" + sucB + "\"]}"))
-				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.length()").value(2));
-
-		mvc.perform(get("/api/v1/empleados/{id}/sucursales", mostrador.usuarioId())
-						.header("Authorization", "Bearer " + dueno))
-				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.length()").value(2));
-	}
-
-	@Test
-	void la_actividad_de_un_empleado_sin_ventas_es_cero() throws Exception {
-		UUID empresa = crearEmpresaAprobada();
-		String dueno = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.DUENO);
+		AuthTestHelper.Sesion encargado = AuthTestHelper.sesion(mvc, json, usuarios, passwordEncoder, empresa,
+				Rol.ENCARGADO);
 		AuthTestHelper.Sesion mostrador = AuthTestHelper.sesion(mvc, json, usuarios, passwordEncoder, empresa,
 				Rol.MOSTRADOR);
 
-		// RF-8.2: sin ventas registradas, la actividad del empleado es cero.
-		mvc.perform(get("/api/v1/empleados/{id}/actividad", mostrador.usuarioId())
-						.header("Authorization", "Bearer " + dueno))
-				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.ventas").value(0))
-				.andExpect(jsonPath("$.totalVendido").value(0));
-	}
+		// El dueño le quita al encargado la capacidad de aprobar reembolsos.
+		establecer(dueno, encargado.usuarioId(), "REEMBOLSOS_APROBAR", false).andExpect(status().isOk());
 
-	@Test
-	void un_encargado_no_puede_crear_un_dueno() throws Exception {
-		UUID empresa = crearEmpresaAprobada();
-		String encargado = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.ENCARGADO);
-		// B3: el encargado solo crea roles por debajo suyo; un DUEÑO no se crea por alta -> 403.
-		mvc.perform(post("/api/v1/empleados").header("Authorization", "Bearer " + encargado)
-						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"email\":\"nuevo-" + UUID.randomUUID() + "@x.test\",\"password\":\"secret123\","
-								+ "\"rol\":\"DUENO\"}"))
+		// El encargado (que ya no la tiene) NO puede concedérsela a un mostrador -> 403.
+		establecer(encargado.token(), mostrador.usuarioId(), "REEMBOLSOS_APROBAR", true)
 				.andExpect(status().isForbidden());
-	}
-
-	@Test
-	void un_encargado_puede_crear_un_operativo() throws Exception {
-		UUID empresa = crearEmpresaAprobada();
-		String encargado = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.ENCARGADO);
-		// Positivo: el encargado sí puede crear roles operativos (por debajo suyo).
-		mvc.perform(post("/api/v1/empleados").header("Authorization", "Bearer " + encargado)
-						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"email\":\"mos-" + UUID.randomUUID() + "@x.test\",\"password\":\"secret123\","
-								+ "\"rol\":\"MOSTRADOR\"}"))
-				.andExpect(status().isCreated());
 	}
 
 	@Test
@@ -163,16 +90,10 @@ class PermisosEmpleadoIntegrationTest {
 		AuthTestHelper.Sesion encargado = AuthTestHelper.sesion(mvc, json, usuarios, passwordEncoder, empresa,
 				Rol.ENCARGADO);
 
-		// El dueño le quita PAGOS al encargado (el dueño sí puede: está por encima).
-		mvc.perform(put("/api/v1/empleados/{id}/permisos", encargado.usuarioId())
-						.header("Authorization", "Bearer " + dueno).contentType(MediaType.APPLICATION_JSON)
-						.content("{\"seccion\":\"PAGOS\",\"accion\":\"ACCION\",\"concedido\":false}"))
-				.andExpect(status().isOk());
+		establecer(dueno, encargado.usuarioId(), "PAGOS_REGISTRAR", false).andExpect(status().isOk());
 
-		// B3: el encargado NO puede editar sus propios permisos (re-concederse PAGOS) -> 403.
-		mvc.perform(put("/api/v1/empleados/{id}/permisos", encargado.usuarioId())
-						.header("Authorization", "Bearer " + encargado.token()).contentType(MediaType.APPLICATION_JSON)
-						.content("{\"seccion\":\"PAGOS\",\"accion\":\"ACCION\",\"concedido\":true}"))
+		// B3: el encargado NO puede editar sus propios permisos (re-concederse PAGOS) -> 403 (pirámide).
+		establecer(encargado.token(), encargado.usuarioId(), "PAGOS_REGISTRAR", true)
 				.andExpect(status().isForbidden());
 	}
 
@@ -183,10 +104,71 @@ class PermisosEmpleadoIntegrationTest {
 		AuthTestHelper.Sesion encargadoB = AuthTestHelper.sesion(mvc, json, usuarios, passwordEncoder, empresa,
 				Rol.ENCARGADO);
 		// B3: no se gestiona a un igual en la pirámide -> 403.
-		mvc.perform(put("/api/v1/empleados/{id}/permisos", encargadoB.usuarioId())
-						.header("Authorization", "Bearer " + encargadoA).contentType(MediaType.APPLICATION_JSON)
-						.content("{\"seccion\":\"PAGOS\",\"accion\":\"ACCION\",\"concedido\":false}"))
+		establecer(encargadoA, encargadoB.usuarioId(), "PAGOS_REGISTRAR", false).andExpect(status().isForbidden());
+	}
+
+	@Test
+	void un_encargado_no_puede_invitar_un_dueno_pero_si_un_operativo() throws Exception {
+		UUID empresa = crearEmpresaAprobada();
+		String encargado = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.ENCARGADO);
+		// B3: el encargado solo invita roles por debajo suyo; un DUEÑO no -> 403.
+		mvc.perform(post("/api/v1/empleados").header("Authorization", "Bearer " + encargado)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"email\":\"nuevo-" + UUID.randomUUID() + "@x.test\",\"rol\":\"DUENO\"}"))
 				.andExpect(status().isForbidden());
+		// Positivo: sí puede invitar un operativo.
+		mvc.perform(post("/api/v1/empleados").header("Authorization", "Bearer " + encargado)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"email\":\"mos-" + UUID.randomUUID() + "@x.test\",\"rol\":\"MOSTRADOR\"}"))
+				.andExpect(status().isCreated());
+	}
+
+	@Test
+	void el_empleado_puede_ligarse_a_varias_sucursales() throws Exception {
+		UUID empresa = crearEmpresaAprobada();
+		String dueno = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.DUENO);
+		AuthTestHelper.Sesion mostrador = AuthTestHelper.sesion(mvc, json, usuarios, passwordEncoder, empresa,
+				Rol.MOSTRADOR);
+		mvc.perform(put("/api/v1/configuracion").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"conteoStock\":true,\"multasActivo\":true,\"multiSucursal\":true,\"pagoEnLinea\":false}"))
+				.andExpect(status().isOk());
+		UUID sucA = crearSucursal(dueno, empresa, "A");
+		UUID sucB = crearSucursal(dueno, empresa, "B");
+
+		mvc.perform(put("/api/v1/empleados/{id}/sucursales", mostrador.usuarioId())
+						.header("Authorization", "Bearer " + dueno).contentType(MediaType.APPLICATION_JSON)
+						.content("{\"sucursalIds\":[\"" + sucA + "\",\"" + sucB + "\"]}"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.length()").value(2));
+	}
+
+	@Test
+	void la_actividad_de_un_empleado_sin_ventas_es_cero() throws Exception {
+		UUID empresa = crearEmpresaAprobada();
+		String dueno = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.DUENO);
+		AuthTestHelper.Sesion mostrador = AuthTestHelper.sesion(mvc, json, usuarios, passwordEncoder, empresa,
+				Rol.MOSTRADOR);
+		mvc.perform(get("/api/v1/empleados/{id}/actividad", mostrador.usuarioId())
+						.header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.ventas").value(0))
+				.andExpect(jsonPath("$.totalVendido").value(0));
+	}
+
+	// --- helpers ---
+
+	private org.springframework.test.web.servlet.ResultActions establecer(String token, UUID usuarioId,
+			String capacidad, boolean concedido) throws Exception {
+		return mvc.perform(put("/api/v1/empleados/{id}/permisos", usuarioId)
+				.header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON)
+				.content("{\"capacidad\":\"" + capacidad + "\",\"concedido\":" + concedido + "}"));
+	}
+
+	private void crearCliente(String token, int esperado) throws Exception {
+		mvc.perform(post("/api/v1/clientes").header("Authorization", "Bearer " + token)
+						.contentType(MediaType.APPLICATION_JSON).content("{\"nombre\":\"Cliente\"}"))
+				.andExpect(status().is(esperado));
 	}
 
 	private UUID crearSucursal(String dueno, UUID empresa, String nombre) throws Exception {
@@ -195,5 +177,16 @@ class PermisosEmpleadoIntegrationTest {
 						.content("{\"nombre\":\"" + nombre + "\"}"))
 				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
 		return UUID.fromString(json.readTree(res).get("id").asText());
+	}
+
+	private UUID crearEmpresaAprobada() throws Exception {
+		String res = mvc.perform(post("/api/v1/empresas").contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Permisos " + UUID.randomUUID() + "\"}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		UUID empresa = UUID.fromString(json.readTree(res).get("id").asText());
+		String superAdmin = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, null, Rol.SUPERADMIN);
+		mvc.perform(post("/api/v1/empresas/{id}/aprobar", empresa).header("Authorization", "Bearer " + superAdmin))
+				.andExpect(status().isOk());
+		return empresa;
 	}
 }

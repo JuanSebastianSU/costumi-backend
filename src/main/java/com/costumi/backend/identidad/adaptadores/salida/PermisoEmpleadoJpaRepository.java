@@ -10,6 +10,5 @@ interface PermisoEmpleadoJpaRepository extends JpaRepository<PermisoEmpleadoJpaE
 
 	List<PermisoEmpleadoJpaEntity> findByEmpresaIdAndUsuarioId(UUID empresaId, UUID usuarioId);
 
-	Optional<PermisoEmpleadoJpaEntity> findByUsuarioIdAndSeccionAndAccion(UUID usuarioId, String seccion,
-			String accion);
+	Optional<PermisoEmpleadoJpaEntity> findByUsuarioIdAndCapacidad(UUID usuarioId, String capacidad);
 }
