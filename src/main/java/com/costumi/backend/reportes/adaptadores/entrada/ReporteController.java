@@ -78,6 +78,17 @@ class ReporteController {
 		return GananciaResponse.desde(resumen);
 	}
 
+	/** Serie de ingreso total por día (para el gráfico de tendencia del panel, G1). */
+	@GetMapping("/ingresos-por-dia")
+	List<com.costumi.backend.reportes.dominio.IngresoDelDia> ingresosPorDia(
+			@RequestParam(required = false) UUID sucursalId,
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+			@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+			@AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = tenant.empresaIdRequerida();
+		return consultarIngresos.porDia(empresaId, sucursalId, desde, hasta);
+	}
+
 	@GetMapping("/rentas-vencidas")
 	List<RentaVencidaResponse> rentasVencidas(@RequestParam(required = false) UUID sucursalId,
 			@AuthenticationPrincipal Jwt jwt) {
@@ -85,6 +96,17 @@ class ReporteController {
 		LocalDate hoy = LocalDate.now();
 		return consultarOperaciones.rentasVencidas(empresaId, sucursalId).stream()
 				.map(r -> RentaVencidaResponse.desde(r, hoy)).toList();
+	}
+
+	/** Rentas DEVUELTA sin cerrar («devoluciones por cerrar»): alerta accionable del panel (G1). */
+	@GetMapping("/devoluciones-por-cerrar")
+	DevolucionesPorCerrarResponse devolucionesPorCerrar(@RequestParam(required = false) UUID sucursalId,
+			@AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = tenant.empresaIdRequerida();
+		return new DevolucionesPorCerrarResponse(consultarOperaciones.devolucionesPorCerrar(empresaId, sucursalId));
+	}
+
+	record DevolucionesPorCerrarResponse(long total) {
 	}
 
 	@GetMapping("/depositos-activos")

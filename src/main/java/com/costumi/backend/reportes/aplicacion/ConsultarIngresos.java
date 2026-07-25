@@ -1,8 +1,10 @@
 package com.costumi.backend.reportes.aplicacion;
 
+import com.costumi.backend.reportes.dominio.IngresoDelDia;
 import com.costumi.backend.reportes.dominio.ResumenDeIngresos;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 /** Puerto de entrada: resumen de ingresos de una empresa (RF-9.1), scoped por tenant. */
@@ -13,4 +15,7 @@ public interface ConsultarIngresos {
 	 * acotados al rango {@code [desde, hasta]} (por fecha del pago; null = sin ese límite).
 	 */
 	ResumenDeIngresos deEmpresa(UUID empresaId, UUID sucursalId, LocalDate desde, LocalDate hasta);
+
+	/** Serie de ingreso total por día (para la tendencia del panel), en el rango y sucursal dados. */
+	List<IngresoDelDia> porDia(UUID empresaId, UUID sucursalId, LocalDate desde, LocalDate hasta);
 }

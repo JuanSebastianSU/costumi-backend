@@ -51,6 +51,12 @@ class ReporteService
 	}
 
 	@Override
+	public java.util.List<com.costumi.backend.reportes.dominio.IngresoDelDia> porDia(UUID empresaId, UUID sucursalId,
+			java.time.LocalDate desde, java.time.LocalDate hasta) {
+		return ingresos.porDia(empresaId, sucursalId, desde, hasta);
+	}
+
+	@Override
 	@Transactional(readOnly = true)
 	public ResumenDeGanancia gananciaDeEmpresa(UUID empresaId, UUID sucursalId, java.time.LocalDate desde,
 			java.time.LocalDate hasta) {
@@ -73,6 +79,11 @@ class ReporteService
 	@Transactional(readOnly = true)
 	public IngresosPorMetodo ingresosPorMetodo(UUID empresaId, LocalDate desde, LocalDate hasta, UUID sucursalId) {
 		return operaciones.ingresosPorMetodo(empresaId, desde, hasta, sucursalId);
+	}
+
+	@Override
+	public long devolucionesPorCerrar(UUID empresaId, UUID sucursalId) {
+		return operaciones.devolucionesPorCerrar(empresaId, sucursalId);
 	}
 
 	@Override

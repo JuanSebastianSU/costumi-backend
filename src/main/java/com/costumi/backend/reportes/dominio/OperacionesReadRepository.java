@@ -19,4 +19,7 @@ public interface OperacionesReadRepository {
 	 * y {@code sucursalId} nulos = sin ese límite (RF-6.10/9.1).
 	 */
 	IngresosPorMetodo ingresosPorMetodo(UUID empresaId, LocalDate desde, LocalDate hasta, UUID sucursalId);
+
+	/** Cuántas rentas están en estado DEVUELTA (devueltas sin cerrar). {@code sucursalId} nulo = todas. */
+	long devolucionesPorCerrar(UUID empresaId, UUID sucursalId);
 }

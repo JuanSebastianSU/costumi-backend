@@ -76,6 +76,17 @@ class OperacionesJdbcAdapter implements OperacionesReadRepository {
 	}
 
 	@Override
+	public long devolucionesPorCerrar(UUID empresaId, UUID sucursalId) {
+		String sql = "select count(*) from renta where empresa_id = :empresaId and estado = 'DEVUELTA'"
+				+ (sucursalId == null ? "" : " and sucursal_id = :sucursalId");
+		JdbcClient.StatementSpec spec = jdbc.sql(sql).param("empresaId", empresaId);
+		if (sucursalId != null) {
+			spec = spec.param("sucursalId", sucursalId);
+		}
+		return spec.query(Long.class).single();
+	}
+
+	@Override
 	public BigDecimal depositosActivos(UUID empresaId, UUID sucursalId) {
 		String sql = "select coalesce(sum(deposito), 0) from renta where empresa_id = :empresaId"
 				+ " and estado in ('RESERVADA', 'ACTIVA', 'DEVUELTA')"

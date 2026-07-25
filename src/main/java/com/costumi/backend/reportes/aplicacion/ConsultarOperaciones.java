@@ -19,4 +19,7 @@ public interface ConsultarOperaciones {
 
 	/** Ingresos netos por método en un rango de fechas (nulos = sin ese límite), RF-6.10/9.1. */
 	IngresosPorMetodo ingresosPorMetodo(UUID empresaId, LocalDate desde, LocalDate hasta, UUID sucursalId);
+
+	/** Cuántas rentas están DEVUELTA (devueltas pero sin cerrar): la alerta «devoluciones por cerrar» del panel. */
+	long devolucionesPorCerrar(UUID empresaId, UUID sucursalId);
 }
