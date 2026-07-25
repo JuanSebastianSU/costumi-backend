@@ -8,6 +8,25 @@
 > `CLAUDE.md`) para retomar sin perder el hilo. Regla: mueve ítems entre secciones,
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
+## RED-3 — filtros server-side de gestión: bandejas de rentas, ventas, auditoría, reembolsos (2026-07-24)
+
+Bloque B1 del lote del rediseño. Cuatro listados de gestión ganan filtro server-side (el patrón `?param` que
+se hila hasta la @Query), para que las pestañas del front filtren de verdad y no solo la página cargada.
+
+- **Bandejas de rentas (G9)**: `GET /rentas?filtro=POR_ENTREGAR|ACTIVAS|VENCIDAS|CERRADAS` + `GET
+  /rentas/resumen` con los conteos por bandeja. La bandeja se traduce a criterios (estados + soloVencidas +
+  soloActivasEnFecha) en `FiltroDeBandeja` (dominio), con `hoy` = fecha del servidor, para que el JPQL no
+  conozca el enum. ACTIVAS = ACTIVA en fecha + todas las DEVUELTA; VENCIDAS = ACTIVA pasada de fecha.
+- **Ventas (G8)**: `GET /ventas?estado=CONFIRMADA|PARCIALMENTE_DEVUELTA|DEVUELTA`. (El rango de fechas +
+  totales del período van con los períodos financieros, otro PR.)
+- **Auditoría (G21)**: `GET /auditoria?tipo=<primera palabra de la acción>` (EMPRESA/DEVOLUCION/STOCK/…),
+  `like 'TIPO%'`.
+- **Reembolsos (G13)**: `GET /reembolsos?filtro=PENDIENTES|RESUELTAS` (RESUELTAS = APROBADA o RECHAZADA).
+- Sin migración (solo consultas). Tests de integración por filtro. **Suite 550/550**, ArchUnit + Modulith verdes.
+
+**Al mergear: regenerar `:api-client`** y cablear las pestañas del front (G8/G9/G13/G21). **Pendiente en B2/B3**:
+historial del cliente paginado + saldo/estadoPago, operación por id, y los períodos financieros de reportes/panel.
+
 ## RED-2 — hitos del ciclo (renta/turno/devolución) + flag «renta en curso» del cliente (2026-07-24)
 
 Segundo PR del lote del rediseño (Bloque A; `PLAN_REDISENO_BACKEND.md` A1-bis + A3). Expone las fechas

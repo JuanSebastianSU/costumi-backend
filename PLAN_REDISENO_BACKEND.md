@@ -103,18 +103,20 @@ transversal (los eventos no llevan el actor → hay que hacerlo llegar al sink):
   (solo accion/detalle/fecha) y **los eventos de dominio no llevan el actor**. Hay que hacer llegar el actor
   al sink (enriquecer eventos o capturar el usuario del contexto) + columna + exponerlo. No es un campo más.
 
-### A4 — Filtrar + paginar en el SERVIDOR  · regen
-- ⬜ **Bandejas de rentas (`G9`)**: `GET /rentas?filtro=POR_ENTREGAR|ACTIVAS|VENCIDAS|CERRADAS` +
-  `GET /rentas/resumen`. Spec completa en `AppCustomi2/PROGRESS.md`. **`feat/rentas-por-estado` NO está en
-  main** → se implementa desde la spec (esa rama es descartable).
-- ⬜ **Ventas (`G8`)**: `GET /ventas?filtro=<estado>` + rango por fecha + totales del período (usa fecha de A1).
-- ⬜ **Grupo B**: `GET /auditoria?filtro=<tipoDeAccion>` (combinar con actor + `?desde/hasta`) · `GET
-  /reembolsos?filtro=PENDIENTES|RESUELTAS`. *(`GET /disfraces?categoriaId=` ✅ ya está — se saca.)*
-- ⬜ **★ Historial del cliente (`C8`/`C7`)**: paginar `GET /clientes/me/historial` (hoy lista plana) +
-  `?filtro=POR_PAGAR|POR_RETIRAR|ACTIVOS|CERRADOS` + orden reciente. + agregar `saldoPendiente`/`estadoPago`
-  a `HistorialItem` (habilita «Por pagar» y «pagar lo pendiente»).
-- ⬜ **Operación por id para el cliente** (`C7`): `GET /clientes/me/operaciones/{id}` (o que el checkout
-  devuelva total+código) para desacoplar del historial completo.
+### A4/B1 — Filtros server-side de gestión  · regen · 🚧 HECHO en `feat/bloque-b1-filtros-de-gestion` (RED-3, sin mergear)
+- ✅ **Bandejas de rentas (`G9`)**: `GET /rentas?filtro=POR_ENTREGAR|ACTIVAS|VENCIDAS|CERRADAS` +
+  `GET /rentas/resumen`. `FiltroDeBandeja` traduce la bandeja a estados+flags; el JPQL no conoce el enum.
+- ✅ **Ventas (`G8`)**: `GET /ventas?estado=<estado>`. *(Rango de fechas + totales → B3 períodos.)*
+- ✅ **Auditoría (`G21`)**: `GET /auditoria?tipo=<primera palabra>` · **Reembolsos (`G13`)**:
+  `GET /reembolsos?filtro=PENDIENTES|RESUELTAS`. *(`GET /disfraces?categoriaId=` ✅ ya estaba.)*
+
+### B2 — Historial del cliente paginado (reescribe el read-model)  · regen
+- ⬜ **★ Historial del cliente (`C8`/`C7`)**: paginar `GET /clientes/me/historial` (hoy lista plana concatenada
+  en memoria) con UNA consulta por `cliente.usuario_id` (molde: `estadoDeCuentaDeUsuario`) + `?filtro=
+  POR_PAGAR|POR_RETIRAR|ACTIVOS|CERRADOS` + `saldoPendiente`/`estadoPago` en `HistorialItem` (falta el
+  fragmento de saldo de VENTAS, hoy solo existe para rentas).
+- ⬜ **Operación por id para el cliente** (`C7`): `GET /clientes/me/operaciones/{id}` (por `usuario_id`,
+  patrón `misDeudas`).
 
 ### A5 — Cobros, saldos y comprobante del servidor  · regen
 - ⬜ **«Pendiente» calculado por el servidor** en `ComprobanteResponse` (hoy solo `saldoNeto`; la app
