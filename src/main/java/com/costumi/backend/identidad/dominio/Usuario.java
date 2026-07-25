@@ -21,9 +21,10 @@ public class Usuario {
 	/** Datos que el propio usuario administra (RF-14). Opcionales: puede no haberlos cargado todavía. */
 	private final String nombre;
 	private final String telefono;
+	private final String fotoUrl;
 
 	private Usuario(UUID id, UUID empresaId, String email, String passwordHash, Rol rol, boolean activo,
-			String nombre, String telefono) {
+			String nombre, String telefono, String fotoUrl) {
 		this.id = Objects.requireNonNull(id, "id");
 		this.rol = Objects.requireNonNull(rol, "rol");
 		this.email = exigir(email, "email");
@@ -32,10 +33,11 @@ public class Usuario {
 		this.activo = activo;
 		this.nombre = normalizar(nombre);
 		this.telefono = normalizar(telefono);
+		this.fotoUrl = normalizar(fotoUrl);
 	}
 
 	public static Usuario crear(UUID empresaId, String email, String passwordHash, Rol rol) {
-		return new Usuario(UUID.randomUUID(), empresaId, email, passwordHash, rol, true, null, null);
+		return new Usuario(UUID.randomUUID(), empresaId, email, passwordHash, rol, true, null, null, null);
 	}
 
 	public static Usuario rehidratar(UUID id, UUID empresaId, String email, String passwordHash, Rol rol) {
@@ -44,20 +46,25 @@ public class Usuario {
 
 	public static Usuario rehidratar(UUID id, UUID empresaId, String email, String passwordHash, Rol rol,
 			boolean activo) {
-		return new Usuario(id, empresaId, email, passwordHash, rol, activo, null, null);
+		return new Usuario(id, empresaId, email, passwordHash, rol, activo, null, null, null);
 	}
 
 	public static Usuario rehidratar(UUID id, UUID empresaId, String email, String passwordHash, Rol rol,
-			boolean activo, String nombre, String telefono) {
-		return new Usuario(id, empresaId, email, passwordHash, rol, activo, nombre, telefono);
+			boolean activo, String nombre, String telefono, String fotoUrl) {
+		return new Usuario(id, empresaId, email, passwordHash, rol, activo, nombre, telefono, fotoUrl);
 	}
 
 	/**
 	 * El propio usuario actualiza sus datos (RF-14). Vacío borra el dato: son opcionales. No toca el
-	 * correo, que identifica la cuenta, ni el rol.
+	 * correo, que identifica la cuenta, ni el rol. Conserva la foto de perfil (se cambia por su endpoint).
 	 */
 	public Usuario actualizarPerfil(String nuevoNombre, String nuevoTelefono) {
-		return new Usuario(id, empresaId, email, passwordHash, rol, activo, nuevoNombre, nuevoTelefono);
+		return new Usuario(id, empresaId, email, passwordHash, rol, activo, nuevoNombre, nuevoTelefono, fotoUrl);
+	}
+
+	/** Asigna la foto de perfil ya subida (URL pública del almacén de imágenes). Misma cuenta. */
+	public Usuario asignarFoto(String url) {
+		return new Usuario(id, empresaId, email, passwordHash, rol, activo, nombre, telefono, url);
 	}
 
 	/** Nombre para mostrar: el que cargó, o su correo si todavía no puso ninguno. */
@@ -73,22 +80,22 @@ public class Usuario {
 		if (!rol.esCliente()) {
 			throw new IllegalStateException("Solo un CLIENTE puede promoverse a DUEÑO");
 		}
-		return new Usuario(id, empresaId, email, passwordHash, Rol.DUENO, activo, nombre, telefono);
+		return new Usuario(id, empresaId, email, passwordHash, Rol.DUENO, activo, nombre, telefono, fotoUrl);
 	}
 
 	/** Cambia la contraseña (recibe el hash ya cifrado). Misma cuenta: solo cambia el hash. */
 	public Usuario cambiarContrasena(String nuevoPasswordHash) {
-		return new Usuario(id, empresaId, email, nuevoPasswordHash, rol, activo, nombre, telefono);
+		return new Usuario(id, empresaId, email, nuevoPasswordHash, rol, activo, nombre, telefono, fotoUrl);
 	}
 
 	/** Da de baja al usuario: no podrá autenticarse ni renovar sesión (RF-8). Misma cuenta, se conserva. */
 	public Usuario desactivar() {
-		return new Usuario(id, empresaId, email, passwordHash, rol, false, nombre, telefono);
+		return new Usuario(id, empresaId, email, passwordHash, rol, false, nombre, telefono, fotoUrl);
 	}
 
 	/** Reactiva al usuario dado de baja. */
 	public Usuario activar() {
-		return new Usuario(id, empresaId, email, passwordHash, rol, true, nombre, telefono);
+		return new Usuario(id, empresaId, email, passwordHash, rol, true, nombre, telefono, fotoUrl);
 	}
 
 	/**
@@ -97,7 +104,7 @@ public class Usuario {
 	 * personal de su empresa. La autoridad para hacerlo (pirámide) la exige la capa de aplicación.
 	 */
 	public Usuario cambiarRol(Rol nuevoRol) {
-		return new Usuario(id, empresaId, email, passwordHash, nuevoRol, activo, nombre, telefono);
+		return new Usuario(id, empresaId, email, passwordHash, nuevoRol, activo, nombre, telefono, fotoUrl);
 	}
 
 	private static UUID validarTenant(UUID empresaId, Rol rol) {
@@ -152,5 +159,10 @@ public class Usuario {
 
 	public String telefono() {
 		return telefono;
+	}
+
+	/** URL de la foto de perfil del usuario (puede ser null si no cargó ninguna). */
+	public String fotoUrl() {
+		return fotoUrl;
 	}
 }

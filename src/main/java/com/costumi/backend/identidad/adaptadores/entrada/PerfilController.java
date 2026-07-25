@@ -13,9 +13,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.UUID;
 
 /**
@@ -47,6 +50,16 @@ class PerfilController {
 				perfil.actualizarPerfil(usuarioDe(jwt), request.nombre(), request.telefono()));
 	}
 
+	/** Sube la foto de perfil (multipart, campo {@code archivo}); reusa el almacén de imágenes (S3). */
+	@PostMapping("/foto")
+	PerfilResponse subirFoto(@RequestParam("archivo") MultipartFile archivo, @AuthenticationPrincipal Jwt jwt)
+			throws IOException {
+		if (archivo == null || archivo.isEmpty()) {
+			throw new IllegalArgumentException("El archivo de la foto es obligatorio");
+		}
+		return PerfilResponse.desde(perfil.asignarFoto(usuarioDe(jwt), archivo.getBytes()));
+	}
+
 	/** Cambia la contraseña dentro de la sesión; exige la actual. */
 	@PostMapping("/contrasena")
 	@ResponseStatus(HttpStatus.NO_CONTENT)
@@ -61,11 +74,11 @@ class PerfilController {
 
 	/** Datos de la cuenta. {@code nombreParaMostrar} evita que la UI tenga que decidir el respaldo. */
 	record PerfilResponse(UUID id, String email, String nombre, String telefono, String nombreParaMostrar,
-			String rol, UUID empresaId) {
+			String fotoUrl, String rol, UUID empresaId) {
 
 		static PerfilResponse desde(Usuario u) {
 			return new PerfilResponse(u.id(), u.email(), u.nombre(), u.telefono(), u.nombreParaMostrar(),
-					u.rol().name(), u.empresaId());
+					u.fotoUrl(), u.rol().name(), u.empresaId());
 		}
 	}
 

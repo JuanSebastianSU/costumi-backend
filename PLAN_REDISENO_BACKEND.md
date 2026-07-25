@@ -139,19 +139,19 @@ transversal. Un solo lote (no PRs minúsculos).
   /disfraces/conteo-por-prenda/{id}` para el aviso de impacto.
 - ✅ **«Nuevo cliente» en línea desde el POS**: `crear-cliente` ya aceptaba teléfono/email — nada que hacer.
 
-### A7 — Media & identidad de tienda  · regen + migraciones
-- ⬜ **★ (A7-i) IDENTIDAD DE TIENDA** (tu «primer frente») — **falta entero**. Desbloquea `C1/C2/G17`:
-  - `Empresa`: `logoUrl`, `portadaUrl`, `descripcion`, `ciudad`/`barrio`, `direccion`, `horario` (por día →
-    abierto/cerrado), `disfracesCount`. (Hoy solo `ubicacion`/`contacto` en texto.) Endpoints multipart para
-    **subir logo y portada** (reusando el `AlmacenDeImagenesS3` que ✅ ya existe).
-  - `EmpresaVitrinaResponse` (marketplace): hoy **solo id+nombre** → sumar logoUrl/ciudad/disfracesCount/abierto.
-  - `Sucursal` (`G17`): foto/portada, descripción, horario, **lat/lng** (hoy solo un link de Maps en texto).
-  - `C1`: endpoint de **destacados** (no existe) + **facetas/categorías** públicas del marketplace (parcial:
-    el catálogo ya filtra por categoría). Ciudad del usuario para el saludo.
+### A7 — Media & identidad de tienda  · regen + migraciones · 🚧 A7-i + A7-iii HECHOS en `feat/a7-media-identidad-tienda` (RED-11, sin mergear)
+- ✅ **(A7-i, parcial) IDENTIDAD DE TIENDA** — hecho lo de media/marca de la **empresa**:
+  - `Empresa`: ✅ `logoUrl`, `portadaUrl`, `descripcion`, `ciudad` (V71) + `PATCH /empresas/mia` +
+    `POST /empresas/mia/logo` y `/portada` (reusan el almacén compartido). `EmpresaResponse` los expone.
+  - `EmpresaVitrinaResponse`: ✅ ahora trae `logoUrl`/`ciudad`/`descripcion` (+ SQL del marketplace).
+  - ⬜ **Falta de A7-i**: `horario` por día + `disfracesCount` en Empresa; `Sucursal` (`G17`: foto/portada/
+    descripción/horario/**lat-lng**); `C1` **destacados** + **facetas** públicas + ciudad del usuario.
+  - 🔧 Estructural: se movió el puerto `AlmacenDeImagenesPublico` a `compartido` (evita ciclo
+    identidad↔inventario); impl sigue en inventario.
 - ⬜ **(A7-ii) Paginar el marketplace de tiendas** (`C1`): hoy `GET /marketplace/empresas` devuelve `List`
   completa (sin `Pageable`). Server-side + RemoteMediator en la app.
-- ⬜ **(A7-iii) Foto de perfil del cliente** (`C10`): `PerfilResponse` no tiene `fotoUrl` (V66 solo agregó
-  nombre/teléfono). Agregar columna + endpoint multipart (reusa S3).
+- ✅ **(A7-iii) Foto de perfil del cliente** (`C10`): `Usuario.fotoUrl` (V71) + `POST /perfil/foto` +
+  `PerfilResponse.fotoUrl` (reusa el almacén compartido).
 - ⬜ **(A7-iv) Favoritos sincronizados** (`C4`): **no existe nada** (0 hits). `GET/POST/DELETE
   /clientes/me/favoritos` + persistencia (hoy son locales en Room).
 - ⬜ **(A7-v) Carrito (`C5`)**: depósito reembolsable por línea + total (no existe) · **variante (talla/color)

@@ -8,14 +8,20 @@ public class EmpresaEnVitrina {
 
 	private final UUID id;
 	private final String nombre;
+	private final String logoUrl;
+	private final String ciudad;
+	private final String descripcion;
 
-	private EmpresaEnVitrina(UUID id, String nombre) {
+	private EmpresaEnVitrina(UUID id, String nombre, String logoUrl, String ciudad, String descripcion) {
 		this.id = Objects.requireNonNull(id, "id");
 		this.nombre = Objects.requireNonNull(nombre, "nombre");
+		this.logoUrl = logoUrl;
+		this.ciudad = ciudad;
+		this.descripcion = descripcion;
 	}
 
-	public static EmpresaEnVitrina de(UUID id, String nombre) {
-		return new EmpresaEnVitrina(id, nombre);
+	public static EmpresaEnVitrina de(UUID id, String nombre, String logoUrl, String ciudad, String descripcion) {
+		return new EmpresaEnVitrina(id, nombre, logoUrl, ciudad, descripcion);
 	}
 
 	public UUID id() {
@@ -24,5 +30,17 @@ public class EmpresaEnVitrina {
 
 	public String nombre() {
 		return nombre;
+	}
+
+	public String logoUrl() {
+		return logoUrl;
+	}
+
+	public String ciudad() {
+		return ciudad;
+	}
+
+	public String descripcion() {
+		return descripcion;
 	}
 }

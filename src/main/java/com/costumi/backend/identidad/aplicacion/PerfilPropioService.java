@@ -1,5 +1,6 @@
 package com.costumi.backend.identidad.aplicacion;
 
+import com.costumi.backend.compartido.AlmacenDeImagenesPublico;
 import com.costumi.backend.identidad.dominio.Usuario;
 import com.costumi.backend.identidad.dominio.UsuarioRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -8,7 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
-/** Casos de uso de la propia cuenta (RF-14): ver/editar el perfil y cambiar la contraseña. */
+/** Casos de uso de la propia cuenta (RF-14): ver/editar el perfil, la foto y cambiar la contraseña. */
 @Service
 class PerfilPropioService implements GestionarPerfilPropio {
 
@@ -17,10 +18,13 @@ class PerfilPropioService implements GestionarPerfilPropio {
 
 	private final UsuarioRepository usuarios;
 	private final PasswordEncoder passwordEncoder;
+	private final AlmacenDeImagenesPublico imagenes;
 
-	PerfilPropioService(UsuarioRepository usuarios, PasswordEncoder passwordEncoder) {
+	PerfilPropioService(UsuarioRepository usuarios, PasswordEncoder passwordEncoder,
+			AlmacenDeImagenesPublico imagenes) {
 		this.usuarios = usuarios;
 		this.passwordEncoder = passwordEncoder;
+		this.imagenes = imagenes;
 	}
 
 	@Override
@@ -33,6 +37,14 @@ class PerfilPropioService implements GestionarPerfilPropio {
 	@Transactional
 	public Usuario actualizarPerfil(UUID usuarioId, String nombre, String telefono) {
 		return usuarios.guardar(exigirUsuario(usuarioId).actualizarPerfil(nombre, telefono));
+	}
+
+	@Override
+	@Transactional
+	public Usuario asignarFoto(UUID usuarioId, byte[] contenido) {
+		Usuario usuario = exigirUsuario(usuarioId);
+		String url = imagenes.subir(contenido, "usuarios/" + usuarioId + "/perfil/");
+		return usuarios.guardar(usuario.asignarFoto(url));
 	}
 
 	@Override
