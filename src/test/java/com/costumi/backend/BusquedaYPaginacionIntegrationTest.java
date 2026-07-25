@@ -118,6 +118,18 @@ class BusquedaYPaginacionIntegrationTest {
 	}
 
 	@Test
+	void la_auditoria_se_filtra_por_tipo_de_accion() throws Exception {
+		Ctx c = montar(); // aprobar la empresa deja "EMPRESA_APROBADA" en el trail
+		// ?tipo=EMPRESA trae la aprobación (primera palabra de la acción); ?tipo=VENTA (no hubo) no trae nada.
+		mvc.perform(get("/api/v1/auditoria").param("tipo", "EMPRESA").header("Authorization", "Bearer " + c.dueno()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.contenido[?(@.accion == 'EMPRESA_APROBADA')]").exists());
+		mvc.perform(get("/api/v1/auditoria").param("tipo", "VENTA").header("Authorization", "Bearer " + c.dueno()))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.total").value(0));
+	}
+
+	@Test
 	void las_listas_que_antes_devolvian_todo_ahora_responden_paginadas() throws Exception {
 		Ctx c = montar();
 		for (String ruta : new String[] { "/api/v1/notificaciones", "/api/v1/devoluciones", "/api/v1/reembolsos",

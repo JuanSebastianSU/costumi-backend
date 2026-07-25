@@ -32,7 +32,7 @@ class AuditoriaService implements RegistrarAuditoria, ConsultarAuditoria {
 
 	@Override
 	@Transactional(readOnly = true)
-	public com.costumi.backend.compartido.Pagina<RegistroDeAuditoria> deEmpresa(UUID empresaId, String buscar, com.costumi.backend.compartido.SolicitudDePagina pagina) {
-		return registros.listarPorEmpresa(empresaId, buscar, pagina);
+	public com.costumi.backend.compartido.Pagina<RegistroDeAuditoria> deEmpresa(UUID empresaId, String buscar, String tipo, com.costumi.backend.compartido.SolicitudDePagina pagina) {
+		return registros.listarPorEmpresa(empresaId, buscar, tipo, pagina);
 	}
 }

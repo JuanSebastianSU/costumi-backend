@@ -18,8 +18,9 @@ interface RegistroDeAuditoriaJpaRepository extends JpaRepository<RegistroDeAudit
 	 * mayúsculas) filtra por acción o detalle. La auditoría crece sin techo: no se puede devolver entera.
 	 */
 	@Query("select r from RegistroDeAuditoriaJpaEntity r where r.empresaId = :empresaId "
+			+ "and (cast(:tipo as string) is null or r.accion like concat(cast(:tipo as string), '%')) "
 			+ "and (cast(:buscar as string) is null or lower(r.accion) like lower(concat('%', cast(:buscar as string), '%')) "
 			+ "or lower(r.detalle) like lower(concat('%', cast(:buscar as string), '%'))) order by r.fecha desc")
 	Page<RegistroDeAuditoriaJpaEntity> buscarPagina(@Param("empresaId") UUID empresaId,
-			@Param("buscar") String buscar, Pageable pageable);
+			@Param("buscar") String buscar, @Param("tipo") String tipo, Pageable pageable);
 }
