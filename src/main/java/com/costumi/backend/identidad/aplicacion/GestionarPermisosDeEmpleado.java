@@ -1,6 +1,7 @@
 package com.costumi.backend.identidad.aplicacion;
 
 import com.costumi.backend.identidad.dominio.AccionDePermiso;
+import com.costumi.backend.identidad.dominio.Permiso;
 import com.costumi.backend.identidad.dominio.Rol;
 import com.costumi.backend.identidad.dominio.Seccion;
 
@@ -19,6 +20,13 @@ public interface GestionarPermisosDeEmpleado {
 	 * actor ({@code actorRol}) tiene autoridad sobre el empleado (pirámide, RF-1.3/B3).
 	 */
 	List<PermisoEfectivo> matriz(UUID empresaId, Rol actorRol, UUID usuarioId);
+
+	/**
+	 * Los permisos <b>concedidos</b> del PROPIO usuario (plantilla de su rol ± sus overrides), para que el
+	 * front arme la navegación por permisos y no por rol (B-permisos). Sin chequeo de autoridad: uno siempre
+	 * puede ver los suyos. Devuelve solo lo concedido (lo que NO aparece, no lo tiene).
+	 */
+	List<Permiso> mios(UUID usuarioId, Rol rol);
 
 	/**
 	 * Activa/desactiva una casilla puntual encima de la plantilla del rol. Solo el actor con autoridad sobre

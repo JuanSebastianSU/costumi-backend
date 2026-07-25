@@ -52,6 +52,23 @@ class PermisosDeEmpleadoService implements GestionarPermisosDeEmpleado, Consulta
 	}
 
 	@Override
+	@Transactional(readOnly = true)
+	public List<Permiso> mios(UUID usuarioId, Rol rol) {
+		Set<Permiso> plantilla = PlantillaDeRol.permisosDe(rol);
+		List<Permiso> concedidos = new ArrayList<>();
+		for (Seccion seccion : Seccion.values()) {
+			for (AccionDePermiso accion : AccionDePermiso.values()) {
+				boolean concedido = overrides.valor(usuarioId, seccion, accion)
+						.orElseGet(() -> plantilla.contains(new Permiso(seccion, accion)));
+				if (concedido) {
+					concedidos.add(new Permiso(seccion, accion));
+				}
+			}
+		}
+		return concedidos;
+	}
+
+	@Override
 	@Transactional
 	public void establecer(UUID empresaId, Rol actorRol, UUID usuarioId, Seccion seccion, AccionDePermiso accion,
 			boolean concedido) {
