@@ -94,15 +94,19 @@ por tamaño/afinidad. Si preferís invertir PR-1↔PR-2, es un cambio de una lí
 - ✅ `ClienteResponse.tieneRentaEnCurso` (RESERVADA/ACTIVA), resuelto en la consulta de carga con `bool_or`
   (sin N+1). Hecho en RED-2 (`G11`).
 
-### A3-bis — Nombres + actor en respuestas  · su propio PR (mismo tema: trazabilidad)
+### A3-bis — Nombres + actor en respuestas  · regen · 🚧 HECHO en `feat/a3bis-nombres-y-actor-auditoria` (RED-9, sin mergear)
 Se agrupan porque comparten el patrón «resolver quién es cada fila»; el actor de auditoría además es
-transversal (los eventos no llevan el actor → hay que hacerlo llegar al sink):
-- ⬜ `SolicitudDeReembolsoResponse`: **nombre** del solicitante (hoy solo `solicitanteClienteId`; resolver por
-  lote vía `ResolucionDeClientes`). (`G13`)
-- ⬜ `NotificacionResponse`: **`clienteNombre`** (hoy la app lo resuelve contra una lista topada en 100). (`G19`)
-- ⬜ **Usuario/actor en auditoría** (`G21`): ★ **transversal** — `RegistroDeAuditoria` **no guarda quién**
-  (solo accion/detalle/fecha) y **los eventos de dominio no llevan el actor**. Hay que hacer llegar el actor
-  al sink (enriquecer eventos o capturar el usuario del contexto) + columna + exponerlo. No es un campo más.
+transversal. Un solo lote (no PRs minúsculos).
+- ✅ `SolicitudDeReembolsoResponse`: **`solicitanteNombre`** — resuelto por lote vía
+  `ResolucionDeClientes.nombresDeClientes(empresaId, ids)` (una consulta, sin N+1). (`G13`)
+- ✅ `NotificacionResponse`: **`clienteNombre`** — mismo resolvedor por lote. (`G19`)
+- ✅ **Actor en auditoría** (`G21`): columna `actor_usuario_id` (**V70**, nullable) + `actorUsuarioId` en
+  `RegistroDeAuditoria`/`AuditoriaResponse`. El actor se captura en `AuditoriaService.registrar` desde
+  `ContextoDeTenant.usuarioId()` (los listeners corren **AFTER_COMMIT en el mismo hilo** → SecurityContext
+  disponible; verificado exigiendo el id exacto del SuperAdmin). La firma del puerto `RegistrarAuditoria`
+  **no cambió**. Jobs sin sesión → `null` (acción de sistema).
+  - ⬜ **Diferido** (encaja en el épico de identidad): mostrar el **nombre** del actor (hoy se expone su id;
+    el front lo mapea con la lista de empleados). El JWT no trae `nombre`; resolverlo acoplaría identidad.
 
 ### A4/B1 — Filtros server-side de gestión  · regen · 🚧 HECHO en `feat/bloque-b1-filtros-de-gestion` (RED-3, sin mergear)
 - ✅ **Bandejas de rentas (`G9`)**: `GET /rentas?filtro=POR_ENTREGAR|ACTIVAS|VENCIDAS|CERRADAS` +

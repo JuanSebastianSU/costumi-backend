@@ -12,13 +12,16 @@ public class RegistroDeAuditoria {
 
 	private final UUID id;
 	private final UUID empresaId;
+	private final UUID actorUsuarioId;
 	private final String accion;
 	private final String detalle;
 	private final Instant fecha;
 
-	private RegistroDeAuditoria(UUID id, UUID empresaId, String accion, String detalle, Instant fecha) {
+	private RegistroDeAuditoria(UUID id, UUID empresaId, UUID actorUsuarioId, String accion, String detalle,
+			Instant fecha) {
 		this.id = Objects.requireNonNull(id, "id");
 		this.empresaId = Objects.requireNonNull(empresaId, "empresaId");
+		this.actorUsuarioId = actorUsuarioId; // null = acción de sistema/plataforma (jobs, SuperAdmin sin sesión)
 		if (accion == null || accion.isBlank()) {
 			throw new IllegalArgumentException("La acción de auditoría es obligatoria");
 		}
@@ -27,12 +30,13 @@ public class RegistroDeAuditoria {
 		this.fecha = Objects.requireNonNull(fecha, "fecha");
 	}
 
-	public static RegistroDeAuditoria de(UUID empresaId, String accion, String detalle) {
-		return new RegistroDeAuditoria(UUID.randomUUID(), empresaId, accion, detalle, Instant.now());
+	public static RegistroDeAuditoria de(UUID empresaId, UUID actorUsuarioId, String accion, String detalle) {
+		return new RegistroDeAuditoria(UUID.randomUUID(), empresaId, actorUsuarioId, accion, detalle, Instant.now());
 	}
 
-	public static RegistroDeAuditoria rehidratar(UUID id, UUID empresaId, String accion, String detalle, Instant fecha) {
-		return new RegistroDeAuditoria(id, empresaId, accion, detalle, fecha);
+	public static RegistroDeAuditoria rehidratar(UUID id, UUID empresaId, UUID actorUsuarioId, String accion,
+			String detalle, Instant fecha) {
+		return new RegistroDeAuditoria(id, empresaId, actorUsuarioId, accion, detalle, fecha);
 	}
 
 	public UUID id() {
@@ -41,6 +45,11 @@ public class RegistroDeAuditoria {
 
 	public UUID empresaId() {
 		return empresaId;
+	}
+
+	/** Usuario autenticado que realizó la acción; {@code null} si fue una acción de sistema/plataforma. */
+	public UUID actorUsuarioId() {
+		return actorUsuarioId;
 	}
 
 	public String accion() {

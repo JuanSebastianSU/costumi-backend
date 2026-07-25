@@ -67,6 +67,29 @@ class NotificacionIntegrationTest {
 	}
 
 	@Test
+	void el_listado_resuelve_el_nombre_del_cliente() throws Exception {
+		String res = mvc.perform(post("/api/v1/empresas").contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Notif Nombre " + UUID.randomUUID() + "\"}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		UUID empresa = UUID.fromString(json.readTree(res).get("id").asText());
+		String superAdmin = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, null, Rol.SUPERADMIN);
+		mvc.perform(post("/api/v1/empresas/{id}/aprobar", empresa).header("Authorization", "Bearer " + superAdmin))
+				.andExpect(status().isOk());
+		String dueno = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.DUENO);
+		UUID cliente = postId("/api/v1/clientes", dueno, "{\"nombre\":\"Bruno Díaz\"}");
+
+		mvc.perform(post("/api/v1/notificaciones").header("Authorization", "Bearer " + dueno)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"clienteId\":\"" + cliente + "\",\"canal\":\"WHATSAPP\",\"mensaje\":\"Hola\"}"))
+				.andExpect(status().isCreated());
+
+		mvc.perform(get("/api/v1/notificaciones").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.contenido[?(@.clienteId == '" + cliente + "')].clienteNombre")
+						.value("Bruno Díaz"));
+	}
+
+	@Test
 	void avisar_stock_bajo_deja_un_resumen_in_app_al_dueno() throws Exception {
 		String res = mvc.perform(post("/api/v1/empresas").contentType(MediaType.APPLICATION_JSON)
 						.content("{\"nombre\":\"Stock " + UUID.randomUUID() + "\"}"))

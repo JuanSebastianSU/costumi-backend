@@ -56,6 +56,27 @@ class AuditoriaIntegrationTest {
 	}
 
 	@Test
+	void el_registro_guarda_al_actor_que_realizo_la_accion() throws Exception {
+		String res = mvc.perform(post("/api/v1/empresas").contentType(MediaType.APPLICATION_JSON)
+						.content("{\"nombre\":\"Audit " + UUID.randomUUID() + "\"}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		UUID empresa = UUID.fromString(json.readTree(res).get("id").asText());
+		// SuperAdmin CONOCIDO: guardamos su id para exigir que la auditoría registre exactamente ese actor.
+		AuthTestHelper.Sesion superAdmin = AuthTestHelper.sesion(mvc, json, usuarios, passwordEncoder, null,
+				Rol.SUPERADMIN);
+		mvc.perform(post("/api/v1/empresas/{id}/aprobar", empresa)
+						.header("Authorization", "Bearer " + superAdmin.token()))
+				.andExpect(status().isOk());
+
+		// El evento se audita AFTER_COMMIT en el mismo hilo: el actor debe llegar desde el SecurityContext.
+		String dueno = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.DUENO);
+		mvc.perform(get("/api/v1/auditoria").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.contenido[?(@.accion == 'EMPRESA_APROBADA')].actorUsuarioId")
+						.value(superAdmin.usuarioId().toString()));
+	}
+
+	@Test
 	void sin_token_devuelve_401() throws Exception {
 		mvc.perform(get("/api/v1/auditoria")).andExpect(status().isUnauthorized());
 	}

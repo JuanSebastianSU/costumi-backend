@@ -70,6 +70,19 @@ class ClienteRepositoryAdapter implements ClienteRepository {
 	}
 
 	@Override
+	public java.util.Map<UUID, String> nombresPorIds(UUID empresaId, Collection<UUID> ids) {
+		// Colección vacía: evita el `in ()` y no toca la BD.
+		if (ids == null || ids.isEmpty()) {
+			return java.util.Map.of();
+		}
+		java.util.Map<UUID, String> nombres = new java.util.HashMap<>();
+		for (Object[] fila : jpa.nombresPorIds(empresaId, ids)) {
+			nombres.put((UUID) fila[0], (String) fila[1]);
+		}
+		return nombres;
+	}
+
+	@Override
 	public Optional<Cliente> buscarPorEmpresaYUsuario(UUID empresaId, UUID usuarioId) {
 		return jpa.findByEmpresaIdAndUsuarioId(empresaId, usuarioId).map(ClienteRepositoryAdapter::aDominio);
 	}

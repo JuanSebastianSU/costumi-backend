@@ -34,15 +34,18 @@ class ReembolsoController {
 	private final SolicitarReembolsoDeCliente solicitarReembolsoDeCliente;
 	private final DecidirReembolso decidirReembolso;
 	private final ConsultarReembolsos consultarReembolsos;
+	private final com.costumi.backend.clientes.ResolucionDeClientes clientes;
 	private final ContextoDeTenant tenant;
 
 	ReembolsoController(SolicitarReembolso solicitarReembolso,
 			SolicitarReembolsoDeCliente solicitarReembolsoDeCliente, DecidirReembolso decidirReembolso,
-			ConsultarReembolsos consultarReembolsos, ContextoDeTenant tenant) {
+			ConsultarReembolsos consultarReembolsos, com.costumi.backend.clientes.ResolucionDeClientes clientes,
+			ContextoDeTenant tenant) {
 		this.solicitarReembolso = solicitarReembolso;
 		this.solicitarReembolsoDeCliente = solicitarReembolsoDeCliente;
 		this.decidirReembolso = decidirReembolso;
 		this.consultarReembolsos = consultarReembolsos;
+		this.clientes = clientes;
 		this.tenant = tenant;
 	}
 
@@ -107,9 +110,14 @@ class ReembolsoController {
 		if (empresaId == null) {
 			return new com.costumi.backend.compartido.RespuestaPaginada<>(List.of(), 0, 0, 0, 0);
 		}
-		return com.costumi.backend.compartido.RespuestaPaginada.desde(
-				consultarReembolsos.deEmpresa(UUID.fromString(empresaId), buscar, filtro,
-						com.costumi.backend.compartido.SolicitudDePagina.de(pagina, tamano)),
-				SolicitudDeReembolsoResponse::desde);
+		UUID empresa = UUID.fromString(empresaId);
+		com.costumi.backend.compartido.Pagina<SolicitudDeReembolso> resultado = consultarReembolsos.deEmpresa(
+				empresa, buscar, filtro, com.costumi.backend.compartido.SolicitudDePagina.de(pagina, tamano));
+		// Resuelve el nombre del solicitante de toda la página en una sola consulta (evita N+1).
+		java.util.Map<UUID, String> nombres = clientes.nombresDeClientes(empresa, resultado.contenido().stream()
+				.map(SolicitudDeReembolso::solicitanteClienteId).filter(java.util.Objects::nonNull).toList());
+		return com.costumi.backend.compartido.RespuestaPaginada.desde(resultado,
+				s -> SolicitudDeReembolsoResponse.desde(s,
+						s.solicitanteClienteId() == null ? null : nombres.get(s.solicitanteClienteId())));
 	}
 }

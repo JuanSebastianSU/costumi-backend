@@ -6,9 +6,9 @@ import java.time.Instant;
 import java.util.UUID;
 
 /** DTO de salida de un registro de auditoría. */
-public record AuditoriaResponse(UUID id, String accion, String detalle, Instant fecha) {
+public record AuditoriaResponse(UUID id, UUID actorUsuarioId, String accion, String detalle, Instant fecha) {
 
 	static AuditoriaResponse desde(RegistroDeAuditoria r) {
-		return new AuditoriaResponse(r.id(), r.accion(), r.detalle(), r.fecha());
+		return new AuditoriaResponse(r.id(), r.actorUsuarioId(), r.accion(), r.detalle(), r.fecha());
 	}
 }

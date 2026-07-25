@@ -67,6 +67,10 @@ interface ClienteJpaRepository extends JpaRepository<ClienteJpaEntity, UUID> {
 			@Param("ids") Collection<UUID> ids, @Param("incluirArchivados") boolean incluirArchivados,
 			Pageable pageable);
 
+	/** Nombres de varias fichas de la empresa por id, en un solo golpe (evita N+1 al pintar listados). */
+	@Query("select c.id, c.nombre from ClienteJpaEntity c where c.empresaId = :empresaId and c.id in :ids")
+	List<Object[]> nombresPorIds(@Param("empresaId") UUID empresaId, @Param("ids") Collection<UUID> ids);
+
 	/** Carga por PK como QUERY (no em.find) para que el @Filter multi-tenant la acote (§5.4). */
 	Optional<ClienteJpaEntity> findFirstById(UUID id);
 

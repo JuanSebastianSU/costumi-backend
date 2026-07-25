@@ -29,6 +29,12 @@ public interface ClienteRepository {
 	Pagina<Cliente> listar(UUID empresaId, String texto, Collection<UUID> idsFiltro, boolean incluirArchivados,
 			SolicitudDePagina solicitud);
 
+	/**
+	 * Nombres de varias fichas de la empresa por id, en una sola consulta (evita N+1 al pintar listados de
+	 * reembolsos/notificaciones). Solo devuelve las entradas de ids que existen y son de la empresa.
+	 */
+	java.util.Map<UUID, String> nombresPorIds(UUID empresaId, Collection<UUID> ids);
+
 	/** Ficha de un usuario del marketplace en la empresa, si existe (RF-14.4). */
 	Optional<Cliente> buscarPorEmpresaYUsuario(UUID empresaId, UUID usuarioId);
 

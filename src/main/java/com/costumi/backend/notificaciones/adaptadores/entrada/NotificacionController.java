@@ -35,17 +35,20 @@ class NotificacionController {
 	private final RecordarProximas recordarProximas;
 	private final AvisarStockBajo avisarStockBajo;
 	private final com.costumi.backend.notificaciones.aplicacion.ConsultarEstadoDeCanales estadoDeCanales;
+	private final com.costumi.backend.clientes.ResolucionDeClientes clientes;
 	private final ContextoDeTenant tenant;
 
 	NotificacionController(EnviarNotificacion enviarNotificacion, ConsultarNotificaciones consultarNotificaciones,
 			RecordarVencidas recordarVencidas, RecordarProximas recordarProximas, AvisarStockBajo avisarStockBajo,
-			com.costumi.backend.notificaciones.aplicacion.ConsultarEstadoDeCanales estadoDeCanales, ContextoDeTenant tenant) {
+			com.costumi.backend.notificaciones.aplicacion.ConsultarEstadoDeCanales estadoDeCanales,
+			com.costumi.backend.clientes.ResolucionDeClientes clientes, ContextoDeTenant tenant) {
 		this.estadoDeCanales = estadoDeCanales;
 		this.enviarNotificacion = enviarNotificacion;
 		this.consultarNotificaciones = consultarNotificaciones;
 		this.recordarVencidas = recordarVencidas;
 		this.recordarProximas = recordarProximas;
 		this.avisarStockBajo = avisarStockBajo;
+		this.clientes = clientes;
 		this.tenant = tenant;
 	}
 
@@ -97,10 +100,14 @@ class NotificacionController {
 		if (empresaId == null) {
 			return new com.costumi.backend.compartido.RespuestaPaginada<>(List.of(), 0, 0, 0, 0);
 		}
-		return com.costumi.backend.compartido.RespuestaPaginada.desde(
-				consultarNotificaciones.deEmpresa(empresaId, buscar,
-						com.costumi.backend.compartido.SolicitudDePagina.de(pagina, tamano)),
-				NotificacionResponse::desde);
+		com.costumi.backend.compartido.Pagina<Notificacion> resultado = consultarNotificaciones.deEmpresa(
+				empresaId, buscar, com.costumi.backend.compartido.SolicitudDePagina.de(pagina, tamano));
+		// Resuelve el nombre del cliente de toda la página en una sola consulta (evita N+1).
+		java.util.Map<UUID, String> nombres = clientes.nombresDeClientes(empresaId, resultado.contenido().stream()
+				.map(Notificacion::clienteId).filter(java.util.Objects::nonNull).toList());
+		return com.costumi.backend.compartido.RespuestaPaginada.desde(resultado,
+				n -> NotificacionResponse.desde(n,
+						n.clienteId() == null ? null : nombres.get(n.clienteId())));
 	}
 
 	/**

@@ -8,6 +8,32 @@
 > `CLAUDE.md`) para retomar sin perder el hilo. Regla: mueve ítems entre secciones,
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
+## RED-9 (A3-bis) — nombres en reembolso/notificación + actor en auditoría (2026-07-25)
+
+Cierra el último "chico" del lote A: que los listados muestren **quién** sin ids opacos y que la
+auditoría registre **quién** hizo cada acción. Un solo lote (no PRs minúsculos).
+
+- **Resolvedor por lote** en Clientes: `ResolucionDeClientes.nombresDeClientes(empresaId, ids)` →
+  `Map<id,nombre>` en **una** consulta (`ClienteRepository.nombresPorIds`, JPQL `select id,nombre … in :ids`;
+  guarda contra colección vacía). Evita el N+1 de resolver nombre por fila.
+- **Reembolsos**: `SolicitudDeReembolsoResponse` gana `solicitanteNombre`; el listado lo resuelve por lote
+  (los responses de crear/decidir van sin nombre). `ReembolsoController` inyecta `ResolucionDeClientes`
+  (edge `pagos→clientes` ya existía).
+- **Notificaciones**: `NotificacionResponse` gana `clienteNombre`; el listado lo resuelve por lote.
+  `NotificacionController` inyecta `ResolucionDeClientes` (edge ya existía).
+- **Actor en auditoría (G21)**: `RegistroDeAuditoria` + tabla (`V70__auditoria_actor.sql`, columna
+  `actor_usuario_id` nullable) + `AuditoriaResponse` ganan `actorUsuarioId`. `AuditoriaService.registrar`
+  captura el actor de `ContextoDeTenant.usuarioId()`: los listeners corren **AFTER_COMMIT en el mismo hilo**,
+  así que el SecurityContext sigue disponible (verificado con test que exige el id exacto del SuperAdmin);
+  en jobs sin sesión queda `null` (acción de sistema). Firma del puerto `RegistrarAuditoria` **sin cambios**.
+- **Diferido** (encaja en el épico de identidad): mostrar el **nombre** del actor (hoy se expone su id; el
+  front lo mapea con su lista de empleados). El JWT no trae `nombre`, y resolverlo acoplaría identidad.
+- Migración **V70**. Tests: actor exacto en auditoría, `solicitanteNombre` en reembolsos, `clienteNombre` en
+  notificaciones. **Suite 559/559**, verdes (ArchUnit + Modulith incluidos; sin dependencia de módulo nueva).
+
+**Al mergear: regenerar `:api-client`** y que la app pinte el solicitante/cliente por nombre y el actor en la
+auditoría (mapeando `actorUsuarioId` → empleado).
+
 ## RED-8 — ventas por período: filtro de fechas + totales del período (2026-07-25)
 
 Completa el filtro de G8 que en B1 quedó solo con `?estado`.

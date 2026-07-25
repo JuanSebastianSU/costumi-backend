@@ -22,6 +22,9 @@ class RegistroDeAuditoriaJpaEntity {
 	@Column(name = "empresa_id", nullable = false)
 	private UUID empresaId;
 
+	@Column(name = "actor_usuario_id")
+	private UUID actorUsuarioId;
+
 	@Column(nullable = false, length = 60)
 	private String accion;
 
@@ -35,9 +38,11 @@ class RegistroDeAuditoriaJpaEntity {
 		// requerido por JPA
 	}
 
-	RegistroDeAuditoriaJpaEntity(UUID id, UUID empresaId, String accion, String detalle, Instant fecha) {
+	RegistroDeAuditoriaJpaEntity(UUID id, UUID empresaId, UUID actorUsuarioId, String accion, String detalle,
+			Instant fecha) {
 		this.id = id;
 		this.empresaId = empresaId;
+		this.actorUsuarioId = actorUsuarioId;
 		this.accion = accion;
 		this.detalle = detalle;
 		this.fecha = fecha;
@@ -49,6 +54,10 @@ class RegistroDeAuditoriaJpaEntity {
 
 	UUID getEmpresaId() {
 		return empresaId;
+	}
+
+	UUID getActorUsuarioId() {
+		return actorUsuarioId;
 	}
 
 	String getAccion() {
