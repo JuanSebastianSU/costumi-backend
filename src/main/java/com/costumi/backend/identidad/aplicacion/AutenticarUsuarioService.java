@@ -13,12 +13,15 @@ class AutenticarUsuarioService implements AutenticarUsuario {
 	private final UsuarioRepository usuarios;
 	private final PasswordEncoder passwordEncoder;
 	private final EmisorDeSesion sesiones;
+	private final ContextoDeTrabajo contexto;
 	private final String hashDummy;
 
-	AutenticarUsuarioService(UsuarioRepository usuarios, PasswordEncoder passwordEncoder, EmisorDeSesion sesiones) {
+	AutenticarUsuarioService(UsuarioRepository usuarios, PasswordEncoder passwordEncoder, EmisorDeSesion sesiones,
+			ContextoDeTrabajo contexto) {
 		this.usuarios = usuarios;
 		this.passwordEncoder = passwordEncoder;
 		this.sesiones = sesiones;
+		this.contexto = contexto;
 		// Hash de referencia para igualar el tiempo cuando el email no existe
 		// (evita enumeración de usuarios por timing).
 		this.hashDummy = passwordEncoder.encode("usuario-inexistente");
@@ -39,6 +42,7 @@ class AutenticarUsuarioService implements AutenticarUsuario {
 		if (!usuario.activo()) {
 			throw new CuentaDesactivada();
 		}
-		return sesiones.nuevaSesion(usuario);
+		// H1: si fue desvinculado (sin membresía activa), inicia sesión como cliente, no con su rol de trabajo.
+		return sesiones.nuevaSesion(contexto.paraSesion(usuario));
 	}
 }

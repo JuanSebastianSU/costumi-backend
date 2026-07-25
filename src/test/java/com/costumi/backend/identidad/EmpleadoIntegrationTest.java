@@ -21,7 +21,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** Alta de empleados (RF-8): el dueño/encargado crea usuarios de su empresa; el empleado puede loguearse. */
+/**
+ * Gestión de empleados (RF-8): el alta es por invitación (ver {@link InvitacionIntegrationTest}); acá se
+ * prueban listado, cambio de rol, baja/reactivación de cuenta y la pirámide (B3) sobre empleados ya activos.
+ */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
@@ -50,51 +53,40 @@ class EmpleadoIntegrationTest {
 		return empresa;
 	}
 
-	private void crearEmpleado(String token, String email, String rol, int esperado) throws Exception {
+	/** Invita y acepta: deja un empleado ACTIVO y devuelve su usuarioId. */
+	private UUID crearEmpleadoActivo(String token, String email, String rol) throws Exception {
+		String res = mvc.perform(post("/api/v1/empleados").header("Authorization", "Bearer " + token)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"email\":\"" + email + "\",\"rol\":\"" + rol + "\"}"))
+				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+		String enlace = json.readTree(res).get("enlace").asText(); // urlBase vacío ⇒ enlace = token
+		mvc.perform(post("/api/v1/invitaciones/aceptar").contentType(MediaType.APPLICATION_JSON)
+						.content("{\"token\":\"" + enlace + "\",\"password\":\"secret123\",\"aceptaTerminos\":true}"))
+				.andExpect(status().isOk());
+		return usuarios.buscarPorEmail(email).orElseThrow().id();
+	}
+
+	/** Solo invita (para chequear el status de autorización/validación del alta). */
+	private void invitar(String token, String email, String rol, int esperado) throws Exception {
 		mvc.perform(post("/api/v1/empleados").header("Authorization", "Bearer " + token)
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"email\":\"" + email + "\",\"password\":\"secret123\",\"rol\":\"" + rol + "\"}"))
+						.content("{\"email\":\"" + email + "\",\"rol\":\"" + rol + "\"}"))
 				.andExpect(status().is(esperado));
 	}
 
 	@Test
-	void el_dueno_da_de_alta_un_empleado_que_puede_iniciar_sesion() throws Exception {
-		UUID empresa = empresaAprobada();
-		String dueno = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.DUENO);
-		String email = "empleado-" + UUID.randomUUID() + "@costumi.test";
-
-		mvc.perform(post("/api/v1/empleados").header("Authorization", "Bearer " + dueno)
-						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"email\":\"" + email + "\",\"password\":\"secret123\",\"rol\":\"MOSTRADOR\"}"))
-				.andExpect(status().isCreated())
-				.andExpect(jsonPath("$.email").value(email))
-				.andExpect(jsonPath("$.rol").value("MOSTRADOR"))
-				.andExpect(jsonPath("$.passwordHash").doesNotExist());
-
-		// El empleado recién creado puede iniciar sesión.
-		mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
-						.content("{\"email\":\"" + email + "\",\"password\":\"secret123\"}"))
-				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.accessToken").exists());
-	}
-
-	@Test
-	void dar_de_baja_a_un_empleado_le_impide_iniciar_sesion_y_reactivarlo_lo_habilita() throws Exception {
+	void dar_de_baja_la_cuenta_impide_iniciar_sesion_y_reactivarla_lo_habilita() throws Exception {
 		UUID empresa = empresaAprobada();
 		String dueno = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.DUENO);
 		String email = "baja-" + UUID.randomUUID() + "@costumi.test";
-		String res = mvc.perform(post("/api/v1/empleados").header("Authorization", "Bearer " + dueno)
-						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"email\":\"" + email + "\",\"password\":\"secret123\",\"rol\":\"MOSTRADOR\"}"))
-				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
-		UUID empleadoId = UUID.fromString(json.readTree(res).get("id").asText());
+		UUID empleadoId = crearEmpleadoActivo(dueno, email, "MOSTRADOR");
 
 		// Login OK antes de la baja.
 		mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
 						.content("{\"email\":\"" + email + "\",\"password\":\"secret123\"}"))
 				.andExpect(status().isOk());
 
-		// El dueño lo da de baja.
+		// El dueño da de baja la cuenta.
 		mvc.perform(post("/api/v1/empleados/{id}/desactivar", empleadoId).header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.activo").value(false));
@@ -104,7 +96,7 @@ class EmpleadoIntegrationTest {
 						.content("{\"email\":\"" + email + "\",\"password\":\"secret123\"}"))
 				.andExpect(status().isForbidden());
 
-		// Reactivarlo lo habilita de nuevo.
+		// Reactivarla lo habilita de nuevo.
 		mvc.perform(post("/api/v1/empleados/{id}/activar", empleadoId).header("Authorization", "Bearer " + dueno))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.activo").value(true));
@@ -117,12 +109,7 @@ class EmpleadoIntegrationTest {
 	void no_se_puede_dar_de_baja_a_un_empleado_de_otra_empresa_404() throws Exception {
 		UUID empresaA = empresaAprobada();
 		String duenoA = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresaA, Rol.DUENO);
-		String email = "ajeno-" + UUID.randomUUID() + "@costumi.test";
-		String res = mvc.perform(post("/api/v1/empleados").header("Authorization", "Bearer " + duenoA)
-						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"email\":\"" + email + "\",\"password\":\"secret123\",\"rol\":\"BODEGA\"}"))
-				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
-		UUID empleadoDeA = UUID.fromString(json.readTree(res).get("id").asText());
+		UUID empleadoDeA = crearEmpleadoActivo(duenoA, "ajeno-" + UUID.randomUUID() + "@costumi.test", "BODEGA");
 
 		// El dueño de otra empresa no puede tocarlo (aislamiento por tenant) -> 404.
 		UUID empresaB = empresaAprobada();
@@ -132,34 +119,25 @@ class EmpleadoIntegrationTest {
 	}
 
 	@Test
-	void correo_duplicado_devuelve_409() throws Exception {
+	void no_se_puede_invitar_a_un_superadmin_400() throws Exception {
 		UUID empresa = empresaAprobada();
 		String dueno = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.DUENO);
-		String email = "dup-" + UUID.randomUUID() + "@costumi.test";
-		crearEmpleado(dueno, email, "BODEGA", 201);
-		crearEmpleado(dueno, email, "BODEGA", 409);
+		invitar(dueno, "sa-" + UUID.randomUUID() + "@costumi.test", "SUPERADMIN", 400);
 	}
 
 	@Test
-	void no_se_puede_crear_un_superadmin_como_empleado_400() throws Exception {
-		UUID empresa = empresaAprobada();
-		String dueno = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.DUENO);
-		crearEmpleado(dueno, "sa-" + UUID.randomUUID() + "@costumi.test", "SUPERADMIN", 400);
-	}
-
-	@Test
-	void un_mostrador_no_puede_dar_de_alta_empleados_403() throws Exception {
+	void un_mostrador_no_puede_invitar_empleados_403() throws Exception {
 		UUID empresa = empresaAprobada();
 		String mostrador = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.MOSTRADOR);
-		crearEmpleado(mostrador, "x-" + UUID.randomUUID() + "@costumi.test", "BODEGA", 403);
+		invitar(mostrador, "x-" + UUID.randomUUID() + "@costumi.test", "BODEGA", 403);
 	}
 
 	@Test
 	void el_dueno_lista_su_personal_con_rol_y_estado() throws Exception {
 		UUID empresa = empresaAprobada();
 		String dueno = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.DUENO);
-		crearEmpleado(dueno, "mos-" + UUID.randomUUID() + "@costumi.test", "MOSTRADOR", 201);
-		crearEmpleado(dueno, "bod-" + UUID.randomUUID() + "@costumi.test", "BODEGA", 201);
+		crearEmpleadoActivo(dueno, "mos-" + UUID.randomUUID() + "@costumi.test", "MOSTRADOR");
+		crearEmpleadoActivo(dueno, "bod-" + UUID.randomUUID() + "@costumi.test", "BODEGA");
 
 		// G1: el dueño ve a quienes puede gestionar (los 2 creados), no a sí mismo; con rol y estado.
 		mvc.perform(get("/api/v1/empleados").header("Authorization", "Bearer " + dueno))
@@ -177,7 +155,7 @@ class EmpleadoIntegrationTest {
 		UUID empresa = empresaAprobada();
 		String dueno = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.DUENO);
 		String encargado = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.ENCARGADO);
-		crearEmpleado(dueno, "mos-" + UUID.randomUUID() + "@costumi.test", "MOSTRADOR", 201);
+		crearEmpleadoActivo(dueno, "mos-" + UUID.randomUUID() + "@costumi.test", "MOSTRADOR");
 
 		mvc.perform(get("/api/v1/empleados").header("Authorization", "Bearer " + encargado))
 				.andExpect(status().isOk())
@@ -194,20 +172,11 @@ class EmpleadoIntegrationTest {
 				.andExpect(status().isForbidden());
 	}
 
-	private UUID altaId(String token, String rol) throws Exception {
-		String res = mvc.perform(post("/api/v1/empleados").header("Authorization", "Bearer " + token)
-						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"email\":\"e-" + UUID.randomUUID() + "@costumi.test\",\"password\":\"secret123\","
-								+ "\"rol\":\"" + rol + "\"}"))
-				.andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
-		return UUID.fromString(json.readTree(res).get("id").asText());
-	}
-
 	@Test
 	void el_dueno_asciende_un_mostrador_a_encargado() throws Exception {
 		UUID empresa = empresaAprobada();
 		String dueno = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.DUENO);
-		UUID mostrador = altaId(dueno, "MOSTRADOR");
+		UUID mostrador = crearEmpleadoActivo(dueno, "m-" + UUID.randomUUID() + "@costumi.test", "MOSTRADOR");
 
 		// G2: el dueño puede fijar un rol por debajo suyo (ENCARGADO).
 		mvc.perform(put("/api/v1/empleados/{id}/rol", mostrador).header("Authorization", "Bearer " + dueno)
@@ -220,7 +189,7 @@ class EmpleadoIntegrationTest {
 	void nadie_puede_cambiar_a_un_empleado_a_dueno_403() throws Exception {
 		UUID empresa = empresaAprobada();
 		String dueno = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.DUENO);
-		UUID mostrador = altaId(dueno, "MOSTRADOR");
+		UUID mostrador = crearEmpleadoActivo(dueno, "m-" + UUID.randomUUID() + "@costumi.test", "MOSTRADOR");
 
 		// B3: nadie fija el rol DUEÑO por esta vía (ni el propio dueño: no está por debajo suyo).
 		mvc.perform(put("/api/v1/empleados/{id}/rol", mostrador).header("Authorization", "Bearer " + dueno)
@@ -233,7 +202,7 @@ class EmpleadoIntegrationTest {
 		UUID empresa = empresaAprobada();
 		String dueno = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.DUENO);
 		String encargado = AuthTestHelper.token(mvc, json, usuarios, passwordEncoder, empresa, Rol.ENCARGADO);
-		UUID mostrador = altaId(dueno, "MOSTRADOR");
+		UUID mostrador = crearEmpleadoActivo(dueno, "m-" + UUID.randomUUID() + "@costumi.test", "MOSTRADOR");
 
 		// B3: el encargado no puede fijar un rol de su mismo nivel (ENCARGADO).
 		mvc.perform(put("/api/v1/empleados/{id}/rol", mostrador).header("Authorization", "Bearer " + encargado)

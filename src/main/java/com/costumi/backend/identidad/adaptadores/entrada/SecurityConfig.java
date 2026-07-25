@@ -59,6 +59,11 @@ class SecurityConfig {
 						// Membresías y cambio de contexto (Fase B): cualquier usuario autenticado, por su token.
 						.requestMatchers(HttpMethod.GET, "/api/v1/auth/me/membresias").authenticated()
 						.requestMatchers(HttpMethod.POST, "/api/v1/auth/contexto").authenticated()
+						// El empleado se desvincula de su tienda (Fase B, paso 3): por su token.
+						.requestMatchers(HttpMethod.POST, "/api/v1/auth/me/desvincularme").authenticated()
+						// Ver/aceptar una invitación (Fase B, paso 3): público, la autoriza el token de la invitación.
+						.requestMatchers(HttpMethod.GET, "/api/v1/invitaciones/*").permitAll()
+						.requestMatchers(HttpMethod.POST, "/api/v1/invitaciones/aceptar").permitAll()
 						.requestMatchers(HttpMethod.POST, "/api/v1/empresas").permitAll()
 						.requestMatchers("/actuator/health", "/actuator/info").permitAll()
 						.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
@@ -75,9 +80,15 @@ class SecurityConfig {
 						.requestMatchers(HttpMethod.POST, "/api/v1/empresas/*/sucursales/*/archivar",
 								"/api/v1/empresas/*/sucursales/*/activar").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.GET, "/api/v1/empleados").hasAnyRole("DUENO", "ENCARGADO")
+						// Invitaciones (Fase B, paso 3): listar/cancelar las pendientes de la tienda. Antes del comodín.
+						.requestMatchers(HttpMethod.GET, "/api/v1/empleados/invitaciones").hasAnyRole("DUENO", "ENCARGADO")
+						.requestMatchers(HttpMethod.DELETE, "/api/v1/empleados/invitaciones/*").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.POST, "/api/v1/empleados").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.POST, "/api/v1/empleados/*/desactivar",
 								"/api/v1/empleados/*/activar").hasAnyRole("DUENO", "ENCARGADO")
+						// Desvinculación de la membresía por el dueño (Fase B, paso 3): suspender/reactivar/quitar.
+						.requestMatchers(HttpMethod.POST, "/api/v1/empleados/*/suspender",
+								"/api/v1/empleados/*/reactivar", "/api/v1/empleados/*/quitar").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.GET, "/api/v1/empleados/me/permisos").authenticated()
 						.requestMatchers(HttpMethod.GET, "/api/v1/empleados/*/permisos").hasAnyRole("DUENO", "ENCARGADO")
 						.requestMatchers(HttpMethod.PUT, "/api/v1/empleados/*/permisos").hasAnyRole("DUENO", "ENCARGADO")

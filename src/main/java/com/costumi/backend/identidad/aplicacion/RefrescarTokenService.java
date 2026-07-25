@@ -23,14 +23,17 @@ class RefrescarTokenService implements RefrescarToken, CerrarSesion {
 	private final TokenDeRefreshRepository tokens;
 	private final EmisorDeSesion sesiones;
 	private final RevocadorDeSesion revocador;
+	private final ContextoDeTrabajo contexto;
 
 	RefrescarTokenService(ValidadorDeRefresh validador, UsuarioRepository usuarios,
-			TokenDeRefreshRepository tokens, EmisorDeSesion sesiones, RevocadorDeSesion revocador) {
+			TokenDeRefreshRepository tokens, EmisorDeSesion sesiones, RevocadorDeSesion revocador,
+			ContextoDeTrabajo contexto) {
 		this.validador = validador;
 		this.usuarios = usuarios;
 		this.tokens = tokens;
 		this.sesiones = sesiones;
 		this.revocador = revocador;
+		this.contexto = contexto;
 	}
 
 	@Override
@@ -56,7 +59,8 @@ class RefrescarTokenService implements RefrescarToken, CerrarSesion {
 		}
 		fila.marcarRotado();
 		tokens.guardar(fila);
-		return sesiones.rotarEnFamilia(usuario, fila.familiaId());
+		// H1: si fue desvinculado, el refresco tampoco reabre su contexto de trabajo (cae a cliente).
+		return sesiones.rotarEnFamilia(contexto.paraSesion(usuario), fila.familiaId());
 	}
 
 	/** Logout (C2): revoca la familia del refresco. Idempotente y sin filtrar información. */

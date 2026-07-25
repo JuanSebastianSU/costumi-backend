@@ -8,6 +8,37 @@
 > `CLAUDE.md`) para retomar sin perder el hilo. Regla: mueve ítems entre secciones,
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
+## RED-20 (Fase B, 3+4) — invitación/aceptación con T&C + alta=invitar + desvinculación de dos vías + pirámide de sucursales (2026-07-25)
+
+Cierra los pasos 3 y 4 del plan (`PLAN_IDENTIDAD_PERMISOS.md` §7.3/§7.4) en un lote. Todo aditivo salvo que
+el alta directa de empleados pasa a ser por invitación.
+
+- **Alta = invitación** (paso 3): `POST /api/v1/empleados` ya no crea una cuenta suelta; **invita por email**
+  (rol + sucursales). Devuelve el **enlace de aceptación** (para compartir aunque no haya SMTP). Nuevo agregado
+  `Invitacion` (token de un solo uso con hash+expiración, patrón de `TokenDeRecuperacion`) + `invitacion` /
+  `invitacion_sucursal` (**V78**). Público: `GET /api/v1/invitaciones/{token}` (vista: tienda, rol, si necesita
+  cuenta) y `POST /api/v1/invitaciones/aceptar` (con **T&C**; crea la cuenta si no existe, crea la membresía
+  ACTIVA, asigna sucursales, auto-login). Se rechaza invitar a quien ya trabaja (regla de una-activa).
+  Se eliminó el `AltaDeEmpleado` directo.
+- **Desvinculación de dos vías** (paso 3, decisión #5): el dueño `POST /empleados/{id}/suspender|reactivar|quitar`
+  y el empleado `POST /auth/me/desvincularme`. Operan sobre el **estado de la membresía** (SUSPENDIDA /
+  BAJA_DUENO / BAJA_EMPLEADO); **no tocan el `Usuario` base** (el @Filter de tenant lo volvería inmanejable). El
+  corte de acceso lo aplica `ContextoDeTrabajo` en **login y refresh**: si el rol base es de trabajo pero
+  **tiene membresías y ninguna activa**, la sesión cae a **cliente** (sin membresías —cuentas semilla— opera
+  igual que antes, así no rompe nada). El personal dado de baja desaparece del listado (los suspendidos siguen,
+  reversibles).
+- **Pirámide de sucursales** (paso 4): `AutoridadSobreSucursales` — el DUEÑO asigna cualquier sucursal del
+  tenant; el ENCARGADO **solo entre las suyas** (al invitar y al reasignar). `AsignarSucursales` ahora recibe el
+  `actorId`. La asignación de sucursales al invitar se aplica al aceptar.
+- Migración **V78**. Tests nuevos: `InvitacionIntegrationTest` (invitar/ver/aceptar nuevo+cliente existente,
+  T&C, token inválido, una-activa, cancelar, sucursal-al-invitar), `DesvinculacionIntegrationTest`
+  (quita/suspende/reactiva/desvincularme → solo-cliente vía login), `AsignacionSucursalPiramideIntegrationTest`;
+  `EmpleadoIntegrationTest`/`MembresiaIntegrationTest` adaptados a invitar+aceptar. **Suite 596/596**.
+- ⚠️ **Limitaciones anotadas**: (a) el listado de personal no muestra el *estado* de membresía (suspendido vs
+  activo) —cosmético, para el paso 5—; (b) sigue pendiente que el modo Comprando/Trabajando **sobreviva al
+  refresh** (hoy el refresh respeta la desvinculación pero re-proyecta al contexto base). Faltan pasos **5**
+  (permisos de gestión + rediseño pantalla) y **6** (re-auth/biometría) para cerrar la Fase B; después, el front.
+
 ## RED-19 (Fase B, 2 — COMPLETADO) — separación identidad/empresa (H1) + una-membresía-activa + switch Comprando↔Trabajando (2026-07-25)
 
 Cierra bien el **paso 2** del plan (`PLAN_IDENTIDAD_PERMISOS.md` §7.2): lo de RED-18 tenía plomería de

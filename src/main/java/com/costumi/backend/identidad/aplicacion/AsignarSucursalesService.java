@@ -2,7 +2,6 @@ package com.costumi.backend.identidad.aplicacion;
 
 import com.costumi.backend.identidad.dominio.AsignacionDeSucursalesRepository;
 import com.costumi.backend.identidad.dominio.Rol;
-import com.costumi.backend.identidad.dominio.SucursalRepository;
 import com.costumi.backend.identidad.dominio.Usuario;
 import com.costumi.backend.identidad.dominio.UsuarioRepository;
 import org.springframework.stereotype.Service;
@@ -21,27 +20,20 @@ class AsignarSucursalesService implements AsignarSucursales {
 
 	private final AsignacionDeSucursalesRepository asignaciones;
 	private final UsuarioRepository usuarios;
-	private final SucursalRepository sucursales;
+	private final AutoridadSobreSucursales autoridadSobreSucursales;
 
 	AsignarSucursalesService(AsignacionDeSucursalesRepository asignaciones, UsuarioRepository usuarios,
-			SucursalRepository sucursales) {
+			AutoridadSobreSucursales autoridadSobreSucursales) {
 		this.asignaciones = asignaciones;
 		this.usuarios = usuarios;
-		this.sucursales = sucursales;
+		this.autoridadSobreSucursales = autoridadSobreSucursales;
 	}
 
 	@Override
 	@Transactional
-	public void asignar(UUID empresaId, Rol actorRol, UUID usuarioId, Set<UUID> sucursalIds) {
+	public void asignar(UUID empresaId, Rol actorRol, UUID actorId, UUID usuarioId, Set<UUID> sucursalIds) {
 		exigirEmpleadoGestionable(empresaId, actorRol, usuarioId);
-		for (UUID sucursalId : sucursalIds) {
-			boolean delTenant = sucursales.buscarPorId(sucursalId)
-					.filter(s -> s.empresaId().equals(empresaId))
-					.isPresent();
-			if (!delTenant) {
-				throw new IllegalArgumentException("La sucursal no existe en esta empresa");
-			}
-		}
+		autoridadSobreSucursales.exigirAsignables(empresaId, actorRol, actorId, sucursalIds);
 		asignaciones.reemplazar(empresaId, usuarioId, sucursalIds);
 	}
 

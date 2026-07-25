@@ -1,6 +1,8 @@
 package com.costumi.backend.identidad.aplicacion;
 
 import com.costumi.backend.identidad.dominio.AsignacionDeSucursalesRepository;
+import com.costumi.backend.identidad.dominio.Membresia;
+import com.costumi.backend.identidad.dominio.MembresiaRepository;
 import com.costumi.backend.identidad.dominio.Rol;
 import com.costumi.backend.identidad.dominio.UsuarioRepository;
 import org.springframework.stereotype.Service;
@@ -19,10 +21,13 @@ class ListarEmpleadosService implements ListarEmpleados {
 
 	private final UsuarioRepository usuarios;
 	private final AsignacionDeSucursalesRepository asignaciones;
+	private final MembresiaRepository membresias;
 
-	ListarEmpleadosService(UsuarioRepository usuarios, AsignacionDeSucursalesRepository asignaciones) {
+	ListarEmpleadosService(UsuarioRepository usuarios, AsignacionDeSucursalesRepository asignaciones,
+			MembresiaRepository membresias) {
 		this.usuarios = usuarios;
 		this.asignaciones = asignaciones;
+		this.membresias = membresias;
 	}
 
 	@Override
@@ -30,10 +35,16 @@ class ListarEmpleadosService implements ListarEmpleados {
 	public List<EmpleadoDelTenant> delTenant(UUID empresaId, Rol actorRol) {
 		return usuarios.listarPorEmpresa(empresaId).stream()
 				.filter(usuario -> actorRol.puedeGestionarA(usuario.rol()))
+				.filter(usuario -> !dadoDeBaja(usuario.id(), empresaId))
 				.sorted(Comparator.comparing(usuario -> usuario.rol().nivelJerarquico(), Comparator.reverseOrder()))
 				.map(usuario -> new EmpleadoDelTenant(usuario.id(), usuario.email(), usuario.rol(), usuario.activo(),
 						asignaciones.sucursalesDe(usuario.id())))
 				.toList();
+	}
+
+	/** Un empleado con membresía dada de baja (despedido o que se fue) ya no es parte del personal. */
+	private boolean dadoDeBaja(UUID usuarioId, UUID empresaId) {
+		return membresias.buscar(usuarioId, empresaId).map(Membresia::esBaja).orElse(false);
 	}
 
 	@Override
