@@ -88,7 +88,7 @@ por tamaño/afinidad. Si preferís invertir PR-1↔PR-2, es un cambio de una lí
   `venta.creada_en`). Con esto Reportes filtra coherente y el Panel puede pedir «hoy».
 - ✅ **B3b** (RED-5, sin mergear): serie de ingresos por día (`/reportes/ingresos-por-dia`, para el gráfico
   + variación) · contar rentas `DEVUELTA` (`/reportes/devoluciones-por-cerrar`, alerta del panel).
-- ⬜ **Totales del período en ventas** (`/ventas/totales?estado=&desde=&hasta=`) — chico, pendiente.
+- ✅ **Ventas por período** (RED-8): `GET /ventas?desde=&hasta=` + `GET /ventas/totales?estado=&desde=&hasta=`.
 
 ### A3 — Campos que faltan en respuestas  · aditivo puro · regen
 - ✅ `ClienteResponse.tieneRentaEnCurso` (RESERVADA/ACTIVA), resuelto en la consulta de carga con `bool_or`

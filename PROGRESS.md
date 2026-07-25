@@ -8,6 +8,19 @@
 > `CLAUDE.md`) para retomar sin perder el hilo. Regla: mueve ítems entre secciones,
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
+## RED-8 — ventas por período: filtro de fechas + totales del período (2026-07-25)
+
+Completa el filtro de G8 que en B1 quedó solo con `?estado`.
+
+- `GET /ventas` ahora acepta `desde`/`hasta` (por `creada_en`) además de `?estado`.
+- `GET /ventas/totales?estado=&desde=&hasta=` → `{cantidad, total}` del período (resumen de G8).
+- El rango `LocalDate` se convierte a instantes `[desde 00:00, hasta+1 00:00)` UTC; sin límite se pasa un
+  **centinela** (no null) para no romper la inferencia de tipo de Postgres (un param null da «could not
+  determine data type»).
+- Sin migración. Test (filtro por período en la lista + totales). **Suite 556/556**, verdes.
+
+**Al mergear: regenerar `:api-client`** y cablear las pestañas hoy/semana/rango + el resumen del período en G8.
+
 ## RED-7 — cobros/saldos: pendiente y código del servidor + pagar la multa online (2026-07-25)
 
 Bloque A5 (hallazgo **D**: que el dinero salga del servidor, no que la app lo recompute).
