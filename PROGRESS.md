@@ -8,6 +8,23 @@
 > `CLAUDE.md`) para retomar sin perder el hilo. Regla: mueve ítems entre secciones,
 > añade una entrada al registro de sesiones, **no borres el historial**.
 
+## RED-13 (A7-marketplace) — paginar la vitrina + favoritos del cliente (2026-07-25)
+
+Tercer lote de A7 (marketplace del cliente). Un solo lote.
+
+- **Paginar la vitrina (A7-ii)**: `GET /marketplace/empresas` pasa de `List` completa a
+  `RespuestaPaginada<EmpresaVitrinaResponse>` (`?buscar&?pagina&?tamano`). El adapter hace `count(*)` +
+  `limit/offset`; el filtro de texto va siempre con `'%'||:texto||'%'` (texto vacío = todas), evitando el
+  problema de tipo del param null. `MarketplaceReadRepository`/`DescubrirEmpresas` unifican
+  `activas()+buscar()` en `empresas(buscar, solicitud)`. Test actualizado (`$.contenido`/`$.total`).
+- **Favoritos sincronizados (A7-iv, C4)**: antes 0 código (vivían en Room local). Nueva tabla
+  `favorito_disfraz` (**V73**) por **usuario** (cruza tiendas, sin filtro de tenant), con snapshot del disfraz
+  (nombre/foto/precios) como el front. Endpoints en `ClienteController`: `GET/POST/DELETE /clientes/me/
+  favoritos` (por el usuario del token). Idempotente por (usuario, disfraz): re-guardar actualiza el snapshot
+  sin duplicar ni cambiar su posición. Agregado `Favorito` + repo/adapter + `GestionarFavoritos`/`FavoritoService`.
+- Migración **V73**. Tests: guardar/listar/quitar, no-duplica, aislamiento por usuario, 401. **Suite 573/573**
+  (ArchUnit + Modulith).
+
 ## RED-12 (A7-sucursal) — media y ubicación de la sucursal (2026-07-25)
 
 Segundo lote de A7: el punto físico (sucursal) para el mapa/punto de retiro del marketplace. Un solo lote.

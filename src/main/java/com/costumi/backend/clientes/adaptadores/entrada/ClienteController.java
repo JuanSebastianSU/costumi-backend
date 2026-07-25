@@ -6,6 +6,7 @@ import com.costumi.backend.clientes.aplicacion.CambiarListaNegraComando;
 import com.costumi.backend.clientes.aplicacion.ConsultarClientes;
 import com.costumi.backend.clientes.aplicacion.ConsultarHistorial;
 import com.costumi.backend.clientes.aplicacion.CrearCliente;
+import com.costumi.backend.clientes.aplicacion.GestionarFavoritos;
 import com.costumi.backend.clientes.aplicacion.CrearClienteComando;
 import com.costumi.backend.clientes.aplicacion.EditarCliente;
 import com.costumi.backend.clientes.aplicacion.EditarClienteComando;
@@ -20,6 +21,8 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -27,6 +30,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -45,19 +49,22 @@ class ClienteController {
 	private final ConsultarClientes consultarClientes;
 	private final CambiarListaNegra cambiarListaNegra;
 	private final ConsultarHistorial consultarHistorial;
+	private final GestionarFavoritos gestionarFavoritos;
 	private final RegistrarDeviceToken registrarDeviceToken;
 	private final ContextoDeTenant tenant;
 
 	ClienteController(CrearCliente crearCliente, EditarCliente editarCliente,
 			CambiarEstadoCliente cambiarEstadoCliente, ConsultarClientes consultarClientes,
 			CambiarListaNegra cambiarListaNegra, ConsultarHistorial consultarHistorial,
-			RegistrarDeviceToken registrarDeviceToken, ContextoDeTenant tenant) {
+			GestionarFavoritos gestionarFavoritos, RegistrarDeviceToken registrarDeviceToken,
+			ContextoDeTenant tenant) {
 		this.crearCliente = crearCliente;
 		this.editarCliente = editarCliente;
 		this.cambiarEstadoCliente = cambiarEstadoCliente;
 		this.consultarClientes = consultarClientes;
 		this.cambiarListaNegra = cambiarListaNegra;
 		this.consultarHistorial = consultarHistorial;
+		this.gestionarFavoritos = gestionarFavoritos;
 		this.registrarDeviceToken = registrarDeviceToken;
 		this.tenant = tenant;
 	}
@@ -212,6 +219,29 @@ class ClienteController {
 	List<MiDeudaResponse> misDeudas(@AuthenticationPrincipal Jwt jwt) {
 		UUID usuarioId = UUID.fromString(jwt.getSubject());
 		return consultarHistorial.misDeudas(usuarioId).stream().map(MiDeudaResponse::desde).toList();
+	}
+
+	/** "Mis guardados" del cliente: sus disfraces favoritos, más reciente primero (C4). Por el usuario del token. */
+	@GetMapping("/me/favoritos")
+	List<FavoritoResponse> misFavoritos(@AuthenticationPrincipal Jwt jwt) {
+		return gestionarFavoritos.deUsuario(UUID.fromString(jwt.getSubject())).stream()
+				.map(FavoritoResponse::desde).toList();
+	}
+
+	/** Guarda un disfraz como favorito (idempotente: re-guardarlo actualiza el snapshot, no duplica). */
+	@PostMapping("/me/favoritos")
+	FavoritoResponse guardarFavorito(@Valid @RequestBody GuardarFavoritoRequest request,
+			@AuthenticationPrincipal Jwt jwt) {
+		UUID usuarioId = UUID.fromString(jwt.getSubject());
+		return FavoritoResponse.desde(gestionarFavoritos.guardar(usuarioId, request.disfrazId(), request.empresaId(),
+				request.nombre(), request.fotoUrl(), request.precioRenta(), request.precioVenta()));
+	}
+
+	/** Quita un disfraz de favoritos (idempotente: si no estaba, no pasa nada). */
+	@DeleteMapping("/me/favoritos/{disfrazId}")
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	void quitarFavorito(@PathVariable UUID disfrazId, @AuthenticationPrincipal Jwt jwt) {
+		gestionarFavoritos.eliminar(UUID.fromString(jwt.getSubject()), disfrazId);
 	}
 
 	@PostMapping("/{id}/lista-negra")

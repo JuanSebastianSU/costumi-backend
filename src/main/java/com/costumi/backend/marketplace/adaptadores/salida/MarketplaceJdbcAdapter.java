@@ -15,16 +15,17 @@ import java.util.UUID;
 class MarketplaceJdbcAdapter implements MarketplaceReadRepository {
 
 	// Solo tiendas que PUEDEN operar: ACTIVA y con al menos un punto de retiro (sucursal no archivada).
-	// Así el cliente no entra a una tienda sin sucursal, que no le dejaría armar el pedido.
-	private static final String EMPRESAS_ACTIVAS =
-			"select id, nombre, logo_url, ciudad, descripcion from empresa e where e.estado = 'ACTIVA' "
+	// Así el cliente no entra a una tienda sin sucursal, que no le dejaría armar el pedido. El filtro de
+	// texto va siempre (con texto vacío, '%%' matchea todas): evita el problema de tipo del param null.
+	private static final String EMPRESAS_WHERE =
+			"from empresa e where e.estado = 'ACTIVA' "
 			+ "and exists (select 1 from sucursal s where s.empresa_id = e.id and s.archivada = false) "
-			+ "order by nombre";
+			+ "and lower(e.nombre) like lower('%' || :texto || '%')";
 
-	private static final String BUSCAR_EMPRESAS = "select id, nombre, logo_url, ciudad, descripcion from empresa e "
-			+ "where e.estado = 'ACTIVA' and lower(e.nombre) like lower('%' || :texto || '%') "
-			+ "and exists (select 1 from sucursal s where s.empresa_id = e.id and s.archivada = false) "
-			+ "order by nombre";
+	private static final String EMPRESAS_COUNT = "select count(*) " + EMPRESAS_WHERE;
+
+	private static final String EMPRESAS_PAGINA = "select id, nombre, logo_url, ciudad, descripcion "
+			+ EMPRESAS_WHERE + " order by nombre limit :tamano offset :offset";
 
 	// Catálogo público: prendas no archivadas de una empresa, solo si la empresa está ACTIVA.
 	// Opcionalmente filtrado por categoría (RF-18.1); el ORDER BY se agrega al final en el método.
@@ -47,16 +48,18 @@ class MarketplaceJdbcAdapter implements MarketplaceReadRepository {
 	}
 
 	@Override
-	public List<EmpresaEnVitrina> empresasActivas() {
-		return jdbc.sql(EMPRESAS_ACTIVAS).query(MarketplaceJdbcAdapter::mapear).list();
-	}
-
-	@Override
-	public List<EmpresaEnVitrina> buscarEmpresas(String texto) {
-		if (texto == null || texto.isBlank()) {
-			return empresasActivas();
+	public com.costumi.backend.compartido.Pagina<EmpresaEnVitrina> empresas(String texto,
+			com.costumi.backend.compartido.SolicitudDePagina solicitud) {
+		String t = (texto == null) ? "" : texto.trim();
+		Long total = jdbc.sql(EMPRESAS_COUNT).param("texto", t).query(Long.class).single();
+		if (total == null || total == 0) {
+			return new com.costumi.backend.compartido.Pagina<>(List.of(), 0, solicitud.pagina(), solicitud.tamano());
 		}
-		return jdbc.sql(BUSCAR_EMPRESAS).param("texto", texto.trim()).query(MarketplaceJdbcAdapter::mapear).list();
+		List<EmpresaEnVitrina> contenido = jdbc.sql(EMPRESAS_PAGINA).param("texto", t)
+				.param("tamano", solicitud.tamano())
+				.param("offset", (long) solicitud.pagina() * solicitud.tamano())
+				.query(MarketplaceJdbcAdapter::mapear).list();
+		return new com.costumi.backend.compartido.Pagina<>(contenido, total, solicitud.pagina(), solicitud.tamano());
 	}
 
 	@Override

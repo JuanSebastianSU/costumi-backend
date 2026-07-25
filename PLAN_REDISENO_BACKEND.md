@@ -150,12 +150,12 @@ transversal. Un solo lote (no PRs minúsculos).
     **destacados** + **facetas** públicas + ciudad del usuario.
   - 🔧 Estructural: se movió el puerto `AlmacenDeImagenesPublico` a `compartido` (evita ciclo
     identidad↔inventario); impl sigue en inventario.
-- ⬜ **(A7-ii) Paginar el marketplace de tiendas** (`C1`): hoy `GET /marketplace/empresas` devuelve `List`
-  completa (sin `Pageable`). Server-side + RemoteMediator en la app.
+- ✅ **(A7-ii) Paginar el marketplace de tiendas** (`C1`): `GET /marketplace/empresas` →
+  `RespuestaPaginada` (`?buscar&?pagina&?tamano`, `count`+`limit/offset`) (RED-13).
 - ✅ **(A7-iii) Foto de perfil del cliente** (`C10`): `Usuario.fotoUrl` (V71) + `POST /perfil/foto` +
   `PerfilResponse.fotoUrl` (reusa el almacén compartido).
-- ⬜ **(A7-iv) Favoritos sincronizados** (`C4`): **no existe nada** (0 hits). `GET/POST/DELETE
-  /clientes/me/favoritos` + persistencia (hoy son locales en Room).
+- ✅ **(A7-iv) Favoritos sincronizados** (`C4`): tabla `favorito_disfraz` (V73, por usuario) +
+  `GET/POST/DELETE /clientes/me/favoritos` (snapshot del disfraz, idempotente) (RED-13).
 - ⬜ **(A7-v) Carrito (`C5`)**: depósito reembolsable por línea + total (no existe) · **variante (talla/color)
   por línea** (`SeleccionDeSlot` solo trae `orden`+`prendaId`) · **editar cantidad** (hoy solo add/delete) ·
   **fecha de creación** del carrito/línea (no se guarda).
