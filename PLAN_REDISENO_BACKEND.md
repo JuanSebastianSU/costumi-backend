@@ -148,7 +148,10 @@ transversal. Un solo lote (no PRs minúsculos).
     sucursales/{id}` + `POST …/{id}/foto`; vitrina de sucursal enriquecida (RED-12).
   - ✅ **Vitrina rica** (RED-14): `EmpresaVitrinaResponse` suma `portadaUrl`+`disfracesCount`; **detalle
     público** `GET /marketplace/empresas/{id}` + **facetas** `GET …/{id}/categorias`.
-  - ⬜ **Falta de A7-i**: `horario` por día (empresa/sucursal); `C1` **destacados** + ciudad del usuario.
+  - ✅ **Horario de tienda** (RED-15): tabla `horario_atencion` (V74) + `GET/PUT /empresas/mia/horario` +
+    público `GET /marketplace/empresas/{id}/horario`.
+  - ✅ **Destacados** (`C1`, RED-15): `GET /marketplace/destacados` (disfraces por movimiento venta+renta).
+  - ~~ciudad del usuario~~ — **descartado**: era sobre-scope; el front solo usa la ciudad de la empresa.
   - 🔧 Estructural: se movió el puerto `AlmacenDeImagenesPublico` a `compartido` (evita ciclo
     identidad↔inventario); impl sigue en inventario.
 - ✅ **(A7-ii) Paginar el marketplace de tiendas** (`C1`): `GET /marketplace/empresas` →

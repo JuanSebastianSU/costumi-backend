@@ -41,6 +41,18 @@ class MarketplaceService implements DescubrirEmpresas {
 
 	@Override
 	@Transactional(readOnly = true)
+	public List<com.costumi.backend.marketplace.dominio.HorarioEnVitrina> horarioDe(UUID empresaId) {
+		return marketplace.horarioDe(empresaId);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<com.costumi.backend.marketplace.dominio.DisfrazDestacado> destacados(int limite) {
+		return marketplace.destacados(limite);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
 	public List<PrendaEnVitrina> catalogo(UUID empresaId, UUID categoriaId) {
 		return marketplace.catalogoDe(empresaId, categoriaId);
 	}

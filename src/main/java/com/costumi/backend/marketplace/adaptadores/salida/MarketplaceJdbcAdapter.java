@@ -1,7 +1,9 @@
 package com.costumi.backend.marketplace.adaptadores.salida;
 
 import com.costumi.backend.marketplace.dominio.CategoriaEnVitrina;
+import com.costumi.backend.marketplace.dominio.DisfrazDestacado;
 import com.costumi.backend.marketplace.dominio.EmpresaEnVitrina;
+import com.costumi.backend.marketplace.dominio.HorarioEnVitrina;
 import com.costumi.backend.marketplace.dominio.MarketplaceReadRepository;
 import com.costumi.backend.marketplace.dominio.PrendaEnVitrina;
 import com.costumi.backend.marketplace.dominio.SucursalEnVitrina;
@@ -89,6 +91,42 @@ class MarketplaceJdbcAdapter implements MarketplaceReadRepository {
 	public List<CategoriaEnVitrina> categoriasDe(UUID empresaId) {
 		return jdbc.sql(CATEGORIAS_DE_TIENDA).param("empresaId", empresaId)
 				.query((rs, rowNum) -> new CategoriaEnVitrina(rs.getObject("id", UUID.class), rs.getString("nombre")))
+				.list();
+	}
+
+	// Destacados: disfraces de tiendas ACTIVAS (con punto de retiro), ordenados por movimiento = cuántas
+	// instancias (grupos) se vendieron + rentaron. Sin movimiento aún → van al final (el carrusel no queda
+	// vacío en un marketplace joven). Cuenta grupos distintos para no multiplicar por las piezas del disfraz.
+	private static final String DESTACADOS = "select d.id as disfraz_id, d.empresa_id, e.nombre as empresa_nombre, "
+			+ "d.nombre, d.foto_url, d.precio_renta_general as precio_renta, d.precio_venta_general as precio_venta, "
+			+ "(coalesce(v.u, 0) + coalesce(r.u, 0)) as movimiento "
+			+ "from disfraz d join empresa e on e.id = d.empresa_id "
+			+ "left join (select disfraz_id, count(distinct disfraz_grupo) u from linea_de_venta "
+			+ "           where disfraz_id is not null group by disfraz_id) v on v.disfraz_id = d.id "
+			+ "left join (select disfraz_id, count(distinct disfraz_grupo) u from renta_linea "
+			+ "           where disfraz_id is not null group by disfraz_id) r on r.disfraz_id = d.id "
+			+ "where d.activo = true and e.estado = 'ACTIVA' "
+			+ "and exists (select 1 from sucursal s where s.empresa_id = e.id and s.archivada = false) "
+			+ "order by movimiento desc, d.nombre limit :limite";
+
+	@Override
+	public List<DisfrazDestacado> destacados(int limite) {
+		return jdbc.sql(DESTACADOS).param("limite", limite)
+				.query((rs, rowNum) -> new DisfrazDestacado(
+						rs.getObject("disfraz_id", UUID.class), rs.getObject("empresa_id", UUID.class),
+						rs.getString("empresa_nombre"), rs.getString("nombre"), rs.getString("foto_url"),
+						rs.getBigDecimal("precio_renta"), rs.getBigDecimal("precio_venta")))
+				.list();
+	}
+
+	@Override
+	public List<HorarioEnVitrina> horarioDe(UUID empresaId) {
+		return jdbc.sql("select dia_semana, abre, cierra from horario_atencion where empresa_id = :empresaId "
+						+ "order by dia_semana")
+				.param("empresaId", empresaId)
+				.query((rs, rowNum) -> new HorarioEnVitrina(rs.getInt("dia_semana"),
+						rs.getObject("abre", java.time.LocalTime.class),
+						rs.getObject("cierra", java.time.LocalTime.class)))
 				.list();
 	}
 

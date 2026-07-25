@@ -33,6 +33,12 @@ class MarketplaceController {
 				EmpresaVitrinaResponse::desde);
 	}
 
+	/** Carrusel de disfraces destacados del marketplace (C1), cruzando tiendas ACTIVAS. Público. */
+	@GetMapping("/destacados")
+	List<DisfrazDestacadoResponse> destacados(@RequestParam(name = "limite", defaultValue = "10") int limite) {
+		return descubrirEmpresas.destacados(limite).stream().map(DisfrazDestacadoResponse::desde).toList();
+	}
+
 	/** Detalle público de UNA tienda ACTIVA (cabecera de su vitrina): logo/portada/ciudad/#disfraces (RF-18.1). */
 	@GetMapping("/empresas/{empresaId}")
 	ResponseEntity<EmpresaVitrinaResponse> empresa(@PathVariable UUID empresaId) {
@@ -44,6 +50,12 @@ class MarketplaceController {
 	@GetMapping("/empresas/{empresaId}/categorias")
 	List<CategoriaVitrinaResponse> categorias(@PathVariable UUID empresaId) {
 		return descubrirEmpresas.categoriasDe(empresaId).stream().map(CategoriaVitrinaResponse::desde).toList();
+	}
+
+	/** Horario de atención público de la tienda (A7): el cliente ve si está abierta y a qué hora cierra. */
+	@GetMapping("/empresas/{empresaId}/horario")
+	List<HorarioVitrinaResponse> horario(@PathVariable UUID empresaId) {
+		return descubrirEmpresas.horarioDe(empresaId).stream().map(HorarioVitrinaResponse::desde).toList();
 	}
 
 	/** Catálogo público de una tienda: el cliente ve las prendas de cualquier empresa ACTIVA (RF-18). */
