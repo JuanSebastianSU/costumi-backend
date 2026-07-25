@@ -6,6 +6,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.UUID;
 
 /**
@@ -34,17 +35,31 @@ class GananciaJdbcAdapter implements GananciaReadRepository {
 	}
 
 	@Override
-	public ResumenDeGanancia deEmpresa(UUID empresaId, UUID sucursalId) {
-		String ingresosSql = INGRESOS + (sucursalId == null ? "" : " and sucursal_id = :sucursalId");
-		String costoSql = COSTO_DE_VENTAS + (sucursalId == null ? "" : " and v.sucursal_id = :sucursalId");
-		BigDecimal ingresos = conSucursal(jdbc.sql(ingresosSql).param("empresaId", empresaId), sucursalId)
+	public ResumenDeGanancia deEmpresa(UUID empresaId, UUID sucursalId, LocalDate desde, LocalDate hasta) {
+		// El rango acota los ingresos por la fecha del pago y el costo por la fecha de la venta (creada_en).
+		String ingresosSql = INGRESOS + (sucursalId == null ? "" : " and sucursal_id = :sucursalId")
+				+ (desde == null ? "" : " and fecha::date >= :desde") + (hasta == null ? "" : " and fecha::date <= :hasta");
+		String costoSql = COSTO_DE_VENTAS + (sucursalId == null ? "" : " and v.sucursal_id = :sucursalId")
+				+ (desde == null ? "" : " and v.creada_en::date >= :desde")
+				+ (hasta == null ? "" : " and v.creada_en::date <= :hasta");
+		BigDecimal ingresos = conRango(jdbc.sql(ingresosSql).param("empresaId", empresaId), sucursalId, desde, hasta)
 				.query(BigDecimal.class).single();
-		BigDecimal costo = conSucursal(jdbc.sql(costoSql).param("empresaId", empresaId), sucursalId)
+		BigDecimal costo = conRango(jdbc.sql(costoSql).param("empresaId", empresaId), sucursalId, desde, hasta)
 				.query(BigDecimal.class).single();
 		return ResumenDeGanancia.de(ingresos, costo);
 	}
 
-	private static JdbcClient.StatementSpec conSucursal(JdbcClient.StatementSpec spec, UUID sucursalId) {
-		return sucursalId == null ? spec : spec.param("sucursalId", sucursalId);
+	private static JdbcClient.StatementSpec conRango(JdbcClient.StatementSpec spec, UUID sucursalId, LocalDate desde,
+			LocalDate hasta) {
+		if (sucursalId != null) {
+			spec = spec.param("sucursalId", sucursalId);
+		}
+		if (desde != null) {
+			spec = spec.param("desde", desde);
+		}
+		if (hasta != null) {
+			spec = spec.param("hasta", hasta);
+		}
+		return spec;
 	}
 }

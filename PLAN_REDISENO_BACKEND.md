@@ -83,11 +83,11 @@ por tamaño/afinidad. Si preferís invertir PR-1↔PR-2, es un cambio de una lí
   `fechaDevolucionReal`; expuestas en `DevolucionResponse`; la lista ordena por `registradaEn` DESC.
 - ✅ **Timestamps del turno de caja** (V68, `G14`): `abiertoEn`/`cerradoEn` en `Turno` + `TurnoResponse`.
 
-### A2 — Períodos financieros  · regen
-- ⬜ `/reportes/ingresos` y `/ganancia`: aceptar `desde`/`hasta` (filtrando `pago.fecha`); hoy son acumulado
-  histórico sin rango. Patrón ya existe en `ingresos-por-metodo`/`mas-rentados`.
-- ⬜ Panel (`G1`): ingresos del día + serie de 7 días + variación vs. ayer.
-- ⬜ Contar rentas en estado `DEVUELTA` («devoluciones por cerrar») para la alerta del panel.
+### A2/B3 — Períodos financieros  · regen · 🚧 núcleo HECHO en `feat/bloque-b3-periodos-financieros` (RED-4, sin mergear)
+- ✅ `/reportes/ingresos` y `/ganancia`: aceptan `desde`/`hasta` (ingresos por `pago.fecha`, costo por
+  `venta.creada_en`). Con esto Reportes filtra coherente y el Panel puede pedir «hoy».
+- ⬜ **B3b**: Panel (`G1`) serie de 7 días + variación vs. ayer (endpoint de ingresos por día) · contar
+  rentas `DEVUELTA` (alerta del panel) · totales del período en ventas (`/ventas/totales`).
 
 ### A3 — Campos que faltan en respuestas  · aditivo puro · regen
 - ✅ `ClienteResponse.tieneRentaEnCurso` (RESERVADA/ACTIVA), resuelto en la consulta de carga con `bool_or`

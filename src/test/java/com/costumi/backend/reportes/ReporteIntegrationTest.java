@@ -97,6 +97,40 @@ class ReporteIntegrationTest {
 				.andExpect(jsonPath("$.total").value(100.00));
 	}
 
+	@Test
+	void los_ingresos_y_la_ganancia_se_filtran_por_periodo() throws Exception {
+		montar();
+		String dueno = tokenRol(Rol.DUENO);
+		pago(dueno, "VENTA", "100.00"); // pago registrado hoy
+
+		// Sin rango: incluye el pago de hoy.
+		mvc.perform(get("/api/v1/reportes/ingresos").header("Authorization", "Bearer " + dueno))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.total").value(100.00));
+		// Rango en el pasado: el pago de hoy queda fuera.
+		mvc.perform(get("/api/v1/reportes/ingresos").header("Authorization", "Bearer " + dueno)
+						.param("desde", "2020-01-01").param("hasta", "2020-12-31"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.total").value(0));
+		// Rango que incluye hoy: vuelve a contar.
+		mvc.perform(get("/api/v1/reportes/ingresos").header("Authorization", "Bearer " + dueno)
+						.param("desde", "2026-01-01").param("hasta", "2030-12-31"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.total").value(100.00));
+
+		// La ganancia respeta el mismo período (sin costo de adquisición, ganancia = ingresos).
+		mvc.perform(get("/api/v1/reportes/ganancia").header("Authorization", "Bearer " + dueno)
+						.param("desde", "2020-01-01").param("hasta", "2020-12-31"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.ingresos").value(0))
+				.andExpect(jsonPath("$.ganancia").value(0));
+		mvc.perform(get("/api/v1/reportes/ganancia").header("Authorization", "Bearer " + dueno)
+						.param("desde", "2026-01-01").param("hasta", "2030-12-31"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.ingresos").value(100.00))
+				.andExpect(jsonPath("$.ganancia").value(100.00));
+	}
+
 	/** Registra un pago en una sucursal concreta (no la de por defecto de la prueba). */
 	private void pagoEn(UUID suc, String token, String tipo, String monto) throws Exception {
 		mvc.perform(post("/api/v1/pagos").header("Authorization", "Bearer " + token)
