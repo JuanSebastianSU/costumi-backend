@@ -1,13 +1,10 @@
 package com.costumi.backend.identidad.adaptadores.salida;
 
 import com.costumi.backend.identidad.aplicacion.EnviadorDeEmail;
-import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
-import org.springframework.stereotype.Component;
 
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
@@ -23,8 +20,12 @@ import java.util.concurrent.Executors;
  * empleado", un SMTP lento/inaccesible colgaba el request varios minutos (la app daba timeout y parecía
  * que la invitación había fallado, aunque sí quedaba guardada). Además se acota el tiempo de conexión
  * para que un SMTP mal configurado falle rápido en vez de quedarse colgado.
+ *
+ * <p><b>Ya NO es el bean principal de {@link EnviadorDeEmail}</b>: en Railway el SMTP saliente está
+ * bloqueado (el envío se cuelga y muere a los 10s), así que el bean primario es {@link EnviadorDeEmailHttp}
+ * (API HTTP de Brevo, puerto 443). Esta clase queda como <b>respaldo</b> que ese adaptador usa cuando no
+ * hay API HTTP configurada (útil en local/dev, donde el SMTP sí sale). Por eso ya no lleva {@code @Component}.
  */
-@Component
 class EnviadorDeEmailSmtp implements EnviadorDeEmail {
 
 	private static final Logger log = LoggerFactory.getLogger(EnviadorDeEmailSmtp.class);
@@ -45,14 +46,9 @@ class EnviadorDeEmailSmtp implements EnviadorDeEmail {
 		return t;
 	});
 
-	// TODO(credenciales): COSTUMI_SMTP_HOST / COSTUMI_SMTP_PORT / COSTUMI_SMTP_USER / COSTUMI_SMTP_PASS
-	//                     y COSTUMI_EMAIL_FROM. Sin host, el envío es no-op (solo log).
-	EnviadorDeEmailSmtp(
-			@Value("${costumi.email.smtp.host:}") String host,
-			@Value("${costumi.email.smtp.port:587}") int puerto,
-			@Value("${costumi.email.smtp.usuario:}") String usuario,
-			@Value("${costumi.email.smtp.password:}") String password,
-			@Value("${costumi.email.remitente:no-reply@costumi.co}") String remitente) {
+	// Lo construye EnviadorDeEmailHttp con los valores de config (COSTUMI_SMTP_*). Sin host, el envío es
+	// no-op (solo log).
+	EnviadorDeEmailSmtp(String host, int puerto, String usuario, String password, String remitente) {
 		this.host = host;
 		this.puerto = puerto;
 		this.usuario = usuario;
@@ -98,7 +94,7 @@ class EnviadorDeEmailSmtp implements EnviadorDeEmail {
 		}
 	}
 
-	@PreDestroy
+	/** Lo llama {@link EnviadorDeEmailHttp} al apagarse (esta clase ya no es un bean con ciclo propio). */
 	void cerrar() {
 		envios.shutdown();
 	}
