@@ -1,0 +1,31 @@
+========================================================
+ COSTUMI — Credenciales de usuarios de prueba (seed)
+========================================================
+ Contraseña para TODOS los usuarios:  Passw0rd!
+--------------------------------------------------------
+
+SUPERADMIN (plataforma)
+  owner@costumi.co          Passw0rd!
+
+--------------------------------------------------------
+TIENDA 1 — Fiesta & Fantasía  (Quito, multi-sucursal)
+--------------------------------------------------------
+  DUEÑO       dueno@costumi.co      Passw0rd!
+  ENCARGADO   ana@ff.ec             Passw0rd!   (sucursal: Cumbayá)
+  MOSTRADOR   carlos@ff.ec          Passw0rd!   (sucursal: Centro Histórico)
+  BODEGA      beto@ff.ec            Passw0rd!
+  MOSTRADOR   cliente@costumi.co    Passw0rd!
+
+--------------------------------------------------------
+TIENDA 2 — El Baúl del Disfraz  (Cuenca)
+--------------------------------------------------------
+  DUEÑO       dueno@baul.ec         Passw0rd!
+  MOSTRADOR   sofia@baul.ec         Passw0rd!
+
+--------------------------------------------------------
+Permisos de ejemplo (overrides sobre el preset del rol):
+  Ana    (ENCARGADO): SIN invitar / editar-permisos / editar-configuración
+  Carlos (MOSTRADOR): CON ver-reportes ; SIN devolver-ventas
+  Beto   (BODEGA)   : CON gestionar-etiquetas ; SIN ajustar-stock
+  Sofía  (MOSTRADOR): CON gestionar-prendas ; SIN cerrar-rentas
+========================================================
