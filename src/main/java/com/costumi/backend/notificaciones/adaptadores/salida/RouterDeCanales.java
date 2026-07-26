@@ -1,6 +1,7 @@
 package com.costumi.backend.notificaciones.adaptadores.salida;
 
 import com.costumi.backend.notificaciones.dominio.CanalDeNotificacion;
+import com.costumi.backend.notificaciones.dominio.CanalNotificacion;
 import com.costumi.backend.notificaciones.dominio.Notificacion;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
@@ -47,6 +48,14 @@ class RouterDeCanales implements CanalDeNotificacion,
 			case EMAIL -> false; // notificación por email: no hay canal externo aún, va al log
 			case IN_APP -> false; // aviso in-app para el dueño: sin canal externo, solo se persiste (log)
 		};
+		// Fallback a PUSH (FCM): los avisos al cliente (compra confirmada, renta entregada, multa, deuda,
+		// recordatorios) están cableados al canal WHATSAPP; si WhatsApp no está configurado, sin este
+		// fallback caían al log y el cliente NUNCA recibía nada aunque FCM sí esté configurado. Se intenta
+		// FCM antes de rendirse. No aplica a IN_APP (aviso del dueño, sin cliente) ni a FCM (ya se intentó).
+		if (!enviado && (notificacion.canal() == CanalNotificacion.WHATSAPP
+				|| notificacion.canal() == CanalNotificacion.EMAIL)) {
+			enviado = fcm.enviar(notificacion);
+		}
 		return enviado || registroEnLog.enviar(notificacion);
 	}
 }
