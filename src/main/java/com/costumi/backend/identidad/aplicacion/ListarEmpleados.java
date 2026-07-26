@@ -8,8 +8,8 @@ import java.util.UUID;
 /** Puerto de entrada: listar el personal de la empresa que el actor puede gestionar (RF-8, G1). */
 public interface ListarEmpleados {
 
-	/** Un empleado del listado: datos básicos + sus sucursales asignadas. Nunca expone la contraseña. */
-	record EmpleadoDelTenant(UUID id, String email, Rol rol, boolean activo, List<UUID> sucursales) {
+	/** Un empleado del listado: datos básicos + foto + sus sucursales asignadas. Nunca expone la contraseña. */
+	record EmpleadoDelTenant(UUID id, String email, Rol rol, boolean activo, String fotoUrl, List<UUID> sucursales) {
 	}
 
 	/**
