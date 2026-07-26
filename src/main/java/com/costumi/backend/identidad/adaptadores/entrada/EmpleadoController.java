@@ -112,6 +112,16 @@ class EmpleadoController {
 		return ResponseEntity.noContent().build();
 	}
 
+	/** Reenvía una invitación pendiente: genera un enlace nuevo (mismo email/rol/sucursales) y reenvía el email. */
+	@PostMapping("/invitaciones/{invitacionId}/reenviar")
+	InvitacionResponse reenviarInvitacion(@PathVariable UUID invitacionId, @AuthenticationPrincipal Jwt jwt) {
+		UUID empresaId = tenant.empresaIdRequerida();
+		UUID actorId = UUID.fromString(jwt.getSubject());
+		GestionarInvitaciones.InvitacionCreada creada = invitaciones.reenviar(empresaId, actorRol(jwt), actorId,
+				invitacionId);
+		return new InvitacionResponse(creada.id(), creada.email(), creada.rol().name(), creada.enlace());
+	}
+
 	/** Da de baja la CUENTA del empleado (no podrá ni autenticarse). DUENO/ENCARGADO. */
 	@PostMapping("/{usuarioId}/desactivar")
 	EmpleadoResponse desactivar(@PathVariable UUID usuarioId, @AuthenticationPrincipal Jwt jwt) {
