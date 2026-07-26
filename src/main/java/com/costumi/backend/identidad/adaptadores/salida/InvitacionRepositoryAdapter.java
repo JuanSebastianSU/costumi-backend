@@ -21,7 +21,11 @@ class InvitacionRepositoryAdapter implements InvitacionRepository {
 
 	@Override
 	public Invitacion guardar(Invitacion i) {
-		return aDominio(jpa.save(new InvitacionJpaEntity(i.id(), i.empresaId(), i.email(), i.rol(),
+		// saveAndFlush (no save): al re-invitar/reenviar se cancela la invitación pendiente (UPDATE) y se
+		// inserta una nueva (INSERT). Sin flush entre ambas, Hibernate ejecuta el INSERT antes que el UPDATE
+		// y por un instante hay dos filas PENDIENTE para (empresa, email), lo que viola el índice único
+		// parcial uq_invitacion_pendiente. Flushear cada guardado fuerza el orden correcto.
+		return aDominio(jpa.saveAndFlush(new InvitacionJpaEntity(i.id(), i.empresaId(), i.email(), i.rol(),
 				i.sucursalIds(), i.tokenHash(), i.expiraEn(), i.estado(), i.aceptoTerminosEn())));
 	}
 
