@@ -91,6 +91,18 @@ class InvitacionService implements GestionarInvitaciones {
 	}
 
 	@Override
+	@Transactional
+	public InvitacionCreada reenviar(UUID empresaId, Rol actorRol, UUID actorId, UUID invitacionId) {
+		Invitacion invitacion = invitaciones.buscarPorId(invitacionId)
+				.filter(i -> i.empresaId().equals(empresaId))
+				.orElseThrow(() -> new IllegalArgumentException("La invitación no existe en esta empresa"));
+		// Reusa invitar: cancela la pendiente y crea una nueva (token/enlace nuevo) con el mismo email, rol
+		// y sucursales, y vuelve a mandar el email. Valida rol/pirámide/sucursales igual que al invitar.
+		return invitar(new InvitarComando(empresaId, actorRol, actorId, invitacion.email(), invitacion.rol(),
+				invitacion.sucursalIds()));
+	}
+
+	@Override
 	@Transactional(readOnly = true)
 	public InvitacionVista ver(String token) {
 		Invitacion invitacion = vigentePorToken(token);

@@ -34,6 +34,12 @@ public interface GestionarInvitaciones {
 
 	InvitacionCreada invitar(InvitarComando comando);
 
+	/**
+	 * Reenvía una invitación pendiente: genera un enlace/token NUEVO con el mismo email, rol y sucursales,
+	 * cancela el anterior y vuelve a enviar el email. Útil si el correo no llegó (SMTP) o venció el enlace.
+	 */
+	InvitacionCreada reenviar(UUID empresaId, Rol actorRol, UUID actorId, UUID invitacionId);
+
 	InvitacionVista ver(String token);
 
 	/** Acepta la invitación y devuelve una sesión (auto-login como la persona). */
