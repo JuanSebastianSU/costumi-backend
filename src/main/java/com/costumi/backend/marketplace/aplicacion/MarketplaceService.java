@@ -1,6 +1,8 @@
 package com.costumi.backend.marketplace.aplicacion;
 
+import com.costumi.backend.catalogo.ConsultaDeTaxonomia;
 import com.costumi.backend.marketplace.dominio.EmpresaEnVitrina;
+import com.costumi.backend.marketplace.dominio.EtiquetaEnVitrina;
 import com.costumi.backend.marketplace.dominio.MarketplaceReadRepository;
 import com.costumi.backend.marketplace.dominio.PrendaEnVitrina;
 import com.costumi.backend.marketplace.dominio.SucursalEnVitrina;
@@ -8,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /** Casos de uso del marketplace (solo lectura). */
@@ -15,9 +18,11 @@ import java.util.UUID;
 class MarketplaceService implements DescubrirEmpresas {
 
 	private final MarketplaceReadRepository marketplace;
+	private final ConsultaDeTaxonomia taxonomia;
 
-	MarketplaceService(MarketplaceReadRepository marketplace) {
+	MarketplaceService(MarketplaceReadRepository marketplace, ConsultaDeTaxonomia taxonomia) {
 		this.marketplace = marketplace;
+		this.taxonomia = taxonomia;
 	}
 
 	@Override
@@ -54,7 +59,22 @@ class MarketplaceService implements DescubrirEmpresas {
 	@Override
 	@Transactional(readOnly = true)
 	public List<PrendaEnVitrina> catalogo(UUID empresaId, UUID categoriaId) {
-		return marketplace.catalogoDe(empresaId, categoriaId);
+		List<PrendaEnVitrina> prendas = marketplace.catalogoDe(empresaId, categoriaId);
+		// Etiquetas de todas las prendas del catálogo, resueltas a nombre en una sola pasada (sin N+1).
+		Map<UUID, List<UUID>> valoresPorPrenda = marketplace.valorEtiquetasDeCatalogo(empresaId, categoriaId);
+		java.util.Set<UUID> todosLosValores = valoresPorPrenda.values().stream()
+				.flatMap(List::stream).collect(java.util.stream.Collectors.toSet());
+		Map<UUID, ConsultaDeTaxonomia.EtiquetaConNombre> nombres =
+				taxonomia.describirValores(empresaId, todosLosValores);
+		return prendas.stream().map(p -> {
+			List<EtiquetaEnVitrina> etiquetas = valoresPorPrenda.getOrDefault(p.id(), List.of()).stream()
+					.map(nombres::get)
+					.filter(java.util.Objects::nonNull)
+					.map(e -> new EtiquetaEnVitrina(e.tipoNombre(), e.valorNombre()))
+					.toList();
+			return new PrendaEnVitrina(p.id(), p.nombre(), p.tipoArticulo(), p.precioRenta(), p.precioVenta(),
+					p.categoria(), p.fotoUrl(), etiquetas);
+		}).toList();
 	}
 
 	@Override

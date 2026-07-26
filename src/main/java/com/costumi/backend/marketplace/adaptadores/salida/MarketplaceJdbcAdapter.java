@@ -140,6 +140,29 @@ class MarketplaceJdbcAdapter implements MarketplaceReadRepository {
 		return spec.query(MarketplaceJdbcAdapter::mapearPrenda).list();
 	}
 
+	// Etiquetas (pares prenda→valor) del catálogo público, con los MISMOS filtros que CATALOGO. Se resuelven
+	// a nombre en el service. En una sola consulta para no hacer N+1 por prenda.
+	private static final String ETIQUETAS_CATALOGO = "select pve.prenda_id, pve.valor_etiqueta_id "
+			+ "from prenda_valor_etiqueta pve join prenda p on p.id = pve.prenda_id "
+			+ "join empresa e on e.id = p.empresa_id "
+			+ "where p.empresa_id = :empresaId and p.archivada = false and e.estado = 'ACTIVA'";
+
+	@Override
+	public java.util.Map<UUID, List<UUID>> valorEtiquetasDeCatalogo(UUID empresaId, UUID categoriaId) {
+		String sql = ETIQUETAS_CATALOGO + (categoriaId != null ? " and p.categoria_id = :categoriaId" : "");
+		JdbcClient.StatementSpec spec = jdbc.sql(sql).param("empresaId", empresaId);
+		if (categoriaId != null) {
+			spec = spec.param("categoriaId", categoriaId);
+		}
+		java.util.Map<UUID, List<UUID>> porPrenda = new java.util.LinkedHashMap<>();
+		spec.query((rs, rowNum) -> {
+			porPrenda.computeIfAbsent(rs.getObject("prenda_id", UUID.class), k -> new java.util.ArrayList<>())
+					.add(rs.getObject("valor_etiqueta_id", UUID.class));
+			return null;
+		}).list();
+		return porPrenda;
+	}
+
 	@Override
 	public List<SucursalEnVitrina> sucursalesActivasDe(UUID empresaId) {
 		return jdbc.sql(SUCURSALES).param("empresaId", empresaId).query(MarketplaceJdbcAdapter::mapearSucursal).list();
@@ -152,6 +175,7 @@ class MarketplaceJdbcAdapter implements MarketplaceReadRepository {
 	}
 
 	private static PrendaEnVitrina mapearPrenda(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
+		// Sin etiquetas: las resuelve el service a partir de valorEtiquetasDeCatalogo (evita N+1 aquí).
 		return new PrendaEnVitrina(
 				rs.getObject("id", UUID.class),
 				rs.getString("nombre"),
@@ -159,7 +183,8 @@ class MarketplaceJdbcAdapter implements MarketplaceReadRepository {
 				rs.getBigDecimal("precio_renta"),
 				rs.getBigDecimal("precio_venta"),
 				rs.getString("categoria"),
-				rs.getString("foto_url"));
+				rs.getString("foto_url"),
+				List.of());
 	}
 
 	private static SucursalEnVitrina mapearSucursal(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {

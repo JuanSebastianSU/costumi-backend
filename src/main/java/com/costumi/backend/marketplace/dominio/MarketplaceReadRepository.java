@@ -35,6 +35,12 @@ public interface MarketplaceReadRepository {
 	List<PrendaEnVitrina> catalogoDe(UUID empresaId, UUID categoriaId);
 
 	/**
+	 * Por cada prenda del catálogo público (mismos filtros que {@link #catalogoDe}), los ids de valor de
+	 * etiqueta que tiene asignados. El service los resuelve a nombre. Indexado por id de prenda.
+	 */
+	java.util.Map<UUID, List<UUID>> valorEtiquetasDeCatalogo(UUID empresaId, UUID categoriaId);
+
+	/**
 	 * Sucursales ACTIVAS (puntos de retiro) de una empresa ACTIVA, para que el cliente elija dónde
 	 * retirar (RF-18.5). Vacío si la empresa no existe o no está activa.
 	 */
