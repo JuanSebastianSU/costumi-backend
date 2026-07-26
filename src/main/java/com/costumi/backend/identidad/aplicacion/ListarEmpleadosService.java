@@ -38,7 +38,7 @@ class ListarEmpleadosService implements ListarEmpleados {
 				.filter(usuario -> !dadoDeBaja(usuario.id(), empresaId))
 				.sorted(Comparator.comparing(usuario -> usuario.rol().nivelJerarquico(), Comparator.reverseOrder()))
 				.map(usuario -> new EmpleadoDelTenant(usuario.id(), usuario.email(), usuario.rol(), usuario.activo(),
-						asignaciones.sucursalesDe(usuario.id())))
+						usuario.fotoUrl(), asignaciones.sucursalesDe(usuario.id())))
 				.toList();
 	}
 
