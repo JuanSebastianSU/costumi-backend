@@ -183,8 +183,14 @@ class InvitacionService implements GestionarInvitaciones {
 
 	private String cuerpo(UUID empresaId, Rol rol, String enlace) {
 		String nombre = empresas.buscarPorId(empresaId).map(Empresa::nombre).orElse("una tienda");
+		// Sin URL base, `enlace` es un código (no un link): decir "abrí este enlace" confunde porque no se
+		// puede abrir. Se dan instrucciones claras para usarlo dentro de la app. Con URL base, sí es un link.
+		String comoAceptar = urlBase.isBlank()
+				? "Para aceptar, abrí la app Costumi, tocá \"Tengo una invitación\" e ingresá este código:\n\n"
+						+ enlace
+				: "Para aceptar (y aceptar los términos y condiciones), abrí este enlace:\n" + enlace;
 		return "Te invitaron a trabajar en " + nombre + " como " + rol.name() + " en Costumi.\n\n"
-				+ "Para aceptar (y aceptar los términos y condiciones), abrí este enlace:\n" + enlace
+				+ comoAceptar
 				+ "\n\nLa invitación vence en " + duracion.toDays() + " días.";
 	}
 
